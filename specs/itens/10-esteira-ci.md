@@ -52,7 +52,7 @@ Fora do escopo: imagens Docker e fluxo de publicação (#11); hospedagem (#192);
 - [x] T3: adicionar Playwright (`@playwright/test`), `playwright.config.ts`, `e2e/smoke.spec.ts` com a marca `@critical` e os scripts `e2e` (só `@critical`) e `e2e:full` — cobre CA8 — prova: `npm run e2e` e `npm run e2e:full` verdes; quebrando o texto esperado, falham.
 - [x] T4: criar `.github/workflows/ci.yml` com os jobs `changes`, `backend`, `frontend`, `e2e`, `security` (dependências e segredos) e `ci-gate` — cobre CA1, CA4, CA5, CA6, CA8, CA9, CA10 — prova: `actionlint` (ou leitura do run) sem erro e o run do próprio PR verde.
 - [x] T5: provar as falhas: em branch descartável (não vira PR de item) commitar um segredo falso, quebrar um teste do back-end e um do front-end, e conferir que `ci-gate` falha em cada caso; registrar os links dos runs na Construção — cobre CA4, CA5, CA9, CA10 — prova: runs vermelhos e branch descartável apagada.
-- [ ] T6: provar a seleção por pasta no PR do item: o PR do item muda `backend/`, `frontend/` e `.github/`, então roda tudo; conferir uma segunda vez com um PR descartável só de `docs/` ou de `frontend/` — cobre CA2, CA3 — prova: runs com jobs pulados e `ci-gate` verde.
+- [x] T6: provar a seleção por pasta no PR do item: o PR do item muda `backend/`, `frontend/` e `.github/`, então roda tudo; conferir uma segunda vez com um PR descartável só de `docs/` ou de `frontend/` — cobre CA2, CA3 — prova: runs com jobs pulados e `ci-gate` verde.
 - [x] T7: atualizar `README.md`, `AGENTS.md` (Comandos), `frontend/README.md` e `backend/README.md` com os comandos locais e o que o CI exige — cobre CA11 — prova: leitura dos arquivos.
 - [x] T8: referenciar RNF-35, RNF-36 e RNF-37 em ao menos um teste/artefato de cada: `changed-areas.test.sh`, `smoke.spec.ts` e os limites de cobertura (comentário com o código na configuração) — não cobre critério: a issue exige "cada código tem ao menos um teste" e o verificador procura o código — prova: `grep -rn "RNF-3[567]"` retorna os três.
 - [x] T9: depois do primeiro run verde, tentar exigir o status `ci-gate` em `dev` e `main` por `gh api` (proteção de branch); se o plano do GitHub não permitir, registrar na Construção e na decisão D7 — não cobre critério: faz o `ci-gate` ser barreira real — prova: `gh api repos/{owner}/{repo}/branches/dev/protection` mostra o status exigido, ou a resposta do GitHub fica registrada.
@@ -85,3 +85,40 @@ Não é do item: nada.
 - T5 — PRs descartáveis, todos com `ci-gate` vermelho, fechados e branches apagadas: segredo falso (#204, run 38782914606, gitleaks `github-pat` em `segredo-falso.txt`), teste do back-end quebrado (#205, run 38782919954), teste do front-end quebrado (#206, run 38782926139).
 - T6 — metade provada: o PR #203 (muda `backend/`, `frontend/`, `.github/`) rodou todos os jobs (run 38782529965). A metade "PR só de docs/ com jobs pulados" não pôde ser feita antes do merge, porque `dev` ainda não tem o workflow; por isso T6 segue desmarcada.
 - T9 — `gh api -X PUT .../branches/dev/protection` aceito: `required_status_checks.contexts = ["ci-gate"]`, `enforce_admins=false`. `main` não foi tocada (já tem o ruleset `protege-main`, do dono).
+
+### Regularização da T6 (resposta do dono: "sim")
+- T6 — segunda metade provada: PR descartável #207 (`descartavel/10-docs`, só `docs/`, fechado) rodou o run 38784313650 com `security`, `changes` e `ci-gate` em success e `e2e`, `frontend` e `backend` pulados (skipped). Junto com o run 38782529965 do PR #203 (todos os jobs), cobre CA2 e CA3. Nenhum código alterado; branch `item/10-esteira-ci` já contém `dev`.
+
+## Verificação
+
+### Rodada 1 — OK — 2026-10-15, estado 49356c91f644de95d28d18f9712df7c9487b1b43
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 | PASSOU | `ci.yml` com `on: pull_request` para `dev` e `main` e job `ci-gate`; run do PR #203 verde (registrado na Construção) |
+| CA2 | PASSOU | `changed-areas.test.sh`: casos "só frontend", "só backend" ok; run do PR #207 (só `docs/`) com backend, frontend e e2e pulados e `ci-gate` verde (registro da Construção, não reexecutado) |
+| CA3 | PASSOU | `changed-areas.test.sh`: "main sem diferença" e "openapi" ok; `ci.yml` usa `e2e:full` quando `base_ref == main` |
+| CA4 | PASSOU | `mvnw verify` roda `*Test`, `*IT` e contrato; PR #205 vermelho (registro) |
+| CA5 | PASSOU | lint, typecheck, `test:cov` (axe) rodam no job; PR #206 vermelho (registro) |
+| CA6 | PASSOU | JaCoCo 80% e vite thresholds; local: back-end "All coverage checks have been met", front 96,86% linhas; relatórios enviados com `upload-artifact` `if: always()` |
+| CA7 | PASSOU | regras PACKAGE 100% no `pom.xml` e thresholds por pasta no `vite.config.ts`; negativo registrado na Construção |
+| CA8 | PASSOU | `npm run e2e` 1 passed; relatório anexado com `if: always()`; PR para `main` roda `e2e:full` |
+| CA9 | PASSOU | gitleaks e OSV com falha em achado; PR #204 vermelho (registro); filtro `jq` com nota CVSS >= 7 |
+| CA10 | PASSOU | `ci-gate` falha em `failure` ou `cancelled`; passa com `skipped` (run do PR #207) |
+| CA11 | PASSOU | `README.md` (seção CI) e `AGENTS.md` (Comandos) trazem comandos e exigências |
+
+Comandos:
+- `bash infra/scripts/changed-areas.test.sh` — 6 casos ok
+- `./backend/mvnw -B -f backend/pom.xml verify` — 65 testes unitários, 15 ITs, BUILD SUCCESS, cobertura ok
+- em `frontend/`: `npm run lint`, `typecheck`, `test:cov` (96,86% linhas), `e2e` — verdes
+- `grep -rn "RNF-3[567]"` — encontra os três em script, teste, e2e, pom e vite.config
+
+Achados:
+- sugestão, código, `.github/workflows/ci.yml` job `ci-gate` — `needs.changes` falhando já reprova, mas um resultado inesperado diferente de failure/cancelled passaria; considerar exigir `success|skipped` explícito.
+- sugestão, especificação — os runs dos PRs #204 a #207 foram aceitos pelo registro da Construção, não reexecutados (sem acesso reproduzível nesta rodada); as exceções do `osv-scanner.toml` (validade até 2027-01-15) precisam ser conhecidas pelo dono.
+
+## Entrega
+
+- Regulariza o item #10: o código já entrou em `dev` pelo PR #203 (squash). Este PR só registra a especificação, a Construção, a prova da T6 (PR descartável #207, run 38784313650) e a Verificação (rodada 1, OK), e marca o item como feito no backlog.
+- Nenhum código alterado. Verificação: testes do back-end e do front-end, e2e e `changed-areas.test.sh` verdes (ver "Verificação").
+- Limitações: as exceções do `osv-scanner.toml` valem até 2027-01-15; `ci-gate` considera falha só `failure` e `cancelled`.
