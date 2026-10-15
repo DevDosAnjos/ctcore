@@ -37,7 +37,8 @@ Os padrões servem ao ambiente local de `../infra/` (valores de desenvolvimento,
 
 - Migrações em `src/main/resources/db/migration` (`V<n>__nome.sql`); nunca editar uma migração já mergeada, corrigir em uma nova. `id uuid primary key default gen_random_uuid()`, datas em `timestamptz` (UTC), valores em centavos (`bigint`).
 - Todo erro da API tem o corpo `{ code, message, changed, fields, traceId }` (`api/error`); mensagens em `messages.properties`.
-- Tudo é protegido por padrão (`config/SecurityConfig`); senhas com Argon2id; mudanças de dado exigem o token CSRF (cookie `XSRF-TOKEN`, cabeçalho `X-XSRF-TOKEN`).
+- Tudo é protegido por padrão (`config/SecurityConfig`); senhas com Argon2id; sessão no cookie `SESSION` (o nome do contrato). Mudanças de dado exigem o token CSRF: toda resposta, mesmo um 401 sem sessão, garante o cookie `XSRF-TOKEN` (`config/SpaCsrfTokenRequestHandler`), e o SPA devolve o valor dele no cabeçalho `X-XSRF-TOKEN`.
+- Contrato: `OpenApiContractTest` confere erros e páginas contra `docs/openapi.yaml`; `ContractRoutesTest` exige que toda rota de controller esteja sob `/api/v1` e em `paths`, com o mesmo método, e que o cookie e o cabeçalho de CSRF do contrato sejam os do servidor.
 - Testes: `*Test` rodam no surefire; `*IT` (com Docker) rodam no failsafe, na fase `verify`.
 
 ## Tarefas agendadas e recursos
