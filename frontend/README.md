@@ -38,3 +38,9 @@ Ficam em `src/components/`; todo texto padrão vem de `pt-BR.json` e pode ser so
 | `Card` e `CardGrid` | Cartão com título e ações; grade de 1 coluna a 360 px até 3. |
 | `CharCounter` | Campo de texto com contador e limite `max`. |
 | `fields/` (`CpfField`, `PhoneField`, `MoneyField`, `DateField`) | Máscara ao digitar; `onChange` entrega o valor limpo (dígitos, centavos, data ISO). Funções puras em `masks.ts`. |
+
+## Formatos brasileiros, datas relativas e WhatsApp
+
+- **Formatadores** (`src/lib/format.ts`), todos no fuso recebido (padrão `America/Sao_Paulo`): `formatDate` (`08/10/2026`), `formatTime` (`19h30`), `formatDateTime`, `formatCurrency(centavos)` (`R$ 1.250,00`), `formatPhoneDisplay` (`(11) 91234-5678`; número inválido volta o texto original) e `relativeDay`. Ex.: `formatDateTime(iso, "America/Manaus")`.
+- **`RelativeDate`**: `<RelativeDate value={iso} timeZone="America/Sao_Paulo" />` mostra "hoje", "ontem" e "há N dias" (até 30; depois, a data). A data e a hora exatas aparecem ao passar o mouse, focar ou tocar; Esc fecha. Valor vazio ou inválido mostra "—".
+- **`WhatsAppButton`** (`components/whatsapp/`): `<WhatsAppButton phone="(11) 91234-5678" message="Olá" />` abre `wa.me` em nova aba; `groupUrl="https://chat.whatsapp.com/..."` abre o grupo. Não renderiza sem destino válido nem quando `<WhatsAppProvider enabled={false}>` envolve a tela (padrão: ligado).

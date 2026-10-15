@@ -62,6 +62,16 @@
     "dateInvalid": "Confira a data: ela precisa existir, no formato dd/mm/aaaa.",
     "moneyInvalid": "Confira o valor digitado."
   },
+  "format": {
+    "empty": "—",
+    "today": "hoje",
+    "yesterday": "ontem",
+    "daysAgo": "há {{days}} dias"
+  },
+  "whatsapp": {
+    "label": "WhatsApp",
+    "open": "Abrir conversa no WhatsApp"
+  },
   "errors": {
     "generic": {
       "title": "Não foi possível carregar",
