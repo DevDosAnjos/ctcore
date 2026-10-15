@@ -93,7 +93,7 @@ class LogOutputTest {
         HttpHeaders h = new HttpHeaders();
         h.add("X-Forwarded-Proto", "https");
         h.add("Authorization", "Bearer HeaderSegredo777");
-        h.add("Cookie", "JSESSIONID=CookieSegredo888");
+        h.add("Cookie", "SESSION=CookieSegredo888");
         HttpEntity<String> req = new HttpEntity<>("corpo=CorpoSegredo666", h);
         assertThat(rest.exchange("/api/v1/x?secret=QuerySegredo", HttpMethod.GET, req, String.class).getStatusCode().value()).isEqualTo(401);
         assertThat(rest.exchange("/api/v1/x?secret=QuerySegredo", HttpMethod.POST, req, String.class).getStatusCode().value()).isEqualTo(403);
