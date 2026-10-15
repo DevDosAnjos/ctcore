@@ -1,0 +1,79 @@
+# Publicação das imagens (#11). Constrói a imagem de cada pasta alterada e, havendo chaves, envia ao registro.
+# Sem PUBLISH_REGISTRY, PUBLISH_REGISTRY_USER e PUBLISH_REGISTRY_TOKEN o envio é pulado e o run termina verde.
+# Ligar de verdade (registro, ambientes, aprovação de main) é a #192; ver README, seção Publicação.
+name: Publish
+
+on:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.areas.outputs.matrix }}
+      any: ${{ steps.areas.outputs.any }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - id: areas
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          # Disparo manual ou sem base válida (branch novo): as duas imagens.
+          if [ "$EVENT" = "workflow_dispatch" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            out="$(printf 'backend=true\nfrontend=true\n')"
+          else
+            out="$(bash infra/scripts/changed-areas.sh "$BEFORE" "$SHA" "$BRANCH")"
+          fi
+          list=""
+          for a in backend frontend; do
+            echo "$out" | grep -qx "$a=true" && list="$list\"$a\","
+          done
+          list="[${list%,}]"
+          echo "matrix={\"area\":$list}" >> "$GITHUB_OUTPUT"
+          if [ "$list" = "[]" ]; then echo "any=false" >> "$GITHUB_OUTPUT"; else echo "any=true" >> "$GITHUB_OUTPUT"; fi
+
+  image:
+    needs: changes
+    if: needs.changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    env:
+      PUBLISH_REGISTRY: ${{ vars.PUBLISH_REGISTRY }}
+      PUBLISH_REGISTRY_USER: ${{ secrets.PUBLISH_REGISTRY_USER }}
+      PUBLISH_REGISTRY_TOKEN: ${{ secrets.PUBLISH_REGISTRY_TOKEN }}
+      AREA: ${{ matrix.area }}
+      BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Verificar chaves
+        run: |
+          if [ -n "$PUBLISH_REGISTRY" ] && [ -n "$PUBLISH_REGISTRY_USER" ] && [ -n "$PUBLISH_REGISTRY_TOKEN" ]; then
+            echo "PUBLISH_ENABLED=true" >> "$GITHUB_ENV"
+          fi
+      - name: Construir imagem (sem enviar)
+        if: env.PUBLISH_ENABLED != 'true'
+        run: |
+          docker build -t "ctcore-$AREA" "$AREA"
+          echo "### $AREA: publicação pulada: faltam chaves" >> "$GITHUB_STEP_SUMMARY"
+          echo "Cadastre a variável PUBLISH_REGISTRY e os segredos PUBLISH_REGISTRY_USER e PUBLISH_REGISTRY_TOKEN (README, seção Publicação). A imagem foi construída, não enviada." >> "$GITHUB_STEP_SUMMARY"
+      - name: Login, construir e enviar
+        if: env.PUBLISH_ENABLED == 'true'
+        run: |
+          bash infra/scripts/publish-image.sh "$AREA" "$BRANCH"
+          echo "### $AREA: enviada com as etiquetas $BRANCH e $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

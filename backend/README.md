@@ -104,3 +104,7 @@ Cada conexão externa é uma interface em `br.com.ctcore.integration`; nenhuma r
 **Caixa de saída** (`Outbox`). Guarda e-mail, SMS e push simulados (tipo, destinatário, assunto ou texto, data/hora do `Clock`; o SMS traz o código de confirmação). Em memória: some no reinício, não é compartilhada entre instâncias, guarda no máximo 1000 mensagens (as mais antigas saem) e só é preenchida no modo simulado. O log registra só tipo e id, nunca o texto.
 
 **Simulador de pagamento.** `createCharge(chave, centavos)` é idempotente (mesma chave, mesma cobrança; outra quantia com a mesma chave lança `IllegalArgumentException`). Estados: `PENDING`, `APPROVED`, `REFUSED`, `EXPIRED`, `REFUNDED`, `DISPUTED`. `approve`, `refuse` e `expire` saem de `PENDING`; `refund` e `dispute` saem de `APPROVED`; outra transição lança `IllegalStateException` sem mudar o estado; cobrança inexistente lança `NoSuchElementException`. `resendNotice` repete o evento atual (id, estado, valor) sem alterá-lo.
+
+## Imagem Docker
+
+`docker build -t ctcore-backend backend` (Dockerfile multi-stage, jar sem testes, JRE 21, usuário sem privilégio). Sobe só com variáveis de ambiente: `docker run --rm -e DB_HOST=host.docker.internal -p 8080:8080 -p 8081:8081 ctcore-backend` com o PostgreSQL do compose no ar. A API fica em `8080`; `/actuator/health` e `/actuator/health/readiness` ficam na porta de gestão `8081` (D8), que não deve ser publicada para a internet. O CI constrói esta imagem quando a etapa `backend` roda. Publicação: README da raiz.

@@ -123,9 +123,26 @@ jobs:
           jq -r '[.results[]?.packages[]? | .package as $p | .groups[]? | select((.max_severity | tonumber? // 0) >= 7) | "\($p.name)@\($p.version) \(.ids[0]) severidade \(.max_severity)"] | .[]' osv.json | tee osv-high.txt
           [ ! -s osv-high.txt ] || { echo "Dependências com falha de severidade alta ou crítica."; exit 1; }
 
+  # Imagens só constroem (sem enviar): o Dockerfile não quebra sem ninguém ver (#11).
+  image-backend:
+    needs: [changes, backend]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: docker build -t ctcore-backend backend
+
+  image-frontend:
+    needs: [changes, frontend]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: docker build -t ctcore-frontend frontend
+
   ci-gate:
     if: always()
-    needs: [changes, backend, frontend, e2e, security]
+    needs: [changes, backend, frontend, e2e, image-backend, image-frontend, security]
     runs-on: ubuntu-latest
     steps:
       # Pulado por pasta conta como verde; falha ou cancelamento reprova.
