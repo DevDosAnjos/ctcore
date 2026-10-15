@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, formatDateTime, formatPhoneDisplay, formatTime, relativeDay } from "./format";
+import { formatCurrency, formatDate, formatDateTime, formatPhoneDisplay, formatTime, isCalendarDate, relativeDay } from "./format";
 
 describe("formatadores (RNF-23)", () => {
   it("CA1 RNF-23: data, hora e data e hora em Brasília", () => {
@@ -34,6 +34,21 @@ describe("formatadores (RNF-23)", () => {
     expect(formatTime("x")).toBe("");
     expect(formatDateTime("x")).toBe("");
     expect(relativeDay("x")).toBeNull();
+  });
+  it.each([["America/Sao_Paulo"], ["America/Manaus"], ["America/Noronha"], ["America/Rio_Branco"], ["Asia/Tokyo"]])(
+    "RNF-23: data de calendário AAAA-MM-DD é o mesmo dia em %s",
+    (tz) => {
+      expect(formatDate("2026-10-08", tz)).toBe("08/10/2026");
+      expect(formatDateTime("2026-10-08", tz)).toBe("08/10/2026");
+      expect(relativeDay("2026-10-08", "2026-10-08T12:00:00Z", tz)).toBe(0); // 12h UTC ainda é dia 08 em todos estes fusos
+    },
+  );
+  it("RNF-23: data de calendário inexistente vira vazio; instante continua com hora", () => {
+    expect(isCalendarDate("2026-10-08")).toBe(true);
+    expect(isCalendarDate("2026-10-08T22:30:00Z")).toBe(false);
+    expect(formatDate("2026-02-31")).toBe("");
+    expect(relativeDay("2026-02-31")).toBeNull();
+    expect(formatDateTime("2026-10-08T22:30:00Z")).toBe("08/10/2026 19h30");
   });
   it("CA6 RNF-23: dia relativo conta dias de calendário", () => {
     const now = "2026-10-08T03:10:00Z"; // 00h10 de 08/10 em Brasília

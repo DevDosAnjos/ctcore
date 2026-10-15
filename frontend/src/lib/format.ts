@@ -5,7 +5,21 @@ export const DEFAULT_TZ = "America/Sao_Paulo";
 
 type Input = Date | string | number;
 
+const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// Data de calendário do contrato (`date`, AAAA-MM-DD): é o mesmo dia em qualquer fuso, sem hora.
+export function isCalendarDate(value: unknown): value is string {
+  return typeof value === "string" && CALENDAR_DATE.test(value);
+}
+
 function parts(value: Input, timeZone: string) {
+  if (isCalendarDate(value)) {
+    // new Date("AAAA-MM-DD") é meia-noite UTC e cairia no dia anterior no Brasil; aqui não há conversão de fuso.
+    const [, y, mo, d] = CALENDAR_DATE.exec(value)!;
+    const dt = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+    if (dt.getUTCFullYear() !== Number(y) || dt.getUTCMonth() !== Number(mo) - 1 || dt.getUTCDate() !== Number(d)) return null;
+    return { y, mo, d, h: "00", mi: "00" };
+  }
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return null;
   const p = Object.fromEntries(
@@ -26,9 +40,11 @@ export function formatTime(value: Input, timeZone = DEFAULT_TZ): string {
   return p ? `${p.h}h${p.mi}` : "";
 }
 
+// Data de calendário não tem hora: sai só a data.
 export function formatDateTime(value: Input, timeZone = DEFAULT_TZ): string {
   const p = parts(value, timeZone);
-  return p ? `${p.d}/${p.mo}/${p.y} ${p.h}h${p.mi}` : "";
+  if (!p) return "";
+  return isCalendarDate(value) ? `${p.d}/${p.mo}/${p.y}` : `${p.d}/${p.mo}/${p.y} ${p.h}h${p.mi}`;
 }
 
 export const formatCurrency = (cents: number): string => formatMoney(cents);
