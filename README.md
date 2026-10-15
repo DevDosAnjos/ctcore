@@ -33,6 +33,21 @@ Da raiz: `docker compose -f infra/docker-compose.yml up -d --wait`. Para mudar p
 | `storage` | Arquivos compatíveis com S3 (SeaweedFS) | `http://localhost:8333` · saúde em `/status` · sem autenticação, só para desenvolvimento |
 | `mailbox` | Caixa de e-mail falsa (Mailpit) | SMTP `localhost:1025` · interface `http://localhost:8025` |
 
+## Front-end
+
+Precisa do Node 24. De dentro de `frontend/`:
+
+```
+npm ci               # instala as dependências
+npm run dev          # sobe em http://localhost:5173 (MSW ligado; /api vai para o back-end em :8080)
+npm run build        # constrói
+npm run lint         # lint, com a regra de texto literal
+npm run typecheck    # tipos
+npm test             # testes (Vitest); com cobertura: npm test -- --coverage
+```
+
+Detalhes em `frontend/README.md`.
+
 ## Branches
 
 - `dev` — branch de desenvolvimento e branch padrão. Todo código é escrito aqui: cada issue sai de `dev` num branch próprio e volta para `dev` por PR.

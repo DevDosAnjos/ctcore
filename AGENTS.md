@@ -63,7 +63,8 @@ Antes de começar um item, comparar o marco dele com o marco do último item mer
 - Subir o ambiente local (PostgreSQL, armazenamento S3, caixa de e-mail): `docker compose -f infra/docker-compose.yml up -d --wait` (ou `docker compose up -d --wait` dentro de `infra/`). Parar: `down`; apagar dados: `down -v`. Portas e endereços: README da raiz.
 - Back-end (Docker ativo para os `*IT`; detalhes em `backend/README.md`): compilar `./backend/mvnw -f backend/pom.xml compile`; testes rápidos `./backend/mvnw -f backend/pom.xml test`; testes completos (rápidos e de integração) `./backend/mvnw -f backend/pom.xml verify`; rodar `./backend/mvnw -f backend/pom.xml spring-boot:run -Dspring-boot.run.profiles=local`.
 - Contrato da API: `docs/openapi.yaml`; rota nova entra nele no mesmo PR. Teste de contrato (RNF-32): `./backend/mvnw -f backend/pom.xml test -Dtest=OpenApiContractTest`.
-- A definir nas fundações #7 e #10: testes do front-end, ponta a ponta e regressão.
+- Front-end (de dentro de `frontend/`, Node 24; detalhes em `frontend/README.md`): instalar `npm ci`; subir `npm run dev`; build `npm run build`; lint (inclui texto literal) `npm run lint`; tipos `npm run typecheck`; testes `npm test` (com cobertura: `npm test -- --coverage`).
+- A definir na fundação #10: ponta a ponta e regressão.
 
 ## Limitações aceitas
 

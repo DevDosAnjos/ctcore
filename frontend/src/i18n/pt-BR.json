@@ -1,0 +1,27 @@
+{
+  "app": {
+    "name": "ctcore",
+    "welcomeTitle": "Bem-vindo ao ctcore",
+    "welcomeText": "Aqui você vai cuidar da sua academia. As telas chegam aos poucos."
+  },
+  "theme": {
+    "toDark": "Usar tema escuro",
+    "toLight": "Usar tema claro"
+  },
+  "states": {
+    "loading": "Carregando...",
+    "emptyTitle": "Nada por aqui ainda",
+    "emptyText": "Quando houver itens, eles aparecem nesta lista.",
+    "retry": "Tentar de novo",
+    "forbiddenTitle": "Você não tem acesso",
+    "forbiddenText": "Seu perfil não permite ver esta tela. Fale com quem administra a sua academia."
+  },
+  "errors": {
+    "generic": {
+      "title": "Não foi possível carregar",
+      "aconteceu": "Não conseguimos carregar as informações agora.",
+      "alterado": "Nada foi alterado nos seus dados.",
+      "fazer": "Tente de novo em instantes. Se continuar, fale com o suporte."
+    }
+  }
+}
