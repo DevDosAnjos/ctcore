@@ -48,6 +48,21 @@ npm test             # testes (Vitest); com cobertura: npm test -- --coverage
 
 Detalhes em `frontend/README.md`.
 
+## CI (GitHub Actions)
+
+O workflow `CI` (`.github/workflows/ci.yml`) roda em todo PR para `dev` e `main`. O status a exigir é `ci-gate`: falha se qualquer etapa falhar ou for cancelada; etapa pulada por pasta conta como verde.
+
+| Etapa | Roda quando | O que exige |
+| --- | --- | --- |
+| `backend` | `backend/` muda | `mvnw verify`: build, testes `*Test` e `*IT`, contrato OpenAPI, cobertura de linhas 80% (100% nos pacotes `billing`, `payment`, `subscription`, `deactivation`, `isolation`) |
+| `frontend` | `frontend/` muda | lint, tipos, build, Vitest com axe nos dois temas, cobertura de linhas 80% (100% em `src/features/{billing,payments,subscription,deactivation}`) |
+| `e2e` | `frontend/` muda | Playwright: fluxos `@critical`; no PR para `main`, a suíte completa |
+| `security` | sempre | gitleaks (segredos no histórico do PR) e OSV-Scanner (dependências Maven e npm com severidade alta ou crítica) |
+
+`docs/openapi.yaml`, `.github/` e `infra/scripts/changed-areas*` contam como mudança do back-end e do front-end; no PR para `main` rodam todas. A seleção é de `infra/scripts/changed-areas.sh` (prova local: `bash infra/scripts/changed-areas.test.sh`).
+
+Local, o equivalente: `./backend/mvnw -f backend/pom.xml verify` e, em `frontend/`, `npm run lint && npm run typecheck && npm run build && npm run test:cov && npm run e2e`.
+
 ## Branches
 
 - `dev` — branch de desenvolvimento e branch padrão. Todo código é escrito aqui: cada issue sai de `dev` num branch próprio e volta para `dev` por PR.

@@ -17,6 +17,10 @@
     <java.version>21</java.version>
     <!-- 6.x é a linha para Spring 6 / Boot 3; a 7.x pede Spring 7. -->
     <shedlock.version>6.10.0</shedlock.version>
+    <!-- Correções de segurança acima do BOM do Boot (OSV, RNF-35): remover quando o Boot trouxer estas versões. -->
+    <jackson-bom.version>2.21.7</jackson-bom.version>
+    <tomcat.version>10.1.61</tomcat.version>
+    <postgresql.version>42.7.12</postgresql.version>
   </properties>
 
   <dependencies>
@@ -55,6 +59,41 @@
         <executions>
           <execution>
             <goals><goal>integration-test</goal><goal>verify</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- RNF-37: 80% de linhas no total; 100% nos pacotes das regras de cobrança, pagamentos,
+           assinatura, inativação e isolamento (sem efeito até existirem classes neles). -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.15</version>
+        <executions>
+          <execution><id>prepare</id><goals><goal>prepare-agent</goal></goals></execution>
+          <execution><id>report</id><phase>verify</phase><goals><goal>report</goal></goals></execution>
+          <execution>
+            <id>check</id>
+            <phase>verify</phase>
+            <goals><goal>check</goal></goals>
+            <configuration>
+              <rules>
+                <rule>
+                  <element>BUNDLE</element>
+                  <limits><limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>0.80</minimum></limit></limits>
+                </rule>
+                <rule>
+                  <element>PACKAGE</element>
+                  <includes>
+                    <include>br.com.ctcore.billing*</include>
+                    <include>br.com.ctcore.payment*</include>
+                    <include>br.com.ctcore.subscription*</include>
+                    <include>br.com.ctcore.deactivation*</include>
+                    <include>br.com.ctcore.isolation*</include>
+                  </includes>
+                  <limits><limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>1.00</minimum></limit></limits>
+                </rule>
+              </rules>
+            </configuration>
           </execution>
         </executions>
       </plugin>

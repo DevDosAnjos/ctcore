@@ -1,0 +1,11 @@
+# Falhas sem versão corrigida na linha Spring Framework 6.2 (Boot 3.5): a correção existe só na 7.0.9 (Boot 4).
+# Reavaliar na migração para o Boot 4 ou quando sair 6.2.20.
+[[IgnoredVulns]]
+id = "GHSA-j9f9-w8pj-32f8"
+ignoreUntil = 2027-01-15
+reason = "Sem correção na 6.2.x; SSE com fragmentos não é usado"
+
+[[IgnoredVulns]]
+id = "GHSA-pc63-qcmh-9cmg"
+ignoreUntil = 2027-01-15
+reason = "Sem correção na 6.2.x; XsltView não é usada"

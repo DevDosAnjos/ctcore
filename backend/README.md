@@ -16,6 +16,7 @@ Todos a partir da raiz do repositório.
 | Compilar | `./backend/mvnw -f backend/pom.xml compile` |
 | Testes rápidos (`*Test`, sem Docker) | `./backend/mvnw -f backend/pom.xml test` |
 | Tudo: testes rápidos e de integração | `./backend/mvnw -f backend/pom.xml verify` |
+| Cobertura (JaCoCo): relatório em `backend/target/site/jacoco/index.html`; o `verify` falha abaixo de 80% de linhas, ou de 100% nos pacotes `billing`, `payment`, `subscription`, `deactivation` e `isolation` | `./backend/mvnw -f backend/pom.xml verify` |
 | Rodar com o perfil `local` | `docker compose -f infra/docker-compose.yml up -d --wait` e depois `./backend/mvnw -f backend/pom.xml spring-boot:run -Dspring-boot.run.profiles=local` |
 
 O perfil `local` só desliga o redirecionamento para HTTPS; fora dele a aplicação exige HTTPS (confia em `X-Forwarded-Proto`).
