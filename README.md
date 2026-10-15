@@ -63,6 +63,36 @@ O workflow `CI` (`.github/workflows/ci.yml`) roda em todo PR para `dev` e `main`
 
 Local, o equivalente: `./backend/mvnw -f backend/pom.xml verify` e, em `frontend/`, `npm run lint && npm run typecheck && npm run build && npm run test:cov && npm run e2e`.
 
+## Imagens e Publicação
+
+Cada pasta tem o seu `Dockerfile` (multi-stage): `backend/` gera a imagem do back-end (JRE 21, usuário sem privilégio, API em `8080`, gestão e health em `8081`, configuração só por variável de ambiente) e `frontend/` gera a do front-end (nginx em `8080`, só o `dist`; `/` e rotas do app devolvem `index.html`, `/api` não é servido).
+
+```
+docker build -t ctcore-backend backend
+docker build -t ctcore-frontend frontend
+docker compose -f infra/docker-compose.yml up -d --wait postgres
+docker run --rm -e DB_HOST=host.docker.internal -p 8080:8080 -p 8081:8081 ctcore-backend   # curl localhost:8081/actuator/health
+docker run --rm -p 8082:8080 ctcore-frontend                                                # http://localhost:8082
+```
+
+No Linux, em vez de `host.docker.internal`, use `--network host` e dispense o `DB_HOST`. Outras variáveis: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`, `MANAGEMENT_PORT`.
+
+O `CI` constrói a imagem do back-end quando a etapa `backend` roda e a do front-end quando a `frontend` roda; as duas entram no `ci-gate`.
+
+### Publicação
+
+O workflow `Publish` (`.github/workflows/publish.yml`) roda em push para `dev` e `main` e em disparo manual. Constrói a imagem de cada pasta alterada (no disparo manual, as duas) e, havendo chaves, envia com as etiquetas `<branch>` e o SHA do commit (sem `latest`). **Sem as chaves o envio é pulado, o run termina verde e o resumo diz "publicação pulada: faltam chaves".** Hoje não há registro: o fluxo está pronto e fica assim até a #192.
+
+| Nome | Tipo | Conteúdo |
+| --- | --- | --- |
+| `PUBLISH_REGISTRY` | variável | endereço do registro com o caminho, ex.: `registro.exemplo.com/ctcore`; as imagens saem como `<valor>/ctcore-backend` e `<valor>/ctcore-frontend` |
+| `PUBLISH_REGISTRY_USER` | segredo | usuário do registro |
+| `PUBLISH_REGISTRY_TOKEN` | segredo | token ou senha do registro |
+
+Para ligar: cadastre os três em Settings, Secrets and variables, Actions; se o registro pedir, acrescente `packages: write` em `permissions` do `publish.yml`. Para testar: Actions, Publish, Run workflow, num branch descartável; o resumo do run lista as etiquetas enviadas. Sem registro de verdade, o mesmo script roda contra um registro local: `docker run -d -p 5000:5000 registry:2`, depois `PUBLISH_REGISTRY=localhost:5000/teste PUBLISH_REGISTRY_USER=x PUBLISH_REGISTRY_TOKEN=x bash infra/scripts/publish-image.sh frontend dev` e `curl localhost:5000/v2/_catalog`.
+
+Fora deste passo, e da #192: escolher o registro, publicar em ambientes, aprovação humana de `main` e backup (RNF-17, #193).
+
 ## Branches
 
 - `dev` — branch de desenvolvimento e branch padrão. Todo código é escrito aqui: cada issue sai de `dev` num branch próprio e volta para `dev` por PR.

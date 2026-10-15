@@ -51,3 +51,7 @@ Ficam em `src/components/`; todo texto padrão vem de `pt-BR.json` e pode ser so
 ## Ponta a ponta
 
 Os testes ficam em `e2e/` e rodam contra `npm run dev` (MSW ligado, só Chromium). Marque com `@critical` no título o fluxo que deve rodar em todo PR; os sem a marca rodam só no PR para `main`. O relatório sai em `playwright-report/`.
+
+## Imagem Docker
+
+`docker build -t ctcore-frontend frontend` (Node 24 gera o `dist`; nginx sem root serve em `8080`). `docker run --rm -p 8082:8080 ctcore-frontend`: `/` e rotas do app (ex.: `/qualquer`) devolvem `index.html`, `/assets/*` inexistente e `/api/*` devolvem 404. O CI constrói esta imagem quando a etapa `frontend` roda. Publicação: README da raiz.
