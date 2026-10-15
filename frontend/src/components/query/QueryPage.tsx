@@ -3,20 +3,19 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { DataTable, type Column } from "./DataTable";
-import { Pagination } from "./Pagination";
+import { DEFAULT_PAGE_SIZE, PAGE_SIZES, Pagination } from "./Pagination";
 import { useQueryParams } from "./useQueryParams";
 
 export type Query = { q: string; pagina: number; ordem: string; filtros: Record<string, string>; tamanho: number };
 export type Page<T> = { rows: T[]; total: number };
 
-// Consulta: busca, filtros, ordenação e página vivem no endereço (RNF-27). Nunca pede mais que uma página.
-// A tela mapeia Query para o contrato da rota; erro com status 403 vira "sem permissão".
+// Consulta: busca, filtros, ordenação, página e tamanho vivem no endereço (RNF-27). Nunca pede mais que uma página.
+// A tela mapeia Query para o contrato da rota (`tamanho` vira `size`, sempre 25, 50 ou 100); erro com status 403 vira "sem permissão".
 // `fetchPage` deve ter identidade estável (definida fora do componente ou em useCallback).
 export function QueryPage<T>({
   columns,
   fetchPage,
   rowKey,
-  pageSize = 20,
   filterKeys = [],
   filters,
   emptyAction,
@@ -24,7 +23,6 @@ export function QueryPage<T>({
   columns: Column<T>[];
   fetchPage: (q: Query) => Promise<Page<T>>;
   rowKey: (row: T) => string;
-  pageSize?: number;
   filterKeys?: string[];
   filters?: (p: { get: (k: string) => string; set: (k: string, v: string) => void }) => ReactNode;
   emptyAction?: ReactNode;
@@ -37,19 +35,21 @@ export function QueryPage<T>({
   const pagina = Number.isInteger(rawPage) && rawPage >= 1 ? rawPage : 1;
   const rawOrder = get("ordem");
   const ordem = columns.some((c) => c.sortable && c.key === rawOrder.replace(/^-/, "")) ? rawOrder : "";
+  const rawSize = Number(get("tamanho"));
+  const tamanho = (PAGE_SIZES as readonly number[]).includes(rawSize) ? rawSize : DEFAULT_PAGE_SIZE;
   const filtros = Object.fromEntries(filterKeys.map((k) => [k, get(k)]).filter(([, v]) => v));
   const filtrosKey = JSON.stringify(filtros);
   const hasFilter = Boolean(q) || Object.keys(filtros).length > 0;
 
   // O resultado guarda a chave da consulta que o gerou; chave diferente da atual significa carregando.
   const [tick, setTick] = useState(0);
-  const key = JSON.stringify([q, pagina, ordem, filtrosKey, pageSize, tick]);
+  const key = JSON.stringify([q, pagina, ordem, filtrosKey, tamanho, tick]);
   const [done, setDone] = useState<{ key: string; s: "error" | "forbidden" | "ok"; data?: Page<T> }>();
   const state = done?.key === key ? done : { s: "loading" as const, data: undefined };
 
   useEffect(() => {
     let alive = true;
-    fetchPage({ q, pagina, ordem, filtros: JSON.parse(filtrosKey), tamanho: pageSize }).then(
+    fetchPage({ q, pagina, ordem, filtros: JSON.parse(filtrosKey), tamanho }).then(
       (data) => {
         if (!alive) return;
         // Página fora do intervalo: volta para a primeira, sem erro (CA6).
@@ -63,7 +63,7 @@ export function QueryPage<T>({
     return () => {
       alive = false;
     };
-  }, [key, q, pagina, ordem, filtrosKey, pageSize, fetchPage, set]);
+  }, [key, q, pagina, ordem, filtrosKey, tamanho, fetchPage, set]);
 
   let body: ReactNode;
   if (state.s === "loading") body = <LoadingState />;
@@ -83,7 +83,7 @@ export function QueryPage<T>({
     );
   else if (state.data!.total === 0) body = <EmptyState action={emptyAction} />;
   else {
-    const pages = Math.max(1, Math.ceil(state.data!.total / pageSize));
+    const pages = Math.max(1, Math.ceil(state.data!.total / tamanho));
     body = (
       <>
         <DataTable
@@ -93,7 +93,15 @@ export function QueryPage<T>({
           order={ordem}
           onOrder={(o) => set({ ordem: o })}
         />
-        <Pagination page={pagina} pages={pages} onPage={(p) => set({ pagina: String(p) })} />
+        <Pagination
+          page={pagina}
+          pages={pages}
+          total={state.data!.total}
+          size={tamanho}
+          onPage={(p) => set({ pagina: String(p) })}
+          // Trocar o tamanho volta para a página 1; o padrão não aparece no endereço.
+          onSize={(s) => set({ tamanho: s === DEFAULT_PAGE_SIZE ? "" : String(s) })}
+        />
       </>
     );
   }
