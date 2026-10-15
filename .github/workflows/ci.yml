@@ -117,7 +117,7 @@ jobs:
           curl -sSfL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
           chmod +x osv-scanner
           code=0
-          ./osv-scanner scan source -L backend/pom.xml -L frontend/package-lock.json --format json --output osv.json || code=$?
+          ./osv-scanner scan source --config osv-scanner.toml -L backend/pom.xml -L frontend/package-lock.json --format json --output-file osv.json || code=$?
           [ "$code" -le 1 ] || { echo "osv-scanner falhou (código $code)"; exit "$code"; }
           # max_severity é a nota CVSS (0 a 10); 7 ou mais é alta/crítica
           jq -r '[.results[]?.packages[]? | .package as $p | .groups[]? | select((.max_severity | tonumber? // 0) >= 7) | "\($p.name)@\($p.version) \(.ids[0]) severidade \(.max_severity)"] | .[]' osv.json | tee osv-high.txt

@@ -17,6 +17,10 @@
     <java.version>21</java.version>
     <!-- 6.x é a linha para Spring 6 / Boot 3; a 7.x pede Spring 7. -->
     <shedlock.version>6.10.0</shedlock.version>
+    <!-- Correções de segurança acima do BOM do Boot (OSV, RNF-35): remover quando o Boot trouxer estas versões. -->
+    <jackson-bom.version>2.21.7</jackson-bom.version>
+    <tomcat.version>10.1.61</tomcat.version>
+    <postgresql.version>42.7.12</postgresql.version>
   </properties>
 
   <dependencies>
