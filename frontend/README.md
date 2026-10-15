@@ -12,7 +12,10 @@ Precisa do Node 24 e do npm. Rode os comandos de dentro de `frontend/`.
 | Lint (inclui a regra de texto literal) | `npm run lint` |
 | Conferir tipos | `npm run typecheck` |
 | Testes | `npm test` |
-| Testes com cobertura | `npm test -- --coverage` |
+| Testes com cobertura (falha abaixo de 80% de linhas; 100% em `src/features/{billing,payments,subscription,deactivation}`) | `npm run test:cov` |
+| Ponta a ponta, só `@critical` (Playwright; 1ª vez: `npx playwright install chromium`) | `npm run e2e` |
+| Ponta a ponta, suíte completa | `npm run e2e:full` |
+| Dependências com falha conhecida (alta ou crítica) | `npm run audit` |
 
 ## Como o projeto funciona
 
@@ -44,3 +47,7 @@ Ficam em `src/components/`; todo texto padrão vem de `pt-BR.json` e pode ser so
 - **Formatadores** (`src/lib/format.ts`), todos no fuso recebido (padrão `America/Sao_Paulo`): `formatDate` (`08/10/2026`), `formatTime` (`19h30`), `formatDateTime`, `formatCurrency(centavos)` (`R$ 1.250,00`), `formatPhoneDisplay` (`(11) 91234-5678`; número inválido volta o texto original) e `relativeDay`. Ex.: `formatDateTime(iso, "America/Manaus")`.
 - **`RelativeDate`**: `<RelativeDate value={iso} timeZone="America/Sao_Paulo" />` mostra "hoje", "ontem" e "há N dias" (até 30; depois, a data). A data e a hora exatas aparecem ao passar o mouse, focar ou tocar; Esc fecha. Valor vazio ou inválido mostra "—".
 - **`WhatsAppButton`** (`components/whatsapp/`): `<WhatsAppButton phone="(11) 91234-5678" message="Olá" />` abre `wa.me` em nova aba; `groupUrl="https://chat.whatsapp.com/..."` abre o grupo. Não renderiza sem destino válido nem quando `<WhatsAppProvider enabled={false}>` envolve a tela (padrão: ligado).
+
+## Ponta a ponta
+
+Os testes ficam em `e2e/` e rodam contra `npm run dev` (MSW ligado, só Chromium). Marque com `@critical` no título o fluxo que deve rodar em todo PR; os sem a marca rodam só no PR para `main`. O relatório sai em `playwright-report/`.
