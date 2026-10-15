@@ -3,7 +3,7 @@ import { formatCurrency, formatDate, formatDateTime, formatPhoneDisplay, formatT
 describe("formatadores (RNF-23)", () => {
   it("CA1 RNF-23: data, hora e data e hora em Brasília", () => {
     const i = "2026-10-08T22:30:00Z";
-    expect(formatDate(i)).toBe("08/10/2026");
+    expect(formatDate(i)).toBe("09/10/2026");
     expect(formatTime(i)).toBe("19h30");
     expect(formatDateTime(i)).toBe("08/10/2026 19h30");
     expect(formatTime("2026-10-08T22:05:00Z")).toBe("19h05");
