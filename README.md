@@ -61,7 +61,7 @@ O workflow `CI` (`.github/workflows/ci.yml`) roda em todo PR para `dev` e `main`
 | `backend` | `backend/` muda | `mvnw verify`: build, testes `*Test` e `*IT`, contrato OpenAPI, cobertura de linhas 80% (100% nos pacotes `billing`, `payment`, `subscription`, `deactivation`, `isolation`) |
 | `frontend` | `frontend/` muda | lint, tipos, build, Vitest com axe nos dois temas, cobertura de linhas 80% (100% em `src/features/{billing,payments,subscription,deactivation}`) |
 | `e2e` | `frontend/` muda | Playwright: fluxos `@critical`; no PR para `main`, a suíte completa |
-| `security` | sempre | gitleaks (segredos no histórico do PR) e OSV-Scanner (dependências Maven e npm com severidade alta, crítica ou sem nota; filtro em `infra/scripts/osv-high.sh`, provado por `osv-high.test.sh` no próprio job) |
+| `security` | sempre | gitleaks (segredos no histórico do PR; falso positivo só por impressão digital em `.gitleaksignore`, com o motivo) e OSV-Scanner (dependências Maven e npm com severidade alta, crítica ou sem nota; filtro em `infra/scripts/osv-high.sh`, provado por `osv-high.test.sh` no próprio job) |
 
 `docs/openapi.yaml`, `.github/` e `infra/scripts/changed-areas*` contam como mudança do back-end e do front-end; no PR para `main` rodam todas. A seleção é de `infra/scripts/changed-areas.sh` (prova local: `bash infra/scripts/changed-areas.test.sh`).
 
