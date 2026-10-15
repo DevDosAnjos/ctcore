@@ -1,7 +1,6 @@
-// Exemplo mínimo usado só pelo teste-modelo dos quatro estados (D7). O padrão
-// compartilhado (componentes de estado) é da #8.
+// Exemplo mínimo usado só pelo teste-modelo dos quatro estados, com os componentes da #8.
 import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 
 type Result = { state: "empty" | "error" | "forbidden" | "ready"; items: string[] };
 
@@ -20,7 +19,6 @@ async function fetchItems(): Promise<Result> {
 }
 
 export function ExampleScreen({ profile }: { profile: Profile }) {
-  const { t } = useTranslation();
   const [result, setResult] = useState<Result | null>(null); // null = carregando
   const [attempt, setAttempt] = useState(0);
 
@@ -33,37 +31,17 @@ export function ExampleScreen({ profile }: { profile: Profile }) {
     };
   }, [profile.canView, attempt]);
 
-  if (!profile.canView || result?.state === "forbidden")
-    return (
-      <section>
-        <h2>{t("states.forbiddenTitle")}</h2>
-        <p>{t("states.forbiddenText")}</p>
-      </section>
-    );
-  if (!result) return <p role="status">{t("states.loading")}</p>;
-  if (result.state === "empty")
-    return (
-      <section>
-        <h2>{t("states.emptyTitle")}</h2>
-        <p>{t("states.emptyText")}</p>
-      </section>
-    );
+  if (!profile.canView || result?.state === "forbidden") return <ForbiddenState />;
+  if (!result) return <LoadingState />;
+  if (result.state === "empty") return <EmptyState />;
   if (result.state === "error")
     return (
-      <section role="alert">
-        <h2>{t("errors.generic.title")}</h2>
-        <p>{t("errors.generic.aconteceu")}</p>
-        <p>{t("errors.generic.alterado")}</p>
-        <p>{t("errors.generic.fazer")}</p>
-        <button
-          onClick={() => {
-            setResult(null);
-            setAttempt((a) => a + 1);
-          }}
-        >
-          {t("states.retry")}
-        </button>
-      </section>
+      <ErrorState
+        onRetry={() => {
+          setResult(null);
+          setAttempt((a) => a + 1);
+        }}
+      />
     );
   return (
     <ul>

@@ -5,6 +5,7 @@ import { App } from "@/App";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { setDevicePrefersDark } from "./device";
 import { axeViolations } from "./axe";
+import { Showcase } from "./Showcase";
 
 function shell() {
   return render(
@@ -41,5 +42,39 @@ describe("casca (CA13)", () => {
       }
     }
     expect(readFileSync(join(process.cwd(), "index.html"), "utf8")).toContain("width=device-width");
+  });
+});
+
+describe("componentes (CA21, CA22)", () => {
+  it.each([
+    ["claro", false],
+    ["escuro", true],
+  ])("Showcase sem violações no axe no tema %s", async (_n, dark) => {
+    setDevicePrefersDark(dark);
+    window.innerWidth = 360;
+    const { container } = render(
+      <ThemeProvider>
+        <Showcase />
+      </ThemeProvider>,
+    );
+    expect(await axeViolations(container)).toEqual([]);
+  });
+
+  it.each([["modal"], ["panel"], ["confirm"]])("janela aberta (%s) sem violações no axe", async (which) => {
+    setDevicePrefersDark(false);
+    render(
+      <ThemeProvider>
+        <Showcase modal={which === "modal"} panel={which === "panel"} confirm={which === "confirm"} />
+      </ThemeProvider>,
+    );
+    expect(await axeViolations(document.body)).toEqual([]);
+  });
+
+  it("alvos de toque de 44 px nos botões e links", () => {
+    const dir = join(process.cwd(), "src/components");
+    for (const f of ["layout/AppLayout.tsx", "ui/button.tsx", "query/Pagination.tsx"]) {
+      expect(readFileSync(join(dir, f), "utf8"), f).toMatch(/min-h-11/);
+    }
+    expect(readFileSync(join(dir, "ui/button.tsx"), "utf8")).toMatch(/min-w-11/);
   });
 });
