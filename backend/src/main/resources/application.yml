@@ -31,6 +31,22 @@ server:
 ctcore:
   security:
     require-https: true
+  # D2: simulated (padrão) ou off por conexão; real só depois das Sprints 22 e 23.
+  integrations:
+    payment:
+      mode: simulated
+    email:
+      mode: simulated
+    sms:
+      mode: simulated
+    push:
+      mode: simulated
+    challenge:
+      mode: simulated
+    map:
+      mode: simulated
+    metrics:
+      mode: simulated
 
 logging:
   # D1/D2: JSON em console e arquivo, em todos os ambientes; mascaramento em SensitiveDataMasker (D3).

@@ -81,3 +81,25 @@ featureFlags.setEnabled(organizationId, ONLINE_PAYMENT, true); // só a rota do 
 | `/actuator/prometheus` | métricas em formato Prometheus: `http_server_requests_seconds_*` (erros por `status`, lentidão por `_bucket`), JVM e pool de conexões |
 
 **Métricas de negócio** (`monitoring/OperationalMetrics`, valem 0 até alguém chamar). Injete o bean e chame: `emailQueue(long pendentes)` informa a fila de e-mail (`ctcore_email_queue_pending`); `webhookFailed()` conta uma falha de webhook (`ctcore_webhook_failures_total`). Nunca ponha dado pessoal em nome ou rótulo de métrica.
+
+## Conexões externas (portas e versões simuladas)
+
+Cada conexão externa é uma interface em `br.com.ctcore.integration`; nenhuma regra cita fornecedor (RNF-39). Hoje só existem a versão simulada e a desligada; os adaptadores reais (únicos que podem citar fornecedor, em `integration/real/`) vêm nas Sprints 22 e 23.
+
+| Porta | Simulada | Desligada (`isEnabled()` falso) |
+| --- | --- | --- |
+| `PaymentGateway` | cobrança em memória, idempotente | operações lançam `IllegalStateException`: consulte `isEnabled()` antes |
+| `EmailSender`, `SmsSender`, `PushSender` | grava na Caixa de saída, devolve `SENT` | devolve `NOT_SENT`, nada é gravado |
+| `ChallengeVerifier` | sempre aprova | aprova |
+| `MapLocator` | coordenadas fixas para alguns CEPs, vazio para os demais | vazio |
+| `UsageMetrics` | não envia nada | não faz nada |
+
+**Configuração.** Uma chave por conexão, `ctcore.integrations.<conexão>.mode` (ou a variável de ambiente `CTCORE_INTEGRATIONS_<CONEXÃO>_MODE`), com `simulated` (padrão) ou `off`:
+
+`ctcore.integrations.payment.mode`, `.email.mode`, `.sms.mode`, `.push.mode`, `.challenge.mode`, `.map.mode`, `.metrics.mode`.
+
+`real` e qualquer outro valor derrubam a subida com mensagem que cita a chave e os valores aceitos; não há troca silenciosa para a simulada. Quem usa uma conexão consulta `isEnabled()` e segue o "Sem esta conexão" da própria funcionalidade.
+
+**Caixa de saída** (`Outbox`). Guarda e-mail, SMS e push simulados (tipo, destinatário, assunto ou texto, data/hora do `Clock`; o SMS traz o código de confirmação). Em memória: some no reinício, não é compartilhada entre instâncias, guarda no máximo 1000 mensagens (as mais antigas saem) e só é preenchida no modo simulado. O log registra só tipo e id, nunca o texto.
+
+**Simulador de pagamento.** `createCharge(chave, centavos)` é idempotente (mesma chave, mesma cobrança; outra quantia com a mesma chave lança `IllegalArgumentException`). Estados: `PENDING`, `APPROVED`, `REFUSED`, `EXPIRED`, `REFUNDED`, `DISPUTED`. `approve`, `refuse` e `expire` saem de `PENDING`; `refund` e `dispute` saem de `APPROVED`; outra transição lança `IllegalStateException` sem mudar o estado; cobrança inexistente lança `NoSuchElementException`. `resendNotice` repete o evento atual (id, estado, valor) sem alterá-lo.
