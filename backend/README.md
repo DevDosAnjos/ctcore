@@ -38,3 +38,29 @@ Os padrões servem ao ambiente local de `../infra/` (valores de desenvolvimento,
 - Todo erro da API tem o corpo `{ code, message, changed, fields, traceId }` (`api/error`); mensagens em `messages.properties`.
 - Tudo é protegido por padrão (`config/SecurityConfig`); senhas com Argon2id; mudanças de dado exigem o token CSRF (cookie `XSRF-TOKEN`, cabeçalho `X-XSRF-TOKEN`).
 - Testes: `*Test` rodam no surefire; `*IT` (com Docker) rodam no failsafe, na fase `verify`.
+
+## Tarefas agendadas e recursos
+
+**Agendador.** `@Scheduled` do Spring, com trava no PostgreSQL (ShedLock, tabela `shedlock`, relógio do banco): com vários servidores, só um executa cada tarefa por disparo. A trava expira sozinha (`lockAtMostFor`, padrão 10 min) se o servidor cair. Propriedade `ctcore.scheduler.enabled` (padrão `true`): em `false` não há agendamento nem trava (testes sem banco, ou servidor que não deve rodar tarefas).
+
+Criar uma tarefa com trava (o `name` é único por tarefa; use fuso explícito no cron):
+
+```java
+@Component
+class DailyJob {
+    @Scheduled(cron = "0 0 3 * * *", zone = "America/Sao_Paulo")
+    @SchedulerLock(name = "daily-job", lockAtMostFor = "PT30M")
+    void run() { /* ... */ }
+}
+```
+
+O agendador padrão tem um thread: ao ter mais de uma tarefa real, ajuste `spring.task.scheduling.pool.size`.
+
+**Recursos por organização** (`features/FeatureFlags`, tabela `organization_feature`). Sem linha, o recurso está desligado (RN-PNL-07). Cada recurso tem uma constante de chave (`[a-z][a-z0-9-]*`, até 64) no item que o cria; não há cache, a mudança vale na próxima consulta.
+
+```java
+static final String ONLINE_PAYMENT = "online-payment";
+
+if (featureFlags.isEnabled(organizationId, ONLINE_PAYMENT)) { /* ... */ }
+featureFlags.setEnabled(organizationId, ONLINE_PAYMENT, true); // só a rota do Dono, com auditoria
+```

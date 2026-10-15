@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Sobe a aplicação inteira (sem banco) para provar o cookie de sessão no servidor real e o CSRF. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "ctcore.scheduler.enabled=false",
         "spring.autoconfigure.exclude="
                 + "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration,"
                 + "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration,"
