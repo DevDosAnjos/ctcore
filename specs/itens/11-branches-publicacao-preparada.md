@@ -76,3 +76,32 @@ Fora do item: contratar hospedagem, ligar a publicação automática em `dev` e 
 
 Regressão: `bash infra/scripts/changed-areas.test.sh` → ok. Código do back-end e do front-end não mudou, então `mvnw verify` e `npm run test:cov` não foram repetidos.
 Desvios: (1) o health do back-end fica na porta de gestão 8081 (`management.server.port`, D8 do `application.yml`), não em 8080 como diz o CA2; documentado. (2) `--network host` não alcança o host no Docker Desktop do Windows: a prova usou `-p` e `DB_HOST=host.docker.internal`. (3) Para não repetir comandos, criei `infra/scripts/publish-image.sh`, chamado pelo `publish.yml`. (4) Sem actions do Docker: só `docker` direto. (5) O `Dockerfile` do back-end remove CRLF do `mvnw` (checkout no Windows).
+
+## Verificação
+
+### Rodada 1 — OK — 2026-10-15, estado 571ca9c901465aee074d9bfc1f9f2da7d4f4d286
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 | PASSOU | `gh api .../branches/dev/protection` -> contexts `["ci-gate"]`; `ci.yml` cobre PRs para dev e main |
+| CA2 | PASSOU | builds ok; back-end com postgres do compose: health 200 (porta de gestão 8081, desvio documentado), uid 10001; front: `/` 200, `/qualquer` 200, `/api/v1/x` 404, uid 101 |
+| CA3 | PASSOU | jobs `image-*` no `ci.yml` e no `needs` do `ci-gate`; provas dos PRs #209, #211, #212 registradas na Construção (runs não reexecutados) |
+| CA4 | PASSOU | run push em dev 38793065504 e workflow_dispatch 38793147139, ambos success; envio por `publish-image.sh` com tags branch e SHA (registro local, conforme Construção) |
+| CA5 | PASSOU | `publish.yml` escreve "publicação pulada: faltam chaves" sem chaves; runs verdes |
+| CA6 | PASSOU | `grep` de fornecedor sem achado; gitleaks verde no PR #209 (conforme Construção) |
+| CA7 | PASSOU | README seção "Imagens e Publicação"/"Publicação"; AGENTS.md, backend/README.md e frontend/README.md alterados |
+| CA8 | PASSOU | actionlint 1.7.7 sem erro; permissões só `contents: read` |
+
+Comandos: actionlint via docker (sem erro); grep de fornecedor (sem achado); `bash infra/scripts/changed-areas.test.sh` (ok); docker build das duas imagens (ok); execução das duas imagens (acima). Testes de back-end e front-end não rodados: código do produto não mudou.
+Achados:
+- sugestão, código, `.github/workflows/publish.yml` — o resumo diz "publicação pulada: faltam chaves" dentro de "### area: ..."; texto confere com o CA5, nada a corrigir. Observação: o CA2 cita health em 8080 e a imagem expõe em 8081; desvio já registrado, vale ajustar o texto do CA na especificação.
+
+## Entrega
+
+PR de regularização: o código do item já entrou em `dev` pelo PR #209 (squash). Este PR traz só os registros em `specs/`: a rodada 1 de verificação (OK, estado `571ca9c`) e a situação `feito` do item no backlog.
+
+- Verificação: CA1 a CA8 passaram (ver "Verificação"); testes de back-end e front-end não rodaram porque o código do produto não mudou.
+- Limitação: o CA2 cita o health em 8080, mas a imagem o expõe na porta de gestão 8081 (desvio já registrado em "Construção").
+- Hospedagem e publicação real ficam para a #192 e a #193.
+
+Closes #11
