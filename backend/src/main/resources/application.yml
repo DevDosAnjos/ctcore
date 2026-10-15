@@ -31,3 +31,43 @@ server:
 ctcore:
   security:
     require-https: true
+
+logging:
+  # D1/D2: JSON em console e arquivo, em todos os ambientes; mascaramento em SensitiveDataMasker (D3).
+  structured:
+    format:
+      console: logstash
+      file: logstash
+    json:
+      customizer: br.com.ctcore.logging.SensitiveDataMasker
+  file:
+    name: ${LOG_DIR:logs}/ctcore.log
+  logback:
+    rollingpolicy:
+      # D4: rotação diária e guarda de 30 dias (RNF-11).
+      file-name-pattern: ${LOG_DIR:logs}/ctcore-%d{yyyy-MM-dd}.%i.log.gz
+      max-history: 30
+      max-file-size: 100MB
+
+management:
+  # D8: porta de gestão própria, não publicada para a internet.
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      show-components: never
+      validate-group-membership: false
+      group:
+        readiness:
+          include: readinessState,db
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
