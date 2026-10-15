@@ -1,6 +1,6 @@
 import { useId, useState, type InputHTMLAttributes } from "react";
 import { useTranslation } from "react-i18next";
-import { formatCpf, formatDate, formatMoney, formatPhone, isValidCpf, isValidPhone, onlyDigits, parseDate, parseMoney } from "./masks";
+import { formatCpf, formatDate, formatMoney, formatPhone, isValidCpf, isValidPhone, onlyDigits, parseDate, parseMoney, parsePastedMoney } from "./masks";
 
 type BaseProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "defaultValue" | "onChange" | "type"> & {
   label: string;
@@ -17,10 +17,12 @@ type MaskedProps<T> = Props<T> & {
   errorKey: string;
   inputMode: "numeric" | "tel";
   toDisplay: (v: T) => string;
+  /** Texto colado que tem leitura própria; devolve o texto a exibir ou null para seguir a máscara normal. */
+  fromPaste?: (pasted: string) => string | null;
 };
 
 // O texto exibido fica no campo; quem usa recebe só o valor limpo. Erro aparece ao sair do campo.
-function MaskedField<T>({ label, errorText, initial, onChange, format, toValue, isValid, errorKey, inputMode, toDisplay, className, ...rest }: MaskedProps<T>) {
+function MaskedField<T>({ label, errorText, initial, onChange, format, toValue, isValid, errorKey, inputMode, toDisplay, fromPaste, className, ...rest }: MaskedProps<T>) {
   const { t } = useTranslation();
   const id = useId();
   const [display, setDisplay] = useState(() => (initial === undefined ? "" : toDisplay(initial)));
@@ -42,6 +44,15 @@ function MaskedField<T>({ label, errorText, initial, onChange, format, toValue, 
         aria-describedby={invalid ? `${id}-erro` : undefined}
         onChange={(e) => {
           const next = format(e.target.value);
+          setDisplay(next);
+          onChange(toValue(next));
+        }}
+        onPaste={(e) => {
+          rest.onPaste?.(e);
+          const next = fromPaste?.(e.clipboardData.getData("text/plain"));
+          if (next == null) return;
+          // Colar substitui o valor do campo.
+          e.preventDefault();
           setDisplay(next);
           onChange(toValue(next));
         }}
@@ -75,7 +86,7 @@ export function CpfField(p: Props<string>) {
   );
 }
 
-/** Entrega só dígitos (DDD + número). */
+/** Entrega só dígitos (DDD + número); colado com +55, o código do país sai. */
 export function PhoneField(p: Props<string>) {
   const { t } = useTranslation();
   return (
@@ -92,12 +103,16 @@ export function PhoneField(p: Props<string>) {
   );
 }
 
-/** Entrega centavos inteiros, ou null se vazio. */
+/** Entrega centavos inteiros, ou null se vazio. Digitado, cada dígito entra como centavo; colado, o texto é lido em reais. */
 export function MoneyField(p: Props<number | null>) {
   return (
     <MaskedField
       {...p}
       format={(s) => formatMoney(parseMoney(s))}
+      fromPaste={(text) => {
+        const cents = parsePastedMoney(text);
+        return cents === null ? null : formatMoney(cents);
+      }}
       toValue={parseMoney}
       isValid={() => true}
       errorKey="fields.moneyInvalid"

@@ -1,7 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button, type ButtonProps } from "@/components/ui/button";
-import { isValidPhone, onlyDigits } from "@/components/fields/masks";
+import { isValidPhone, normalizePhone } from "@/components/fields/masks";
 import { useWhatsAppEnabled } from "./WhatsAppContext";
 
 type Props = { phone?: string; groupUrl?: string; message?: string; variant?: ButtonProps["variant"]; className?: string };
@@ -9,8 +9,7 @@ type Props = { phone?: string; groupUrl?: string; message?: string; variant?: Bu
 function href({ phone, groupUrl, message }: Props): string | null {
   if (groupUrl) return groupUrl.startsWith("https://chat.whatsapp.com/") ? groupUrl : null;
   if (!phone) return null;
-  let d = onlyDigits(phone);
-  if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+  const d = normalizePhone(phone);
   if (!isValidPhone(d)) return null;
   return `https://wa.me/55${d}${message ? `?text=${encodeURIComponent(message)}` : ""}`;
 }
