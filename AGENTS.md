@@ -60,8 +60,15 @@ Antes de começar um item, comparar o marco dele com o marco do último item mer
 
 ## Comandos
 
-A definir na fundação (#1, #2, #7 e #10). Quando existirem, ficam aqui: subir o ambiente, build, testes do back-end, testes do front-end, ponta a ponta e regressão.
+- Subir o ambiente local (PostgreSQL, armazenamento S3, caixa de e-mail): `docker compose -f infra/docker-compose.yml up -d --wait` (ou `docker compose up -d --wait` dentro de `infra/`). Parar: `down`; apagar dados: `down -v`. Portas e endereços: README da raiz.
+- A definir nas fundações #2, #7 e #10: build, testes do back-end, testes do front-end, ponta a ponta e regressão.
 
 ## Limitações aceitas
 
 - Até a Sprint 22 não há hospedagem: não existe ambiente publicado. Tudo roda com o docker-compose e no CI do GitHub. A publicação está preparada na #11 e é ligada na #192.
+
+## Issues
+
+- Conta do agente no `gh`: `DevDosAnjos`. Nenhuma issue tem responsável hoje; o que é de pessoa é marcado pela etiqueta `depende de você`.
+- Etiquetas: `back-end`, `front-end`, `infra`, `operação` (área); `entrega 1 · produto`, `entrega 2 · conexões`, `entrega 3 · piloto e lançamento` (entrega); `depende de você` (item de pessoa). Todas as demais issues são trabalho do agente. Não há issue de roteiro nem de decisão.
+- Atribuir a issue ao começar: não. Fechar no merge: sim (`Closes #N`). Parar ao fim de cada sprint: sim.
