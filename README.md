@@ -21,3 +21,7 @@ docs/       especificação 1.2 e OpenAPI
 ## Planejamento
 
 O trabalho está nas issues deste repositório, um marco (milestone) por sprint, na ordem da especificação 1.2.
+
+- Especificação (regra de cada código): `docs/especificacao/`
+- Ordem, qualidade e definição de pronto: `docs/plano-de-sprints.md`
+- Regras para os agentes: `AGENTS.md`

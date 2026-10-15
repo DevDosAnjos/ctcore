@@ -1,0 +1,65 @@
+# 04 · Modalidades, faixas etárias e graduação
+
+Entrega 1 · Fase 4 · Depende de: 01, 02 · Código: MOD, GRA
+
+## Objetivo
+
+Modalidades vêm de um catálogo da plataforma. A organização ativa as que oferece. A graduação é um módulo opcional por modalidade, registrado pela gestão.
+
+## Dados
+
+- **Modalidade (catálogo da plataforma):** nome, tem graduação (sim/não), sistema de graduação padrão.
+- **Sistema de graduação padrão:** lista ordenada de níveis (faixas), cada um com cor, grau máximo, idade mínima e máxima, e se é infantil ou adulto.
+- **Modalidade da organização:** organização, modalidade, ativa, graduação ligada, sistema de graduação da organização (cópia editável do padrão).
+- **Modalidade da unidade:** unidade, modalidade da organização, oferecida.
+- **Faixa etária:** organização, nome, idade mínima, idade máxima.
+- **Graduação:** aluno, modalidade, nível e grau anteriores, nível e grau novos, data, decidido por (texto livre ou professor), registrado por, observação, origem (registro, origem, importação), comprovante (PDF ou imagem, opcional), avisar o aluno (sim/não), motivo (quando pula etapa ou corrige).
+
+## Regras
+
+### Modalidades
+
+- **RN-MOD-01.** Catálogo inicial: Jiu-Jitsu, Judô, Muay Thai, Boxe, Karatê, Wrestling, MMA, Taekwondo, Capoeira, Kickboxing, Luta Livre, Kung Fu, Krav Magá e Defesa pessoal.
+- **RN-MOD-02.** O Coordenador ativa modalidades para a organização; cada unidade marca quais oferece.
+- **RN-MOD-03.** Modalidade não ativa não aparece em turmas, planos, aula experimental, diretório nem portal. O aluno vê só as modalidades em que está matriculado.
+- **RN-MOD-04.** "Não achei minha modalidade" envia um pedido ao painel da plataforma. A equipe inclui a modalidade no catálogo para todos.
+- **RN-MOD-05.** Variações (No-Gi, Kids, Competição) ficam no nome da turma e na faixa etária. Não existe cadastro extra.
+- **RN-MOD-06.** Desativar uma modalidade exige que não haja turma ativa nem aluno com ela ativa na organização.
+
+### Faixas etárias
+
+- **RN-MOD-07.** Lista da organização com idade mínima e máxima. Usada em turmas, aula experimental e diretório. Fora da faixa, o sistema avisa e não impede.
+
+### Graduação
+
+- **RN-GRA-01.** A graduação é opcional por modalidade. O catálogo traz o padrão (Jiu-Jitsu: IBJJF completo, com faixas infantis intermediárias e grau máximo por faixa); o Coordenador liga ou desliga e edita níveis, cores, grau máximo e idades.
+- **RN-GRA-02.** O sistema informa e registra; o mestre decide. Não existe sugestão de quem está apto, barra de progresso, tempo mínimo, contagem de aulas nem sugestão de grau por tempo.
+- **RN-GRA-03.** Só a gestão registra: Coordenador em qualquer unidade e Administrador nas modalidades do aluno que são das suas unidades. O Professor consulta.
+- **RN-GRA-04.** A faixa é única por modalidade, mesmo com o aluno em várias unidades. Vale o registro mais recente pela data da graduação.
+- **RN-GRA-05.** A data da graduação não pode ser futura.
+- **RN-GRA-06.** Pular nível ou grau (ex.: azul 2º grau direto para roxa) mostra "Isso pula etapas. Confirmar?" e exige motivo. Não bloqueia.
+- **RN-GRA-07.** Idade fora da faixa do nível mostra aviso e não bloqueia.
+- **RN-GRA-08.** A graduação não muda o valor da mensalidade.
+- **RN-GRA-09.** Graduação de origem: informada na matrícula, por modalidade, com data quando houver, marcada "de origem", sem aviso ao aluno. Com "Exigir comprovante da graduação de origem" ligado na modalidade, o comprovante é obrigatório. O histórico mostra "com comprovante" ou "sem comprovante".
+- **RN-GRA-10.** Registro avisa o aluno pelo portal (selo "Nova") e por e-mail. A gestão pode desmarcar o aviso ao registrar.
+- **RN-GRA-11.** Modalidade bloqueada ou aluno inativo não recebe graduação.
+- **RN-GRA-12.** Graduação nunca é excluída. Um registro errado é corrigido por um novo registro marcado "Correção", com motivo; o errado fica no histórico como "Corrigido" (riscado) e sai do portal do aluno.
+- **RN-GRA-13.** Registro em lote grava tudo ou nada.
+
+## Requisitos
+
+- **RF-MOD-01.** Configurações › Modalidades: blocos "Suas modalidades" e "Disponíveis para ativar", botão "Não achei minha modalidade".
+- **RF-MOD-02.** Por modalidade ativa: graduação ligada ou desligada, editor do sistema de graduação (níveis em ordem, cor, grau máximo, idades), exigir comprovante de origem.
+- **RF-MOD-03.** Configurações › Unidade › Modalidades oferecidas.
+- **RF-MOD-04.** Configurações › Faixas etárias.
+- **RF-GRA-01.** Operação › Graduações: lista com aluno, modalidade, turma, graduação anterior, nova, data e quem registrou; resumo do período (graduações, novos graus, trocas de faixa); filtros por modalidade, turma, nível e período.
+- **RF-GRA-02.** "Registrar graduação": aluno (ou já preenchido a partir da ficha), modalidade, atual e nova lado a lado, data, decidido por, observação, avisar o aluno.
+- **RF-GRA-03.** "Graduar vários alunos": filtrar por turma, marcar alunos e escolher para cada um "mais um grau" ou "próximo nível", com a mesma data, quem decidiu e escolha de aviso.
+- **RF-GRA-04.** Na ficha do aluno, aba Graduações: linha do tempo por modalidade, da mais recente para a mais antiga, com selos "de origem", "com comprovante", "Correção".
+
+## Pronto quando
+
+- Nenhuma tela sugere quem graduar.
+- Com graduação desligada numa modalidade, nenhuma tela mostra faixa para ela.
+- O Professor não encontra o botão de registrar e a API recusa.
+- Aluno em duas unidades com a mesma modalidade tem uma faixa só.
