@@ -17,3 +17,4 @@ ENV LOG_DIR=/logs
 # 8080: API; 8081: gestão (health e métricas), não publicar para a internet.
 EXPOSE 8080 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]
+RUN exit 1
