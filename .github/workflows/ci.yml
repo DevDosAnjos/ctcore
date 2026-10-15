@@ -1,0 +1,154 @@
+# Esteira de CI (RNF-35, RNF-36, RNF-37). Roda em todo PR para dev e main.
+# Seleção por pasta em infra/scripts/changed-areas.sh; `ci-gate` é o único status a exigir na proteção de branch.
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.areas.outputs.backend }}
+      frontend: ${{ steps.areas.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - id: areas
+        run: bash infra/scripts/changed-areas.sh "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" "${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # build + *Test + *IT (Testcontainers) + contrato OpenAPI + cobertura JaCoCo (80% / 100%)
+      - run: ./mvnw -B verify
+        working-directory: backend
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/target/site/jacoco
+          if-no-files-found: ignore
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      # Vitest com axe nos dois temas, contrato MSW e cobertura (80% / 100%)
+      - run: npm run test:cov
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          if-no-files-found: ignore
+
+  e2e:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # @critical em todo PR que muda frontend/; suíte completa no PR para main
+      - run: npm run ${{ github.base_ref == 'main' && 'e2e:full' || 'e2e' }}
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          if-no-files-found: ignore
+
+  security:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      OSV_VERSION: v2.7.0
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Segredos no histórico do PR (gitleaks)
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          ./gitleaks git --no-banner --redact --verbose --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+      - name: Prova do filtro de severidade do OSV
+        run: bash infra/scripts/osv-high.test.sh
+      - name: Dependências com falha conhecida (OSV-Scanner, severidade alta, crítica ou sem nota)
+        run: |
+          curl -sSfL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          chmod +x osv-scanner
+          code=0
+          ./osv-scanner scan source --config osv-scanner.toml -L backend/pom.xml -L frontend/package-lock.json --format json --output-file osv.json || code=$?
+          [ "$code" -le 1 ] || { echo "osv-scanner falhou (código $code)"; exit "$code"; }
+          # Nota CVSS 7 ou mais, ou sem nota (max_severity vazio), reprova.
+          bash infra/scripts/osv-high.sh osv.json
+
+  # Imagens só constroem (sem enviar): o Dockerfile não quebra sem ninguém ver (#11).
+  image-backend:
+    needs: [changes, backend]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: docker build -t ctcore-backend backend
+
+  image-frontend:
+    needs: [changes, frontend]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: docker build -t ctcore-frontend frontend
+
+  ci-gate:
+    if: always()
+    needs: [changes, backend, frontend, e2e, image-backend, image-frontend, security]
+    runs-on: ubuntu-latest
+    steps:
+      # Pulado por pasta conta como verde; falha ou cancelamento reprova.
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -Eq "failure|cancelled"; then exit 1; fi
