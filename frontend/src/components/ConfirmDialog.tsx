@@ -55,15 +55,14 @@ export function ConfirmDialog({
     }
   }
 
+  // Todo fechamento (Cancelar, Esc, X, clique fora) limpa motivo e texto digitado.
+  function handleOpenChange(o: boolean) {
+    if (!o) reset();
+    onOpenChange(o);
+  }
+
   return (
-    <Modal
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) reset();
-        onOpenChange(o);
-      }}
-      title={title}
-    >
+    <Modal open={open} onOpenChange={handleOpenChange} title={title}>
       <div className="flex flex-col gap-3">
         <p>{summary}</p>
         {reason !== "none" && (
@@ -92,7 +91,7 @@ export function ConfirmDialog({
           {missing}
         </p>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" className="min-h-11" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="min-h-11" onClick={() => handleOpenChange(false)}>
             {t("common.cancel")}
           </Button>
           <Button className="min-h-11" disabled={!reasonOk || !typedOk || busy} onClick={confirm}>
