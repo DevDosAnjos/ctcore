@@ -16,6 +16,52 @@
     "forbiddenTitle": "Você não tem acesso",
     "forbiddenText": "Seu perfil não permite ver esta tela. Fale com quem administra a sua academia."
   },
+  "layout": {
+    "menu": "Menu",
+    "openMenu": "Abrir menu",
+    "closeMenu": "Fechar menu",
+    "main": "Menu principal"
+  },
+  "counter": {
+    "nearLimit": "Faltam poucos caracteres para o limite.",
+    "atLimit": "Você chegou ao limite de caracteres."
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Avançar",
+    "finish": "Concluir",
+    "close": "Fechar"
+  },
+  "query": {
+    "search": "Buscar",
+    "clear": "Limpar filtros",
+    "noResultTitle": "Nenhum resultado",
+    "noResultText": "Nenhum item bate com a busca ou com os filtros.",
+    "page": "Página {{page}} de {{pages}}",
+    "prev": "Página anterior",
+    "nextPage": "Próxima página",
+    "sortBy": "Ordenar por {{column}}",
+    "results": "Resultados"
+  },
+  "confirm": {
+    "reasonLabel": "Motivo",
+    "reasonMissing": "Informe o motivo para continuar.",
+    "typeLabel": "Digite {{text}} para confirmar",
+    "typeMismatch": "O texto digitado não confere."
+  },
+  "stepper": {
+    "step": "Etapa {{current}} de {{total}}"
+  },
+  "fields": {
+    "phonePlaceholder": "(00) 00000-0000",
+    "datePlaceholder": "dd/mm/aaaa",
+    "cpfInvalid": "Confira o CPF: o número digitado não é válido.",
+    "phoneInvalid": "Confira o telefone: informe o DDD e o número completo.",
+    "dateInvalid": "Confira a data: ela precisa existir, no formato dd/mm/aaaa.",
+    "moneyInvalid": "Confira o valor digitado."
+  },
   "errors": {
     "generic": {
       "title": "Não foi possível carregar",

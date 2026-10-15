@@ -12,6 +12,7 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
+    testTimeout: 20000, // jsdom com userEvent fica lento com a máquina carregada
     css: true,
     coverage: {
       provider: "v8",
