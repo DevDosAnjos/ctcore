@@ -9,10 +9,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -31,6 +34,26 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiError> malformed(HttpServletRequest req) {
         return build(ErrorCode.MALFORMED_REQUEST, req, List.of());
+    }
+
+    @ExceptionHandler(ApiValidationException.class)
+    ResponseEntity<ApiError> invalidInput(ApiValidationException e, HttpServletRequest req) {
+        return build(ErrorCode.VALIDATION_ERROR, req, e.fields);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    ResponseEntity<ApiError> missingParam(MissingServletRequestParameterException e, HttpServletRequest req) {
+        return build(ErrorCode.VALIDATION_ERROR, req, List.of(new ApiError.Field(e.getParameterName(), "obrigatório")));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> wrongType(MethodArgumentTypeMismatchException e, HttpServletRequest req) {
+        return build(ErrorCode.VALIDATION_ERROR, req, List.of(new ApiError.Field(e.getName(), "valor inválido")));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<ApiError> unsupportedMedia(HttpServletRequest req) {
+        return build(ErrorCode.UNSUPPORTED_MEDIA_TYPE, req, List.of());
     }
 
     @ExceptionHandler(AuthenticationException.class)

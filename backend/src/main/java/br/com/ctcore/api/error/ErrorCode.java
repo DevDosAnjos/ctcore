@@ -11,6 +11,7 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED),
     CONFLICT(HttpStatus.CONFLICT),
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     public final HttpStatus status;

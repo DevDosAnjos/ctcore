@@ -1,0 +1,108 @@
+openapi: 3.0.3
+info:
+  title: ctcore API
+  version: 0.1.0
+  description: |
+    Fonte única do contrato da API. Rota nova entra neste arquivo no mesmo PR que a cria.
+
+    Convenções
+    - Caminhos em plural e kebab-case (`/class-groups`); JSON em camelCase; enums em UPPER_SNAKE_CASE; ids uuid.
+    - Valores em dinheiro: inteiros em centavos, campo com sufixo `Cents` (`amountCents`).
+    - Instante: `date-time` ISO-8601 em UTC com `Z`. Data de calendário: `date` (AAAA-MM-DD). O fuso da unidade só vale na exibição.
+    - Paginação: `page` (a partir de 1, padrão 1) e `size` (25, 50 ou 100, padrão 25). Valor inválido responde 400 VALIDATION_ERROR, sem ajuste silencioso. A lista responde com o envelope `Page`; cada rota declara `items` por composição (allOf com `Page`).
+    - Ordenação: `sort=campo,asc|desc`; cada rota declara a lista de campos permitidos e a ordem estável padrão.
+    - Erros: todo erro usa o schema `Error`.
+servers:
+  - url: /api/v1
+paths: {}
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: SESSION
+      description: Cookie de sessão (login na #18).
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-XSRF-TOKEN
+      description: Obrigatório em operações que alteram dado.
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Página, a partir de 1.
+      schema: { type: integer, minimum: 1, default: 1 }
+    Size:
+      name: size
+      in: query
+      description: Itens por página.
+      schema: { type: integer, enum: [25, 50, 100], default: 25 }
+    Sort:
+      name: sort
+      in: query
+      description: "Ordenação `campo,asc|desc`; só campos que a rota declara."
+      schema: { type: string, example: "name,asc" }
+  schemas:
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    Error:
+      type: object
+      required: [code, message, changed, fields, traceId]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - MALFORMED_REQUEST
+            - UNAUTHENTICATED
+            - FORBIDDEN
+            - NOT_FOUND
+            - METHOD_NOT_ALLOWED
+            - CONFLICT
+            - UNSUPPORTED_MEDIA_TYPE
+            - INTERNAL_ERROR
+        message: { type: string }
+        changed: { type: boolean }
+        fields:
+          type: array
+          items: { $ref: '#/components/schemas/FieldError' }
+        traceId: { type: string }
+    Page:
+      type: object
+      description: Envelope de lista. Cada rota sobrescreve `items` por composição.
+      required: [items, page, size, total]
+      properties:
+        items: { type: array, items: {} }
+        page: { type: integer, minimum: 1 }
+        size: { type: integer, enum: [25, 50, 100] }
+        total: { type: integer, format: int64, minimum: 0 }
+  responses:
+    BadRequest:
+      description: Dados inválidos (VALIDATION_ERROR) ou requisição ilegível (MALFORMED_REQUEST).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unauthorized:
+      description: Sem sessão (UNAUTHENTICATED).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Forbidden:
+      description: Sem permissão (FORBIDDEN).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: Não encontrado ou sem acesso (NOT_FOUND).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    MethodNotAllowed:
+      description: Método não permitido (METHOD_NOT_ALLOWED).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Conflict:
+      description: Conflito com dado existente (CONFLICT).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    UnsupportedMediaType:
+      description: Tipo de mídia não suportado (UNSUPPORTED_MEDIA_TYPE).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    InternalError:
+      description: Erro inesperado (INTERNAL_ERROR).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
