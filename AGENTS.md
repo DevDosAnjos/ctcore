@@ -61,7 +61,8 @@ Antes de começar um item, comparar o marco dele com o marco do último item mer
 ## Comandos
 
 - Subir o ambiente local (PostgreSQL, armazenamento S3, caixa de e-mail): `docker compose -f infra/docker-compose.yml up -d --wait` (ou `docker compose up -d --wait` dentro de `infra/`). Parar: `down`; apagar dados: `down -v`. Portas e endereços: README da raiz.
-- A definir nas fundações #2, #7 e #10: build, testes do back-end, testes do front-end, ponta a ponta e regressão.
+- Back-end (Docker ativo para os `*IT`; detalhes em `backend/README.md`): compilar `./backend/mvnw -f backend/pom.xml compile`; testes rápidos `./backend/mvnw -f backend/pom.xml test`; testes completos (rápidos e de integração) `./backend/mvnw -f backend/pom.xml verify`; rodar `./backend/mvnw -f backend/pom.xml spring-boot:run -Dspring-boot.run.profiles=local`.
+- A definir nas fundações #7 e #10: testes do front-end, ponta a ponta e regressão.
 
 ## Limitações aceitas
 

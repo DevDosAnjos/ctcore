@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: ctcore
+  datasource:
+    # Padrões iguais aos de infra/docker-compose.yml; em produção vêm só de variável de ambiente.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:ctcore}
+    username: ${POSTGRES_USER:ctcore}
+    password: ${POSTGRES_PASSWORD:ctcore_dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    validate-on-migrate: true
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        secure: true
+        same-site: lax
+
+ctcore:
+  security:
+    require-https: true
