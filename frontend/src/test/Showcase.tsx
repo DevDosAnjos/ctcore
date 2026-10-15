@@ -9,6 +9,8 @@ import { Stepper } from "@/components/Stepper";
 import { Button } from "@/components/ui/button";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { QueryPage } from "@/components/query/QueryPage";
+import { RelativeDate } from "@/components/RelativeDate";
+import { WhatsAppButton } from "@/components/whatsapp";
 import { CpfField, DateField, MoneyField, PhoneField } from "@/components/fields/fields";
 
 const groups = [{ id: "g", label: "Grupo", items: [{ id: "a", label: "Item", href: "#a" }] }];
@@ -35,6 +37,10 @@ export function Showcase({ modal = false, panel = false, confirm = false }: { mo
           <PhoneField label="Telefone" onChange={noop} />
           <MoneyField label="Valor" onChange={noop} />
           <DateField label="Data" onChange={noop} />
+        </Card>
+        <Card title="Datas e WhatsApp">
+          <RelativeDate value="2026-10-08T22:30:00Z" now={new Date("2026-10-10T15:00:00Z")} />
+          <WhatsAppButton phone="11912345678" message="Olá" />
         </Card>
         <Card title="Etapas">
           <Stepper
