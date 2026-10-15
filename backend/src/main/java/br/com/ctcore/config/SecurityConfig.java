@@ -20,14 +20,16 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, SecurityErrorHandlers errors,
             @Value("${ctcore.security.require-https:true}") boolean requireHttps) throws Exception {
-        http.authorizeHttpRequests(a -> a.anyRequest().authenticated())
+        http.authorizeHttpRequests(a -> a
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 // D7: o SPA lê o cookie XSRF-TOKEN e devolve em X-XSRF-TOKEN.
                 .csrf(c -> c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .headers(h -> h.httpStrictTransportSecurity(s -> s.maxAgeInSeconds(31536000).includeSubDomains(true)));
         if (requireHttps) {
-            http.requiresChannel(c -> c.anyRequest().requiresSecure());
+            http.requiresChannel(c -> c.requestMatchers(r -> !r.getRequestURI().startsWith("/actuator/")).requiresSecure());
         }
         return http.build();
     }

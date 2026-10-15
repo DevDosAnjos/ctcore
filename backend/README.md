@@ -64,3 +64,20 @@ static final String ONLINE_PAYMENT = "online-payment";
 if (featureFlags.isEnabled(organizationId, ONLINE_PAYMENT)) { /* ... */ }
 featureFlags.setEnabled(organizationId, ONLINE_PAYMENT, true); // só a rota do Dono, com auditoria
 ```
+
+## Logs e monitoramento
+
+**Formato e retenção (RNF-11).** Os logs saem em JSON (formato `logstash` do Spring Boot), uma linha por evento, no console e no arquivo `logs/ctcore.log` (pasta pela variável `LOG_DIR`; ignorada pelo git). O arquivo gira todo dia (`ctcore-AAAA-MM-DD.N.log.gz`) e guarda 30 dias. Cada linha traz `@timestamp`, `level`, `logger_name`, `message` e `traceId`, o mesmo do cabeçalho `X-Trace-Id` e do corpo do erro. Para ler no terminal: `jq . logs/ctcore.log`.
+
+**Dado sensível nunca vai para o log.** `logging/SensitiveDataMasker` troca por `[REDACTED]`, na mensagem, nos argumentos, no MDC e na pilha de exceção: senha, token (`token=`, `Bearer ...`), CPF completo e número de cartão. A aplicação também nunca loga cabeçalhos, corpo nem query string de requisição. Ao logar um dado novo e sensível, acrescente a regra em `SensitiveDataMasker` e o teste em `SensitiveDataMaskerTest`.
+
+**Saúde e métricas.** Ficam na porta de gestão (`MANAGEMENT_PORT`, padrão `8081`), fora de `/api/v1` e do OpenAPI; essa porta não deve ser publicada para a internet. Só estas rotas existem; as demais do Actuator respondem 404.
+
+| Rota | O que dá |
+| --- | --- |
+| `/actuator/health` | saúde da aplicação, sem detalhes |
+| `/actuator/health/liveness` | processo vivo |
+| `/actuator/health/readiness` | pronta para atender (inclui o banco; 503 se cair) |
+| `/actuator/prometheus` | métricas em formato Prometheus: `http_server_requests_seconds_*` (erros por `status`, lentidão por `_bucket`), JVM e pool de conexões |
+
+**Métricas de negócio** (`monitoring/OperationalMetrics`, valem 0 até alguém chamar). Injete o bean e chame: `emailQueue(long pendentes)` informa a fila de e-mail (`ctcore_email_queue_pending`); `webhookFailed()` conta uma falha de webhook (`ctcore_webhook_failures_total`). Nunca ponha dado pessoal em nome ou rótulo de métrica.

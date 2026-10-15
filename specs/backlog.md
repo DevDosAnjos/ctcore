@@ -12,7 +12,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 2 | Projeto back-end: Spring Boot, Flyway e erros da API | issue #2 | Sprint 00 | — | agente | feito |
 | 3 | Esqueleto do OpenAPI em /api/v1 | issue #3 | Sprint 00 | — | agente | feito |
 | 4 | Agendador de tarefas com trava e recursos por organização | issue #4 | Sprint 00 | — | agente | feito |
-| 5 | Logs estruturados e métricas de monitoramento | issue #5 | Sprint 00 | — | agente | a fazer |
+| 5 | Logs estruturados e métricas de monitoramento | issue #5 | Sprint 00 | — | agente | feito |
 | 6 | Portas das conexões externas com versões simuladas | issue #6 | Sprint 00 | — | agente | a fazer |
 | 7 | Projeto front-end, tema claro e escuro e textos em pt-BR | issue #7 | Sprint 00 | — | agente | a fazer |
 | 8 | Componentes base e padrões de tela | issue #8 | Sprint 00 | — | agente | a fazer |
