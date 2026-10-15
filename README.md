@@ -27,6 +27,10 @@ docker compose down -v          # para e apaga os dados (volumes)
 
 Da raiz: `docker compose -f infra/docker-compose.yml up -d --wait`. Para mudar portas ou credenciais, copie `infra/.env.example` para `infra/.env`.
 
+### Dados fictícios
+
+Com o ambiente de pé e o back-end rodado ao menos uma vez (ele aplica as migrações): `bash infra/scripts/seed.sh`. Aplica `infra/seed/*.sql` em ordem do nome, só no PostgreSQL local, sem duplicar nem sobrescrever (pode rodar de novo). Item que cria tabela acrescenta `infra/seed/NN-nome.sql` com `on conflict do nothing`. Para zerar tudo: `docker compose down -v`.
+
 | Serviço | Para que serve | Endereço (só em 127.0.0.1) |
 | --- | --- | --- |
 | `postgres` | PostgreSQL 16 | `localhost:5432` · banco, usuário `ctcore`, senha `ctcore_dev` |
