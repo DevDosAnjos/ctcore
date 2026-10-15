@@ -4,7 +4,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [dev, main]
+    branches: [dev, main, item/11-branches-publicacao-preparada]
 
 permissions:
   contents: read
