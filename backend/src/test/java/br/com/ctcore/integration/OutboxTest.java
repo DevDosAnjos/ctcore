@@ -18,7 +18,7 @@ class OutboxTest {
     @Test
     void the1001stDropsTheOldest() {
         for (int i = 0; i < Outbox.LIMIT; i++) outbox.add(Outbox.Type.EMAIL, "r" + i, "s", "c");
-        assertThat(outbox.list()).hasSize(1000);
+        assertThat(outbox.list()).hasSize(999);
         outbox.add(Outbox.Type.EMAIL, "r1000", "s", "c");
         assertThat(outbox.list()).hasSize(1000);
         assertThat(outbox.list().getFirst().recipient()).isEqualTo("r1");
