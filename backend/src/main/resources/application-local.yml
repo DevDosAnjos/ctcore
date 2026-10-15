@@ -1,0 +1,4 @@
+# Só desenvolvimento local: desliga o redirecionamento para HTTPS (D6).
+ctcore:
+  security:
+    require-https: false
