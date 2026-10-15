@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { DEFAULT_TZ, formatDate, formatDateTime, relativeDay } from "@/lib/format";
+import { DEFAULT_TZ, formatDate, formatDateTime, isCalendarDate, relativeDay } from "@/lib/format";
 
 // "há N dias" vale de 2 a este limite; acima disso ou no futuro, data exata (D3).
 const MAX_DAYS = 30;
@@ -34,7 +34,7 @@ export function RelativeDate({ value, timeZone = DEFAULT_TZ, now, className }: P
 
   const text =
     days < 0 || days > MAX_DAYS ? formatDate(value, timeZone) : days === 0 ? t("format.today") : days === 1 ? t("format.yesterday") : t("format.daysAgo", { days });
-  const iso = (value instanceof Date ? value : new Date(value)).toISOString();
+  const iso = isCalendarDate(value) ? value : (value instanceof Date ? value : new Date(value)).toISOString();
 
   return (
     <span className="relative inline-block">

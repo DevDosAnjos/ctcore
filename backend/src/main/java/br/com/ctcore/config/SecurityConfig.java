@@ -10,7 +10,6 @@ import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 @Configuration
 @EnableMethodSecurity
@@ -24,9 +23,9 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
-                // D7: o SPA lê o cookie XSRF-TOKEN e devolve em X-XSRF-TOKEN.
+                // D7: toda resposta garante o cookie XSRF-TOKEN; o SPA o lê e devolve em X-XSRF-TOKEN.
                 .csrf(c -> c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
+                        .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
                 .headers(h -> h.httpStrictTransportSecurity(s -> s.maxAgeInSeconds(31536000).includeSubDomains(true)));
         if (requireHttps) {
             http.requiresChannel(c -> c.requestMatchers(r -> !r.getRequestURI().startsWith("/actuator/")).requiresSecure());

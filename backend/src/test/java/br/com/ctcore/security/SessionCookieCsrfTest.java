@@ -1,11 +1,12 @@
 package br.com.ctcore.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,11 @@ class SessionCookieCsrfTest {
             return request.getSession(true).getId();
         }
 
+        @GetMapping("/probe-session/read")
+        String read() {
+            return "ok";
+        }
+
         @PostMapping("/probe-session/write")
         void write() {
             writes.incrementAndGet();
@@ -81,21 +87,50 @@ class SessionCookieCsrfTest {
         h.add("X-Forwarded-Proto", "https");
         ResponseEntity<String> res = rest.exchange("/probe-session/login", HttpMethod.GET, new HttpEntity<>(h), String.class);
         String cookie = res.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
-        assertThat(cookie).startsWith("JSESSIONID=").contains("HttpOnly", "Secure", "SameSite=Lax");
+        assertThat(cookie).startsWith("SESSION=").contains("HttpOnly", "Secure", "SameSite=Lax");
+    }
+
+    @Test
+    @DisplayName("CA14 / RNF-07: mesmo sem sessão (401), a primeira resposta já traz o cookie XSRF-TOKEN legível pelo SPA")
+    void xsrfCookieBeforeLogin() throws Exception {
+        Cookie xsrf = mvc.perform(get("/api/v1/x").secure(true))
+                .andExpect(status().isUnauthorized())
+                .andReturn().getResponse().getCookie("XSRF-TOKEN");
+        assertThat(xsrf).isNotNull();
+        assertThat(xsrf.getValue()).isNotBlank();
+        assertThat(xsrf.isHttpOnly()).isFalse();
     }
 
     @Test
     @WithMockUser
-    @DisplayName("CA14 / RNF-07: POST sem token CSRF é recusado com 403 e nada é alterado; com token é aceito")
+    @DisplayName("CA14 / RNF-07: fluxo do SPA: devolve o cookie XSRF-TOKEN em X-XSRF-TOKEN e grava; sem ou com outro valor, 403")
+    void spaCsrfFlow() throws Exception {
+        Cookie xsrf = mvc.perform(get("/probe-session/read").secure(true))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getCookie("XSRF-TOKEN");
+        assertThat(xsrf).isNotNull();
+        int before = writes.get();
+
+        mvc.perform(post("/probe-session/write").secure(true).cookie(xsrf).header("X-XSRF-TOKEN", xsrf.getValue()))
+                .andExpect(status().isOk());
+        assertThat(writes.get()).isEqualTo(before + 1);
+
+        mvc.perform(post("/probe-session/write").secure(true).cookie(xsrf)).andExpect(status().isForbidden());
+        mvc.perform(post("/probe-session/write").secure(true).cookie(xsrf).header("X-XSRF-TOKEN", "outro-valor"))
+                .andExpect(status().isForbidden());
+        assertThat(writes.get()).isEqualTo(before + 1);
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("CA14 / RNF-07: POST sem token CSRF é recusado com 403 e nada é alterado (o aceite com token está em spaCsrfFlow)")
     void csrfRequired() throws Exception {
+        // Sem o csrf() do spring-security-test: ele troca o repositório do filtro compartilhado e o cookie some.
         int before = writes.get();
         mvc.perform(post("/probe-session/write").secure(true))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"))
                 .andExpect(jsonPath("$.changed").value(false));
         assertThat(writes.get()).isEqualTo(before);
-
-        mvc.perform(post("/probe-session/write").secure(true).with(csrf())).andExpect(status().isOk());
-        assertThat(writes.get()).isEqualTo(before + 1);
     }
 }

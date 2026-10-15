@@ -112,16 +112,17 @@ jobs:
         run: |
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
           ./gitleaks git --no-banner --redact --verbose --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
-      - name: Dependências com falha conhecida (OSV-Scanner, severidade alta ou crítica)
+      - name: Prova do filtro de severidade do OSV
+        run: bash infra/scripts/osv-high.test.sh
+      - name: Dependências com falha conhecida (OSV-Scanner, severidade alta, crítica ou sem nota)
         run: |
           curl -sSfL -o osv-scanner "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
           chmod +x osv-scanner
           code=0
           ./osv-scanner scan source --config osv-scanner.toml -L backend/pom.xml -L frontend/package-lock.json --format json --output-file osv.json || code=$?
           [ "$code" -le 1 ] || { echo "osv-scanner falhou (código $code)"; exit "$code"; }
-          # max_severity é a nota CVSS (0 a 10); 7 ou mais é alta/crítica
-          jq -r '[.results[]?.packages[]? | .package as $p | .groups[]? | select((.max_severity | tonumber? // 0) >= 7) | "\($p.name)@\($p.version) \(.ids[0]) severidade \(.max_severity)"] | .[]' osv.json | tee osv-high.txt
-          [ ! -s osv-high.txt ] || { echo "Dependências com falha de severidade alta ou crítica."; exit 1; }
+          # Nota CVSS 7 ou mais, ou sem nota (max_severity vazio), reprova.
+          bash infra/scripts/osv-high.sh osv.json
 
   # Imagens só constroem (sem enviar): o Dockerfile não quebra sem ninguém ver (#11).
   image-backend:

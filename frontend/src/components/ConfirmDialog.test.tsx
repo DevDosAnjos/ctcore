@@ -1,7 +1,19 @@
+import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { ConfirmDialog } from "./ConfirmDialog";
+
+// Janela controlada pela tela, que continua montada entre uma abertura e outra.
+function Demo() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)}>Abrir</button>
+      <ConfirmDialog open={open} onOpenChange={setOpen} title="Desativar" summary="Vai desativar a unidade." reason="required" typedText="DESATIVAR" onConfirm={vi.fn()} />
+    </>
+  );
+}
 
 function setup(props: Partial<React.ComponentProps<typeof ConfirmDialog>> = {}) {
   const onConfirm = props.onConfirm ?? vi.fn();
@@ -41,6 +53,24 @@ describe("ConfirmDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Cancelar", () => userEvent.click(screen.getByRole("button", { name: "Cancelar" }))],
+    ["Esc", () => userEvent.keyboard("{Escape}")],
+  ])("CA12 RNF-26: depois de %s, a janela reabre limpa e com Confirmar desabilitado", async (_n, fechar) => {
+    render(<Demo />);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    await userEvent.type(screen.getByLabelText("Motivo"), "erro de lançamento");
+    await userEvent.type(screen.getByLabelText("Digite DESATIVAR para confirmar"), "DESATIVAR");
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeEnabled();
+
+    await fechar();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Abrir" }));
+    expect(screen.getByLabelText("Motivo")).toHaveValue("");
+    expect(screen.getByLabelText("Digite DESATIVAR para confirmar")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeDisabled();
   });
 
   it("CA13: texto digitado exato, diferenciando maiúsculas", async () => {

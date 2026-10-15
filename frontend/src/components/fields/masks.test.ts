@@ -1,4 +1,4 @@
-import { formatCpf, isValidCpf, formatPhone, isValidPhone, formatMoney, parseMoney, formatDate, parseDate } from "./masks";
+import { formatCpf, isValidCpf, formatPhone, isValidPhone, formatMoney, parseMoney, parsePastedMoney, formatDate, parseDate } from "./masks";
 
 describe("masks", () => {
   it("CPF", () => {
@@ -19,6 +19,29 @@ describe("masks", () => {
     expect(isValidPhone("01912345678")).toBe(false);
     expect(isValidPhone("11812345678")).toBe(false);
     expect(isValidPhone("111234")).toBe(false);
+  });
+  it("telefone colado com o código do país perde o 55; DDD 55 fica", () => {
+    expect(formatPhone("+55 92 99123-4567")).toBe("(92) 99123-4567");
+    expect(isValidPhone("+55 92 99123-4567")).toBe(true);
+    expect(formatPhone("+55 (11) 3456-7890")).toBe("(11) 3456-7890");
+    expect(formatPhone("(55) 99123-4567")).toBe("(55) 99123-4567");
+    expect(isValidPhone("55991234567")).toBe(true);
+  });
+  it.each([
+    ["R$ 1.250", 125000],
+    ["1250", 125000],
+    ["1.250,5", 125050],
+    ["1250,00", 125000],
+    ["12.50", 1250],
+    ["1.250.000", 125000000],
+    ["R$ 0,05", 5],
+    ["abc", null],
+    ["", null],
+    ["-50,00", null],
+    ["1,2,3", null],
+    ["99999999999", null],
+  ])("moeda colada %s vale %s centavos", (text, cents) => {
+    expect(parsePastedMoney(text)).toBe(cents);
   });
   it("moeda em centavos", () => {
     expect(parseMoney("R$ 1.250,00abc")).toBe(125000);

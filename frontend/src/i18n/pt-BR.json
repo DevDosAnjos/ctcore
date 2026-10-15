@@ -43,7 +43,10 @@
     "prev": "Página anterior",
     "nextPage": "Próxima página",
     "sortBy": "Ordenar por {{column}}",
-    "results": "Resultados"
+    "results": "Resultados",
+    "pageSize": "Itens por página",
+    "total_one": "{{count, number}} resultado",
+    "total_other": "{{count, number}} resultados"
   },
   "confirm": {
     "reasonLabel": "Motivo",

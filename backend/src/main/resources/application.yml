@@ -24,6 +24,8 @@ server:
   servlet:
     session:
       cookie:
+        # Mesmo nome do contrato (docs/openapi.yaml, sessionCookie); o padrão JSESSIONID denuncia a tecnologia.
+        name: SESSION
         http-only: true
         secure: true
         same-site: lax

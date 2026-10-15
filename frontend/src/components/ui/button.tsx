@@ -3,7 +3,8 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
+// RNF-20: todo tamanho tem alvo de toque de 44 px (h-11).
+export const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
@@ -12,7 +13,7 @@ const buttonVariants = cva(
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         ghost: "hover:bg-accent hover:text-accent-foreground",
       },
-      size: { default: "h-10 px-4 py-2", sm: "h-9 px-3", icon: "h-11 w-11 min-h-11 min-w-11" },
+      size: { default: "h-11 px-4 py-2", sm: "h-11 px-3", icon: "h-11 w-11 min-h-11 min-w-11" },
     },
     defaultVariants: { variant: "default", size: "default" },
   },

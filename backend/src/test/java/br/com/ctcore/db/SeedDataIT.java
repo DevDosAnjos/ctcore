@@ -2,11 +2,14 @@ package br.com.ctcore.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.com.ctcore.features.FeatureFlags;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +23,7 @@ class SeedDataIT extends PostgresIT {
     static final String LIST = "select organization_id::text || feature_key || enabled from organization_feature order by 1";
 
     @Autowired JdbcTemplate jdbc;
+    @Autowired FeatureFlags flags;
 
     @BeforeEach
     void clean() {
@@ -51,6 +55,18 @@ class SeedDataIT extends PostgresIT {
     }
 
     @Test
+    @DisplayName("CA1 / RN-PNL-07: toda chave do seed é aceita pelo FeatureFlags e lida com o valor gravado")
+    void readableByApplication() throws IOException {
+        apply(jdbc, SEED_DIR);
+        List<Map<String, Object>> rows = jdbc.queryForList("select organization_id, feature_key, enabled from organization_feature");
+        assertThat(rows).isNotEmpty();
+        for (Map<String, Object> r : rows) {
+            String key = (String) r.get("feature_key");
+            assertThat(flags.isEnabled((UUID) r.get("organization_id"), key)).as(key).isEqualTo(r.get("enabled"));
+        }
+    }
+
+    @Test
     @DisplayName("CA2: segunda execução não muda contagem nem conteúdo")
     void idempotent() throws IOException {
         apply(jdbc, SEED_DIR);
@@ -63,7 +79,7 @@ class SeedDataIT extends PostgresIT {
     @DisplayName("CA3: valor alterado depois do primeiro run é mantido")
     void keepsChanges() throws IOException {
         apply(jdbc, SEED_DIR);
-        jdbc.update("update organization_feature set enabled = not enabled where organization_id = md5('ctcore-seed-org-1')::uuid and feature_key = 'online_payments'");
+        jdbc.update("update organization_feature set enabled = not enabled where organization_id = md5('ctcore-seed-org-1')::uuid and feature_key = 'online-payments'");
         List<String> changed = jdbc.queryForList(LIST, String.class);
         apply(jdbc, SEED_DIR);
         assertThat(jdbc.queryForList(LIST, String.class)).isEqualTo(changed);

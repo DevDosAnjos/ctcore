@@ -65,7 +65,7 @@ class FeatureFlagsIT extends PostgresIT {
     @DisplayName("CA9: chave inválida ou organização nula é recusada e nada é gravado")
     void invalid() {
         UUID org = UUID.randomUUID();
-        for (String key : new String[] {"Invalid Key", "", null, "a".repeat(65), "1abc"}) {
+        for (String key : new String[] {"Invalid Key", "", null, "a".repeat(65), "1abc", "online_payments"}) {
             assertThatThrownBy(() -> flags.setEnabled(org, key, true)).isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> flags.isEnabled(org, key)).isInstanceOf(IllegalArgumentException.class);
         }

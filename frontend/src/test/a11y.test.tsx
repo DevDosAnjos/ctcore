@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { render } from "@testing-library/react";
 import { App } from "@/App";
+import { buttonVariants } from "@/components/ui/button";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { setDevicePrefersDark } from "./device";
 import { axeViolations } from "./axe";
@@ -70,11 +71,15 @@ describe("componentes (CA21, CA22)", () => {
     expect(await axeViolations(document.body)).toEqual([]);
   });
 
-  it("alvos de toque de 44 px nos botões e links", () => {
+  it.each([["default"], ["sm"], ["icon"]] as const)("RNF-20: botão de tamanho %s tem alvo de 44 px", (size) => {
+    expect(buttonVariants({ size }).split(" ")).toEqual(expect.arrayContaining([expect.stringMatching(/^(min-)?h-11$/)]));
+  });
+
+  it("RNF-20: botão só de ícone é quadrado de 44 px; links do menu e paginação também", () => {
+    expect(buttonVariants({ size: "icon" }).split(" ")).toEqual(expect.arrayContaining(["min-h-11", "min-w-11"]));
     const dir = join(process.cwd(), "src/components");
-    for (const f of ["layout/AppLayout.tsx", "ui/button.tsx", "query/Pagination.tsx"]) {
+    for (const f of ["layout/AppLayout.tsx", "query/Pagination.tsx"]) {
       expect(readFileSync(join(dir, f), "utf8"), f).toMatch(/min-h-11/);
     }
-    expect(readFileSync(join(dir, "ui/button.tsx"), "utf8")).toMatch(/min-w-11/);
   });
 });

@@ -32,6 +32,33 @@ describe("campos brasileiros", () => {
     expect(onChange).toHaveBeenLastCalledWith(125000);
   });
 
+  it("moeda colada é lida em reais e substitui o valor (CA18)", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<MoneyField label="Valor" onChange={onChange} />);
+    const campo = screen.getByLabelText("Valor");
+    await user.click(campo);
+    await user.paste("R$ 1.250");
+    expect(campo).toHaveValue("R$ 1.250,00");
+    expect(onChange).toHaveBeenLastCalledWith(125000);
+    await user.paste("1.250,5");
+    expect(campo).toHaveValue("R$ 1.250,50");
+    expect(onChange).toHaveBeenLastCalledWith(125050);
+  });
+
+  it("telefone colado com +55 entrega DDD e número (CA19)", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<PhoneField label="Telefone" onChange={onChange} />);
+    const campo = screen.getByLabelText("Telefone");
+    await user.click(campo);
+    await user.paste("+55 92 99123-4567");
+    expect(campo).toHaveValue("(92) 99123-4567");
+    expect(onChange).toHaveBeenLastCalledWith("92991234567");
+    await user.tab();
+    expect(campo).not.toHaveAttribute("aria-invalid");
+  });
+
   it("telefone celular, fixo e erro (CA19)", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

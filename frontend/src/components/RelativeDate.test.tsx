@@ -28,6 +28,16 @@ describe("RelativeDate (RNF-23)", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 
+  it("RNF-23: data de calendário (vencimento) é hoje no dia, com a data sem hora na dica", async () => {
+    const u = userEvent.setup();
+    render(<RelativeDate value="2026-10-08" now={now} />);
+    const b = screen.getByRole("button");
+    expect(b.querySelector("time")).toHaveTextContent("hoje");
+    expect(b.querySelector("time")).toHaveAttribute("datetime", "2026-10-08");
+    await u.hover(b);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(/^08\/10\/2026$/);
+  });
+
   it("CA10 RNF-23: é um time com ISO dentro de botão", () => {
     render(<RelativeDate value="2026-10-08T22:30:00Z" now={now} />);
     expect(screen.getByRole("button").querySelector("time")).toHaveTextContent("hoje");
