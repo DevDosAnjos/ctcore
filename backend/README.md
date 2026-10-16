@@ -41,6 +41,16 @@ Antes de iniciar a aplicação ou sua imagem, execute `bash infra/scripts/prepar
 
 `isolation/OrganizationPrincipal` é o contrato da autenticação futura: organização, unidade selecionada e unidades autorizadas são verificadas pelo servidor. Headers não concedem escopo. Recursos autenticados em `/api/v1/` sem esse principal recebem 403; infraestrutura pública permanece disponível. `OrganizationContext` dura a requisição; `OrganizationTransactions` usa contexto local à transação e impede troca dentro dela. Sem escopo, leituras ficam vazias e escritas são negadas. Provisionamento interno continua sem HTTP; exposição de escritas depende da auditoria da #15.
 
+## Teste-modelo de isolamento e permissão (RNF-05, RNF-31)
+
+Toda rota nova tem teste de isolamento entre organizações e entre perfis. O molde é `isolation/RouteIsolationModelIT` (classe base, banco real, papel restrito com RLS ativa); `RouteIsolationModelExampleIT` é o exemplo funcional. Para uma rota nova:
+
+1. Crie `<Rota>IsolationIT extends RouteIsolationModelIT` e traga o controller (ou o contexto real) com `@Import`.
+2. Implemente os pontos de extensão: `read(alvo)` e `write(alvo)` (requisições com os ids do alvo na URL), `readMissing()` (ids inexistentes), `allowedRoles()` e `deniedRoles()`, `state(alvo)` (estado do recurso lido com `adminJdbc()`) e, se preciso, `secret(alvo)`. `tenant()` cria organização e unidade; `login(alvo, papel)` autentica com o principal da organização.
+3. Rode `./backend/mvnw -f backend/pom.xml verify -Dit.test=<Rota>IsolationIT`.
+
+O que cada cenário prova: leitura cruzada (A lê id da B: mesma resposta de id inexistente e nenhum dado da B); alteração cruzada (A altera B: negado e B inalterada); anônimo 401 e sem organização 403, sem efeito; perfil negado 403 sem gravação; perfil permitido grava só na própria organização; `X-Organization-Id` e `organizationId` forjados não mudam o resultado. Os papéis do exemplo são sintéticos até as permissões reais (#27): então só o ponto de extensão dos papéis muda. Retirar o `@PreAuthorize`, o filtro ou a RLS deve fazer um cenário falhar (o exemplo mostra o caso sem `@PreAuthorize`).
+
 ## Padrões que todo item segue
 
 - Migrações em `src/main/resources/db/migration` (`V<n>__nome.sql`); nunca editar uma migração já mergeada, corrigir em uma nova. `id uuid primary key default gen_random_uuid()`, datas em `timestamptz` (UTC), valores em centavos (`bigint`).
