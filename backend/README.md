@@ -102,6 +102,20 @@ featureFlags.setEnabled(organizationId, ONLINE_PAYMENT, true); // só a rota do 
 
 **Métricas de negócio** (`monitoring/OperationalMetrics`, valem 0 até alguém chamar). Injete o bean e chame: `emailQueue(long pendentes)` informa a fila de e-mail (`ctcore_email_queue_pending`); `webhookFailed()` conta uma falha de webhook (`ctcore_webhook_failures_total`). Nunca ponha dado pessoal em nome ou rótulo de métrica.
 
+## Arquivos por organização (RN-ORG-03)
+
+Para guardar ou entregar um arquivo, injete `storage/FileStorage` e chame `put(nome, bytes, contentType)`, `readUrl(nome)` (URL assinada que expira em 5 minutos) ou `delete(nome)`. A organização vem só do `OrganizationContext`; o objeto fica em `org/<organizationId>/<nome>`. O nome é relativo à pasta (sem `/`, `\`, `..`, controle; até 200 caracteres) e arquivo vazio ou acima de 5 MB é recusado. Outra organização não encontra o arquivo (`FileStorage.NotFound`) e, sem organização no contexto, tudo é negado. Não há URL pública permanente: guarde só o nome e gere a URL a cada leitura.
+
+| Propriedade (`ctcore.storage.*`) | Variável | Padrão (compose) |
+| --- | --- | --- |
+| `endpoint` | `STORAGE_ENDPOINT` | `http://localhost:${STORAGE_PORT:8333}` |
+| `bucket` | `STORAGE_BUCKET` | `ctcore` |
+| `region` | `STORAGE_REGION` | `us-east-1` |
+| `access-key` / `secret-key` | `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY` | `dev` / `dev-secret` (fictícios; credenciais em `infra/storage/s3.json`) |
+| `url-expiry` | `STORAGE_URL_EXPIRY` | `5m` |
+
+O bucket é criado ao subir; se o armazenamento estiver fora do ar, a aplicação sobe e registra um aviso.
+
 ## Conexões externas (portas e versões simuladas)
 
 Cada conexão externa é uma interface em `br.com.ctcore.integration`; nenhuma regra cita fornecedor (RNF-39). Hoje só existem a versão simulada e a desligada; os adaptadores reais (únicos que podem citar fornecedor, em `integration/real/`) vêm nas Sprints 22 e 23.

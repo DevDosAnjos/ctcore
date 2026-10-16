@@ -23,7 +23,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 13 | Organização, unidade, configurações e limites no banco | issue #13 | Sprint 01 | — | agente | feito |
 | 14 | Isolamento entre organizações: contexto, filtro e row-level security | issue #14 | Sprint 01 | — | agente | feito |
 | 15 | Teste-modelo de isolamento e permissão no servidor | issue #15 | Sprint 01 | — | agente | feito |
-| 16 | Arquivos por organização com URLs temporárias assinadas | issue #16 | Sprint 01 | — | agente | a fazer |
+| 16 | Arquivos por organização com URLs temporárias assinadas | issue #16 | Sprint 01 | — | agente | feito |
 | 17 | Serviço único de auditoria | issue #17 | Sprint 01 | — | agente | a fazer |
 | 18 | Conta, vínculo, sessão e convite no servidor | issue #18 | Sprint 02 | — | agente | a fazer |
 | 19 | Serviço de envio de e-mail e e-mails de conta | issue #19 | Sprint 02 | — | agente | a fazer |
