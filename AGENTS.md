@@ -71,7 +71,8 @@ Antes de começar um item, comparar o marco dele com o marco do último item mer
 ## Persistência de organizações
 
 - `organization/Organizations` inicializa organização, primeira unidade, configurações e limites numa transação interna. Não expor escrita operacional sem integrar a auditoria na mesma transação.
-- A V3 protege as cinco tabelas com RLS; leituras recebem organização explicitamente. O contexto autenticado geral é da #14. Criar unidade adicional exige lock da organização e conferência de capacidade na mesma transação; exceções dos tetos de 10 unidades/200 usuários só pelo fluxo autorizado de suporte.
+- A V3 protege as cinco tabelas com RLS e a V4 protege `organization_feature`; leituras recebem organização explicitamente e obedecem a `isolation/OrganizationContext`. `OrganizationPrincipal` define o contrato autenticado; `OrganizationTransactions` instala contexto local sem substituí-lo por argumentos. Criar unidade adicional exige lock da organização e conferência de capacidade na mesma transação; exceções dos tetos de 10 unidades/200 usuários só pelo fluxo autorizado de suporte.
+- Antes de iniciar o back-end local, executar `bash infra/scripts/prepare-runtime-db.sh`. Runtime usa `DB_RUNTIME_USER/PASSWORD`; Flyway usa `DB_MIGRATION_USER/PASSWORD` (fallback administrativo `POSTGRES_USER/PASSWORD`). Nunca executar runtime com credencial administrativa.
 
 ## Docker local
 

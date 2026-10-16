@@ -1,6 +1,11 @@
 package br.com.ctcore.config;
 
 import br.com.ctcore.api.error.SecurityErrorHandlers;
+import br.com.ctcore.isolation.OrganizationScopeFilter;
+import br.com.ctcore.isolation.OrganizationTransactions;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,8 +23,10 @@ public class SecurityConfig {
     /** Tudo protegido por padrão; rotas públicas são liberadas uma a uma pelos itens que as criam (#18). */
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, SecurityErrorHandlers errors,
+            @Lazy OrganizationTransactions transactions, @Lazy JdbcClient jdbc,
             @Value("${ctcore.security.require-https:true}") boolean requireHttps) throws Exception {
-        http.authorizeHttpRequests(a -> a
+        http.addFilterAfter(new OrganizationScopeFilter(errors, transactions, jdbc), AnonymousAuthenticationFilter.class)
+                .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))

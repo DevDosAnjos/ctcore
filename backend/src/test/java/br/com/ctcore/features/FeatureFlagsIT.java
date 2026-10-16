@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.ctcore.db.PostgresIT;
+import br.com.ctcore.isolation.Scopes;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -14,7 +15,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class FeatureFlagsIT extends PostgresIT {
 
     @Autowired FeatureFlags flags;
-    @Autowired JdbcTemplate jdbc;
+    JdbcTemplate jdbc = adminJdbc();
 
     @Test
     @DisplayName("CA5: V2 aplicada com sucesso e tabelas existem")
@@ -36,6 +37,7 @@ class FeatureFlagsIT extends PostgresIT {
     @DisplayName("CA7 / RN-PNL-07: liga e desliga valendo na próxima consulta, sem duplicar linha e atualizando a data")
     void toggle() throws Exception {
         UUID org = UUID.randomUUID();
+        try (var scope = Scopes.open(org, null)) {
         flags.setEnabled(org, "toggle", true);
         assertThat(flags.isEnabled(org, "toggle")).isTrue();
         OffsetDateTime first = updatedAt(org);
@@ -48,6 +50,7 @@ class FeatureFlagsIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from organization_feature where organization_id = ?",
                 Integer.class, org)).isEqualTo(1);
         assertThat(updatedAt(org)).isAfter(first);
+        }
     }
 
     @Test
@@ -55,10 +58,13 @@ class FeatureFlagsIT extends PostgresIT {
     void isolation() {
         UUID a = UUID.randomUUID();
         UUID b = UUID.randomUUID();
+        try (var scope = Scopes.open(a, null)) {
         flags.setEnabled(a, "iso", true);
         assertThat(flags.isEnabled(a, "iso")).isTrue();
         assertThat(flags.isEnabled(b, "iso")).isFalse();
         assertThat(flags.isEnabled(a, "other")).isFalse();
+        assertThatThrownBy(() -> flags.setEnabled(b, "iso", true)).isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        }
     }
 
     @Test
@@ -73,7 +79,7 @@ class FeatureFlagsIT extends PostgresIT {
         assertThatThrownBy(() -> flags.isEnabled(null, "ok")).isInstanceOf(IllegalArgumentException.class);
         assertThat(jdbc.queryForObject("select count(*) from organization_feature where organization_id = ?",
                 Integer.class, org)).isZero();
-        flags.setEnabled(org, "a".repeat(64), true); // 64 ainda vale
+        try (var scope = Scopes.open(org, null)) { flags.setEnabled(org, "a".repeat(64), true); } // 64 ainda vale
     }
 
     private OffsetDateTime updatedAt(UUID org) {
