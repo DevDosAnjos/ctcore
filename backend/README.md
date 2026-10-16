@@ -32,6 +32,14 @@ Os padrões servem ao ambiente local de `../infra/` (valores de desenvolvimento,
 | `POSTGRES_DB` | `ctcore` |
 | `POSTGRES_USER` | `ctcore` |
 | `POSTGRES_PASSWORD` | `ctcore_dev` |
+| `DB_RUNTIME_USER` | `ctcore_app` |
+| `DB_RUNTIME_PASSWORD` | `ctcore_app_dev` |
+| `DB_MIGRATION_USER` | valor de `POSTGRES_USER` |
+| `DB_MIGRATION_PASSWORD` | valor de `POSTGRES_PASSWORD` |
+
+Antes de iniciar a aplicação ou sua imagem, execute `bash infra/scripts/prepare-runtime-db.sh` da raiz, com PostgreSQL do compose ativo. O script é idempotente e funciona com volumes existentes, sem apagá-los; cria runtime sem superusuário/BYPASSRLS, propriedade ou associação administrativa, e prepara grants existentes e futuros. Ao personalizar credenciais, exporte as variáveis para o script e o Java; este não carrega `infra/.env`. Para a imagem, passe as mesmas variáveis com `docker run -e`. O seed continua administrativo e idempotente.
+
+`isolation/OrganizationPrincipal` é o contrato da autenticação futura: organização, unidade selecionada e unidades autorizadas são verificadas pelo servidor. Headers não concedem escopo. Recursos autenticados em `/api/v1/` sem esse principal recebem 403; infraestrutura pública permanece disponível. `OrganizationContext` dura a requisição; `OrganizationTransactions` usa contexto local à transação e impede troca dentro dela. Sem escopo, leituras ficam vazias e escritas são negadas. Provisionamento interno continua sem HTTP; exposição de escritas depende da auditoria da #15.
 
 ## Padrões que todo item segue
 

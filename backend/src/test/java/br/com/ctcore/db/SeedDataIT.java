@@ -3,6 +3,7 @@ package br.com.ctcore.db;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.ctcore.features.FeatureFlags;
+import br.com.ctcore.isolation.Scopes;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -22,7 +23,7 @@ class SeedDataIT extends PostgresIT {
     static final Path SEED_DIR = Path.of("..", "infra", "seed");
     static final String LIST = "select organization_id::text || feature_key || enabled from organization_feature order by 1";
 
-    @Autowired JdbcTemplate jdbc;
+    JdbcTemplate jdbc = adminJdbc();
     @Autowired FeatureFlags flags;
 
     @BeforeEach
@@ -67,7 +68,9 @@ class SeedDataIT extends PostgresIT {
         assertThat(rows).isNotEmpty();
         for (Map<String, Object> r : rows) {
             String key = (String) r.get("feature_key");
-            assertThat(flags.isEnabled((UUID) r.get("organization_id"), key)).as(key).isEqualTo(r.get("enabled"));
+            try (var scope = Scopes.open((UUID) r.get("organization_id"), null)) {
+                assertThat(flags.isEnabled((UUID) r.get("organization_id"), key)).as(key).isEqualTo(r.get("enabled"));
+            }
         }
     }
 

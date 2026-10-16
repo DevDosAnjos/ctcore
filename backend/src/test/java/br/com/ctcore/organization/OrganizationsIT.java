@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.ctcore.db.PostgresIT;
+import br.com.ctcore.isolation.Scopes;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -17,7 +18,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 class OrganizationsIT extends PostgresIT {
     @Autowired Organizations organizations;
-    @Autowired JdbcTemplate jdbc;
+    JdbcTemplate jdbc = adminJdbc();
+
+
+    private java.util.Optional<Map<String,Object>> settings(UUID org) {
+        if (org == null) return organizations.settings(null);
+        try (var scope = Scopes.open(org, null)) { return organizations.settings(org); }
+    }
+    private java.util.Optional<Map<String,Object>> limits(UUID org) {
+        try (var scope = Scopes.open(org, null)) { return organizations.limits(org); }
+    }
+    private java.util.Optional<Map<String,Object>> unitSettings(UUID org, UUID unit) {
+        try (var scope = Scopes.open(org, unit)) { return organizations.unitSettings(org, unit); }
+    }
 
     Organizations.InitialOrganization input() {
         UUID id = UUID.randomUUID();
@@ -31,7 +44,7 @@ class OrganizationsIT extends PostgresIT {
         organizations.initialize(first, Organizations.Defaults.standard());
         var second = input();
         organizations.initialize(second, new Organizations.Defaults(45));
-        Map<String, Object> settings = organizations.settings(first.id()).orElseThrow();
+        Map<String, Object> settings = settings(first.id()).orElseThrow();
         assertThat(settings).containsEntry("child_name", "Infantil").containsEntry("child_min_age", 4)
                 .containsEntry("child_max_age", 12).containsEntry("youth_name", "Juvenil")
                 .containsEntry("youth_min_age", 13).containsEntry("youth_max_age", 17)
@@ -42,8 +55,8 @@ class OrganizationsIT extends PostgresIT {
         for (String field : new String[]{"graduation_requirements", "modality_settings", "terms_versions"}) {
             assertThat(settings.get(field).toString()).isEqualTo("{}");
         }
-        assertThat(organizations.settings(second.id()).orElseThrow()).containsEntry("deactivation_days", 45);
-        var unit = organizations.unitSettings(first.id(), first.unitId()).orElseThrow();
+        assertThat(settings(second.id()).orElseThrow()).containsEntry("deactivation_days", 45);
+        var unit = unitSettings(first.id(), first.unitId()).orElseThrow();
         assertThat(unit).containsEntry("enrollment_fee_enabled", false).containsEntry("enrollment_fee_cents", 0L)
                 .containsEntry("cash_fee_cents", 0L).containsEntry("pix_fee_cents", 0L)
                 .containsEntry("bank_slip_fee_cents", 0L).containsEntry("credit_card_fee_cents", 0L)
@@ -60,14 +73,14 @@ class OrganizationsIT extends PostgresIT {
                 .isEqualTo("{t,t,t,t}");
         assertThat(jdbc.queryForMap("select active, timezone from unit where id = ?", first.unitId()))
                 .containsEntry("active", true).containsEntry("timezone", "America/Sao_Paulo");
-        assertThat(organizations.limits(first.id()).orElseThrow()).containsEntry("students", null)
+        assertThat(limits(first.id()).orElseThrow()).containsEntry("students", null)
                 .containsEntry("management_users", null).containsEntry("units", null).containsEntry("modules", null)
                 .containsEntry("operational_units", 10).containsEntry("operational_management_users", 200);
-        assertThat(organizations.unitSettings(second.id(), first.unitId())).isEmpty();
-        assertThat(organizations.settings(UUID.randomUUID())).isEmpty();
-        assertThat(organizations.limits(UUID.randomUUID())).isEmpty();
-        assertThatThrownBy(() -> organizations.settings(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> organizations.unitSettings(first.id(), null)).isInstanceOf(NullPointerException.class);
+        assertThat(unitSettings(second.id(), first.unitId())).isEmpty();
+        assertThat(settings(UUID.randomUUID())).isEmpty();
+        assertThat(limits(UUID.randomUUID())).isEmpty();
+        assertThatThrownBy(() -> settings(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> unitSettings(first.id(), null)).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> organizations.initialize(null, Organizations.Defaults.standard())).isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> organizations.initialize(input(), null)).isInstanceOf(NullPointerException.class);
     }
@@ -112,8 +125,8 @@ class OrganizationsIT extends PostgresIT {
         UUID unit2 = UUID.randomUUID();
         jdbc.update("insert into unit (id, organization_id, name, short_name) values (?, ?, 'Second', ?)", unit2, org.id(), unit2.toString());
         jdbc.update("insert into unit_settings (organization_id, unit_id, due_days, pix_key) values (?, ?, '{2,28}', 'synthetic-key')", org.id(), unit2);
-        assertThat(organizations.unitSettings(org.id(), unit2).orElseThrow()).containsEntry("pix_key", "synthetic-key");
-        assertThat(organizations.unitSettings(org.id(), org.unitId()).orElseThrow()).containsEntry("pix_key", null);
+        assertThat(unitSettings(org.id(), unit2).orElseThrow()).containsEntry("pix_key", "synthetic-key");
+        assertThat(unitSettings(org.id(), org.unitId()).orElseThrow()).containsEntry("pix_key", null);
         assertThat(jdbc.queryForObject("select count(*) from unit u join organization_settings s on s.organization_id = u.organization_id where u.organization_id = ?", Integer.class, org.id())).isEqualTo(2);
         var other = input();
         organizations.initialize(other, Organizations.Defaults.standard());
@@ -150,12 +163,9 @@ class OrganizationsIT extends PostgresIT {
         var b = input();
         organizations.initialize(a, Organizations.Defaults.standard());
         organizations.initialize(b, Organizations.Defaults.standard());
-        jdbc.execute("create role organization_proof nosuperuser nobypassrls nologin");
-        jdbc.execute("grant select, insert, update, delete on organization, unit, organization_settings, unit_settings, organization_limits to organization_proof");
-        try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        try (Connection connection = DriverManager.getConnection(POSTGRES.getJdbcUrl(), "ctcore_app", "synthetic_runtime");
                 Statement statement = connection.createStatement()) {
             connection.setAutoCommit(false);
-            statement.execute("set local role organization_proof");
             try (var result = statement.executeQuery("select rolsuper, rolbypassrls from pg_roles where rolname = current_user")) {
                 result.next();
                 assertThat(result.getBoolean(1)).isFalse();
@@ -203,9 +213,6 @@ class OrganizationsIT extends PostgresIT {
                 result.next();
                 assertThat(result.getString(1)).isNull();
             }
-        } finally {
-            jdbc.execute("drop owned by organization_proof");
-            jdbc.execute("drop role organization_proof");
         }
     }
 }

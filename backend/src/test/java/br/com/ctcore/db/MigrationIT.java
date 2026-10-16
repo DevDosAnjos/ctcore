@@ -21,7 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 class MigrationIT extends PostgresIT {
 
-    @Autowired JdbcTemplate jdbc;
+    JdbcTemplate jdbc = adminJdbc();
     @Autowired ObjectMapper mapper;
     @Autowired Clock clock;
 
