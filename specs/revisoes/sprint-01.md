@@ -216,3 +216,35 @@ Não há tela nesta sprint, então não há conferência de navegador, 360 px, t
 - **Hospedagem (#192/#193, Sprint 22)**: separar o papel do banco (R01-5), garantir que a porta 8081 fique na rede interna (R00-10), credenciais por variável de ambiente sem padrão de desenvolvimento (R00-11, R01-5), usuário de migração diferente do administrador.
 - **Exceções OSV com validade 2027-01-15**: reavaliar quando sair Spring 6.2.20 ou migrar para o Boot 4; cai depois das Sprints 02 e 03.
 - Nenhuma issue `depende de você` trava a Sprint 02.
+
+### Rodada 2 — APROVAR — 2026-10-16, estado a93fd3890f18378845f8c312cc662a97bb84b475
+
+Escopo: nova rodada. Reconferidos os achados BLOQUEIA e AJUSTAR da rodada 1, clone limpo e CI; lido só `git diff c538683 dev` (7 arquivos: README, `application.yml`, 3 testes, item #16, relatório). `.github`, `osv-scanner.toml`, `.gitleaksignore`, `frontend` e `docs` sem diff, então CI, proteções e demais status ficam "mantidos da rodada 1".
+
+Pré-condições: `dev` limpa e igual a `origin/dev`; nenhuma branch `item/*`; nenhum PR aberto contra `dev`; `gh auth` válido; Docker 29.8.1 ativo. O PR #227 (`Ajustes da revisão da Sprint 01 (A1 a A3)`, base `dev`, sem `Closes`, `ci-gate` SUCCESS; frontend, e2e e image-frontend SKIPPED pela regra de pasta) é correção da revisão, fora de item, como o plano da rodada 1 previa.
+
+| Achado | Status | Evidência |
+|---|---|---|
+| R01-1 (A1) Prometheus e caminho | PASSOU | `application.yml` com `management.metrics.enable.disk: false`; `ActuatorEndpointsTest` afirma `doesNotContain("disk_")`. Clone novo de `origin/dev` no scratchpad (caminho com UUID): `verify` BUILD SUCCESS, 79 testes rápidos e 48 de integração, 0 falhas, "All coverage checks have been met", 2 min 19 s. `grep disk_` em `src/main` vazio |
+| R01-2 (A2) texto do armazenamento | PASSOU | `README.md` linha 39: "credenciais fictícias de desenvolvimento em `infra/storage/s3.json`"; item #16 D5 atualizado e D6 registra a correção |
+| R01-3 (A3) códigos nos testes | PASSOU | `grep` acha `RN-ORG-03` em 5 `@DisplayName` de `S3FileStorageIT` e `RN-LGP-11` em `AuditServiceIT` (6 ocorrências) |
+| R01-4 guarda de isolamento por rota | mantido (AJUSTAR, pode seguir na Sprint 02) | sem mudança; item novo sugerido na rodada 1 (A4) |
+| R01-5 a R01-11 | mantidos como SUGESTÃO ou DONO | sem mudança no código tocado; R01-7 = D1 abaixo |
+
+Clone limpo: só o back-end foi refeito, porque o diff não toca front, `infra`, Dockerfiles nem workflows. Back-end passa em pasta de caminho longo; o resultado da rodada 1 (front 121 testes e 97,83%, imagens, seed duas vezes, recomeço) segue valendo. Cobertura do back-end: a meta de 80% e as de 100% por pacote crítico passaram na verificação do `verify` ("All coverage checks have been met"); o percentual exato desta rodada não foi lido, e o código de produção mudou apenas em uma propriedade de configuração. Execuções de CI em `dev`: `Publish` success em a93fd38 e 8a13cfd; `ci.yml` do PR #227 e da branch do registro (b795d79) success. Proteção de `dev` inalterada (`ci-gate` exigido, push forçado bloqueado). Ruleset `protege-main` ainda sem `ci-gate` (R01-7).
+
+Fora desta rodada: `C:\ct` não existe mais (D2 da rodada 1 resolvido); a pasta `c` do scratchpad da rodada 1 não foi verificada por mim.
+
+#### Decisões do dono (abertas)
+
+- **D1 · Exigir o `ci-gate` no ruleset `protege-main`?** Recomendada: sim, pelo motivo da rodada 1 (merge de `dev` para `main` possível com CI vermelho ou em andamento).
+
+#### Ações do dono
+
+1. Decidir D1.
+2. Abrir o PR de `dev` para `main` com o método "Merge" (nunca squash), revisar e, só então, dizer que a Sprint 02 está liberada.
+3. A4 (guarda de teste de isolamento por rota) vira item da Sprint 02, se o dono concordar.
+
+Sem tela nesta sprint: nada a olhar no navegador.
+
+Resultado: **APROVAR**. Nenhum BLOQUEIA e nenhum AJUSTAR antes do PR. Sobra o AJUSTAR R01-4 para a Sprint 02 e a decisão D1.
