@@ -97,6 +97,9 @@ management:
         readiness:
           include: readinessState,db
   metrics:
+    enable:
+      # disk.free/disk.total trazem o caminho de instalação como etiqueta; não expor na porta de gestão.
+      disk: false
     distribution:
       percentiles-histogram:
         http.server.requests: true

@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 import org.testcontainers.containers.GenericContainer;
@@ -52,6 +53,7 @@ class S3FileStorageIT {
     static byte[] bytes(String s) { return s.getBytes(StandardCharsets.UTF_8); }
 
     @Test
+    @DisplayName("RN-ORG-03: grava na pasta da organização e serve por URL temporária assinada")
     void storesUnderOrganizationFolderAndServesByTemporarySignedUrl() throws Exception {
         try (var ignored = Scopes.open(A, null)) {
             storage.put("foto.png", bytes("conteudo-a"), "image/png");
@@ -64,6 +66,7 @@ class S3FileStorageIT {
     }
 
     @Test
+    @DisplayName("RN-ORG-03: recusa URL vencida ou com assinatura alterada")
     void refusesExpiredAndTamperedUrls() throws Exception {
         try (var ignored = Scopes.open(A, null)) {
             storage.put("termo.pdf", bytes("pdf"), "application/pdf");
@@ -78,6 +81,7 @@ class S3FileStorageIT {
     }
 
     @Test
+    @DisplayName("RN-ORG-03: outra organização nunca alcança o arquivo")
     void anotherOrganizationNeverReachesTheFile() throws Exception {
         try (var ignored = Scopes.open(A, null)) {
             storage.put("segredo.txt", bytes("a"), "text/plain");
@@ -98,6 +102,7 @@ class S3FileStorageIT {
     }
 
     @Test
+    @DisplayName("RN-ORG-03: recusa arquivo vazio ou acima do limite sem criar objeto")
     void refusesEmptyAndOversizedFilesAndCreatesNothing() {
         try (var ignored = Scopes.open(A, null)) {
             assertThatThrownBy(() -> storage.put("vazio.bin", new byte[0], "application/octet-stream"))
@@ -112,6 +117,7 @@ class S3FileStorageIT {
     }
 
     @Test
+    @DisplayName("RN-ORG-03: sem organização no contexto, toda operação é negada")
     void deniesEveryOperationWithoutOrganization() {
         assertThatThrownBy(() -> storage.put("x.png", bytes("x"), "image/png")).isInstanceOf(AccessDeniedException.class);
         assertThatThrownBy(() -> storage.readUrl("x.png")).isInstanceOf(AccessDeniedException.class);

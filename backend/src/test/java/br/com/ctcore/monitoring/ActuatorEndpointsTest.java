@@ -67,6 +67,7 @@ class ActuatorEndpointsTest {
         metrics.emailQueue(3);
         String after = mgmt("/actuator/prometheus").getBody();
         assertThat(after).contains("ctcore_email_queue_pending 3.0", "ctcore_webhook_failures_total 1.0");
+        assertThat(after).doesNotContain("disk_");
         assertThat(after).doesNotContainPattern("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
                 .doesNotContainPattern("[\\w.]+@[\\w.]+\\.\\w+").doesNotContainPattern("\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}");
     }
