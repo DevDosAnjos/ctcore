@@ -36,6 +36,14 @@ server:
 ctcore:
   security:
     require-https: true
+  # D5: padrões iguais aos de infra/docker-compose.yml; em produção vêm só de variável de ambiente.
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:${STORAGE_PORT:8333}}
+    bucket: ${STORAGE_BUCKET:ctcore}
+    region: ${STORAGE_REGION:us-east-1}
+    access-key: ${STORAGE_ACCESS_KEY:dev}
+    secret-key: ${STORAGE_SECRET_KEY:dev-secret}
+    url-expiry: ${STORAGE_URL_EXPIRY:5m}
   # D2: simulated (padrão) ou off por conexão; real só depois das Sprints 22 e 23.
   integrations:
     payment:
