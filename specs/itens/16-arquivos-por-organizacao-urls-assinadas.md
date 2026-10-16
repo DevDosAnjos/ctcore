@@ -96,3 +96,24 @@ Achados:
 Refs #16
 
 Verificações do PR #225: o job `security` (OSV-Scanner) falhou. Netty 4.1.135.Final, trazido pelo AWS SDK (`software.amazon.awssdk:s3:2.31.50`), tem 6 avisos de severidade 7.5 a 9.1: GHSA-558v-64gr-wgg4, GHSA-6jqx-86gh-f27w, GHSA-jppx-w49h-x2qq, GHSA-mvh2-crg5-v77c, GHSA-93wv-jw9v-4972, GHSA-c4c3-7fpv-j4q5 (netty-codec, codec-http, codec-http2, handler). Saídas possíveis: subir o Netty gerenciado, trocar o cliente HTTP do SDK (por exemplo `url-connection-client`, excluindo `netty-nio-client`) ou ignorar com motivo em `osv-scanner.toml`. `backend`, `image-backend` e `changes` passaram.
+
+### Correção da entrega
+- Falha do job `security` (Netty 4.1.135.Final trazido pelo AWS SDK) — o SDK usa o cliente HTTP Apache (padrão do `S3Client` síncrono e do `S3Presigner`); o `netty-nio-client` só era usado pelo cliente assíncrono, que o item não usa. Excluído em `backend/pom.xml` (exclusion de `software.amazon.awssdk:netty-nio-client` na dependência `s3`) — prova: `./backend/mvnw -f backend/pom.xml dependency:tree -Dincludes=io.netty,software.amazon.awssdk:netty-nio-client` → nenhum resultado; `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS (S3FileStorageIT 5/5, 41 testes de integração, 0 falhas). OSV-Scanner não rodou localmente; o resultado depende do CI do PR.
+
+### Rodada 2 — OK — 2026-10-16, estado c7ae9410b674d280edd204b5bfd615b9b92d23b7
+
+Mudança desde a rodada 1: só `backend/pom.xml` (exclusion de `netty-nio-client` na dependência `s3`) e a nota "Correção da entrega".
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 | PASSOU | S3FileStorageIT 5/5 após a exclusão (mantido da rodada 1 e reexecutado) |
+| CA2 | PASSOU | idem |
+| CA3 | PASSOU | idem |
+| CA4 | PASSOU | S3FileStorageIT e FileStorageNameTest 2/2 |
+| CA5 | PASSOU | idem |
+| CA6 | PASSOU | idem |
+| CA7 | PASSOU | `verify` verde; contextos dos `*IT` sobem com o bean; OpenAPI sem mudança |
+
+Comandos: `./backend/mvnw -f backend/pom.xml dependency:tree -Dincludes=io.netty,software.amazon.awssdk:netty-nio-client` → nenhum resultado (Netty fora do classpath); `./backend/mvnw -f backend/pom.xml verify` → EXIT 0, 76 testes rápidos e 41 de integração, 0 falhas, JaCoCo incluído. OSV-Scanner não rodou localmente; a prova final do job `security` depende do CI do PR.
+Achados:
+- sugestão, código, `StorageConfig` e `S3FileStorage.ensureBucket` — as duas sugestões da rodada 1 seguem sem alteração (sem teste explícito do bean; ramo 404 duplicado).
