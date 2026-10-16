@@ -6,7 +6,7 @@ Origem: issue #14; `docs/especificacao/01-organizacao-e-isolamento.md` (RN-ORG-0
 
 Entregar contexto confiável de organização/unidade por requisição e aplicá-lo nas consultas e na transação PostgreSQL, impedindo leitura ou alteração cruzada mesmo com identificadores adivinhados. Completar a fundação da #13 e proteger também as feature flags existentes.
 
-Fora do escopo: login, sessões e cadastro de vínculos da Sprint 02; seletor e visão consolidada; CRUD público; serviço de auditoria da #15; interfaces e integrações externas. O fluxo genérico de telas/rotas da issue só se aplica quando houver essas entregas (D1).
+Fora do escopo: login, sessões e cadastro de vínculos da Sprint 02; seletor e visão consolidada; CRUD público; serviço de auditoria da #17; interfaces e integrações externas. O fluxo genérico de telas/rotas da issue só se aplica quando houver essas entregas (D1).
 
 ## 2. Requisitos
 
@@ -37,7 +37,7 @@ Fora do escopo: login, sessões e cadastro de vínculos da Sprint 02; seletor e 
 - A V3 já protege `organization`, `unit`, `organization_settings`, `unit_settings` e `organization_limits`. Preservar FKs compostas organização/unidade; não criar tabelas só para provar o item. Recuperação de V4 por migração corretiva posterior, sem apagar dados nem desabilitar isolamento como rollback operacional.
 - Centralizar no pacote `br.com.ctcore.isolation` (a criar) a instalação do contexto e a execução transacional com `set_config(..., true)` parametrizado na conexão vinculada à transação Spring. Cobrir transação existente e impedir troca de organização dentro dela; nenhum setter aceita um tenant arbitrário da consulta. Não depender de sessão persistente nem de open-in-view. Preferir as APIs transacionais já disponíveis, sem nova biblioteca ou framework genérico de repositórios.
 - `Organizations.java` existe e hoje redefine `app.organization_id` a cada chamada: separar provisionamento interno explícito das leituras operacionais, que devem obedecer ao contexto e manter WHERE por organização e unidade. `FeatureFlags.java` existe e já filtra por organização, mas não instala contexto transacional: integrá-lo ao mesmo mecanismo, mantendo validação, padrão desligado e upsert idempotente.
-- Provisionamento de organização nova não pode se tornar um bypass operacional. Continuar interno, transacional e sem HTTP; qualquer chamada sob contexto existente não pode substituí-lo por outro. Escritas internas existentes continuam aguardando integração com auditoria antes da exposição operacional (#15).
+- Provisionamento de organização nova não pode se tornar um bypass operacional. Continuar interno, transacional e sem HTTP; qualquer chamada sob contexto existente não pode substituí-lo por outro. Escritas internas existentes continuam aguardando integração com auditoria antes da exposição operacional (#17).
 
 ### Segurança e API
 
@@ -50,7 +50,7 @@ Fora do escopo: login, sessões e cadastro de vínculos da Sprint 02; seletor e 
 
 - Alterar conforme necessário arquivos existentes: `backend/src/main/resources/application.yml`, `infra/.env.example`, `backend/README.md`, `README.md`, `infra/README.md` e testes `db/PostgresIT.java`, `db/RowLevelSecurityIT.java`, `organization/OrganizationsIT.java`, `organization/OrganizationsTest.java`, `features/FeatureFlagsIT.java`, `db/SeedDataIT.java`. Estes testes não podem continuar provando segurança só com conexão superusuária: separar conexão administrativa de fixtures e conexão operacional usada pelo serviço.
 - Criar testes unitários e IT em `backend/src/test/java/br/com/ctcore/isolation/`, migrando a prova da tabela fictícia para as tabelas reais onde couber. Preservar fixtures sintéticas e testes de rollback da #13; ajustar chamadores de Organizations/FeatureFlags encontrados pela busca antes da alteração. Seeds existentes em `infra/seed/01-organizations.sql`, `02-organization-unit-settings.sql` e `infra/scripts/seed.sh` continuam administrativos e idempotentes; nova tabela não é necessária.
-- Interface: não muda; tradução, quatro estados e axe não se aplicam sem tela nova. Auditoria: nenhuma ação operacional nova é exposta, não antecipar o serviço da #15. Não há dados pessoais novos, senhas de usuário, upload ou pagamento; continuam scanners do CI.
+- Interface: não muda; tradução, quatro estados e axe não se aplicam sem tela nova. Auditoria: nenhuma ação operacional nova é exposta, não antecipar o serviço da #17. Não há dados pessoais novos, senhas de usuário, upload ou pagamento; continuam scanners do CI.
 - Riscos: bypass por credencial administrativa, contexto alterado por leitura legada, perda de contexto em transação ou vazamento pelo pool; testes com banco real e credencial restrita devem detectar todos. Documentar preparação de volume existente e variáveis para execução da imagem sem mudar suas permissões de forma destrutiva.
 
 ## 5. Tarefas
