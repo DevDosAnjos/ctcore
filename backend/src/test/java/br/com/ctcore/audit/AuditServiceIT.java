@@ -44,7 +44,7 @@ class AuditServiceIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA2, CA5, CA9: grava só os campos alterados, sem chaves sensíveis, e o log não traz valores")
+    @DisplayName("RN-LGP-11, CA2, CA5, CA9: grava só os campos alterados, sem chaves sensíveis, e o log não traz valores")
     void writesDiffWithoutSecrets(CapturedOutput out) {
         var a = create();
         try (var s = Scopes.open(a.id(), a.unitId())) {

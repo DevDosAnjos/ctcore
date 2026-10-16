@@ -36,7 +36,7 @@ Com o ambiente de pé e o back-end rodado ao menos uma vez (ele aplica as migra�
 | Serviço | Para que serve | Endereço (só em 127.0.0.1) |
 | --- | --- | --- |
 | `postgres` | PostgreSQL 16 | `localhost:5432` · banco, usuário `ctcore`, senha `ctcore_dev` |
-| `storage` | Arquivos compatíveis com S3 (SeaweedFS) | `http://localhost:8333` · saúde em `/status` · sem autenticação, só para desenvolvimento |
+| `storage` | Arquivos compatíveis com S3 (SeaweedFS) | `http://localhost:8333` · saúde em `/status` · credenciais fictícias de desenvolvimento em `infra/storage/s3.json` |
 | `mailbox` | Caixa de e-mail falsa (Mailpit) | SMTP `localhost:1025` · interface `http://localhost:8025` |
 
 ## Front-end
