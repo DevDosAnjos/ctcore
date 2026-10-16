@@ -28,6 +28,10 @@ class SeedDataIT extends PostgresIT {
 
     @BeforeEach
     void clean() {
+        // audit_log is append-only and shares the container with AuditServiceIT: test cleanup only.
+        jdbc.execute("alter table audit_log disable trigger user");
+        jdbc.update("delete from audit_log");
+        jdbc.execute("alter table audit_log enable trigger user");
         jdbc.update("delete from organization_feature");
         jdbc.update("delete from unit_settings");
         jdbc.update("delete from unit");
