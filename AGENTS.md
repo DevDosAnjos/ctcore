@@ -71,9 +71,10 @@ Antes de começar um item, comparar o marco dele com o marco do último item mer
 ## Docker local
 
 - Imagens definitivas, que ficam na máquina: as do `infra/docker-compose.yml` (`postgres:16.4`, `chrislusf/seaweedfs:3.80`, `axllent/mailpit:v1.20.5`) e as dos testes de integração (`postgres:16.4-alpine`, `testcontainers/ryuk`). Mudou uma versão no compose ou nos `*IT`, a lista muda junto e a imagem da versão antiga é removida.
-- Toda outra imagem que a tarefa construir ou baixar é provisória e sai ao fim da prova que a usou. Isso inclui `ctcore-backend` e `ctcore-frontend`, registro local (`registry:2`), imagens enviadas a ele (`localhost:5000/...`) e ferramentas rodadas por Docker (ex.: `rhysd/actionlint`). Containers de prova usam `docker run --rm`. Se a prova deixou container, rede ou volume, eles saem também.
-- Remover só pelo nome exato do que a tarefa criou (`docker rm -f <container>`, `docker rmi <imagem:etiqueta>`). Nunca usar `docker system prune`, `docker image prune -a` nem `docker volume prune`, porque apagam coisas de outros projetos da máquina. Nunca apagar os volumes `ctcore_postgres-data` e `ctcore_storage-data`.
-- A linha de prova registra a limpeza, ex.: "registro, imagens `localhost:5000/teste/*` e `ctcore-backend` removidos".
+- Imagens do próprio projeto, que podem ser reutilizadas (`ctcore-backend` e `ctcore-frontend`), podem ficar na máquina, mas só uma cópia por nome: ao reconstruir, a versão anterior, que vira `<none>`, é removida pelo ID. Para isso, comparar `docker images` antes e depois do build e remover só o `<none>` que o build deixou; nunca outro `<none>`, que pode ser de outro projeto. Etiquetas de prova da mesma imagem não se acumulam: reutilizar a mesma etiqueta ou remover as anteriores.
+- Toda outra imagem que a tarefa construir ou baixar é descartável por padrão e sai ao fim da prova que a usou: registro local (`registry:2`), imagens enviadas a ele (`localhost:5000/...`) e ferramentas rodadas por Docker (ex.: `rhysd/actionlint`). Containers de prova usam `docker run --rm`. Se a prova deixou container ou rede, eles saem também; volume de prova tem nome explícito ou vai com `--rm`, nunca anônimo.
+- Remover só pelo nome ou ID exato do que a tarefa criou (`docker rm -f <container>`, `docker rmi <imagem:etiqueta ou ID>`). Nunca usar `docker system prune`, `docker image prune -a` nem `docker volume prune`, porque apagam coisas de outros projetos da máquina. Nunca apagar os volumes `ctcore_postgres-data` e `ctcore_storage-data`.
+- A linha de prova registra a limpeza, ex.: "registro e imagens `localhost:5000/teste/*` removidos; `ctcore-backend` reconstruída, versão anterior removida".
 
 ## Limitações aceitas
 
