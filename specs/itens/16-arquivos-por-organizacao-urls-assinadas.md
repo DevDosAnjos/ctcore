@@ -94,3 +94,5 @@ Achados:
 - Limitação: o limite de 5 MB vale para qualquer tipo de arquivo; limites por tipo ficam nos itens de cada recurso.
 
 Refs #16
+
+Verificações do PR #225: o job `security` (OSV-Scanner) falhou. Netty 4.1.135.Final, trazido pelo AWS SDK (`software.amazon.awssdk:s3:2.31.50`), tem 6 avisos de severidade 7.5 a 9.1: GHSA-558v-64gr-wgg4, GHSA-6jqx-86gh-f27w, GHSA-jppx-w49h-x2qq, GHSA-mvh2-crg5-v77c, GHSA-93wv-jw9v-4972, GHSA-c4c3-7fpv-j4q5 (netty-codec, codec-http, codec-http2, handler). Saídas possíveis: subir o Netty gerenciado, trocar o cliente HTTP do SDK (por exemplo `url-connection-client`, excluindo `netty-nio-client`) ou ignorar com motivo em `osv-scanner.toml`. `backend`, `image-backend` e `changes` passaram.
