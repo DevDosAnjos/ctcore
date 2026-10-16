@@ -1,8 +1,8 @@
 # Backlog — ctcore
 
-Origem dos itens: issues abertas do repositório no GitHub (193 issues, nenhuma fechada, nenhuma com responsável). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
+Origem dos itens: issues do repositório no GitHub (193 issues: 12 fechadas e 181 abertas, nenhuma com responsável; metadados conferidos em 16/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 00 · Fundação. Só o dono libera a seguinte.
+Sprint liberada: Sprint 01 · Organização, unidades, isolamento e auditoria. O dono confirmou em 16/10/2026 que revisou a Sprint 00 e autorizou prosseguir com a Sprint 01. Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -20,7 +20,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 10 | Esteira de CI do monorepo | issue #10 | Sprint 00 | — | agente | feito |
 | 11 | Branches dev e main e publicação preparada (sem hospedagem) | issue #11 | Sprint 00 | — | agente | feito |
 | 12 | Script de dados fictícios | issue #12 | Sprint 00 | — | agente | feito |
-| 13 | Organização, unidade, configurações e limites no banco | issue #13 | Sprint 01 | — | agente | a fazer |
+| 13 | Organização, unidade, configurações e limites no banco | issue #13 | Sprint 01 | — | agente | feito |
 | 14 | Isolamento entre organizações: contexto, filtro e row-level security | issue #14 | Sprint 01 | — | agente | a fazer |
 | 15 | Teste-modelo de isolamento e permissão no servidor | issue #15 | Sprint 01 | — | agente | a fazer |
 | 16 | Arquivos por organização com URLs temporárias assinadas | issue #16 | Sprint 01 | — | agente | a fazer |
