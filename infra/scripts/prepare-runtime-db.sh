@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Antes da primeira migração; também funciona com volume existente. Somente desenvolvimento local.
+# ponytail: o papel recebe CRUD em todas as tabelas de public, inclusive flyway_schema_history (default privileges não excluem uma tabela). Separar quando a #192 provisionar o banco de produção.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 docker compose -f docker-compose.yml exec -T \
