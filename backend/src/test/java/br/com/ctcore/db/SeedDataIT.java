@@ -28,6 +28,11 @@ class SeedDataIT extends PostgresIT {
     @BeforeEach
     void clean() {
         jdbc.update("delete from organization_feature");
+        jdbc.update("delete from unit_settings");
+        jdbc.update("delete from unit");
+        jdbc.update("delete from organization_settings");
+        jdbc.update("delete from organization_limits");
+        jdbc.update("delete from organization");
     }
 
     /** Aplica os .sql do diretório em ordem do nome, como o seed.sh. */
@@ -93,6 +98,31 @@ class SeedDataIT extends PostgresIT {
         jdbc.update("delete from organization_feature");
         apply(jdbc, SEED_DIR);
         assertThat(jdbc.queryForList(LIST, String.class)).isEqualTo(first);
+    }
+
+    @Test
+    @DisplayName("RN-ORG-04/16: deterministic pilot, complete tenants and preserved settings on seed reapplication")
+    void organizationSettingsAreCompleteAndPreserved() throws IOException {
+        apply(jdbc, SEED_DIR);
+        for (String table : new String[]{"organization", "unit", "organization_settings", "unit_settings", "organization_limits"}) {
+            assertThat(jdbc.queryForObject("select count(*) from " + table, Integer.class)).as(table).isEqualTo(3);
+        }
+        assertThat(jdbc.queryForObject("select name from organization where id = md5('ctcore-seed-org-1')::uuid", String.class))
+                .isEqualTo("Academia Piloto Fictícia");
+        assertThat(jdbc.queryForObject("select count(*) from unit u join unit_settings s on (s.organization_id, s.unit_id) = (u.organization_id, u.id) join organization_settings o on o.organization_id = u.organization_id join organization_limits l on l.organization_id = u.organization_id", Integer.class))
+                .isEqualTo(3);
+        jdbc.update("update organization_settings set deactivation_days = 60, trial_limit = 3 where organization_id = md5('ctcore-seed-org-1')::uuid");
+        jdbc.update("update unit_settings set due_days = '{2,28}', pix_key = 'synthetic-key' where organization_id = md5('ctcore-seed-org-1')::uuid");
+        jdbc.update("update organization_limits set students = 1 where organization_id = md5('ctcore-seed-org-1')::uuid");
+        Map<String, List<String>> before = new java.util.HashMap<>();
+        for (String table : new String[]{"organization", "unit", "organization_settings", "unit_settings", "organization_limits"}) {
+            before.put(table, jdbc.queryForList("select row_to_json(t)::text from " + table + " t order by 1", String.class));
+        }
+        apply(jdbc, SEED_DIR);
+        for (var entry : before.entrySet()) {
+            assertThat(jdbc.queryForList("select row_to_json(t)::text from " + entry.getKey() + " t order by 1", String.class))
+                    .as(entry.getKey()).isEqualTo(entry.getValue());
+        }
     }
 
     @Test

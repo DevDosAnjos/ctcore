@@ -1,6 +1,6 @@
 # Especificação do projeto — ctcore
 
-Diz o que o produto é e como ele é construído. A regra de cada código (RN, RF, RNF) está em `docs/especificacao/`; o que entregar em cada item está na issue do GitHub. Este arquivo resume e aponta, não copia. Estado atual: o repositório tem só documentos, sem código; arquitetura e dados abaixo descrevem o **alvo** (fonte: `docs/especificacao/00-visao-geral.md` §9 e `docs/plano-de-sprints.md`).
+Diz o que o produto é e como ele é construído. A regra de cada código (RN, RF, RNF) está em `docs/especificacao/`; o que entregar em cada item está na issue do GitHub. Este arquivo resume e aponta, não copia. O repositório já contém a fundação de servidor, interface e infraestrutura da Sprint 00; arquitetura e dados dos módulos seguintes descrevem o alvo (fonte: `docs/especificacao/00-visao-geral.md` §9 e `docs/plano-de-sprints.md`).
 
 ## 1. Objetivo
 
@@ -44,6 +44,8 @@ Valem para todo item; detalhe em `docs/plano-de-sprints.md` e nos RNF.
 
 ## 6. Dados
 
+Item #13: V3 cria `organization`, `unit`, `organization_settings`, `unit_settings` e `organization_limits`, com RLS e valores iniciais persistidos. `organization/Organizations` faz provisionamento interno transacional e consultas com filtro explícito; não há CRUD HTTP. O seed `02-organization-unit-settings.sql` completa três organizações sintéticas sem sobrescrever valores. Contexto autenticado geral e auditoria operacional serão integrados nos itens responsáveis.
+
 Toda tabela de negócio tem `organization_id`; as operacionais também `unit_id`. Entidades: organização, unidade, conta, vínculo, sessão, convite, modalidade (catálogo), faixa etária, graduação, professor, turma, aula, plano, benefício, pessoa/aluno, responsável, matrícula e modalidades da matrícula, cobrança, pagamento, comunicado, notificação, assinatura da plataforma, auditoria. Situações (aluno, cobrança, assinatura) são calculadas, nunca digitadas. Detalhe por módulo em `docs/especificacao/`.
 
 ## 7. Integrações externas
@@ -76,3 +78,4 @@ Até a Sprint 22 todas usam só a versão simulada; nenhuma regra cita fornecedo
 | Hospedagem, publicação automática, backup e alertas vão para a Sprint 22 (#192, #193) (dono, 13/10/2026) | Dependem de conta e contratação do dono | Fazer na Sprint 00 |
 | Backlog = issues do GitHub; `specs/backlog.md` só espelha | Fonte única | Duplicar o conteúdo em arquivos |
 | Onde a spec 1.2 diz "OpenAPI no repositório compose", vale `docs/` do monorepo | Decisão de monorepo acima | — |
+| Sprint 00 revisada e Sprint 01 liberada (dono, 16/10/2026) | Confirmação explícita: "A sprint 00 foi revisada, pode prosseguir com a sprint 01." | Manter a parada entre sprints após a liberação do dono |

@@ -68,6 +68,11 @@ Antes de começar um item, comparar o marco dele com o marco do último item mer
 - Regressão local e o que o CI exige (`.github/workflows/ci.yml`, status `ci-gate`): `./backend/mvnw -f backend/pom.xml verify` (JaCoCo: 80% de linhas; 100% nos pacotes `billing`, `payment`, `subscription`, `deactivation`, `isolation`) e, em `frontend/`, `npm run lint && npm run typecheck && npm run build && npm run test:cov && npm run e2e` (100% em `src/features/{billing,payments,subscription,deactivation}`). O CI ainda roda gitleaks e OSV-Scanner a cada PR (reprova nota 7 ou mais e alerta sem nota; filtro em `infra/scripts/osv-high.sh`, prova `bash infra/scripts/osv-high.test.sh`); no PR para `main` roda tudo, com `e2e:full`. Seleção por pasta: `bash infra/scripts/changed-areas.test.sh`.
 - Imagens (#11): `docker build -t ctcore-backend backend` e `docker build -t ctcore-frontend frontend`; o CI as constrói quando a pasta muda e exige no `ci-gate`. Subir e provar: README, seção "Imagens e Publicação". Publicação (`publish.yml`, pulada sem chaves): `PUBLISH_REGISTRY`, `PUBLISH_REGISTRY_USER`, `PUBLISH_REGISTRY_TOKEN`; teste local do envio: `bash infra/scripts/publish-image.sh <backend|frontend> <branch>` contra `registry:2`.
 
+## Persistência de organizações
+
+- `organization/Organizations` inicializa organização, primeira unidade, configurações e limites numa transação interna. Não expor escrita operacional sem integrar a auditoria na mesma transação.
+- A V3 protege as cinco tabelas com RLS; leituras recebem organização explicitamente. O contexto autenticado geral é da #14. Criar unidade adicional exige lock da organização e conferência de capacidade na mesma transação; exceções dos tetos de 10 unidades/200 usuários só pelo fluxo autorizado de suporte.
+
 ## Docker local
 
 - Imagens definitivas, que ficam na máquina: as do `infra/docker-compose.yml` (`postgres:16.4`, `chrislusf/seaweedfs:3.80`, `axllent/mailpit:v1.20.5`) e as dos testes de integração (`postgres:16.4-alpine`, `testcontainers/ryuk`). Mudou uma versão no compose ou nos `*IT`, a lista muda junto e a imagem da versão antiga é removida.
