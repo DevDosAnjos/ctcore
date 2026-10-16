@@ -102,6 +102,17 @@ featureFlags.setEnabled(organizationId, ONLINE_PAYMENT, true); // só a rota do 
 
 **Métricas de negócio** (`monitoring/OperationalMetrics`, valem 0 até alguém chamar). Injete o bean e chame: `emailQueue(long pendentes)` informa a fila de e-mail (`ctcore_email_queue_pending`); `webhookFailed()` conta uma falha de webhook (`ctcore_webhook_failures_total`). Nunca ponha dado pessoal em nome ou rótulo de métrica.
 
+## Auditoria (RN-AUD-01 a RN-AUD-03)
+
+`audit/AuditService.record(AuditEntry)` é o único caminho de gravação de `audit_log`. Toda operação que altera dado chama o serviço **dentro da mesma transação** (`OrganizationTransactions.execute`): se a operação desfaz, o registro desfaz; sem transação aberta o serviço lança erro. A organização vem de `OrganizationContext` (nunca de parâmetro); só autor `PLATFORM_SUPPORT` ou `PLATFORM_OWNER` grava sem organização.
+
+```java
+audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, accountId, "ADMIN"),
+        "student.update", "student", id, unitId, before, after, motivo, ip));
+```
+
+Passe o objeto inteiro em `before`/`after`: o serviço guarda só os campos alterados (criação: só `after`; exclusão: só `before`) e remove chaves de senha, token, segredo, chave de API e cartão em qualquer nível (`AuditSanitizer`; chave nova e sensível exige acrescentar a regra e o teste). A tabela é só de inclusão (gatilho recusa update, delete e truncate, também para o usuário de migração) e tem row-level security. O log técnico traz só ação, entidade e id.
+
 ## Arquivos por organização (RN-ORG-03)
 
 Para guardar ou entregar um arquivo, injete `storage/FileStorage` e chame `put(nome, bytes, contentType)`, `readUrl(nome)` (URL assinada que expira em 5 minutos) ou `delete(nome)`. A organização vem só do `OrganizationContext`; o objeto fica em `org/<organizationId>/<nome>`. O nome é relativo à pasta (sem `/`, `\`, `..`, controle; até 200 caracteres) e arquivo vazio ou acima de 5 MB é recusado. Outra organização não encontra o arquivo (`FileStorage.NotFound`) e, sem organização no contexto, tudo é negado. Não há URL pública permanente: guarde só o nome e gere a URL a cada leitura.
