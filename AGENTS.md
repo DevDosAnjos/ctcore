@@ -79,6 +79,7 @@ Antes de começar um item, comparar o marco dele com o marco do último item mer
 
 ## Limitações aceitas
 
+- Desafio invisível (Turnstile, #20): o script é carregado direto no front, só quando existe `VITE_*` com a chave; sem chave nada é carregado. O nome do fornecedor só aparece em `Turnstile.tsx` e na configuração. Troca por porta ou adaptador na Sprint 22.
 - Até a Sprint 22 não há hospedagem: não existe ambiente publicado. Tudo roda com o docker-compose e no CI do GitHub. A publicação está preparada na #11 e é ligada na #192.
 
 ## Issues

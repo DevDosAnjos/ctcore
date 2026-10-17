@@ -27,7 +27,7 @@ class NewAccessIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA8: 1º login sem aviso; outro aparelho avisa com aparelho, cidade e hora de Brasília; mesmo aparelho depois de sair não avisa")
+    @DisplayName("RN-ACE-22: CA8: 1º login sem aviso; outro aparelho avisa com aparelho, cidade e hora de Brasília; mesmo aparelho depois de sair não avisa")
     void newDevice() throws Exception {
         account("ana@x.com");
         Cookie first = loginWith("ana@x.com", CHROME);

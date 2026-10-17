@@ -110,6 +110,10 @@ public class AuthService {
     /** Same silent outcome for any e-mail (RN-ACE-11); only the work behind differs. */
     public void requestReset(String email, String challengeToken, String ip) {
         requireChallenge(email, ip, challengeToken);
+        if (attempts.resetLimited(email, ip)) {
+            throw new IdentityException(Code.TOO_MANY_REQUESTS, null);
+        }
+        attempts.record(email, ip, Result.RESET_REQUEST);
         Found account = find(email);
         if (account == null || account.status().equals("DEACTIVATED")) {
             return;

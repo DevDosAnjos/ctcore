@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 /** RN-ACE-10: every attempt goes to login_attempt; N wrong passwords in a row lock the e-mail, many failures lock the IP (D4). */
 @Component
 public class LoginAttempts {
-    public enum Result { SUCCESS, WRONG_PASSWORD, LOCKED, IP_LIMITED, CHALLENGE_FAILED }
+    public enum Result { SUCCESS, WRONG_PASSWORD, LOCKED, IP_LIMITED, CHALLENGE_FAILED, RESET_REQUEST }
     public enum Status { OPEN, EMAIL_LOCKED, IP_LIMITED }
 
     /** One password verdict (success or wrong password), used to decide the lock. */
@@ -26,16 +26,19 @@ public class LoginAttempts {
     private final int maxFailures;
     private final Duration window;
     private final int ipMaxFailures;
+    private final int resetMaxPerEmail;
 
     public LoginAttempts(@Lazy JdbcClient jdbc, Clock clock,
             @Value("${ctcore.security.login.max-failures:5}") int maxFailures,
             @Value("${ctcore.security.login.lockout:15m}") Duration window,
-            @Value("${ctcore.security.login.ip-max-failures:20}") int ipMaxFailures) {
+            @Value("${ctcore.security.login.ip-max-failures:20}") int ipMaxFailures,
+            @Value("${ctcore.security.login.reset-max-per-email:5}") int resetMaxPerEmail) {
         this.jdbc = jdbc;
         this.clock = clock;
         this.maxFailures = maxFailures;
         this.window = window;
         this.ipMaxFailures = ipMaxFailures;
+        this.resetMaxPerEmail = resetMaxPerEmail;
     }
 
     public static String normalize(String email) {
@@ -70,6 +73,19 @@ public class LoginAttempts {
             }
         }
         return Status.OPEN;
+    }
+
+    /** Password-reset requests (RN-ACE-10): too many per e-mail or per IP in one window. Same answer for any e-mail. */
+    public boolean resetLimited(String email, String ip) {
+        OffsetDateTime since = OffsetDateTime.ofInstant(clock.instant().minus(window), ZoneOffset.UTC);
+        Long byEmail = jdbc.sql("select count(*) from login_attempt where email = :email and result = 'RESET_REQUEST' and occurred_at > :since")
+                .param("email", normalize(email)).param("since", since).query(Long.class).single();
+        if (byEmail >= resetMaxPerEmail) {
+            return true;
+        }
+        Long byIp = ip == null ? 0L : jdbc.sql("select count(*) from login_attempt where ip = :ip and result = 'RESET_REQUEST' and occurred_at > :since")
+                .param("ip", ip).param("since", since).query(Long.class).single();
+        return byIp >= ipMaxFailures;
     }
 
     /** Newest first: locked when the last {@code max} verdicts are all failures within one window and that window has not passed. */

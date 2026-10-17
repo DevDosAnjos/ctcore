@@ -50,7 +50,7 @@ class InviteIT extends PostgresIT {
             public void passwordChanged(String to) {}
         };
         invites = new InviteService(jdbc, orgTx, accountTx, mailer, audit, policy, encoder,
-                new LoginAttempts(jdbc, clock, 5, Duration.ofMinutes(15), 20), clock);
+                new LoginAttempts(jdbc, clock, 5, Duration.ofMinutes(15), 20, 5), clock);
         admin.update("insert into organization (id, name) values (?, 'Org'), (?, 'Org2')", org, org2);
         admin.update("insert into unit (id, organization_id, name, short_name) values (?, ?, 'U', ?), (?, ?, 'U2', ?)",
                 unit, org, "u-" + unit, unit2, org, "u-" + unit2);
@@ -81,7 +81,7 @@ class InviteIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA3, CA6, CA17: convite novo cria conta e vínculo pendentes, guarda só o hash, aceita uma vez e audita")
+    @DisplayName("RN-ACE-13: CA3, CA6, CA17: convite novo cria conta e vínculo pendentes, guarda só o hash, aceita uma vez e audita")
     void inviteAcceptOnce() {
         var issued = invites.invite(coordinator, org, "Novo@x.com", "Novo", Role.ADMINISTRATOR, Set.of(), null);
         assertThat(mails).containsExactly("Novo@x.com");
@@ -112,7 +112,7 @@ class InviteIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA6: desconhecido, cancelado pelo reenvio, vencido no 8º dia; 3 reenvios por dia e o 4º recusado")
+    @DisplayName("RN-ACE-13: CA6: desconhecido, cancelado pelo reenvio, vencido no 8º dia; 3 reenvios por dia e o 4º recusado")
     void invalidStatesAndResendLimit() {
         assertThatThrownBy(() -> invites.accept("nope", "Abcdefg1", "1.1.1.1"))
                 .isInstanceOfSatisfying(IdentityException.class, e -> {
@@ -140,7 +140,7 @@ class InviteIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA3, CA4: convite fora da cascata é negado; aluno menor não ganha conta; maior sim, pelo sistema")
+    @DisplayName("RN-ACE-05, RN-ACE-06: CA3, CA4: convite fora da cascata é negado; aluno menor não ganha conta; maior sim, pelo sistema")
     void cascadeAndAdulthood() {
         assertThatThrownBy(() -> invites.invite(coordinator, org, "t@x.com", "T", Role.TEACHER, Set.of(unit), null))
                 .isInstanceOf(AccessDeniedException.class);
@@ -159,7 +159,7 @@ class InviteIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA5: e-mail com conta recebe só novo vínculo; senha errada não ativa e conta como falha; certa ativa")
+    @DisplayName("RN-ACE-07: CA5: e-mail com conta recebe só novo vínculo; senha errada não ativa e conta como falha; certa ativa")
     void existingAccount() {
         UUID id = accounts.provision("Ana@x.com", "Ana", null, "Abcdefg1");
         assertThat(accounts.provision("ana@X.com", "Outra", null, "Zzzzzzz9")).isEqualTo(id);
@@ -209,7 +209,7 @@ class InviteIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA14, CA17: remover o último vínculo de gestão e desativar encerram todas as sessões; remover outro vínculo de gestão não")
+    @DisplayName("RN-ACE-20: CA14, CA17: remover o último vínculo de gestão e desativar encerram todas as sessões; remover outro vínculo de gestão não")
     void sessionsEndWithManagementLinkOrAccount() {
         var staff = new AuditActor(AuditActor.Type.ACCOUNT, coordinatorAccount, "COORDINATOR");
         UUID person = accounts.provision("m@x.com", "M", null, "Abcdefg1");

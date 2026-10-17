@@ -16,7 +16,7 @@ class InviteRulesTest {
     Inviter teacher = new Inviter(UUID.randomUUID(), Role.TEACHER, Set.of(mine));
 
     @Test
-    @DisplayName("CA3: cascata Coordenador, Administrador, Professor e sistema")
+    @DisplayName("RN-ACE-05: CA3: cascata Coordenador, Administrador, Professor e sistema")
     void cascade() {
         assertThat(InviteRules.allowed(coordinator, Role.ADMINISTRATOR, Set.of())).isTrue();
         assertThat(InviteRules.allowed(coordinator, Role.COORDINATOR, Set.of())).isFalse();
@@ -33,7 +33,7 @@ class InviteRulesTest {
     }
 
     @Test
-    @DisplayName("CA4: 17 anos e 364 dias é menor; 18 anos completos é maior")
+    @DisplayName("RN-ACE-06: CA4: 17 anos e 364 dias é menor; 18 anos completos é maior")
     void adulthood() {
         LocalDate today = LocalDate.of(2026, 10, 17);
         assertThat(InviteRules.adult(LocalDate.of(2008, 10, 18), today)).isFalse();

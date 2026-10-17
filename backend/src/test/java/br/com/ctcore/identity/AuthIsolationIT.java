@@ -52,7 +52,7 @@ class AuthIsolationIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA8: cada perfil com dois vínculos escolhe o próprio e passa a ter o papel dele; vínculo de outro perfil de outra conta dá 404")
+    @DisplayName("RN-ACE-03: CA8: cada perfil com dois vínculos escolhe o próprio e passa a ter o papel dele; vínculo de outro perfil de outra conta dá 404")
     void everyRoleChoosesOwnLink() throws Exception {
         UUID orgA = org("Alfa"), orgB = org("Beta"), orgC = org("Gama");
         UUID stranger = link(account("stranger@x.com"), orgC, "ADMINISTRATOR", "ACTIVE");
@@ -73,7 +73,7 @@ class AuthIsolationIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA16: sessão encerrada de uma conta não alcança a outra; a troca de senha de A não toca a sessão de B")
+    @DisplayName("RN-ACE-20: CA16: sessão encerrada de uma conta não alcança a outra; a troca de senha de A não toca a sessão de B")
     void passwordChangeDoesNotTouchOthers() throws Exception {
         UUID orgA = org(), orgB = org();
         link(account("a@x.com"), orgA, "ADMINISTRATOR", "ACTIVE");
@@ -114,7 +114,7 @@ class AuthIsolationIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA13, CA14: a recuperação de A não toca a conta, as sessões nem a auditoria de B, o link de A não vale para B, e qualquer perfil logado vê o mesmo")
+    @DisplayName("RN-ACE-14: CA13, CA14: a recuperação de A não toca a conta, as sessões nem a auditoria de B, o link de A não vale para B, e qualquer perfil logado vê o mesmo")
     void passwordResetStaysWithTheAccount() throws Exception {
         UUID orgA = org(), orgB = org();
         UUID a = account("a@x.com"), b = account("b@x.com");
@@ -135,7 +135,7 @@ class AuthIsolationIT extends AuthBase {
             String email = "p" + n++ + "@x.com";
             link(account(email), orgA, role, "ACTIVE");
             Cookie c = sessionOf(email);
-            MvcResult r = post("/api/v1/auth/password-reset", Map.of("email", "ghost@x.com", "challengeToken", "t"), c).andReturn();
+            MvcResult r = post("/api/v1/auth/password-reset", Map.of("email", "ghost" + n + "@x.com", "challengeToken", "t"), c).andReturn();
             assertThat(body(r).toString()).isEqualTo(anon).doesNotContain("a@x.com", "b@x.com", orgA.toString(), orgB.toString());
             assertThat(shape(post("/api/v1/auth/password-reset/nao-existe", Map.of("password", "Novasenha1"), c).andReturn()))
                     .startsWith("410|RESET_LINK_INVALID").doesNotContain("a@x.com", "b@x.com", orgA.toString(), orgB.toString());
@@ -160,7 +160,7 @@ class AuthIsolationIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA5: o login de A não altera o último acesso de B")
+    @DisplayName("RF-ACE-07: CA5: o login de A não altera o último acesso de B")
     void lastAccessStaysWithTheAccount() throws Exception {
         UUID org = org();
         UUID a = account("a@x.com"), b = account("b@x.com");

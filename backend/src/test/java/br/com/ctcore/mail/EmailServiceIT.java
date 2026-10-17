@@ -133,7 +133,7 @@ class EmailServiceIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA1: sender que lança exceção não derruba send; linha PENDING com attempts=1 e last_error sem endereço")
+    @DisplayName("RNF-14: CA1: sender que lança exceção não derruba send; linha PENDING com attempts=1 e last_error sem endereço")
     void failureKeepsPending() {
         sender.mode = "throw";
         UUID id = service.send("ana@x.com", EmailTemplate.PASSWORD_CHANGED);
@@ -157,7 +157,7 @@ class EmailServiceIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA3: reenvio só depois de next_attempt_at; a 5ª falha deixa FAILED; sucesso no meio deixa SENT")
+    @DisplayName("RNF-14: CA3: reenvio só depois de next_attempt_at; a 5ª falha deixa FAILED; sucesso no meio deixa SENT")
     void retries() {
         sender.mode = "notsent";
         UUID id = service.send("ana@x.com", EmailTemplate.PASSWORD_CHANGED);

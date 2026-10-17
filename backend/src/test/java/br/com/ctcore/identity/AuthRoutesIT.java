@@ -31,7 +31,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA2: não existe rota que crie conta; login com e-mail desconhecido não cria conta")
+    @DisplayName("RN-ACE-04: CA2: não existe rota que crie conta; login com e-mail desconhecido não cria conta")
     void noRegistration() throws Exception {
         long before = count("select count(*) from account");
         post("/api/v1/auth/register", Map.of("email", "x@x.com", "password", PASSWORD), null).andReturn();
@@ -42,7 +42,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA13, CA15: cookie SESSION sem Max-Age, só o hash no banco, 12 horas para gestão, 30 dias para portal, logout")
+    @DisplayName("RN-ACE-19: CA13, CA15: cookie SESSION sem Max-Age, só o hash no banco, 12 horas para gestão, 30 dias para portal, logout")
     void sessionLifetime() throws Exception {
         UUID org = org();
         UUID mgr = account("mgr@x.com"), stu = account("stu@x.com");
@@ -87,7 +87,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA15, CA16: com dois vínculos o ativo fica vazio e a rota de organização dá 403 até escolher; vínculo alheio dá 404")
+    @DisplayName("RN-ACE-03: CA15, CA16: com dois vínculos o ativo fica vazio e a rota de organização dá 403 até escolher; vínculo alheio dá 404")
     void linkChoice() throws Exception {
         UUID orgA = org(), orgB = org(), orgC = org();
         UUID multi = account("multi@x.com"), other = account("other@x.com");
@@ -114,7 +114,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA6, CA7, CA9, CA14: nome da organização em login, sessão e escolha; vínculo encerrado dá 404; outra sessão intacta; sem auditoria")
+    @DisplayName("RN-ACE-03: CA6, CA7, CA9, CA14: nome da organização em login, sessão e escolha; vínculo encerrado dá 404; outra sessão intacta; sem auditoria")
     void linkChoiceNamesIsolationAndNoAudit() throws Exception {
         UUID orgA = org("Academia Alfa"), orgB = org("Academia Beta"), orgC = org("Academia Gama");
         UUID multi = account("multi@x.com"), other = account("other@x.com");
@@ -147,7 +147,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA10, CA11: senha errada, e-mail inexistente, convite não aceito e conta desativada dão resposta idêntica")
+    @DisplayName("RN-ACE-11, RN-ACE-12: CA10, CA11: senha errada, e-mail inexistente, convite não aceito e conta desativada dão resposta idêntica")
     void identicalLoginFailures() throws Exception {
         UUID org = org();
         UUID ok = account("ok@x.com"), off = account("off@x.com");
@@ -165,7 +165,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA9: 5 erros travam por 15 minutos (também e-mail inexistente), IP limita, desafio recusado não conta, tudo registrado")
+    @DisplayName("RN-ACE-10: CA9: 5 erros travam por 15 minutos (também e-mail inexistente), IP limita, desafio recusado não conta, tudo registrado")
     void lockout() throws Exception {
         UUID org = org();
         link(account("ana@x.com"), org, "ADMINISTRATOR", "ACTIVE");
@@ -198,7 +198,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA8, CA14, CA17: trocar a senha logado encerra a outra sessão, mantém esta, avisa por e-mail e audita sem a senha")
+    @DisplayName("RN-ACE-20: CA8, CA14, CA17: trocar a senha logado encerra a outra sessão, mantém esta, avisa por e-mail e audita sem a senha")
     void changePassword() throws Exception {
         UUID org = org();
         UUID ana = account("ana@x.com");
@@ -231,7 +231,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA10, CA12, CA14: recuperação com a mesma resposta, novo pedido cancela o anterior, senha fraca não consome, uso único e sessão iniciada")
+    @DisplayName("RN-ACE-11, RN-ACE-14: CA10, CA12, CA14: recuperação com a mesma resposta, novo pedido cancela o anterior, senha fraca não consome, uso único e sessão iniciada")
     void passwordReset() throws Exception {
         UUID org = org();
         UUID ana = account("ana@x.com"), off = account("off@x.com");
@@ -275,7 +275,24 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA4, CA5: conta desativada não recebe e-mail; o link vale até 1 hora exata e 1 hora cravada já é 410")
+    @DisplayName("RN-ACE-10: o 6º pedido de link em 15 minutos devolve 429, igual para e-mail existente ou não; passada a janela volta a valer")
+    void resetRequestsAreLimited() throws Exception {
+        UUID org = org();
+        link(account("ana@x.com"), org, "ADMINISTRATOR", "ACTIVE");
+        for (String email : new String[]{"ana@x.com", "ghost@x.com"}) {
+            for (int i = 0; i < 5; i++) {
+                assertThat(post("/api/v1/auth/password-reset", Map.of("email", email, "challengeToken", "t"), null).andReturn().getResponse().getStatus()).isEqualTo(200);
+            }
+        }
+        String a = shape(post("/api/v1/auth/password-reset", Map.of("email", "ana@x.com", "challengeToken", "t"), null).andReturn());
+        String g = shape(post("/api/v1/auth/password-reset", Map.of("email", "ghost@x.com", "challengeToken", "t"), null).andReturn());
+        assertThat(a).startsWith("429|TOO_MANY_REQUESTS").isEqualTo(g);
+        clock.now = clock.now.plus(Duration.ofMinutes(16));
+        assertThat(post("/api/v1/auth/password-reset", Map.of("email", "ana@x.com", "challengeToken", "t"), null).andReturn().getResponse().getStatus()).isEqualTo(200);
+    }
+
+    @Test
+    @DisplayName("RN-ACE-14: CA4, CA5: conta desativada não recebe e-mail; o link vale até 1 hora exata e 1 hora cravada já é 410")
     void resetLinkBoundary() throws Exception {
         UUID org = org();
         link(account("ana@x.com"), org, "ADMINISTRATOR", "ACTIVE");
@@ -294,7 +311,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA12: conta com convite pendente recebe o convite de novo, não o link de senha")
+    @DisplayName("RN-ACE-14: CA12: conta com convite pendente recebe o convite de novo, não o link de senha")
     void pendingInviteGetsInviteAgain() throws Exception {
         UUID org = org();
         UUID coordinator = account("coord@x.com");
@@ -310,7 +327,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA5, CA6: aceite pelas rotas: conta nova define senha e entra; usado, cancelado, vencido e desconhecido dão INVITE_INVALID")
+    @DisplayName("RN-ACE-13: CA5, CA6: aceite pelas rotas: conta nova define senha e entra; usado, cancelado, vencido e desconhecido dão INVITE_INVALID")
     void acceptInvite() throws Exception {
         UUID org = org();
         Inviter coordinator = new Inviter(account("coord@x.com"), Role.COORDINATOR, Set.of());
@@ -343,7 +360,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA5: e-mail já cadastrado aceita com a senha atual; senha errada não ativa e conta como falha")
+    @DisplayName("RN-ACE-07: CA5: e-mail já cadastrado aceita com a senha atual; senha errada não ativa e conta como falha")
     void acceptWithExistingAccount() throws Exception {
         UUID orgA = org(), orgB = org();
         UUID ana = account("ana@x.com");
@@ -372,7 +389,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA1, CA2, CA4: último acesso nulo até o primeiro login, avança a cada login e não muda em login recusado")
+    @DisplayName("RF-ACE-07: CA1, CA2, CA4: último acesso nulo até o primeiro login, avança a cada login e não muda em login recusado")
     void lastAccess() throws Exception {
         UUID org = org();
         UUID ana = account("ana@x.com"), off = account("off@x.com");
@@ -402,7 +419,7 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("CA3: aceite de convite e redefinição de senha que abrem sessão preenchem o último acesso")
+    @DisplayName("RF-ACE-07: CA3: aceite de convite e redefinição de senha que abrem sessão preenchem o último acesso")
     void lastAccessOnInviteAndReset() throws Exception {
         UUID org = org();
         Inviter coordinator = new Inviter(account("coord@x.com"), Role.COORDINATOR, Set.of());

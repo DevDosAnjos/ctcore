@@ -11,7 +11,7 @@ class PasswordPolicyTest {
     private final PasswordPolicy policy = new PasswordPolicy();
 
     @Test
-    @DisplayName("CA7: sem maiúscula, sem número e curta são fracas")
+    @DisplayName("RN-ACE-08: CA7: sem maiúscula, sem número e curta são fracas")
     void weak() {
         assertThat(policy.check("abcdefg1")).isEqualTo(Violation.WEAK);
         assertThat(policy.check("Abcdefgh")).isEqualTo(Violation.WEAK);
@@ -21,21 +21,21 @@ class PasswordPolicyTest {
     }
 
     @Test
-    @DisplayName("CA7: senha da lista de vazadas é recusada, ignorando maiúsculas")
+    @DisplayName("RN-ACE-08: CA7: senha da lista de vazadas é recusada, ignorando maiúsculas")
     void leaked() {
         assertThat(policy.check("Password1")).isEqualTo(Violation.LEAKED);
         assertThat(policy.check("PASSWORD123")).isEqualTo(Violation.LEAKED);
     }
 
     @Test
-    @DisplayName("CA7: 8 caracteres com número e maiúscula passam, sem símbolo")
+    @DisplayName("RN-ACE-08: CA7: 8 caracteres com número e maiúscula passam, sem símbolo")
     void accepted() {
         assertThat(policy.check("Abcdefg1")).isNull();
         assertThat(policy.check("Ação12345")).isNull();
     }
 
     @Test
-    @DisplayName("CA8: a senha é guardada com Argon2id")
+    @DisplayName("RN-ACE-09: CA8: a senha é guardada com Argon2id")
     void storedAsArgon2id() {
         assertThat(new SecurityConfig().passwordEncoder().encode("Abcdefg1")).startsWith("$argon2id$");
     }
