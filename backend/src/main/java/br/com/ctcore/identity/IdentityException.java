@@ -4,7 +4,8 @@ package br.com.ctcore.identity;
 public class IdentityException extends RuntimeException {
     public enum Code { MINOR_HAS_NO_ACCOUNT, INVITE_INVALID, TOO_MANY_REQUESTS, INVALID_CREDENTIALS,
         PASSWORD_WEAK, PASSWORD_LEAKED, ALREADY_LINKED,
-        CHALLENGE_FAILED, RESET_INVALID, LINK_NOT_FOUND }
+        CHALLENGE_FAILED, RESET_INVALID, LINK_NOT_FOUND,
+        INVALID_TWO_FACTOR_CODE, TWO_FACTOR_TICKET_INVALID, REAUTH_REQUIRED, TWO_FACTOR_STATE }
 
     private final Code code;
     private final String detail;

@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthService {
     static final Duration RESET_VALIDITY = Duration.ofHours(1);
+    static final Duration TICKET_VALIDITY = Duration.ofMinutes(5);
+    static final int TICKET_MAX_FAILURES = 5;
 
     private record Found(UUID id, String email, String hash, String status) {}
 
@@ -35,13 +37,16 @@ public class AuthService {
     private final AccountMailer mailer;
     private final AccountAudit audit;
     private final MessageSource messages;
+    private final TwoFactorService twoFactor;
     private final Clock clock;
     /** Hash of nothing: the login runs Argon2 against it when the account does not exist, so time does not tell. */
     private final String fakeHash;
 
     public AuthService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, LoginAttempts attempts,
             ChallengeVerifier challenge, PasswordEncoder encoder, PasswordPolicy policy, SessionService sessions,
-            InviteService invites, AccountMailer mailer, AccountAudit audit, MessageSource messages, Clock clock) {
+            InviteService invites, AccountMailer mailer, AccountAudit audit, MessageSource messages, TwoFactorService twoFactor,
+            Clock clock) {
+        this.twoFactor = twoFactor;
         this.jdbc = jdbc;
         this.accountTx = accountTx;
         this.attempts = attempts;
@@ -83,7 +88,7 @@ public class AuthService {
     }
 
     /** One answer for every failure: wrong password, unknown e-mail, pending invite, deactivated account. */
-    public SessionService.Created login(String email, String password, String challengeToken, String ip, String device) {
+    public LoginOutcome login(String email, String password, String challengeToken, String ip, String device) {
         requireChallenge(email, ip, challengeToken);
         switch (attempts.check(email, ip)) {
             case EMAIL_LOCKED -> {
@@ -103,8 +108,69 @@ public class AuthService {
             attempts.record(email, ip, Result.WRONG_PASSWORD);
             throw new IdentityException(Code.INVALID_CREDENTIALS, null);
         }
+        if (twoFactor.enabled(account.id())) {
+            // Password right, but no session yet and no SUCCESS (it would reset the failure streak the code attempts feed).
+            return new LoginOutcome(null, newTicket(account.id()));
+        }
         attempts.record(email, ip, Result.SUCCESS);
-        return sessions.create(account.id(), ip, device);
+        return new LoginOutcome(sessions.create(account.id(), ip, device), null);
+    }
+
+    /** Either a session or, when the account has two-step on, a ticket for the second step (RN-ACE-17). */
+    public record LoginOutcome(SessionService.Created session, String ticket) {}
+
+    private String newTicket(UUID accountId) {
+        String ticket = Codes.random();
+        accountTx.forAccount(accountId, () -> jdbc.sql(
+                "insert into login_ticket (account_id, token_hash, expires_at, created_at) values (:a, :h, :exp, :now)")
+                .param("a", accountId).param("h", Codes.hash(ticket)).param("exp", now().plus(TICKET_VALIDITY)).param("now", now())
+                .update());
+        return ticket;
+    }
+
+    private record Ticket(UUID id, UUID accountId, String email, boolean usable, int failed) {}
+
+    /** Second step: the ticket plus a TOTP or backup code. One answer for wrong, used or expired code (R6). */
+    public SessionService.Created loginSecondFactor(String ticketValue, String code, String ip, String device) {
+        String hash = Codes.hash(ticketValue);
+        Ticket ticket = accountTx.forInvite(hash, () -> jdbc.sql(
+                "select t.id, t.account_id, a.email, (t.used_at is null and t.expires_at > :now and a.status = 'ACTIVE'), t.failed_attempts "
+                + "from login_ticket t join account a on a.id = t.account_id where t.token_hash = :h")
+                .param("now", now()).param("h", hash)
+                .query((rs, n) -> new Ticket(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3),
+                        rs.getBoolean(4), rs.getInt(5)))
+                .optional().orElse(null));
+        String email = ticket == null ? "" : ticket.email();
+        switch (attempts.check(email, ip)) {
+            case EMAIL_LOCKED -> {
+                attempts.record(email, ip, Result.LOCKED);
+                throw new IdentityException(Code.TOO_MANY_REQUESTS, null);
+            }
+            case IP_LIMITED -> {
+                attempts.record(email, ip, Result.IP_LIMITED);
+                throw new IdentityException(Code.TOO_MANY_REQUESTS, null);
+            }
+            default -> { }
+        }
+        if (ticket == null || !ticket.usable()) {
+            throw new IdentityException(Code.TWO_FACTOR_TICKET_INVALID, null);
+        }
+        if (!twoFactor.verify(ticket.accountId(), code, ip)) {
+            attempts.record(email, ip, Result.WRONG_CODE);
+            accountTx.forAccount(ticket.accountId(), () -> jdbc.sql(
+                    "update login_ticket set failed_attempts = failed_attempts + 1, "
+                    + "used_at = case when failed_attempts + 1 >= :max then :now else used_at end where id = :id")
+                    .param("max", TICKET_MAX_FAILURES).param("now", now()).param("id", ticket.id()).update());
+            throw new IdentityException(Code.INVALID_TWO_FACTOR_CODE, null);
+        }
+        int consumed = accountTx.forAccount(ticket.accountId(), () -> jdbc.sql(
+                "update login_ticket set used_at = :now where id = :id and used_at is null and expires_at > :now")
+                .param("now", now()).param("id", ticket.id()).update());
+        if (consumed == 0) {
+            throw new IdentityException(Code.TWO_FACTOR_TICKET_INVALID, null);
+        }
+        attempts.record(email, ip, Result.SUCCESS);
+        return sessions.create(ticket.accountId(), ip, device);
     }
 
     /** Same silent outcome for any e-mail (RN-ACE-11); only the work behind differs. */

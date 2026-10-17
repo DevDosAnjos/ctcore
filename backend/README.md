@@ -36,6 +36,7 @@ Os padrões servem ao ambiente local de `../infra/` (valores de desenvolvimento,
 | `DB_RUNTIME_PASSWORD` | `ctcore_app_dev` |
 | `DB_MIGRATION_USER` | valor de `POSTGRES_USER` |
 | `DB_MIGRATION_PASSWORD` | valor de `POSTGRES_PASSWORD` |
+| `TWO_FACTOR_ENCRYPTION_KEY` | sem padrão; só o perfil `local` traz uma chave fixa de desenvolvimento |
 
 Antes de iniciar a aplicação ou sua imagem, execute `bash infra/scripts/prepare-runtime-db.sh` da raiz, com PostgreSQL do compose ativo. O script é idempotente e funciona com volumes existentes, sem apagá-los; cria runtime sem superusuário/BYPASSRLS, propriedade ou associação administrativa, e prepara grants existentes e futuros. Ao personalizar credenciais, exporte as variáveis para o script e o Java; este não carrega `infra/.env`. Para a imagem, passe as mesmas variáveis com `docker run -e`. O seed continua administrativo e idempotente.
 
@@ -176,3 +177,7 @@ Cada conexão externa é uma interface em `br.com.ctcore.integration`; nenhuma r
 ## Imagem Docker
 
 `docker build -t ctcore-backend backend` (Dockerfile multi-stage, jar sem testes, JRE 21, usuário sem privilégio). Sobe só com variáveis de ambiente: `docker run --rm -e DB_HOST=host.docker.internal -p 8080:8080 -p 8081:8081 ctcore-backend` com o PostgreSQL do compose no ar. A API fica em `8080`; `/actuator/health` e `/actuator/health/readiness` ficam na porta de gestão `8081` (D8), que não deve ser publicada para a internet. O CI constrói esta imagem quando a etapa `backend` roda. Publicação: README da raiz.
+
+### Chave das duas etapas
+
+`TWO_FACTOR_ENCRYPTION_KEY` é a chave AES-256 (base64 de 32 bytes, ex.: `openssl rand -base64 32`) que criptografa o segredo das duas etapas. Fora do perfil `local` a aplicação não sobe sem ela. Perder ou trocar a chave invalida todos os segredos guardados: as contas com duas etapas deixam de conseguir o segundo passo e precisam do desbloqueio do suporte. Guarde-a como as demais credenciais.

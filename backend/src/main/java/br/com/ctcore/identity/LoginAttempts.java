@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 /** RN-ACE-10: every attempt goes to login_attempt; N wrong passwords in a row lock the e-mail, many failures lock the IP (D4). */
 @Component
 public class LoginAttempts {
-    public enum Result { SUCCESS, WRONG_PASSWORD, LOCKED, IP_LIMITED, CHALLENGE_FAILED, RESET_REQUEST }
+    public enum Result { SUCCESS, WRONG_PASSWORD, LOCKED, IP_LIMITED, CHALLENGE_FAILED, RESET_REQUEST, WRONG_CODE }
     public enum Status { OPEN, EMAIL_LOCKED, IP_LIMITED }
 
     /** One password verdict (success or wrong password), used to decide the lock. */
@@ -54,8 +54,8 @@ public class LoginAttempts {
     /** Same answer for any e-mail, existing or not: the lock only looks at attempts. */
     public Status check(String email, String ip) {
         Instant now = clock.instant();
-        List<Verdict> latest = jdbc.sql("select occurred_at, result = 'WRONG_PASSWORD' as failure from login_attempt "
-                + "where email = :email and result in ('SUCCESS', 'WRONG_PASSWORD') "
+        List<Verdict> latest = jdbc.sql("select occurred_at, result <> 'SUCCESS' as failure from login_attempt "
+                + "where email = :email and result in ('SUCCESS', 'WRONG_PASSWORD', 'WRONG_CODE') "
                 + "order by occurred_at desc, id desc limit :max")
                 .param("email", normalize(email)).param("max", maxFailures)
                 .query((rs, n) -> new Verdict(rs.getObject("occurred_at", OffsetDateTime.class).toInstant(), rs.getBoolean("failure")))
@@ -64,7 +64,7 @@ public class LoginAttempts {
             return Status.EMAIL_LOCKED;
         }
         if (ip != null) {
-            Long failures = jdbc.sql("select count(*) from login_attempt where ip = :ip and result = 'WRONG_PASSWORD' "
+            Long failures = jdbc.sql("select count(*) from login_attempt where ip = :ip and result in ('WRONG_PASSWORD', 'WRONG_CODE') "
                     + "and occurred_at > :since")
                     .param("ip", ip).param("since", OffsetDateTime.ofInstant(now.minus(window), ZoneOffset.UTC))
                     .query(Long.class).single();

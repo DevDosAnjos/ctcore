@@ -34,7 +34,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 24 | RF-ACE-07 · Registrar o último acesso a cada login | issue #24 | Sprint 02 | — | agente | feito |
 | 25 | RF-ACE-08 · Tela de área indisponível para o perfil | issue #25 | Sprint 02 | — | agente | feito |
 | 231 | Limites de tempo (timeout) nos jobs do CI | issue #231 | Sprint 02 | — | agente | feito |
-| 26 | Duas etapas (TOTP), códigos de reserva e senha nas ações críticas | issue #26 | Sprint 03 | — | agente | a fazer |
+| 26 | Duas etapas (TOTP), códigos de reserva e senha nas ações críticas | issue #26 | Sprint 03 | — | agente | feito |
 | 27 | Tabela de permissões aplicada no servidor | issue #27 | Sprint 03 | — | agente | a fazer |
 | 28 | RF-ORG-01 · Configurações › Organização | issue #28 | Sprint 03 | — | agente | a fazer |
 | 29 | RF-ORG-02 · Configurações › Unidades (lista) | issue #29 | Sprint 03 | — | agente | a fazer |

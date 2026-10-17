@@ -9,6 +9,7 @@ import { safeNext } from "./safeNext";
 import { useSession, type SessionView } from "./SessionProvider";
 import { SupportContact, platformContact } from "./SupportContact";
 import { Turnstile } from "./Turnstile";
+import { TwoFactorStep } from "./TwoFactorStep";
 
 const input = "min-h-11 w-full rounded-md border bg-background px-2";
 
@@ -25,6 +26,7 @@ export function LoginPage() {
   const [failed, setFailed] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
+  const [ticket, setTicket] = useState<string | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
   if (state.status === "ready") return <Navigate to={safeNext(params.get("next"))} replace />;
@@ -43,7 +45,11 @@ export function LoginPage() {
     setSending(true);
     try {
       const body = { email: email.trim(), password, ...(token ? { challengeToken: token } : {}) };
-      setSession(await api<SessionView>("/auth/login", { method: "POST", body }));
+      const res = await api<SessionView | { twoFactorRequired: true; ticket: string }>("/auth/login", { method: "POST", body });
+      if ("twoFactorRequired" in res) {
+        setTicket(res.ticket);
+        setPassword("");
+      } else setSession(res);
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
       const code = err instanceof ApiError ? err.code : "";
@@ -73,7 +79,17 @@ export function LoginPage() {
       <main className="mx-auto w-full max-w-md space-y-6 px-4 py-6">
         <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground">
           <h1 className="text-2xl font-semibold">{t("auth.title")}</h1>
-          {failed ? (
+          {ticket ? (
+            <TwoFactorStep
+              ticket={ticket}
+              onDone={setSession}
+              onBack={() => setTicket(null)}
+              onExpired={() => {
+                setTicket(null);
+                setNotice(t("twoFactor.login.expired"));
+              }}
+            />
+          ) : failed ? (
             <ErrorState onRetry={() => void submit()} />
           ) : (
             <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>

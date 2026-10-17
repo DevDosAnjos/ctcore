@@ -8,6 +8,7 @@ import { SessionProvider, type SessionView } from "./SessionProvider";
 
 const L = (id: string, role: string) => ({ id, organizationId: "o", organizationName: "Alfa", role, unitIds: [] });
 const account = { id: "a", email: "x@x.com", name: "X" };
+const off = { enabled: false, required: false };
 const TITLE = "Esta área não está disponível para o seu perfil";
 
 function Path() {
@@ -33,20 +34,20 @@ function setup(view: SessionView | Response) {
 
 describe("RequireArea", () => {
   it("CA2: professor vê a tela, a URL não muda e o conteúdo não renderiza", async () => {
-    setup({ account, links: [L("l1", "TEACHER")], activeLinkId: "l1" });
+    setup({ account, links: [L("l1", "TEACHER")], activeLinkId: "l1", twoFactor: off });
     expect(await screen.findByRole("heading", { name: TITLE })).toBeInTheDocument();
     expect(screen.getByTestId("path")).toHaveTextContent("/financeiro");
     expect(screen.queryByText("conteudo protegido")).not.toBeInTheDocument();
   });
 
   it("CA3: administrador vê o conteúdo", async () => {
-    setup({ account, links: [L("l1", "ADMINISTRATOR")], activeLinkId: "l1" });
+    setup({ account, links: [L("l1", "ADMINISTRATOR")], activeLinkId: "l1", twoFactor: off });
     expect(await screen.findByText("conteudo protegido")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: TITLE })).not.toBeInTheDocument();
   });
 
   it("CA4: sem vínculo ativo nega", async () => {
-    setup({ account, links: [L("l1", "ADMINISTRATOR")], activeLinkId: null });
+    setup({ account, links: [L("l1", "ADMINISTRATOR")], activeLinkId: null, twoFactor: off });
     expect(await screen.findByRole("heading", { name: TITLE })).toBeInTheDocument();
     expect(screen.queryByText("conteudo protegido")).not.toBeInTheDocument();
   });

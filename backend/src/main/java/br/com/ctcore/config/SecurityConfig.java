@@ -3,6 +3,8 @@ package br.com.ctcore.config;
 import br.com.ctcore.api.error.SecurityErrorHandlers;
 import br.com.ctcore.identity.SessionAuthenticationFilter;
 import br.com.ctcore.identity.SessionService;
+import br.com.ctcore.identity.TwoFactorGateFilter;
+import br.com.ctcore.identity.TwoFactorService;
 import br.com.ctcore.isolation.OrganizationScopeFilter;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import org.springframework.context.annotation.Lazy;
@@ -27,15 +29,16 @@ public class SecurityConfig {
     /** Tudo protegido por padrão; rotas públicas são liberadas uma a uma pelos itens que as criam; as de /api/v1/auth são da #18. */
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, SecurityErrorHandlers errors,
-            @Lazy OrganizationTransactions transactions, @Lazy JdbcClient jdbc, @Lazy SessionService sessions,
+            @Lazy OrganizationTransactions transactions, @Lazy JdbcClient jdbc, @Lazy SessionService sessions, @Lazy TwoFactorService twoFactor,
             @Value("${ctcore.security.require-https:true}") boolean requireHttps) throws Exception {
         http.addFilterBefore(new SessionAuthenticationFilter(sessions), AnonymousAuthenticationFilter.class)
+                .addFilterAfter(new TwoFactorGateFilter(twoFactor, errors), SessionAuthenticationFilter.class)
                 .addFilterAfter(new OrganizationScopeFilter(errors, transactions, jdbc), AnonymousAuthenticationFilter.class)
                 // Sessão no servidor (account_session), nunca no contêiner.
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/password-reset",
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/login/two-factor", "/api/v1/auth/password-reset",
                                 "/api/v1/auth/password-reset/*", "/api/v1/auth/invitations/*/accept").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*").permitAll()
                         .anyRequest().authenticated())

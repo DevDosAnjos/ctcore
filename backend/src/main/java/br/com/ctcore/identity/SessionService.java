@@ -24,7 +24,8 @@ public class SessionService {
     public record Created(UUID accountId, String token, UUID activeLinkId) {}
     public record AccountView(UUID id, String email, String name) {}
     public record LinkView(UUID id, UUID organizationId, String organizationName, String role, Set<UUID> unitIds) {}
-    public record SessionView(AccountView account, List<LinkView> links, UUID activeLinkId) {}
+    public record TwoFactorView(boolean enabled, boolean required) {}
+    public record SessionView(AccountView account, List<LinkView> links, UUID activeLinkId, TwoFactorView twoFactor) {}
 
     record Link(UUID id, UUID organizationId, Role role) {}
 
@@ -34,8 +35,11 @@ public class SessionService {
     private final AccountTransactions accountTx;
     private final Clock clock;
     private final NewAccessNotifier newAccess;
+    private final TwoFactorService twoFactor;
 
-    public SessionService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, Clock clock, NewAccessNotifier newAccess) {
+    public SessionService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, Clock clock, NewAccessNotifier newAccess,
+            TwoFactorService twoFactor) {
+        this.twoFactor = twoFactor;
         this.newAccess = newAccess;
         this.jdbc = jdbc;
         this.accountTx = accountTx;
@@ -121,7 +125,8 @@ public class SessionService {
                     .query((rs, n) -> new AccountView(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3))).single();
             List<LinkView> links = activeLinks(accountId).stream()
                     .map(l -> new LinkView(l.id(), l.organizationId(), organizationName(l.organizationId()), l.role().name(), unitsOf(l.id()))).toList();
-            return new SessionView(account, links, activeLinkId);
+            return new SessionView(account, links, activeLinkId,
+                    new TwoFactorView(twoFactor.enabled(accountId), twoFactor.requiredFor(accountId)));
         });
     }
 

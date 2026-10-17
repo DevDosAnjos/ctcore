@@ -19,6 +19,7 @@ const session = {
     { id: "00000000-0000-0000-0000-000000000002", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "COORDINATOR", unitIds: [] },
   ],
   activeLinkId: "00000000-0000-0000-0000-000000000002" as string | null,
+  twoFactor: { enabled: false, required: false },
 };
 
 // D7: "varios@exemplo.com" tem vínculos de Gestão e Portal em duas organizações e entra sem vínculo ativo.
@@ -30,15 +31,36 @@ const many = {
     { id: "00000000-0000-0000-0000-000000000013", organizationId: "00000000-0000-0000-0000-000000000004", organizationName: "Academia Beta", role: "TEACHER", unitIds: [] },
   ],
   activeLinkId: null as string | null,
+  twoFactor: { enabled: false, required: false },
 };
-let current = session;
+
+// Duas etapas simuladas (RN-ACE-17): "duas@exemplo.com" tem as duas ligadas (login devolve bilhete);
+// "vencida@exemplo.com" recebe um bilhete que o segundo passo recusa como vencido;
+// "coord@exemplo.com" é Coordenador sem as duas etapas (configuração obrigatória).
+// Código TOTP válido: 123456; código de reserva válido: RESERVA001; "limite" dá 429.
+const withTwoFactor = (email: string, enabled: boolean, required: boolean) => ({
+  ...session,
+  account: { ...session.account, email },
+  twoFactor: { enabled, required },
+});
+const accounts: Record<string, ReturnType<typeof withTwoFactor>> = {
+  "duas@exemplo.com": withTwoFactor("duas@exemplo.com", true, true),
+  "vencida@exemplo.com": withTwoFactor("vencida@exemplo.com", true, true),
+  "coord@exemplo.com": withTwoFactor("coord@exemplo.com", false, true),
+};
+const VALID_CODES = ["123456", "RESERVA001"];
+const backupCodes = () => ({ backupCodes: Array.from({ length: 10 }, (_, i) => `RESERVA${String(i + 1).padStart(3, "0")}`) });
+let current: typeof session = session;
 
 // Sessão simulada: abre com um login bem-sucedido. Senha "errada" dá 401, "limite" dá 429.
 let loggedIn = false;
+let ticketAccount: string | null = null;
 export const resetMockSession = () => {
   loggedIn = false;
   current = session;
+  ticketAccount = null;
 };
+const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 
 // Convites simulados: "valido" (conta nova), "existente" (já tem senha), "vencido", "usado", "cancelado"; outro código é desconhecido.
 const invites: Record<string, { email: string; name: string | null; existingAccount: boolean }> = {
@@ -58,9 +80,96 @@ export const routes: Route[] = [
       const { email, password } = (await request.json()) as { email?: string; password?: string };
       if (password === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
       if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
+      const account = accounts[email ?? ""];
+      if (account?.twoFactor.enabled) {
+        ticketAccount = account.account.email;
+        return HttpResponse.json({ twoFactorRequired: true, ticket: email === "vencida@exemplo.com" ? "vencido" : "bilhete" });
+      }
       loggedIn = true;
-      current = email === many.account.email ? { ...many } : session;
+      current = account ?? (email === many.account.email ? { ...many } : session);
       return HttpResponse.json(current);
+    },
+  },
+  {
+    method: "post",
+    path: "/auth/login/two-factor",
+    resolver: async ({ request }) => {
+      const { ticket, code } = (await request.json()) as { ticket?: string; code?: string };
+      if (!ticketAccount || ticket !== "bilhete") return error(401, "TWO_FACTOR_TICKET_INVALID", "Verificação vencida.");
+      if (code === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      if (!code || !VALID_CODES.includes(code)) return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
+      loggedIn = true;
+      current = accounts[ticketAccount] ?? session;
+      ticketAccount = null;
+      return HttpResponse.json(current);
+    },
+  },
+  {
+    method: "post",
+    path: "/auth/logout",
+    resolver: () => {
+      loggedIn = false;
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    method: "post",
+    path: "/auth/two-factor/setup",
+    resolver: () =>
+      !loggedIn
+        ? unauthenticated()
+        : current.twoFactor.enabled
+          ? error(409, "CONFLICT", "As duas etapas já estão ligadas.")
+          : HttpResponse.json({ secret: "JBSWY3DPEHPK3PXP", otpauthUri: "otpauth://totp/ctcore:ana%40exemplo.com?secret=JBSWY3DPEHPK3PXP&issuer=ctcore" }),
+  },
+  {
+    method: "post",
+    path: "/auth/two-factor/enable",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const { code } = (await request.json()) as { code?: string };
+      if (code !== "123456") return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
+      current = { ...current, twoFactor: { ...current.twoFactor, enabled: true } };
+      return HttpResponse.json(backupCodes());
+    },
+  },
+  {
+    method: "delete",
+    path: "/auth/two-factor",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const { password, code } = (await request.json()) as { password?: string; code?: string };
+      if (password === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
+      if (!code || !VALID_CODES.includes(code)) return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
+      if (current.twoFactor.required) return error(403, "FORBIDDEN", "Sem permissão.");
+      current = { ...current, twoFactor: { ...current.twoFactor, enabled: false } };
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    method: "post",
+    path: "/auth/two-factor/backup-codes",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const { password, code } = (await request.json()) as { password?: string; code?: string };
+      if (password === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
+      if (!code || !VALID_CODES.includes(code)) return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
+      return HttpResponse.json(backupCodes());
+    },
+  },
+  {
+    method: "post",
+    path: "/auth/reauth",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const { action, password, code } = (await request.json()) as { action?: string; password?: string; code?: string };
+      if (!action) return error(400, "VALIDATION_ERROR", "Dados inválidos.");
+      if (password === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
+      if (current.twoFactor.enabled && (!code || !VALID_CODES.includes(code))) return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
+      return HttpResponse.json({ reauthToken: "token-de-confirmacao", expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() });
     },
   },
   {

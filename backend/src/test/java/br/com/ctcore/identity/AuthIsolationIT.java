@@ -60,6 +60,7 @@ class AuthIsolationIT extends AuthBase {
         for (String role : List.of("COORDINATOR", "ADMINISTRATOR", "TEACHER", "STUDENT", "GUARDIAN")) {
             String email = "r" + n++ + "@x.com";
             UUID acc = account(email);
+            if (role.equals("COORDINATOR")) enableTwoFactor(acc, email);
             link(acc, orgB, role.equals("STUDENT") ? "GUARDIAN" : "STUDENT", "ACTIVE");
             UUID own = link(acc, orgA, role, "ACTIVE");
             Cookie c = sessionOf(email);
@@ -133,7 +134,9 @@ class AuthIsolationIT extends AuthBase {
         int n = 0;
         for (String role : List.of("COORDINATOR", "ADMINISTRATOR", "TEACHER", "STUDENT", "GUARDIAN")) {
             String email = "p" + n++ + "@x.com";
-            link(account(email), orgA, role, "ACTIVE");
+            UUID pa = account(email);
+            if (role.equals("COORDINATOR")) enableTwoFactor(pa, email);
+            link(pa, orgA, role, "ACTIVE");
             Cookie c = sessionOf(email);
             MvcResult r = post("/api/v1/auth/password-reset", Map.of("email", "ghost" + n + "@x.com", "challengeToken", "t"), c).andReturn();
             assertThat(body(r).toString()).isEqualTo(anon).doesNotContain("a@x.com", "b@x.com", orgA.toString(), orgB.toString());

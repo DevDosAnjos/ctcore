@@ -126,6 +126,39 @@ abstract class AuthBase extends PostgresIT {
         return id;
     }
 
+
+    // ---- two-step ----
+    @Autowired SecretCipher cipher;
+    Map<String, byte[]> secrets = new java.util.HashMap<>();
+
+    /** Turns two-step on for the account (secret kept for sessionOf), as if the setup had been done. */
+    byte[] enableTwoFactor(UUID account, String email) {
+        byte[] secret = Totp.newSecret();
+        admin.update("insert into account_two_factor (account_id, secret_encrypted, enabled_at) values (?, ?, now())",
+                account, cipher.encrypt(secret));
+        secrets.put(email, secret);
+        return secret;
+    }
+
+    /** The current code; asking again in the same 30 s step would be refused, so each call moves the clock one step. */
+    String nextCode(byte[] secret) {
+        clock.now = clock.now.plusSeconds(Totp.STEP_SECONDS);
+        return Totp.code(secret, Totp.step(clock.now));
+    }
+
+    record Activated(byte[] secret, List<String> codes) {}
+
+    /** The real setup and enable routes with the session of the account. */
+    Activated activate(Cookie session, String email) throws Exception {
+        byte[] secret = Base32.decode(body(post("/api/v1/auth/two-factor/setup", null, session).andReturn()).path("secret").asText());
+        MvcResult r = post("/api/v1/auth/two-factor/enable", Map.of("code", nextCode(secret)), session).andReturn();
+        assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        secrets.put(email, secret);
+        List<String> codes = new ArrayList<>();
+        body(r).path("backupCodes").forEach(c -> codes.add(c.asText()));
+        return new Activated(secret, codes);
+    }
+
     // ---- HTTP ----
     ResultActions send(MockHttpServletRequestBuilder request, Object body, Cookie session) throws Exception {
         request.secure(true).with(csrf());
@@ -153,6 +186,10 @@ abstract class AuthBase extends PostgresIT {
     Cookie sessionOf(String email) throws Exception {
         MvcResult r = login(email, PASSWORD);
         assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        if (secrets.containsKey(email)) {
+            r = post("/api/v1/auth/login/two-factor", Map.of("ticket", body(r).path("ticket").asText(), "code", nextCode(secrets.get(email))), null).andReturn();
+            assertThat(r.getResponse().getStatus()).isEqualTo(200);
+        }
         return r.getResponse().getCookie("SESSION");
     }
 

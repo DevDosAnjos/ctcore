@@ -41,7 +41,10 @@
     "errorFailed": "Não conseguimos salvar a escolha. Tente de novo.",
     "errorGone": "Essa opção não existe mais. Atualizamos a lista; escolha de novo.",
     "areaOption": "{{area}} ({{role}})",
-    "areas": { "management": "Gestão", "portal": "Portal" },
+    "areas": {
+      "management": "Gestão",
+      "portal": "Portal"
+    },
     "roles": {
       "COORDINATOR": "Coordenador",
       "ADMINISTRATOR": "Administrador",
@@ -49,6 +52,77 @@
       "STUDENT": "Aluno",
       "GUARDIAN": "Responsável"
     }
+  },
+  "twoFactor": {
+    "login": {
+      "title": "Verificação em duas etapas",
+      "intro": "Digite o código de 6 dígitos do seu app autenticador.",
+      "introBackup": "Digite um dos seus códigos de reserva.",
+      "codeLabel": "Código do app",
+      "backupLabel": "Código de reserva",
+      "useBackup": "Usar um código de reserva",
+      "useApp": "Usar o código do app",
+      "submit": "Confirmar",
+      "sending": "Confirmando...",
+      "back": "Voltar",
+      "invalid": "Código incorreto, já usado ou vencido. Confira e tente de novo.",
+      "expired": "A verificação venceu. Entre de novo com o seu e-mail e a sua senha.",
+      "lost": "Perdeu o celular e os códigos de reserva? Abra um chamado com o suporte.",
+      "required": "Informe o código."
+    },
+    "setup": {
+      "title": "Ativar duas etapas",
+      "intro": "Leia o QR code com um app autenticador ou digite a chave no app.",
+      "qrAlt": "QR code para ativar as duas etapas",
+      "keyLabel": "Chave para digitar",
+      "codeLabel": "Código de 6 dígitos",
+      "submit": "Ativar",
+      "sending": "Ativando...",
+      "invalid": "Código incorreto. Confira o app e tente de novo.",
+      "loading": "Preparando as duas etapas...",
+      "codeRequired": "Informe o código de 6 dígitos."
+    },
+    "codes": {
+      "title": "Códigos de reserva",
+      "warning": "Guarde estes códigos num lugar seguro. Eles aparecem só desta vez e cada um vale uma única vez.",
+      "list": "Seus códigos de reserva",
+      "copy": "Copiar códigos",
+      "copied": "Códigos copiados.",
+      "download": "Baixar códigos",
+      "fileName": "codigos-de-reserva-ctcore.txt",
+      "saved": "Já guardei os códigos",
+      "done": "Concluir",
+      "regenIntro": "Para gerar códigos novos, confirme a sua senha e um código. Os códigos anteriores deixam de valer.",
+      "password": "Senha",
+      "code": "Código do app ou de reserva",
+      "submit": "Gerar códigos novos",
+      "sending": "Gerando...",
+      "invalidPassword": "Senha incorreta.",
+      "invalidCode": "Código incorreto.",
+      "required": "Preencha a senha e o código."
+    },
+    "required": {
+      "title": "Ative as duas etapas para continuar",
+      "text": "O perfil de Coordenador exige a verificação em duas etapas. Ative para usar o sistema.",
+      "activate": "Ativar duas etapas",
+      "logout": "Sair da conta"
+    },
+    "errors": {
+      "tooMany": "Muitas tentativas. Espere alguns minutos e tente de novo.",
+      "failed": "Não conseguimos concluir. Tente de novo."
+    }
+  },
+  "reauth": {
+    "title": "Confirme que é você",
+    "introPassword": "Esta ação é sensível. Confirme a sua senha para continuar.",
+    "introCode": "Esta ação é sensível. Confirme a sua senha e o código do app para continuar.",
+    "password": "Senha",
+    "code": "Código do app ou de reserva",
+    "submit": "Confirmar",
+    "sending": "Confirmando...",
+    "invalidPassword": "Senha incorreta.",
+    "invalidCode": "Código incorreto.",
+    "required": "Preencha todos os campos."
   },
   "password": {
     "label": "Senha",

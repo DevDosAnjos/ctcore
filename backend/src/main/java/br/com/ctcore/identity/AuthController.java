@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 class AuthController {
     record LoginRequest(@NotBlank String email, @NotBlank String password, String challengeToken) {}
+    record TwoFactorLoginRequest(@NotBlank String ticket, @NotBlank String code) {}
     record AcceptRequest(@NotBlank String password) {}
     record ResetRequest(@NotBlank String email, String challengeToken) {}
     record ResetBody(@NotBlank String password) {}
@@ -61,10 +62,19 @@ class AuthController {
                 .body(sessions.view(created.accountId(), created.activeLinkId()));
     }
 
+    /** 200 with the session, or 200 {twoFactorRequired, ticket} when the account has two-step on (RN-ACE-17). */
     @PostMapping("/login")
-    ResponseEntity<SessionService.SessionView> login(@Valid @RequestBody LoginRequest r, HttpServletRequest request) {
-        var created = auth.login(r.email(), r.password(), r.challengeToken(), request.getRemoteAddr(), device(request));
-        return started(created);
+    ResponseEntity<?> login(@Valid @RequestBody LoginRequest r, HttpServletRequest request) {
+        var outcome = auth.login(r.email(), r.password(), r.challengeToken(), request.getRemoteAddr(), device(request));
+        if (outcome.ticket() != null) {
+            return ResponseEntity.ok(Map.of("twoFactorRequired", true, "ticket", outcome.ticket()));
+        }
+        return started(outcome.session());
+    }
+
+    @PostMapping("/login/two-factor")
+    ResponseEntity<SessionService.SessionView> loginTwoFactor(@Valid @RequestBody TwoFactorLoginRequest r, HttpServletRequest request) {
+        return started(auth.loginSecondFactor(r.ticket(), r.code(), request.getRemoteAddr(), device(request)));
     }
 
     @PostMapping("/logout")
