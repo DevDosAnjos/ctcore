@@ -4,6 +4,28 @@
     "welcomeTitle": "Bem-vindo ao ctcore",
     "welcomeText": "Aqui você vai cuidar da sua academia. As telas chegam aos poucos."
   },
+  "auth": {
+    "title": "Entrar",
+    "email": "E-mail",
+    "password": "Senha",
+    "show": "Mostrar",
+    "hide": "Ocultar",
+    "submit": "Entrar",
+    "sending": "Entrando...",
+    "forgot": "Esqueci minha senha",
+    "errors": {
+      "emailRequired": "Informe o seu e-mail.",
+      "passwordRequired": "Informe a sua senha.",
+      "invalid": "E-mail ou senha incorretos.",
+      "tooMany": "Muitas tentativas. Espere alguns minutos e tente de novo.",
+      "challenge": "Não conseguimos confirmar que é você. Tente de novo."
+    },
+    "support": {
+      "title": "Precisa de ajuda?",
+      "email": "E-mail",
+      "phone": "Telefone"
+    }
+  },
   "theme": {
     "toDark": "Usar tema escuro",
     "toLight": "Usar tema claro"

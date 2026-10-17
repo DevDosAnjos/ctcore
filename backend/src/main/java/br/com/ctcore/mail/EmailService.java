@@ -7,6 +7,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 /**
  * RNF-14: every message is stored first, sent at once and, on failure, retried by {@link EmailRetryJob}.
@@ -53,7 +55,9 @@ public class EmailService {
     /** Stores and sends; never throws because of the sender, so the caller's operation is not undone. */
     public UUID send(String to, EmailTemplate template, Object... args) {
         String subject = messages.getMessage(template.key + ".subject", null, PT_BR);
-        String body = messages.getMessage(template.key + ".body", args, PT_BR);
+        Object[] safe = Arrays.stream(args).map(a -> HtmlUtils.htmlEscape(String.valueOf(a), "UTF-8")).toArray();
+        String body = EmailLayout.html(messages.getMessage(template.key + ".body", safe, PT_BR),
+                template.link ? (String) safe[0] : null, messages.getMessage("mail.button", null, PT_BR));
         boolean on = sender.isEnabled();
         OffsetDateTime now = now();
         UUID id = jdbc.sql("insert into email_message (to_email, template, subject, body, status, next_attempt_at, created_at) "

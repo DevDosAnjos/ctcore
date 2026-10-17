@@ -48,6 +48,10 @@ Ficam em `src/components/`; todo texto padrão vem de `pt-BR.json` e pode ser so
 - **`RelativeDate`**: `<RelativeDate value={iso} timeZone="America/Sao_Paulo" />` mostra "hoje", "ontem" e "há N dias" (até 30; depois, a data). A data e a hora exatas aparecem ao passar o mouse, focar ou tocar; Esc fecha. Valor vazio ou inválido mostra "—".
 - **`WhatsAppButton`** (`components/whatsapp/`): `<WhatsAppButton phone="(11) 91234-5678" message="Olá" />` abre `wa.me` em nova aba; `groupUrl="https://chat.whatsapp.com/..."` abre o grupo. Não renderiza sem destino válido nem quando `<WhatsAppProvider enabled={false}>` envolve a tela (padrão: ligado).
 
+## Login e sessão
+
+Rotas em `src/App.tsx` (`react-router`); `SessionProvider` carrega `GET /auth/session` e `RequireSession` manda quem não tem sessão para `/entrar?next=<caminho>`. `src/lib/api.ts` chama `/api/v1` e manda `X-XSRF-TOKEN` nos métodos que alteram dado. Variáveis (veja `.env.example`): `VITE_SUPPORT_EMAIL` e `VITE_SUPPORT_WHATSAPP` (suporte mostrado antes do login), `VITE_TURNSTILE_SITE_KEY` (sem ela, nenhum script é carregado). No `npm run dev` o MSW aceita qualquer senha, menos `errada` (401) e `limite` (429).
+
 ## Ponta a ponta
 
 Os testes ficam em `e2e/` e rodam contra `npm run dev` (MSW ligado, só Chromium). Marque com `@critical` no título o fluxo que deve rodar em todo PR; os sem a marca rodam só no PR para `main`. O relatório sai em `playwright-report/`.
