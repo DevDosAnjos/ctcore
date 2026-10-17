@@ -27,6 +27,8 @@ docker compose down -v          # para e apaga os dados (volumes)
 
 Da raiz: `docker compose -f infra/docker-compose.yml up -d --wait`. Para mudar portas ou credenciais, copie `infra/.env.example` para `infra/.env`.
 
+Antes de iniciar o back-end, execute `bash infra/scripts/prepare-runtime-db.sh` (idempotente, preserva volumes existentes). A aplicação usa `DB_RUNTIME_USER=ctcore_app` / `DB_RUNTIME_PASSWORD=ctcore_app_dev`; Flyway usa `DB_MIGRATION_USER` / `DB_MIGRATION_PASSWORD`, com fallback para `POSTGRES_USER` / `POSTGRES_PASSWORD`. Valores padrão são somente de desenvolvimento. Ao personalizar, exporte as variáveis para o script e para o Java (que não carrega `infra/.env`); para a imagem, use as mesmas variáveis com `docker run -e`. Nunca use a credencial administrativa no runtime. Detalhes: `backend/README.md`.
+
 ### Dados fictícios
 
 Com o ambiente de pé e o back-end rodado ao menos uma vez (ele aplica as migrações): `bash infra/scripts/seed.sh`. Aplica `infra/seed/*.sql` em ordem do nome, só no PostgreSQL local, sem duplicar nem sobrescrever (pode rodar de novo). Item que cria tabela acrescenta `infra/seed/NN-nome.sql` com `on conflict do nothing`. Para zerar tudo: `docker compose down -v`.
@@ -34,7 +36,7 @@ Com o ambiente de pé e o back-end rodado ao menos uma vez (ele aplica as migra�
 | Serviço | Para que serve | Endereço (só em 127.0.0.1) |
 | --- | --- | --- |
 | `postgres` | PostgreSQL 16 | `localhost:5432` · banco, usuário `ctcore`, senha `ctcore_dev` |
-| `storage` | Arquivos compatíveis com S3 (SeaweedFS) | `http://localhost:8333` · saúde em `/status` · sem autenticação, só para desenvolvimento |
+| `storage` | Arquivos compatíveis com S3 (SeaweedFS) | `http://localhost:8333` · saúde em `/status` · credenciais fictícias de desenvolvimento em `infra/storage/s3.json` |
 | `mailbox` | Caixa de e-mail falsa (Mailpit) | SMTP `localhost:1025` · interface `http://localhost:8025` |
 
 ## Front-end

@@ -4,8 +4,8 @@ spring:
   datasource:
     # Padrões iguais aos de infra/docker-compose.yml; em produção vêm só de variável de ambiente.
     url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:ctcore}
-    username: ${POSTGRES_USER:ctcore}
-    password: ${POSTGRES_PASSWORD:ctcore_dev}
+    username: ${DB_RUNTIME_USER:ctcore_app}
+    password: ${DB_RUNTIME_PASSWORD:ctcore_app_dev}
   jpa:
     open-in-view: false
     hibernate:
@@ -13,6 +13,9 @@ spring:
     properties:
       hibernate.jdbc.time_zone: UTC
   flyway:
+    url: ${spring.datasource.url}
+    user: ${DB_MIGRATION_USER:${POSTGRES_USER:ctcore}}
+    password: ${DB_MIGRATION_PASSWORD:${POSTGRES_PASSWORD:ctcore_dev}}
     validate-on-migrate: true
   jackson:
     time-zone: UTC
@@ -33,6 +36,14 @@ server:
 ctcore:
   security:
     require-https: true
+  # D5: padrões iguais aos de infra/docker-compose.yml; em produção vêm só de variável de ambiente.
+  storage:
+    endpoint: ${STORAGE_ENDPOINT:http://localhost:${STORAGE_PORT:8333}}
+    bucket: ${STORAGE_BUCKET:ctcore}
+    region: ${STORAGE_REGION:us-east-1}
+    access-key: ${STORAGE_ACCESS_KEY:dev}
+    secret-key: ${STORAGE_SECRET_KEY:dev-secret}
+    url-expiry: ${STORAGE_URL_EXPIRY:5m}
   # D2: simulated (padrão) ou off por conexão; real só depois das Sprints 22 e 23.
   integrations:
     payment:
@@ -86,6 +97,9 @@ management:
         readiness:
           include: readinessState,db
   metrics:
+    enable:
+      # disk.free/disk.total trazem o caminho de instalação como etiqueta; não expor na porta de gestão.
+      disk: false
     distribution:
       percentiles-histogram:
         http.server.requests: true

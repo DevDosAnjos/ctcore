@@ -32,6 +32,24 @@ Os padrões servem ao ambiente local de `../infra/` (valores de desenvolvimento,
 | `POSTGRES_DB` | `ctcore` |
 | `POSTGRES_USER` | `ctcore` |
 | `POSTGRES_PASSWORD` | `ctcore_dev` |
+| `DB_RUNTIME_USER` | `ctcore_app` |
+| `DB_RUNTIME_PASSWORD` | `ctcore_app_dev` |
+| `DB_MIGRATION_USER` | valor de `POSTGRES_USER` |
+| `DB_MIGRATION_PASSWORD` | valor de `POSTGRES_PASSWORD` |
+
+Antes de iniciar a aplicação ou sua imagem, execute `bash infra/scripts/prepare-runtime-db.sh` da raiz, com PostgreSQL do compose ativo. O script é idempotente e funciona com volumes existentes, sem apagá-los; cria runtime sem superusuário/BYPASSRLS, propriedade ou associação administrativa, e prepara grants existentes e futuros. Ao personalizar credenciais, exporte as variáveis para o script e o Java; este não carrega `infra/.env`. Para a imagem, passe as mesmas variáveis com `docker run -e`. O seed continua administrativo e idempotente.
+
+`isolation/OrganizationPrincipal` é o contrato da autenticação futura: organização, unidade selecionada e unidades autorizadas são verificadas pelo servidor. Headers não concedem escopo. Recursos autenticados em `/api/v1/` sem esse principal recebem 403; infraestrutura pública permanece disponível. `OrganizationContext` dura a requisição; `OrganizationTransactions` usa contexto local à transação e impede troca dentro dela. Sem escopo, leituras ficam vazias e escritas são negadas. Provisionamento interno continua sem HTTP; exposição de escritas depende da auditoria da #15.
+
+## Teste-modelo de isolamento e permissão (RNF-05, RNF-31)
+
+Toda rota nova tem teste de isolamento entre organizações e entre perfis. O molde é `isolation/RouteIsolationModelIT` (classe base, banco real, papel restrito com RLS ativa); `RouteIsolationModelExampleIT` é o exemplo funcional. Para uma rota nova:
+
+1. Crie `<Rota>IsolationIT extends RouteIsolationModelIT` e traga o controller (ou o contexto real) com `@Import`.
+2. Implemente os pontos de extensão: `read(alvo)` e `write(alvo)` (requisições com os ids do alvo na URL), `readMissing()` (ids inexistentes), `allowedRoles()` e `deniedRoles()`, `state(alvo)` (estado do recurso lido com `adminJdbc()`) e, se preciso, `secret(alvo)`. `tenant()` cria organização e unidade; `login(alvo, papel)` autentica com o principal da organização.
+3. Rode `./backend/mvnw -f backend/pom.xml verify -Dit.test=<Rota>IsolationIT`.
+
+O que cada cenário prova: leitura cruzada (A lê id da B: mesma resposta de id inexistente e nenhum dado da B); alteração cruzada (A altera B: negado e B inalterada); anônimo 401 e sem organização 403, sem efeito; perfil negado 403 sem gravação; perfil permitido grava só na própria organização; `X-Organization-Id` e `organizationId` forjados não mudam o resultado. Os papéis do exemplo são sintéticos até as permissões reais (#27): então só o ponto de extensão dos papéis muda. Retirar o `@PreAuthorize`, o filtro ou a RLS deve fazer um cenário falhar (o exemplo mostra o caso sem `@PreAuthorize`).
 
 ## Padrões que todo item segue
 
@@ -83,6 +101,31 @@ featureFlags.setEnabled(organizationId, ONLINE_PAYMENT, true); // só a rota do 
 | `/actuator/prometheus` | métricas em formato Prometheus: `http_server_requests_seconds_*` (erros por `status`, lentidão por `_bucket`), JVM e pool de conexões |
 
 **Métricas de negócio** (`monitoring/OperationalMetrics`, valem 0 até alguém chamar). Injete o bean e chame: `emailQueue(long pendentes)` informa a fila de e-mail (`ctcore_email_queue_pending`); `webhookFailed()` conta uma falha de webhook (`ctcore_webhook_failures_total`). Nunca ponha dado pessoal em nome ou rótulo de métrica.
+
+## Auditoria (RN-AUD-01 a RN-AUD-03)
+
+`audit/AuditService.record(AuditEntry)` é o único caminho de gravação de `audit_log`. Toda operação que altera dado chama o serviço **dentro da mesma transação** (`OrganizationTransactions.execute`): se a operação desfaz, o registro desfaz; sem transação aberta o serviço lança erro. A organização vem de `OrganizationContext` (nunca de parâmetro); só autor `PLATFORM_SUPPORT` ou `PLATFORM_OWNER` grava sem organização.
+
+```java
+audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, accountId, "ADMIN"),
+        "student.update", "student", id, unitId, before, after, motivo, ip));
+```
+
+Passe o objeto inteiro em `before`/`after`: o serviço guarda só os campos alterados (criação: só `after`; exclusão: só `before`) e remove chaves de senha, token, segredo, chave de API e cartão em qualquer nível (`AuditSanitizer`; chave nova e sensível exige acrescentar a regra e o teste). A tabela é só de inclusão (gatilho recusa update, delete e truncate, também para o usuário de migração) e tem row-level security. O log técnico traz só ação, entidade e id.
+
+## Arquivos por organização (RN-ORG-03)
+
+Para guardar ou entregar um arquivo, injete `storage/FileStorage` e chame `put(nome, bytes, contentType)`, `readUrl(nome)` (URL assinada que expira em 5 minutos) ou `delete(nome)`. A organização vem só do `OrganizationContext`; o objeto fica em `org/<organizationId>/<nome>`. O nome é relativo à pasta (sem `/`, `\`, `..`, controle; até 200 caracteres) e arquivo vazio ou acima de 5 MB é recusado. Outra organização não encontra o arquivo (`FileStorage.NotFound`) e, sem organização no contexto, tudo é negado. Não há URL pública permanente: guarde só o nome e gere a URL a cada leitura.
+
+| Propriedade (`ctcore.storage.*`) | Variável | Padrão (compose) |
+| --- | --- | --- |
+| `endpoint` | `STORAGE_ENDPOINT` | `http://localhost:${STORAGE_PORT:8333}` |
+| `bucket` | `STORAGE_BUCKET` | `ctcore` |
+| `region` | `STORAGE_REGION` | `us-east-1` |
+| `access-key` / `secret-key` | `STORAGE_ACCESS_KEY` / `STORAGE_SECRET_KEY` | `dev` / `dev-secret` (fictícios; credenciais em `infra/storage/s3.json`) |
+| `url-expiry` | `STORAGE_URL_EXPIRY` | `5m` |
+
+O bucket é criado ao subir; se o armazenamento estiver fora do ar, a aplicação sobe e registra um aviso.
 
 ## Conexões externas (portas e versões simuladas)
 

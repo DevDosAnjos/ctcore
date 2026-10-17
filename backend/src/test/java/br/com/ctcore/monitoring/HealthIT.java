@@ -24,13 +24,21 @@ class HealthIT {
 
     static {
         DB.start();
+        var admin = new org.springframework.jdbc.core.JdbcTemplate(new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                DB.getJdbcUrl(), DB.getUsername(), DB.getPassword()));
+        admin.execute("create role ctcore_app login password 'synthetic_runtime' nosuperuser nobypassrls");
+        admin.execute("grant usage on schema public to ctcore_app");
+        admin.execute("alter default privileges in schema public grant select, insert, update, delete on tables to ctcore_app");
     }
 
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", DB::getJdbcUrl);
-        registry.add("spring.datasource.username", DB::getUsername);
-        registry.add("spring.datasource.password", DB::getPassword);
+        registry.add("spring.datasource.username", () -> "ctcore_app");
+        registry.add("spring.datasource.password", () -> "synthetic_runtime");
+        registry.add("spring.flyway.url", DB::getJdbcUrl);
+        registry.add("spring.flyway.user", DB::getUsername);
+        registry.add("spring.flyway.password", DB::getPassword);
     }
 
     @Autowired TestRestTemplate rest;
