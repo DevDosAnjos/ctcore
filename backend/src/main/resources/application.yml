@@ -34,8 +34,16 @@ server:
         same-site: lax
 
 ctcore:
+  app:
+    # Base dos links enviados por e-mail (convite, nova senha).
+    base-url: ${APP_BASE_URL:http://localhost:5173}
   security:
     require-https: true
+    # D4 (#18): 5 senhas erradas seguidas travam o e-mail por 15 minutos; 20 falhas por IP na mesma janela.
+    login:
+      max-failures: 5
+      lockout: 15m
+      ip-max-failures: 20
   # D5: padrões iguais aos de infra/docker-compose.yml; em produção vêm só de variável de ambiente.
   storage:
     endpoint: ${STORAGE_ENDPOINT:http://localhost:${STORAGE_PORT:8333}}

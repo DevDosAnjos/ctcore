@@ -105,7 +105,7 @@ Cada fluxo entra na suíte na sprint que o completa e roda em todo PR dali em di
 | Fluxo | Sprint |
 | --- | --- |
 | Convite e criação de senha | 02 |
-| Troca de senha encerrando as outras sessões | 02 |
+| Troca de senha encerrando as outras sessões | 03 |
 | Login com duas etapas | 03 |
 | Matrícula com primeira cobrança | 08 |
 | Cancelamento de aula com aviso à turma | 09 |

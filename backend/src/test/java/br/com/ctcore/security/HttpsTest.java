@@ -17,7 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(properties = "ctcore.security.require-https=true")
+@WebMvcTest(controllers = br.com.ctcore.api.page.PageControllerTest.Probe.class, properties = "ctcore.security.require-https=true")
 @Import({SecurityConfig.class, SecurityErrorHandlers.class, ApiExceptionHandler.class, TraceIdFilter.class})
 class HttpsTest {
 

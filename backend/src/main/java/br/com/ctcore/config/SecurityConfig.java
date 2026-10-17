@@ -1,9 +1,13 @@
 package br.com.ctcore.config;
 
 import br.com.ctcore.api.error.SecurityErrorHandlers;
+import br.com.ctcore.identity.SessionAuthenticationFilter;
+import br.com.ctcore.identity.SessionService;
 import br.com.ctcore.isolation.OrganizationScopeFilter;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,14 +24,20 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /** Tudo protegido por padrão; rotas públicas são liberadas uma a uma pelos itens que as criam (#18). */
+    /** Tudo protegido por padrão; rotas públicas são liberadas uma a uma pelos itens que as criam; as de /api/v1/auth são da #18. */
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http, SecurityErrorHandlers errors,
-            @Lazy OrganizationTransactions transactions, @Lazy JdbcClient jdbc,
+            @Lazy OrganizationTransactions transactions, @Lazy JdbcClient jdbc, @Lazy SessionService sessions,
             @Value("${ctcore.security.require-https:true}") boolean requireHttps) throws Exception {
-        http.addFilterAfter(new OrganizationScopeFilter(errors, transactions, jdbc), AnonymousAuthenticationFilter.class)
+        http.addFilterBefore(new SessionAuthenticationFilter(sessions), AnonymousAuthenticationFilter.class)
+                .addFilterAfter(new OrganizationScopeFilter(errors, transactions, jdbc), AnonymousAuthenticationFilter.class)
+                // Sessão no servidor (account_session), nunca no contêiner.
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/password-reset",
+                                "/api/v1/auth/password-reset/*", "/api/v1/auth/invitations/*/accept").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 // D7: toda resposta garante o cookie XSRF-TOKEN; o SPA o lê e devolve em X-XSRF-TOKEN.

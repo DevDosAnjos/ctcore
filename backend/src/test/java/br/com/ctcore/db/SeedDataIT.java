@@ -32,6 +32,10 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
+        for (String table : new String[]{"login_attempt", "account_session", "password_reset", "account_invite",
+                "account_link_unit", "account_link", "account"}) {
+            jdbc.update("delete from " + table);
+        }
         jdbc.update("delete from organization_feature");
         jdbc.update("delete from unit_settings");
         jdbc.update("delete from unit");
@@ -130,6 +134,19 @@ class SeedDataIT extends PostgresIT {
             assertThat(jdbc.queryForList("select row_to_json(t)::text from " + entry.getKey() + " t order by 1", String.class))
                     .as(entry.getKey()).isEqualTo(entry.getValue());
         }
+    }
+
+    @Test
+    @DisplayName("RN-ACE-01: contas fictícias com vínculos, senha Argon2 que confere e reaplicação sem duplicar")
+    void accountsSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from account", Integer.class)).isEqualTo(5);
+        assertThat(jdbc.queryForObject("select count(*) from account_link", Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("select count(*) from account_link_unit", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from account where password_hash is null", Integer.class)).isEqualTo(1);
+        String hash = jdbc.queryForObject("select password_hash from account where email = 'coordenador@ficticia-1.example'", String.class);
+        assertThat(new br.com.ctcore.config.SecurityConfig().passwordEncoder().matches("SenhaFicticia1", hash)).isTrue();
     }
 
     @Test

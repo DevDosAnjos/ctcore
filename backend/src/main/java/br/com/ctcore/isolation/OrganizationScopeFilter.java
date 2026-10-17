@@ -33,6 +33,11 @@ public class OrganizationScopeFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
+        // Rotas de conta (/auth) valem para a conta da sessão e conferem a própria conta; não abrem contexto de organização.
+        if (path.startsWith("/api/v1/auth/")) {
+            chain.doFilter(request, response);
+            return;
+        }
         if (!(authentication.getPrincipal() instanceof OrganizationPrincipal principal)) {
             errors.handle(request, response, new AccessDeniedException("Organization scope required"));
             return;

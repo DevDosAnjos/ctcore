@@ -25,7 +25,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 15 | Teste-modelo de isolamento e permissão no servidor | issue #15 | Sprint 01 | — | agente | feito |
 | 16 | Arquivos por organização com URLs temporárias assinadas | issue #16 | Sprint 01 | — | agente | feito |
 | 17 | Serviço único de auditoria | issue #17 | Sprint 01 | — | agente | feito |
-| 18 | Conta, vínculo, sessão e convite no servidor | issue #18 | Sprint 02 | — | agente | a fazer |
+| 18 | Conta, vínculo, sessão e convite no servidor | issue #18 | Sprint 02 | — | agente | feito |
 | 19 | Serviço de envio de e-mail e e-mails de conta | issue #19 | Sprint 02 | — | agente | a fazer |
 | 20 | RF-ACE-01 · Tela de login | issue #20 | Sprint 02 | — | agente | a fazer |
 | 21 | RF-ACE-02 · Criar senha pelo convite | issue #21 | Sprint 02 | — | agente | a fazer |
