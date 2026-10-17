@@ -365,4 +365,57 @@ class AuthRoutesIT extends AuthBase {
         assertThat(body(ok).path("links")).hasSize(2);
         assertThat(body(ok).path("activeLinkId").isNull()).isTrue();
     }
+
+    private java.time.Instant lastAccess(UUID account) {
+        java.sql.Timestamp t = admin.queryForObject("select last_access_at from account where id = ?", java.sql.Timestamp.class, account);
+        return t == null ? null : t.toInstant();
+    }
+
+    @Test
+    @DisplayName("CA1, CA2, CA4: último acesso nulo até o primeiro login, avança a cada login e não muda em login recusado")
+    void lastAccess() throws Exception {
+        UUID org = org();
+        UUID ana = account("ana@x.com"), off = account("off@x.com");
+        link(ana, org, "ADMINISTRATOR", "ACTIVE");
+        link(off, org, "ADMINISTRATOR", "ACTIVE");
+        admin.update("update account set status = 'DEACTIVATED' where id = ?", off);
+        assertThat(lastAccess(ana)).isNull();
+
+        assertThat(login("ana@x.com", "Errada123").getResponse().getStatus()).isEqualTo(401);
+        assertThat(login("off@x.com", PASSWORD).getResponse().getStatus()).isEqualTo(401);
+        assertThat(lastAccess(ana)).isNull();
+        assertThat(lastAccess(off)).isNull();
+
+        java.time.Instant first = clock.now;
+        assertThat(login("ana@x.com", PASSWORD).getResponse().getStatus()).isEqualTo(200);
+        assertThat(lastAccess(ana)).isEqualTo(first);
+        clock.now = clock.now.plus(Duration.ofHours(1));
+        assertThat(login("ana@x.com", PASSWORD).getResponse().getStatus()).isEqualTo(200);
+        assertThat(lastAccess(ana)).isEqualTo(first.plus(Duration.ofHours(1)));
+
+        for (int i = 0; i < 5; i++) {
+            login("ana@x.com", "Errada123");
+        }
+        clock.now = clock.now.plus(Duration.ofMinutes(1));
+        assertThat(login("ana@x.com", PASSWORD).getResponse().getStatus()).isEqualTo(429);
+        assertThat(lastAccess(ana)).isEqualTo(first.plus(Duration.ofHours(1)));
+    }
+
+    @Test
+    @DisplayName("CA3: aceite de convite e redefinição de senha que abrem sessão preenchem o último acesso")
+    void lastAccessOnInviteAndReset() throws Exception {
+        UUID org = org();
+        Inviter coordinator = new Inviter(account("coord@x.com"), Role.COORDINATOR, Set.of());
+        var issued = invites.invite(coordinator, org, "nova@x.com", "Nova", Role.ADMINISTRATOR, Set.of(), null);
+        UUID nova = admin.queryForObject("select id from account where email = 'nova@x.com'", UUID.class);
+        assertThat(lastAccess(nova)).isNull();
+        post("/api/v1/auth/invitations/" + issued.code() + "/accept", Map.of("password", PASSWORD), null);
+        assertThat(lastAccess(nova)).isEqualTo(clock.now);
+
+        clock.now = clock.now.plus(Duration.ofDays(1));
+        post("/api/v1/auth/password-reset", Map.of("email", "nova@x.com", "challengeToken", "t"), null);
+        String code = codeIn("redefinir-senha");
+        assertThat(post("/api/v1/auth/password-reset/" + code, Map.of("password", "Novasenha1"), null).andReturn().getResponse().getStatus()).isEqualTo(200);
+        assertThat(lastAccess(nova)).isEqualTo(clock.now);
+    }
 }

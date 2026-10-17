@@ -158,4 +158,16 @@ class AuthIsolationIT extends AuthBase {
         String tail = mail.substring(mail.indexOf("redefinir-senha/") + "redefinir-senha/".length());
         return tail.lines().findFirst().orElseThrow().trim().split(" ")[0];
     }
+
+    @Test
+    @DisplayName("CA5: o login de A não altera o último acesso de B")
+    void lastAccessStaysWithTheAccount() throws Exception {
+        UUID org = org();
+        UUID a = account("a@x.com"), b = account("b@x.com");
+        link(a, org, "ADMINISTRATOR", "ACTIVE");
+        link(b, org, "ADMINISTRATOR", "ACTIVE");
+        sessionOf("a@x.com");
+        assertThat(count("select count(*) from account where id = ? and last_access_at is not null", a)).isEqualTo(1);
+        assertThat(count("select count(*) from account where id = ? and last_access_at is null", b)).isEqualTo(1);
+    }
 }
