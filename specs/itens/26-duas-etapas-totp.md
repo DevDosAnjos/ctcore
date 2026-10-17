@@ -211,7 +211,7 @@ Verificação (rodada 1, OK): `verify` do back-end (95 rápidos e 117 de integra
 
 Limitações aceitas (sugestões da verificação): `setup` não grava auditoria; código de reserva gasto antes do consumo do bilhete (janela mínima); `TwoFactorGateFilter` faz duas consultas por requisição; TOTP usado no login não vale para `reauth` no mesmo passo de 30 s.
 
-Verificações do PR #246: `security` (gitleaks) reprovou — regra `generic-api-key` em `backend/src/test/resources/config/application.properties` linha 2 (`ctcore.security.two-factor-key`, chave fixa de teste). Demais verificações passaram. Corrigir na fase 3 (por exemplo, gerar a chave no teste ou allowlist do gitleaks para esse arquivo) e reverificar.
+Verificações do PR #246: `security` (gitleaks) reprovou na primeira tentativa (`generic-api-key` na chave fixa de teste `ctcore.security.two-factor-key`). Corrigido com entrada no `.gitleaksignore` (chave fictícia, não é segredo) e conferido na rodada 2 (OK). Demais verificações passaram.
 
 ## Construção (continuação)
 
