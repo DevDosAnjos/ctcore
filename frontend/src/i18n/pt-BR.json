@@ -63,6 +63,23 @@
       "GENERIC": "O link não leva a um convite que possa ser usado."
     }
   },
+  "forgot": {
+    "title": "Recuperar senha",
+    "intro": "Informe o e-mail da sua conta. Se ele tiver uma conta, enviamos um link para criar uma nova senha.",
+    "submit": "Enviar link",
+    "sending": "Enviando...",
+    "back": "Entrar"
+  },
+  "reset": {
+    "title": "Nova senha",
+    "submit": "Criar senha e entrar",
+    "sending": "Entrando...",
+    "invalid": {
+      "title": "Este link não é válido ou já foi usado",
+      "text": "O link venceu, já foi usado ou foi substituído por um mais novo. Peça outro link para criar a sua senha.",
+      "ask": "Pedir novo link"
+    }
+  },
   "theme": {
     "toDark": "Usar tema escuro",
     "toLight": "Usar tema claro"
