@@ -76,6 +76,29 @@ export const routes: Route[] = [
     },
   },
   {
+    method: "post",
+    path: "/auth/password-reset",
+    resolver: async ({ request }) => {
+      const { email } = (await request.json()) as { email?: string };
+      if (email === "limite@exemplo.com") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      return HttpResponse.json({ message: "Se esse e-mail tiver uma conta, você vai receber um link em instantes." });
+    },
+  },
+  // Links de recuperação: "valido" aceita senha forte; "fraca" e "vazada" sempre dão 400; outro código (ex.: "vencido") é 410.
+  {
+    method: "post",
+    path: "/auth/password-reset/{code}",
+    resolver: async ({ params, request }) => {
+      const code = String(params.code);
+      if (!["valido", "fraca", "vazada"].includes(code)) return error(410, "RESET_LINK_INVALID", "Link inválido.");
+      const { password } = (await request.json()) as { password?: string };
+      if (code === "vazada" || password === "Password1") return error(400, "PASSWORD_LEAKED", "Senha conhecida demais.");
+      if (code === "fraca" || !password || !isStrongPassword(password)) return error(400, "PASSWORD_WEAK", "Senha fraca.");
+      loggedIn = true;
+      return HttpResponse.json(session);
+    },
+  },
+  {
     method: "get",
     path: "/auth/session",
     resolver: () => (loggedIn ? HttpResponse.json(session) : error(401, "UNAUTHENTICATED", "Sem sessão.")),

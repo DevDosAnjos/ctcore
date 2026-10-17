@@ -242,6 +242,25 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
+    @DisplayName("CA4, CA5: conta desativada não recebe e-mail; o link vale até 1 hora exata e 1 hora cravada já é 410")
+    void resetLinkBoundary() throws Exception {
+        UUID org = org();
+        link(account("ana@x.com"), org, "ADMINISTRATOR", "ACTIVE");
+        UUID off = account("off@x.com");
+        link(off, org, "ADMINISTRATOR", "ACTIVE");
+        admin.update("update account set status = 'DEACTIVATED' where id = ?", off);
+        post("/api/v1/auth/password-reset", Map.of("email", "off@x.com", "challengeToken", "t"), null);
+        assertThat(outbox.list()).isEmpty();
+
+        post("/api/v1/auth/password-reset", Map.of("email", "ana@x.com", "challengeToken", "t"), null);
+        String code = codeIn("redefinir-senha");
+        clock.now = clock.now.plus(Duration.ofHours(1));
+        assertThat(shape(post("/api/v1/auth/password-reset/" + code, Map.of("password", "Novasenha1"), null).andReturn())).startsWith("410|RESET_LINK_INVALID");
+        clock.now = clock.now.minusSeconds(1);
+        assertThat(post("/api/v1/auth/password-reset/" + code, Map.of("password", "Novasenha1"), null).andReturn().getResponse().getStatus()).isEqualTo(200);
+    }
+
+    @Test
     @DisplayName("CA12: conta com convite pendente recebe o convite de novo, não o link de senha")
     void pendingInviteGetsInviteAgain() throws Exception {
         UUID org = org();

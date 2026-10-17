@@ -91,4 +91,50 @@ class AuthIsolationIT extends AuthBase {
         assertThat(accountTx.forInvite(Codes.hash(issued.code()), () -> jdbc.sql("select count(*) from account_invite")
                 .query(Long.class).single())).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("CA13, CA14: a recuperação de A não toca a conta, as sessões nem a auditoria de B, o link de A não vale para B, e qualquer perfil logado vê o mesmo")
+    void passwordResetStaysWithTheAccount() throws Exception {
+        UUID orgA = org(), orgB = org();
+        UUID a = account("a@x.com"), b = account("b@x.com");
+        link(a, orgA, "ADMINISTRATOR", "ACTIVE");
+        link(b, orgB, "ADMINISTRATOR", "ACTIVE");
+        Cookie sessionB = sessionOf("b@x.com");
+        String hashB = admin.queryForObject("select password_hash from account where id = ?", String.class, b);
+
+        post("/api/v1/auth/password-reset", Map.of("email", "a@x.com", "challengeToken", "t"), null);
+        post("/api/v1/auth/password-reset", Map.of("email", "b@x.com", "challengeToken", "t"), null);
+        String codeA = resetCode(outbox.list().get(0).content());
+        String codeB = resetCode(outbox.list().get(1).content());
+
+        // each role calls the public routes with its own session and gets the same answer as someone without one
+        String anon = body(post("/api/v1/auth/password-reset", Map.of("email", "ghost@x.com", "challengeToken", "t"), null).andReturn()).toString();
+        int n = 0;
+        for (String role : List.of("COORDINATOR", "ADMINISTRATOR", "TEACHER", "STUDENT", "GUARDIAN")) {
+            String email = "p" + n++ + "@x.com";
+            link(account(email), orgA, role, "ACTIVE");
+            Cookie c = sessionOf(email);
+            MvcResult r = post("/api/v1/auth/password-reset", Map.of("email", "ghost@x.com", "challengeToken", "t"), c).andReturn();
+            assertThat(body(r).toString()).isEqualTo(anon).doesNotContain("a@x.com", "b@x.com", orgA.toString(), orgB.toString());
+            assertThat(shape(post("/api/v1/auth/password-reset/nao-existe", Map.of("password", "Novasenha1"), c).andReturn()))
+                    .startsWith("410|RESET_LINK_INVALID").doesNotContain("a@x.com", "b@x.com", orgA.toString(), orgB.toString());
+        }
+
+        MvcResult done = post("/api/v1/auth/password-reset/" + codeA, Map.of("password", "Novasenha1"), null).andReturn();
+        assertThat(done.getResponse().getStatus()).isEqualTo(200);
+        assertThat(done.getResponse().getContentAsString()).doesNotContain("b@x.com", orgB.toString());
+        assertThat(admin.queryForObject("select password_hash from account where id = ?", String.class, b)).isEqualTo(hashB);
+        assertThat(get("/api/v1/auth/session", sessionB).andReturn().getResponse().getStatus()).isEqualTo(200);
+        assertThat(login("b@x.com", PASSWORD).getResponse().getStatus()).isEqualTo(200);
+        assertThat(count("select count(*) from audit_log where organization_id = ? and action = 'account.password_reset'", orgA)).isEqualTo(1);
+        assertThat(count("select count(*) from audit_log where organization_id = ? and action = 'account.password_reset'", orgB)).isZero();
+        assertThat(count("select count(*) from password_reset where account_id = ? and used_at is null and canceled_at is null", b)).isEqualTo(1);
+        // B's own link still works for B after A's was used
+        assertThat(post("/api/v1/auth/password-reset/" + codeB, Map.of("password", "Outrasenha1"), null).andReturn().getResponse().getStatus()).isEqualTo(200);
+    }
+
+    private static String resetCode(String mail) {
+        String tail = mail.substring(mail.indexOf("redefinir-senha/") + "redefinir-senha/".length());
+        return tail.lines().findFirst().orElseThrow().trim().split(" ")[0];
+    }
 }
