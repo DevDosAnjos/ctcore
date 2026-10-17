@@ -1,6 +1,6 @@
 # Backlog — ctcore
 
-Origem dos itens: issues do repositório no GitHub (193 issues: 12 fechadas e 181 abertas, nenhuma com responsável; metadados conferidos em 16/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
+Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
 Sprint liberada: Sprint 01 · Organização, unidades, isolamento e auditoria. O dono confirmou em 16/10/2026 que revisou a Sprint 00 e autorizou prosseguir com a Sprint 01. Só o dono libera a seguinte.
 
@@ -33,6 +33,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 23 | RF-ACE-05 · Escolha de organização e área | issue #23 | Sprint 02 | — | agente | a fazer |
 | 24 | RF-ACE-07 · Registrar o último acesso a cada login | issue #24 | Sprint 02 | — | agente | a fazer |
 | 25 | RF-ACE-08 · Tela de área indisponível para o perfil | issue #25 | Sprint 02 | — | agente | a fazer |
+| 231 | Limites de tempo (timeout) nos jobs do CI | issue #231 | Sprint 02 | — | agente | a fazer |
 | 26 | Duas etapas (TOTP), códigos de reserva e senha nas ações críticas | issue #26 | Sprint 03 | — | agente | a fazer |
 | 27 | Tabela de permissões aplicada no servidor | issue #27 | Sprint 03 | — | agente | a fazer |
 | 28 | RF-ORG-01 · Configurações › Organização | issue #28 | Sprint 03 | — | agente | a fazer |
