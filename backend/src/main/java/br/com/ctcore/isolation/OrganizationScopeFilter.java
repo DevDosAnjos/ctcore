@@ -34,7 +34,8 @@ public class OrganizationScopeFilter extends OncePerRequestFilter {
             return;
         }
         // Rotas de conta (/auth) valem para a conta da sessão e conferem a própria conta; não abrem contexto de organização.
-        if (path.startsWith("/api/v1/auth/")) {
+        // /permissions também: quem não tem vínculo ativo ou é de portal recebe tudo NONE (200), não 403; a rota decide pelo principal.
+        if (path.startsWith("/api/v1/auth/") || path.equals("/api/v1/permissions")) {
             chain.doFilter(request, response);
             return;
         }

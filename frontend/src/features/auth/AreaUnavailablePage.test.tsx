@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
+import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
@@ -20,6 +21,9 @@ function setup(view: SessionView | null, path = "/sem-acesso") {
       view ? HttpResponse.json(view) : HttpResponse.json({ code: "UNAUTHENTICATED", message: "m", changed: false, fields: [], traceId: "t" }, { status: 401 }),
     ),
     http.get("/api/v1/auth/login", () => HttpResponse.json({})),
+    http.get("/api/v1/permissions", () =>
+      HttpResponse.json({ permissions: mockPermissions(view?.links.find((l) => l.id === view.activeLinkId)?.role) }),
+    ),
   );
   return render(
     <ThemeProvider>

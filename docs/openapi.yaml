@@ -226,6 +226,19 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /permissions:
+    get:
+      summary: Permissões efetivas do vínculo ativo, para montar o menu (RNF-05, D4 da #27).
+      description: |
+        Um nível por linha da tabela de permissões (`docs/especificacao/02-contas-e-acesso.md`). Aluno, Responsável e sessão sem
+        vínculo ativo recebem tudo `NONE`. Para o Professor, a permissão "*" aparece ligada se estiver ligada em ao menos uma unidade;
+        cada rota ainda confere a unidade no servidor. Só lê: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Níveis do vínculo ativo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PermissionsView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     sessionCookie:
@@ -284,6 +297,22 @@ components:
       properties:
         currentPassword: { type: string, format: password }
         newPassword: { type: string, format: password }
+    Access:
+      type: string
+      description: "Nível da célula: FULL (pode), READ (só consulta), OWN (o próprio resumo), NOTICE (faixa de aviso), NONE (não acessa)."
+      enum: [FULL, READ, OWN, NOTICE, NONE]
+    Permission:
+      type: string
+      description: Linha "Área / ação" da tabela de permissões, na ordem da especificação.
+      enum: [HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS, CHARGE_ADJUSTMENTS, CLASSES_MANAGE, AGENDA_VIEW, AGENDA_EDIT, NO_CLASS_DAYS, GRADUATION, ANNOUNCEMENTS, TRIAL_CLASSES, TEACHERS, STAFF_USERS, UNIT_SETTINGS, ORGANIZATION_SETTINGS, UNITS, SUBSCRIPTION, AUDIT, REPORTS, EXPORT_LISTS, EXPORT_FULL, IMPORT, SUPPORT_ACCESS]
+    PermissionsView:
+      type: object
+      required: [permissions]
+      properties:
+        permissions:
+          type: object
+          description: Uma chave `Permission` por linha da tabela, com o nível `Access` do vínculo ativo.
+          additionalProperties: { $ref: '#/components/schemas/Access' }
     SelectLinkRequest:
       type: object
       required: [linkId]

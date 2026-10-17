@@ -40,10 +40,12 @@ function NavList({ groups, activeId }: { groups: NavGroup[]; activeId: string })
 export function AppLayout({
   groups,
   activeId,
+  headerExtra,
   children,
 }: {
   groups: NavGroup[];
   activeId: string;
+  headerExtra?: ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -81,7 +83,8 @@ export function AppLayout({
             </Dialog.Portal>
           </Dialog.Root>
           <span className="text-lg font-semibold md:hidden">{t("app.name")}</span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {headerExtra}
             <ThemeToggle />
           </div>
         </header>

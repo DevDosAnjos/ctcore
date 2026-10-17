@@ -9,10 +9,33 @@ import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { RequireSession } from "@/features/auth/RequireSession";
 import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/RequireTwoFactor";
 import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
+import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { useSession } from "@/features/auth/SessionProvider";
 import { ThemeToggle } from "@/theme/ThemeToggle";
 
+function Welcome() {
+  const { t } = useTranslation();
+  return (
+    <>
+      <h1 className="text-2xl font-semibold">{t("app.welcomeTitle")}</h1>
+      <p className="mt-2 text-muted-foreground">{t("app.welcomeText")}</p>
+    </>
+  );
+}
+
+// Gestão (Coordenador, Administrador, Professor) ganha o menu pelas permissões do servidor; portal segue sem menu.
 function Home() {
   const { t } = useTranslation();
+  const { state } = useSession();
+  const session = state.status === "ready" ? state.session : undefined;
+  const role = session?.links.find((l) => l.id === session.activeLinkId)?.role;
+  if (role === "COORDINATOR" || role === "ADMINISTRATOR" || role === "TEACHER") {
+    return (
+      <ManagementLayout>
+        <Welcome />
+      </ManagementLayout>
+    );
+  }
   return (
     <div className="min-h-screen">
       <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
@@ -23,8 +46,7 @@ function Home() {
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">
-        <h1 className="text-2xl font-semibold">{t("app.welcomeTitle")}</h1>
-        <p className="mt-2 text-muted-foreground">{t("app.welcomeText")}</p>
+        <Welcome />
       </main>
     </div>
   );
