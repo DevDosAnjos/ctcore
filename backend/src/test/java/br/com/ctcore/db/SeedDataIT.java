@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }

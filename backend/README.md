@@ -71,6 +71,18 @@ Pacote `identity`. Uma conta por pessoa (e-mail único sem diferenciar maiúscul
 - **Propriedades**: `ctcore.security.login.max-failures` (5), `lockout` (15m), `ip-max-failures` (20); `ctcore.app.base-url` (base dos links dos e-mails). Lista de senhas conhecidas: `src/main/resources/passwords/common-passwords.txt`.
 - **Testes**: `AuthRoutesIT`, `AuthIsolationIT`, `InviteIT`, `AccountIT` (precisam de Docker) e `PasswordPolicyTest`, `InviteRulesTest`, `LoginLockoutTest`.
 
+## E-mail (RNF-14, RN-ACE-22)
+
+Pacote `mail`. Todo e-mail passa por `EmailService.send(para, EmailTemplate, args...)`: grava em `email_message`, envia na hora pelo `EmailSender` e, se falhar, a linha fica `PENDING` com o erro (só o nome da exceção, sem endereço) e `EmailRetryJob` (a cada 30 s, com trava do agendador e `for update skip locked`) reenvia com espera crescente. Quem chama nunca recebe exceção do envio.
+
+- **Estados**: `PENDING`, `SENT`, `FAILED` (esgotou as tentativas), `DISABLED` (conexão `email` desligada: nada é enviado nem contado como falha). `SENT` e `DISABLED` com mais de 30 dias são apagadas.
+- **Texto**: apagado ao enviar; nos modelos com código (`INVITE`, `PASSWORD_RESET`) também na falha definitiva. `EmailService.requeue(id)` recoloca na fila uma `FAILED` que ainda tem texto; as demais lançam `IllegalStateException`. Convite perdido: reenviar o convite (gera código novo).
+- **Alerta**: `WARN` a cada falha (id, modelo, tentativa), contador `ctcore.email.failures` e medidor `ctcore.email.queue.pending`.
+- **Propriedades**: `ctcore.email.max-attempts` (5) e `ctcore.email.backoff` (`1m,5m,30m,2h`, espera após a 1ª, 2ª, 3ª e 4ª falha).
+- **Novo modelo**: um valor em `EmailTemplate` (prefixo da chave e se leva código) e `<prefixo>.subject` / `<prefixo>.body` em `messages.properties`; `{0}`, `{1}`... são os argumentos de `send`.
+- **Novo acesso** (`identity/NewAccessNotifier`): login em aparelho (hash do `User-Agent`) ainda não visto na conta, e a conta já tinha outro, envia `NEW_ACCESS`. O primeiro aparelho não avisa. A cidade vem de `IpLocator`; até a Sprint 22 o único é `NoIpLocator` ("local não identificado").
+- **Testes**: `EmailServiceIT`, `NewAccessIT` (Docker) e `DeviceLabelTest`.
+
 ## Tarefas agendadas e recursos
 
 **Agendador.** `@Scheduled` do Spring, com trava no PostgreSQL (ShedLock, tabela `shedlock`, relógio do banco): com vários servidores, só um executa cada tarefa por disparo. A trava expira sozinha (`lockAtMostFor`, padrão 10 min) se o servidor cair. Propriedade `ctcore.scheduler.enabled` (padrão `true`): em `false` não há agendamento nem trava (testes sem banco, ou servidor que não deve rodar tarefas).
