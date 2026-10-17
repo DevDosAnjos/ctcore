@@ -33,7 +33,7 @@ Impedir que um job travado do GitHub Actions consuma minutos por horas (padrão 
 - [x] T1: Adicionar `timeout-minutes` aos jobs de `ci.yml` e `publish.yml` — cobre CA1, CA2 — prova: `grep -c timeout-minutes` (8 e 2) e `git diff` só com essas linhas.
 - [x] T2: Documentar no README onde ajustar — cobre CA3 — prova: leitura da seção.
 - [x] T3: Conferir duração dos runs recentes contra os limites — cobre risco — prova: `gh run list`/`gh run view`.
-- [ ] T4: PR de prova com `ci-gate` verde — cobre CA4 — prova: `gh pr checks`.
+- [x] T4: PR de prova com `ci-gate` verde — cobre CA4 — prova: `gh pr checks`.
 
 ## 6. Decisões
 
@@ -64,3 +64,18 @@ Comandos: awk/grep sobre os dois YAML e `git diff HEAD` (resultados acima). Pars
 Achados obrigatórios: nenhum. Sugestões: 0.
 
 Resultado: NAO_CONFERIDO — só falta CA4, que só pode ser conferido com o PR de prova (fase 5); refazer a rodada com `gh pr checks` depois de abrir o PR.
+
+### Rodada 2 — OK — mesma árvore de arquivos da rodada 1
+
+| CA | Resultado | Como foi conferido |
+|---|---|---|
+| CA1 a CA3 | passou | como na rodada 1 |
+| CA4 | passou | PR #242: `gh pr checks` com `ci-gate` verde e nenhum job cancelado por tempo; maior duração `backend` 3m33s (limite 15), `image-backend` 2m08s, `frontend` 1m29s, `e2e` 1m06s |
+
+Achados obrigatórios: nenhum.
+
+Resultado: OK — verificação feita na mesma sessão do maestro, depois de abrir o PR de prova.
+
+## 9. Entrega
+
+PR #242 aberto contra `dev` com `Closes #231`; `ci-gate` verde; merge por squash.
