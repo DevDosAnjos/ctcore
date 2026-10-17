@@ -65,6 +65,8 @@ O workflow `CI` (`.github/workflows/ci.yml`) roda em todo PR para `dev` e `main`
 | `e2e` | `frontend/` muda | Playwright: fluxos `@critical`; no PR para `main`, a suíte completa |
 | `security` | sempre | gitleaks (segredos no histórico do PR; falso positivo só por impressão digital em `.gitleaksignore`, com o motivo) e OSV-Scanner (dependências Maven e npm com severidade alta, crítica ou sem nota; filtro em `infra/scripts/osv-high.sh`, provado por `osv-high.test.sh` no próprio job) |
 
+Cada job tem limite de tempo (`timeout-minutes`, logo após `runs-on`): `changes` e `ci-gate` 5 min; `security`, `frontend`, `image-backend` e `image-frontend` 10 min; `backend` e `e2e` 15 min; em `publish.yml`, `changes` e `image` 10 min. Se um job passar a estourar, ajuste o `timeout-minutes` dele em `.github/workflows/ci.yml` ou `.github/workflows/publish.yml`.
+
 `docs/openapi.yaml`, `.github/` e `infra/scripts/changed-areas*` contam como mudança do back-end e do front-end; no PR para `main` rodam todas. A seleção é de `infra/scripts/changed-areas.sh` (prova local: `bash infra/scripts/changed-areas.test.sh`).
 
 Local, o equivalente: `./backend/mvnw -f backend/pom.xml verify` e, em `frontend/`, `npm run lint && npm run typecheck && npm run build && npm run test:cov && npm run e2e`.
