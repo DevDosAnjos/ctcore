@@ -69,6 +69,7 @@ public class SessionService {
                     + "values (:a, :h, :l, :d, :ip, :now, :now, :exp)")
                     .param("a", accountId).param("h", Codes.hash(token)).param("l", active).param("d", device)
                     .param("ip", ip).param("now", now).param("exp", now.plus(idle(links))).update();
+            jdbc.sql("update account set last_access_at = :now where id = :a").param("now", now).param("a", accountId).update();
             return new Created(accountId, token, active);
         });
         newAccess.loggedIn(accountId, ip, device);
