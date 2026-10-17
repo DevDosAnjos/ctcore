@@ -59,6 +59,18 @@ O que cada cenário prova: leitura cruzada (A lê id da B: mesma resposta de id 
 - Contrato: `OpenApiContractTest` confere erros e páginas contra `docs/openapi.yaml`; `ContractRoutesTest` exige que toda rota de controller esteja sob `/api/v1` e em `paths`, com o mesmo método, e que o cookie e o cabeçalho de CSRF do contrato sejam os do servidor.
 - Testes: `*Test` rodam no surefire; `*IT` (com Docker) rodam no failsafe, na fase `verify`.
 
+## Contas e sessões (RN-ACE-01 a RN-ACE-20)
+
+Pacote `identity`. Uma conta por pessoa (e-mail único sem diferenciar maiúsculas), vários vínculos (`account_link`) com organização e papel. Nenhuma rota cria conta: ela nasce de convite (`InviteService`) ou do provisionamento interno (`AccountService.provision`).
+
+- **Rotas** (`/api/v1/auth`, contrato em `docs/openapi.yaml`): `POST /login`, `POST /logout`, `GET /session`, `PUT /session/link`, `GET /invitations/{code}`, `POST /invitations/{code}/accept`, `POST /password-reset`, `POST /password-reset/{code}`, `POST /password`. São públicas só: login, pedido e uso do reset, consulta e aceite de convite. As rotas `/auth` não abrem o contexto de organização (`OrganizationScopeFilter`); cada uma usa a conta da sessão.
+- **Sessão no servidor**: cookie `SESSION` (HttpOnly, Secure, SameSite=Lax, sem Max-Age) com valor aleatório; no banco (`account_session`) só o SHA-256. Vale 30 dias sem uso se todos os vínculos ativos são Aluno/Responsável e 12 horas nos demais casos; cada uso renova (gravação no máximo a cada minuto). A cadeia é sem estado (`SessionAuthenticationFilter` + `AccountPrincipal`); a organização do contexto vem do vínculo ativo, e sem vínculo ativo as rotas de organização dão 403.
+- **Serviços sem rota** (usados pelos itens seguintes): `InviteService.invite/resend/cancel`, `LinkService.end`, `AccountService.deactivate/provision`. Desativar a conta e remover o último vínculo de gestão encerram todas as sessões; trocar a senha encerra as outras.
+- **Códigos**: convite, link de nova senha e sessão usam 32 bytes aleatórios em base64url e só o hash fica no banco. Convite vale 7 dias, link de senha 1 hora, ambos de uso único.
+- **Banco**: `account_link`, `account_link_unit` e `account_invite` têm RLS com três escopos (organização do contexto, conta `app.account_id`, código do convite `app.invite_code_hash`), abertos por `OrganizationTransactions` e `AccountTransactions`. Banco local que já aplicou uma V6 antiga precisa de `docker compose down -v`.
+- **Propriedades**: `ctcore.security.login.max-failures` (5), `lockout` (15m), `ip-max-failures` (20); `ctcore.app.base-url` (base dos links dos e-mails). Lista de senhas conhecidas: `src/main/resources/passwords/common-passwords.txt`.
+- **Testes**: `AuthRoutesIT`, `AuthIsolationIT`, `InviteIT`, `AccountIT` (precisam de Docker) e `PasswordPolicyTest`, `InviteRulesTest`, `LoginLockoutTest`.
+
 ## Tarefas agendadas e recursos
 
 **Agendador.** `@Scheduled` do Spring, com trava no PostgreSQL (ShedLock, tabela `shedlock`, relógio do banco): com vários servidores, só um executa cada tarefa por disparo. A trava expira sozinha (`lockAtMostFor`, padrão 10 min) se o servidor cair. Propriedade `ctcore.scheduler.enabled` (padrão `true`): em `false` não há agendamento nem trava (testes sem banco, ou servidor que não deve rodar tarefas).
