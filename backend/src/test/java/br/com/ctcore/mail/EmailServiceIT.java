@@ -113,6 +113,26 @@ class EmailServiceIT extends PostgresIT {
     }
 
     @Test
+    @DisplayName("CA10: os 4 modelos saem em uma coluna de 600 px, 18 px, botão largo só com link e argumentos escapados")
+    void layout() {
+        String evil = "https://x/convite/a<b>&\"c";
+        service.send("ana@x.com", EmailTemplate.INVITE, evil);
+        service.send("ana@x.com", EmailTemplate.PASSWORD_RESET, evil);
+        service.send("ana@x.com", EmailTemplate.PASSWORD_CHANGED);
+        service.send("ana@x.com", EmailTemplate.NEW_ACCESS, "<b>Dev</b>", "A&B", "hoje");
+        var mails = outbox.list();
+        assertThat(mails).hasSize(4);
+        for (var m : mails) {
+            assertThat(m.content()).contains("max-width:600px", "font-size:18px").doesNotContain("<b>");
+        }
+        for (var m : mails.subList(0, 2)) {
+            assertThat(m.content()).contains("width:100%", "https://x/convite/a&lt;b&gt;&amp;&quot;c\n</p>", "href=\"https://x/convite/a&lt;b&gt;&amp;&quot;c\"");
+        }
+        assertThat(mails.get(2).content()).doesNotContain("width:100%");
+        assertThat(mails.get(3).content()).doesNotContain("width:100%").contains("&lt;b&gt;Dev&lt;/b&gt;", "A&amp;B");
+    }
+
+    @Test
     @DisplayName("CA1: sender que lança exceção não derruba send; linha PENDING com attempts=1 e last_error sem endereço")
     void failureKeepsPending() {
         sender.mode = "throw";

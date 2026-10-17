@@ -1,6 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { SessionProvider } from "@/features/auth/SessionProvider";
 import { App } from "@/App";
 import { buttonVariants } from "@/components/ui/button";
 import { ThemeProvider } from "@/theme/ThemeProvider";
@@ -11,7 +13,11 @@ import { Showcase } from "./Showcase";
 function shell() {
   return render(
     <ThemeProvider>
-      <App />
+      <MemoryRouter>
+        <SessionProvider>
+          <App />
+        </SessionProvider>
+      </MemoryRouter>
     </ThemeProvider>,
   );
 }
@@ -24,6 +30,7 @@ describe("casca (CA13)", () => {
     setDevicePrefersDark(dark);
     window.innerWidth = 360;
     const { container } = shell();
+    await screen.findByRole("heading", { name: "Entrar" });
     expect(document.documentElement.classList.contains("dark")).toBe(dark);
     expect(await axeViolations(container)).toEqual([]);
   });
