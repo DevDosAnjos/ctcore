@@ -116,3 +116,5 @@ Telas públicas "Recuperar senha" (`/esqueci-senha`) e "Nova senha" (`/redefinir
 - Verificado: rodada 1 OK. Front: lint, typecheck, build, `test:cov` (205 testes, linhas 98,72%), e2e 4 de 4. Back: `verify` com 90 IT, 0 falhas. Testes novos de limite de 1 hora e de isolamento/perfis (`AuthRoutesIT`, `AuthIsolationIT`).
 - Sem mudança de contrato nem de código de produção do servidor.
 - Limitações: o servidor não limita o pedido de link (RN-ACE-10), então o 429 só existe no mock; o token do desafio não é renovado após erro (sugestão da verificação); conferência visual com o canvas fica com o dono.
+
+Verificações do PR #238: falhou `backend` por `EmailServiceIT.concurrentRuns:207` (esperado 1; teste de concorrência do envio de e-mail da #19, arquivo não tocado por este item, passou localmente no `verify`). Provável instabilidade; precisa de nova execução ou correção na fase 3.
