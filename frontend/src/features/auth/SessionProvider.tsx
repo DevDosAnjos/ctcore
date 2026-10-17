@@ -3,7 +3,7 @@ import { api, ApiError } from "@/lib/api";
 
 export interface SessionView {
   account: { id: string; email: string; name?: string | null };
-  links: { id: string; organizationId: string; role: string; unitIds: string[] }[];
+  links: { id: string; organizationId: string; organizationName: string; role: string; unitIds: string[] }[];
   activeLinkId?: string | null;
 }
 

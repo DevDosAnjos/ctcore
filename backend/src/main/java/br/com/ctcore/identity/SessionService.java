@@ -23,7 +23,7 @@ public class SessionService {
 
     public record Created(UUID accountId, String token, UUID activeLinkId) {}
     public record AccountView(UUID id, String email, String name) {}
-    public record LinkView(UUID id, UUID organizationId, String role, Set<UUID> unitIds) {}
+    public record LinkView(UUID id, UUID organizationId, String organizationName, String role, Set<UUID> unitIds) {}
     public record SessionView(AccountView account, List<LinkView> links, UUID activeLinkId) {}
 
     record Link(UUID id, UUID organizationId, Role role) {}
@@ -109,13 +109,17 @@ public class SessionService {
                 .query(UUID.class).list());
     }
 
+    private String organizationName(UUID organizationId) {
+        return jdbc.sql("select name from organization where id = :o").param("o", organizationId).query(String.class).single();
+    }
+
     /** Account, active links and the active one, for the front to decide where to go (RN-ACE-16). */
     public SessionView view(UUID accountId, UUID activeLinkId) {
         return accountTx.forAccount(accountId, () -> {
             AccountView account = jdbc.sql("select id, email, name from account where id = :a").param("a", accountId)
                     .query((rs, n) -> new AccountView(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3))).single();
             List<LinkView> links = activeLinks(accountId).stream()
-                    .map(l -> new LinkView(l.id(), l.organizationId(), l.role().name(), unitsOf(l.id()))).toList();
+                    .map(l -> new LinkView(l.id(), l.organizationId(), organizationName(l.organizationId()), l.role().name(), unitsOf(l.id()))).toList();
             return new SessionView(account, links, activeLinkId);
         });
     }

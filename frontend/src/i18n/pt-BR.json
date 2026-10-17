@@ -26,6 +26,25 @@
       "phone": "Telefone"
     }
   },
+  "chooseLink": {
+    "title": "Escolher organização e área",
+    "intro": "Você tem acesso a mais de uma organização ou área. Escolha onde quer trabalhar agora.",
+    "current": "Atual",
+    "trigger": "Trocar organização ou área",
+    "sending": "Enviando a escolha...",
+    "retry": "Tentar de novo",
+    "errorFailed": "Não conseguimos salvar a escolha. Tente de novo.",
+    "errorGone": "Essa opção não existe mais. Atualizamos a lista; escolha de novo.",
+    "areaOption": "{{area}} ({{role}})",
+    "areas": { "management": "Gestão", "portal": "Portal" },
+    "roles": {
+      "COORDINATOR": "Coordenador",
+      "ADMINISTRATOR": "Administrador",
+      "TEACHER": "Professor",
+      "STUDENT": "Aluno",
+      "GUARDIAN": "Responsável"
+    }
+  },
   "password": {
     "label": "Senha",
     "confirm": "Confirmar senha",

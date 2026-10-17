@@ -4,6 +4,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { InvitePage } from "@/features/auth/InvitePage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
+import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { RequireSession } from "@/features/auth/RequireSession";
 import { ThemeToggle } from "@/theme/ThemeToggle";
 
@@ -13,7 +14,10 @@ function Home() {
     <div className="min-h-screen">
       <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
         <span className="text-lg font-semibold">{t("app.name")}</span>
-        <ThemeToggle />
+        <div className="flex items-center gap-2">
+          <ChooseLinkTrigger />
+          <ThemeToggle />
+        </div>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">
         <h1 className="text-2xl font-semibold">{t("app.welcomeTitle")}</h1>

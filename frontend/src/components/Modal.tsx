@@ -12,12 +12,15 @@ export function Modal({
   title,
   children,
   className,
+  dismissible = true,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   children: ReactNode;
   className?: string;
+  /** Falso: sem Esc, sem clique fora e sem botão de fechar (a pessoa precisa decidir). */
+  dismissible?: boolean;
 }) {
   const { t } = useTranslation();
   const opener = useRef<HTMLElement | null>(null);
@@ -27,6 +30,8 @@ export function Modal({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
         <Dialog.Content
           aria-describedby={undefined}
+          onEscapeKeyDown={dismissible ? undefined : (e) => e.preventDefault()}
+          onInteractOutside={dismissible ? undefined : (e) => e.preventDefault()}
           // Aberta por estado (sem Trigger), o Radix não sabe quem abriu: guardamos e devolvemos o foco.
           onOpenAutoFocus={() => {
             opener.current = document.activeElement as HTMLElement | null;
@@ -42,11 +47,13 @@ export function Modal({
         >
           <div className="mb-3 flex items-center justify-between gap-2">
             <Dialog.Title className="text-lg font-semibold">{title}</Dialog.Title>
-            <Dialog.Close asChild>
-              <Button variant="ghost" size="icon" aria-label={t("common.close")}>
-                <X aria-hidden="true" />
-              </Button>
-            </Dialog.Close>
+            {dismissible && (
+              <Dialog.Close asChild>
+                <Button variant="ghost" size="icon" aria-label={t("common.close")}>
+                  <X aria-hidden="true" />
+                </Button>
+              </Dialog.Close>
+            )}
           </div>
           {children}
         </Dialog.Content>

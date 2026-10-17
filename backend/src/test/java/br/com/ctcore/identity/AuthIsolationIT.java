@@ -52,6 +52,27 @@ class AuthIsolationIT extends AuthBase {
     }
 
     @Test
+    @DisplayName("CA8: cada perfil com dois vínculos escolhe o próprio e passa a ter o papel dele; vínculo de outro perfil de outra conta dá 404")
+    void everyRoleChoosesOwnLink() throws Exception {
+        UUID orgA = org("Alfa"), orgB = org("Beta"), orgC = org("Gama");
+        UUID stranger = link(account("stranger@x.com"), orgC, "ADMINISTRATOR", "ACTIVE");
+        int n = 0;
+        for (String role : List.of("COORDINATOR", "ADMINISTRATOR", "TEACHER", "STUDENT", "GUARDIAN")) {
+            String email = "r" + n++ + "@x.com";
+            UUID acc = account(email);
+            link(acc, orgB, role.equals("STUDENT") ? "GUARDIAN" : "STUDENT", "ACTIVE");
+            UUID own = link(acc, orgA, role, "ACTIVE");
+            Cookie c = sessionOf(email);
+            assertThat(put("/api/v1/auth/session/link", Map.of("linkId", stranger), c).andReturn().getResponse().getStatus()).isEqualTo(404);
+            MvcResult r = put("/api/v1/auth/session/link", Map.of("linkId", own), c).andReturn();
+            assertThat(r.getResponse().getStatus()).isEqualTo(200);
+            assertThat(body(r).path("activeLinkId").asText()).isEqualTo(own.toString());
+            assertThat(body(get("/api/v1/probe-org", c).andReturn()).path("organizationId").asText()).isEqualTo(orgA.toString());
+            assertThat(body(r).path("links").findValuesAsText("role")).contains(role);
+        }
+    }
+
+    @Test
     @DisplayName("CA16: sessão encerrada de uma conta não alcança a outra; a troca de senha de A não toca a sessão de B")
     void passwordChangeDoesNotTouchOthers() throws Exception {
         UUID orgA = org(), orgB = org();
