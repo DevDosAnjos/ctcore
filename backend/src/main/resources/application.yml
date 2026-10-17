@@ -48,6 +48,7 @@ ctcore:
       max-failures: 5
       lockout: 15m
       ip-max-failures: 20
+      reset-max-per-email: 5
   # D5: padrões iguais aos de infra/docker-compose.yml; em produção vêm só de variável de ambiente.
   storage:
     endpoint: ${STORAGE_ENDPOINT:http://localhost:${STORAGE_PORT:8333}}

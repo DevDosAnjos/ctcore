@@ -97,7 +97,7 @@ class AccountIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA1: e-mail único sem diferenciar maiúsculas; uma conta com vários vínculos")
+    @DisplayName("RN-ACE-02: CA1: e-mail único sem diferenciar maiúsculas; uma conta com vários vínculos")
     void oneAccountPerEmailManyLinks() {
         assertThatThrownBy(() -> admin.update("insert into account (email, status) values ('ana@X.com', 'ACTIVE')"))
                 .isInstanceOf(DuplicateKeyException.class);
@@ -174,10 +174,10 @@ class AccountIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA9: 6ª tentativa trava por 15 minutos, volta depois, vale para e-mail inexistente e tudo fica registrado")
+    @DisplayName("RN-ACE-10: CA9: 6ª tentativa trava por 15 minutos, volta depois, vale para e-mail inexistente e tudo fica registrado")
     void lockoutByEmail() {
         var clock = new MutableClock();
-        var attempts = new LoginAttempts(jdbc, clock, 5, Duration.ofMinutes(15), 20);
+        var attempts = new LoginAttempts(jdbc, clock, 5, Duration.ofMinutes(15), 20, 5);
         for (String email : new String[]{"Ana@x.com", "ghost@x.com"}) {
             for (int i = 0; i < 5; i++) {
                 assertThat(attempts.check(email, "10.0.0." + i)).isEqualTo(Status.OPEN);
@@ -198,9 +198,9 @@ class AccountIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA9: acerto no meio zera a contagem; desafio recusado não conta como senha errada")
+    @DisplayName("RN-ACE-10: CA9: acerto no meio zera a contagem; desafio recusado não conta como senha errada")
     void successAndChallengeBreakNothing() {
-        var attempts = new LoginAttempts(jdbc, new MutableClock(), 5, Duration.ofMinutes(15), 20);
+        var attempts = new LoginAttempts(jdbc, new MutableClock(), 5, Duration.ofMinutes(15), 20, 5);
         for (int i = 0; i < 4; i++) attempts.record("c@x.com", "10.1.1.1", Result.WRONG_PASSWORD);
         attempts.record("c@x.com", "10.1.1.1", Result.CHALLENGE_FAILED);
         assertThat(attempts.check("c@x.com", "10.1.1.1")).isEqualTo(Status.OPEN);
@@ -210,10 +210,10 @@ class AccountIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA9 / D4: 20 falhas do mesmo IP em e-mails diferentes dão limite por IP até a janela esvaziar")
+    @DisplayName("RN-ACE-10: CA9 / D4: 20 falhas do mesmo IP em e-mails diferentes dão limite por IP até a janela esvaziar")
     void limitByIp() {
         var clock = new MutableClock();
-        var attempts = new LoginAttempts(jdbc, clock, 5, Duration.ofMinutes(15), 20);
+        var attempts = new LoginAttempts(jdbc, clock, 5, Duration.ofMinutes(15), 20, 5);
         for (int i = 0; i < 20; i++) {
             assertThat(attempts.check("u" + i + "@x.com", "10.2.2.2")).isEqualTo(Status.OPEN);
             attempts.record("u" + i + "@x.com", "10.2.2.2", Result.WRONG_PASSWORD);

@@ -30,7 +30,7 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 
 - **RN-ACE-08.** Senha com 8 ou mais caracteres, pelo menos 1 número e 1 letra maiúscula, sem símbolo obrigatório. Senhas presentes em vazamentos conhecidos são recusadas ("Essa senha é muito conhecida. Escolha outra.").
 - **RN-ACE-09.** A senha é guardada com hash Argon2. Ninguém, nem a plataforma, lê a senha. A academia não define nem redefine a senha de ninguém.
-- **RN-ACE-10.** 5 senhas erradas seguidas travam aquele e-mail por 15 minutos. Há também limite por IP. O login e os formulários públicos usam desafio invisível (Turnstile), que só aparece se o acesso parecer de robô.
+- **RN-ACE-10.** 5 senhas erradas seguidas travam aquele e-mail por 15 minutos. Há também limite por IP: 20 falhas em 15 minutos. O mesmo vale para o pedido de link de nova senha (RN-ACE-11). O login e os formulários públicos usam desafio invisível (Turnstile), que só aparece se o acesso parecer de robô.
 - **RN-ACE-11.** Login e recuperação de senha mostram sempre a mesma mensagem, sem revelar se o e-mail existe: "E-mail ou senha incorretos." e "Se esse e-mail tiver uma conta, você vai receber um link em instantes."
 - **RN-ACE-12.** Conta com convite não aceito ou desativada não entra; a mensagem é a mesma do erro de senha.
 - **RN-ACE-13.** Convite vale 7 dias e é de uso único. Reenviar cancela o anterior. Máximo de 3 reenvios por dia por pessoa.
@@ -45,21 +45,21 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 
 ### Sessão
 
-- **RN-ACE-19.** Sessão sem uso expira em 30 dias para contas que só têm vínculos de Aluno ou Responsável e em 12 horas quando a área aberta é a gestão ou o painel da plataforma. Não existe "Manter conectado".
+- **RN-ACE-19.** Sessão sem uso expira em 30 dias para contas que só têm vínculos de Aluno ou Responsável e em 12 horas para quem tem algum vínculo de gestão ou do painel da plataforma. O prazo vem dos vínculos da conta, não da área aberta. Não existe "Manter conectado".
 - **RN-ACE-20.** Trocar a senha, desativar a conta ou remover o último vínculo de gestão encerra na hora todas as sessões em outros aparelhos. A pessoa recebe e-mail avisando da troca de senha.
 - **RN-ACE-21.** Ações críticas pedem a senha de novo (e o código de duas etapas, se ligado): transferir coordenação, cancelar assinatura, exportação completa, desconectar o Mercado Pago, anonimizar aluno, desativar unidade.
-- **RN-ACE-22.** Login em aparelho novo gera e-mail "Novo acesso à sua conta", com aparelho, cidade aproximada e hora.
+- **RN-ACE-22.** Login em aparelho novo gera e-mail "Novo acesso à sua conta", com aparelho, cidade aproximada e hora. O primeiro acesso da conta não gera o e-mail; enquanto não houver localizador por IP, a cidade sai como "local não identificado".
 
 ## Requisitos
 
-- **RF-ACE-01.** Login: e-mail, senha com "Mostrar"/"Ocultar", "Entrar", "Esqueci minha senha". Antes do login aparece o suporte da plataforma; depois, o contato da unidade.
-- **RF-ACE-02.** Criar senha pelo convite: nome e e-mail já preenchidos, validade do convite, exigências da senha marcadas enquanto digita, "Criar senha e entrar" só habilitado com a senha válida e igual nos dois campos. Convite vencido, usado ou cancelado explica e orienta pedir outro.
-- **RF-ACE-03.** Recuperação de senha (RN-ACE-11, RN-ACE-14) e tela de nova senha com as mesmas exigências. Depois de criar, a pessoa entra direto.
+- **RF-ACE-01.** Login: e-mail, senha com "Mostrar"/"Ocultar", "Entrar", "Esqueci minha senha". Antes do login aparece o suporte da plataforma; depois, o contato da unidade. O suporte vem da configuração do ambiente.
+- **RF-ACE-02.** Criar senha pelo convite: nome e e-mail já preenchidos, validade do convite, exigências da senha marcadas enquanto digita, "Criar senha e entrar" só habilitado com a senha válida e igual nos dois campos. Quem já tem conta informa só a senha atual. Convite vencido, usado ou cancelado explica e orienta pedir outro.
+- **RF-ACE-03.** Recuperação de senha (RN-ACE-11, RN-ACE-14) e tela de nova senha com as mesmas exigências. A resposta ao pedido é a mesma para qualquer e-mail. A validade do link só aparece ao enviar a nova senha. Depois de criar, a pessoa entra direto.
 - **RF-ACE-04.** Minha conta (gestão e portal): trocar senha estando logado, trocar e-mail, ligar e desligar duas etapas, ver códigos de reserva novos, lista de sessões ativas com "Encerrar" e "Encerrar todas as outras".
-- **RF-ACE-05.** Modal de escolha de organização e área (RN-ACE-03).
+- **RF-ACE-05.** Modal de escolha de organização e área (RN-ACE-03). A área vem do papel do vínculo: gestão para Coordenador, Administrador e Professor; portal para Aluno e Responsável. Depois do login com mais de um vínculo o modal é obrigatório; reaberto pelo menu, pode ser fechado.
 - **RF-ACE-06.** Configurações › Usuários: lista da equipe com perfil, unidades, último acesso e situação; convidar, reenviar convite, alterar unidades, desativar. O Coordenador gere Administradores; o Administrador gere Professores das suas unidades.
 - **RF-ACE-07.** Atualizar o último acesso a cada login.
-- **RF-ACE-08.** Tela "Esta área não está disponível para o seu perfil", com atalhos para o Início, quando alguém abre um endereço fora do seu alcance.
+- **RF-ACE-08.** Tela "Esta área não está disponível para o seu perfil", com atalhos para o Início, quando alguém abre um endereço fora do seu alcance. A tela aparece no mesmo endereço, sem redirecionar, e não diz qual área ou recurso foi negado.
 
 ## Permissões
 

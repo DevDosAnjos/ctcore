@@ -94,7 +94,7 @@ paths:
   /auth/password-reset:
     post:
       summary: Pede o link de nova senha (RN-ACE-11, RN-ACE-14). Rota pública.
-      description: Responde sempre a mesma mensagem, exista a conta ou não.
+      description: Responde sempre a mesma mensagem, exista a conta ou não. Limite de 5 pedidos por e-mail e 20 por IP em 15 minutos.
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/PasswordResetRequest' } } }
@@ -103,6 +103,7 @@ paths:
           description: Pedido recebido.
           content: { application/json: { schema: { $ref: '#/components/schemas/MessageResponse' } } }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { description: "Muitas tentativas por e-mail ou por IP (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /auth/password-reset/{code}:
     post:
       summary: Define a nova senha pelo link e inicia a sessão (RN-ACE-14). Rota pública.
