@@ -210,3 +210,5 @@ Duas etapas por TOTP (RFC 6238, janela ±1), 10 códigos de reserva com hash, se
 Verificação (rodada 1, OK): `verify` do back-end (95 rápidos e 117 de integração, JaCoCo atendido); no front, lint, typecheck, build, `test:cov` (258 testes, 98,06% de linhas) e `e2e` (8 passam).
 
 Limitações aceitas (sugestões da verificação): `setup` não grava auditoria; código de reserva gasto antes do consumo do bilhete (janela mínima); `TwoFactorGateFilter` faz duas consultas por requisição; TOTP usado no login não vale para `reauth` no mesmo passo de 30 s.
+
+Verificações do PR #246: `security` (gitleaks) reprovou — regra `generic-api-key` em `backend/src/test/resources/config/application.properties` linha 2 (`ctcore.security.two-factor-key`, chave fixa de teste). Demais verificações passaram. Corrigir na fase 3 (por exemplo, gerar a chave no teste ou allowlist do gitleaks para esse arquivo) e reverificar.
