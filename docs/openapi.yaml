@@ -229,8 +229,11 @@ components:
           description: Vazio quando a conta tem mais de um vínculo e ainda não escolheu (PUT /auth/session/link).
     InviteInfo:
       type: object
-      required: [role, existingAccount, organizationId]
+      required: [role, existingAccount, organizationId, email, expiresAt]
       properties:
+        email: { type: string, description: "E-mail do convite (só para código válido)." }
+        name: { type: string, nullable: true, description: "Nome informado no convite." }
+        expiresAt: { type: string, format: date-time, description: "Vencimento do convite." }
         role: { type: string, enum: [COORDINATOR, ADMINISTRATOR, TEACHER, STUDENT, GUARDIAN] }
         existingAccount: { type: boolean, description: Verdadeiro quando a pessoa já tem senha e aceita com ela. }
         organizationId: { type: string, format: uuid }

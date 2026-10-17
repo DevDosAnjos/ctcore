@@ -268,7 +268,9 @@ class AuthRoutesIT extends AuthBase {
         assertThat(info.getResponse().getStatus()).isEqualTo(200);
         assertThat(body(info).path("role").asText()).isEqualTo("ADMINISTRATOR");
         assertThat(body(info).path("existingAccount").asBoolean()).isFalse();
-        assertThat(info.getResponse().getContentAsString()).doesNotContain("nova@x.com");
+        assertThat(body(info).path("email").asText()).isEqualTo("nova@x.com");
+        assertThat(body(info).path("name").asText()).isEqualTo("Nova");
+        assertThat(java.time.OffsetDateTime.parse(body(info).path("expiresAt").asText()).toInstant()).isEqualTo(clock.now.plus(Duration.ofDays(7)));
 
         assertThat(shape(post("/api/v1/auth/invitations/" + issued.code() + "/accept", Map.of("password", "Password1"), null).andReturn()))
                 .startsWith("400|PASSWORD_LEAKED");
@@ -278,7 +280,7 @@ class AuthRoutesIT extends AuthBase {
         assertThat(body(accepted).path("activeLinkId").asText()).isEqualTo(issued.linkId().toString());
 
         String used = shape(get("/api/v1/auth/invitations/" + issued.code(), null).andReturn());
-        assertThat(used).startsWith("410|INVITE_INVALID").contains("USED");
+        assertThat(used).startsWith("410|INVITE_INVALID").contains("USED").doesNotContain("nova@x.com", "expiresAt");
         assertThat(shape(post("/api/v1/auth/invitations/" + issued.code() + "/accept", Map.of("password", PASSWORD), null).andReturn())).isEqualTo(used);
         String unknown = shape(get("/api/v1/auth/invitations/nao-existe", null).andReturn());
         assertThat(unknown).startsWith("410|INVITE_INVALID").doesNotContain("USED", "EXPIRED", "CANCELED");
