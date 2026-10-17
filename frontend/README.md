@@ -50,7 +50,7 @@ Ficam em `src/components/`; todo texto padrão vem de `pt-BR.json` e pode ser so
 
 ## Login e sessão
 
-Rotas em `src/App.tsx` (`react-router`); `SessionProvider` carrega `GET /auth/session` e `RequireSession` manda quem não tem sessão para `/entrar?next=<caminho>`. `src/lib/api.ts` chama `/api/v1` e manda `X-XSRF-TOKEN` nos métodos que alteram dado. Variáveis (veja `.env.example`): `VITE_SUPPORT_EMAIL` e `VITE_SUPPORT_WHATSAPP` (suporte mostrado antes do login), `VITE_TURNSTILE_SITE_KEY` (sem ela, nenhum script é carregado). No `npm run dev` o MSW aceita qualquer senha, menos `errada` (401) e `limite` (429).
+Rotas em `src/App.tsx` (`react-router`); `SessionProvider` carrega `GET /auth/session` e `RequireSession` manda quem não tem sessão para `/entrar?next=<caminho>`. `src/lib/api.ts` chama `/api/v1` e manda `X-XSRF-TOKEN` nos métodos que alteram dado. Variáveis (veja `.env.example`): `VITE_SUPPORT_EMAIL` e `VITE_SUPPORT_WHATSAPP` (suporte mostrado antes do login), `VITE_TURNSTILE_SITE_KEY` (sem ela, nenhum script é carregado). No `npm run dev` o MSW aceita qualquer senha, menos `errada` (401) e `limite` (429). Convites simulados em `/convite/<código>`: `valido` (conta nova), `existente` (já tem senha: aceita qualquer senha menos `errada` e `limite`), `vencido`, `usado` e `cancelado`; outro código é desconhecido.
 
 ## Ponta a ponta
 

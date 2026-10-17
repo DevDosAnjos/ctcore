@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Route, Routes } from "react-router";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { InvitePage } from "@/features/auth/InvitePage";
 import { RequireSession } from "@/features/auth/RequireSession";
 import { ThemeToggle } from "@/theme/ThemeToggle";
 
@@ -36,6 +37,7 @@ export function App() {
     <Routes>
       <Route path="/entrar" element={<LoginPage />} />
       <Route path="/esqueci-senha" element={<ForgotPassword />} />
+      <Route path="/convite/:code" element={<InvitePage />} />
       <Route element={<RequireSession />}>
         <Route path="/" element={<Home />} />
       </Route>

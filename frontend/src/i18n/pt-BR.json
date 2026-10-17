@@ -26,6 +26,43 @@
       "phone": "Telefone"
     }
   },
+  "password": {
+    "label": "Senha",
+    "confirm": "Confirmar senha",
+    "show": "Mostrar",
+    "hide": "Ocultar",
+    "mismatch": "As senhas não são iguais.",
+    "leaked": "Essa senha é muito conhecida. Escolha outra.",
+    "weak": "A senha não atende às exigências abaixo.",
+    "rules": {
+      "title": "A senha precisa ter:",
+      "length": "8 ou mais caracteres",
+      "number": "1 número",
+      "upper": "1 letra maiúscula",
+      "met": "atendida",
+      "pending": "pendente"
+    }
+  },
+  "invite": {
+    "title": "Criar sua senha",
+    "titleExisting": "Aceitar convite",
+    "name": "Nome",
+    "email": "E-mail",
+    "validUntil": "Vale até {{date}}",
+    "submit": "Criar senha e entrar",
+    "submitExisting": "Aceitar convite e entrar",
+    "sending": "Entrando...",
+    "currentPassword": "Sua senha atual",
+    "existingNotice": "Você já tem uma conta com este e-mail. O novo acesso entra na conta que você já tem.",
+    "help": "Peça um novo convite a quem convidou você.",
+    "invalid": {
+      "title": "Este convite não é válido",
+      "EXPIRED": "Este convite venceu. Os convites valem por 7 dias.",
+      "USED": "Este convite já foi usado. Se foi você, entre com o seu e-mail e a sua senha.",
+      "CANCELED": "Este convite foi cancelado por quem convidou você.",
+      "GENERIC": "O link não leva a um convite que possa ser usado."
+    }
+  },
   "theme": {
     "toDark": "Usar tema escuro",
     "toLight": "Usar tema claro"
