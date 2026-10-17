@@ -26,6 +26,11 @@
       "phone": "Telefone"
     }
   },
+  "areaUnavailable": {
+    "title": "Esta área não está disponível para o seu perfil",
+    "text": "O seu perfil não permite abrir este endereço. Volte ao Início ou, se precisar, troque de organização ou área.",
+    "home": "Ir para o Início"
+  },
   "chooseLink": {
     "title": "Escolher organização e área",
     "intro": "Você tem acesso a mais de uma organização ou área. Escolha onde quer trabalhar agora.",
