@@ -33,8 +33,10 @@ public class SessionService {
     private final JdbcClient jdbc;
     private final AccountTransactions accountTx;
     private final Clock clock;
+    private final NewAccessNotifier newAccess;
 
-    public SessionService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, Clock clock) {
+    public SessionService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, Clock clock, NewAccessNotifier newAccess) {
+        this.newAccess = newAccess;
         this.jdbc = jdbc;
         this.accountTx = accountTx;
         this.clock = clock;
@@ -58,7 +60,7 @@ public class SessionService {
 
     /** Starts a session; a single active link becomes the active one (RN-ACE-03), several leave it empty. */
     public Created create(UUID accountId, String ip, String device) {
-        return accountTx.forAccount(accountId, () -> {
+        Created created = accountTx.forAccount(accountId, () -> {
             List<Link> links = activeLinks(accountId);
             String token = Codes.random();
             UUID active = links.size() == 1 ? links.get(0).id() : null;
@@ -69,6 +71,8 @@ public class SessionService {
                     .param("ip", ip).param("now", now).param("exp", now.plus(idle(links))).update();
             return new Created(accountId, token, active);
         });
+        newAccess.loggedIn(accountId, ip, device);
+        return created;
     }
 
     /** The principal of a valid session, renewing it (write at most once a minute); empty when unknown, expired or inactive. */
