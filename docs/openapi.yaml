@@ -206,10 +206,11 @@ components:
         name: { type: string, nullable: true }
     LinkView:
       type: object
-      required: [id, organizationId, role, unitIds]
+      required: [id, organizationId, organizationName, role, unitIds]
       properties:
         id: { type: string, format: uuid }
         organizationId: { type: string, format: uuid }
+        organizationName: { type: string, description: Nome da organização do vínculo (só de vínculos da própria conta). }
         role: { type: string, enum: [COORDINATOR, ADMINISTRATOR, TEACHER, STUDENT, GUARDIAN] }
         unitIds:
           type: array

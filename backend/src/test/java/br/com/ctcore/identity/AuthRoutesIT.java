@@ -114,6 +114,39 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
+    @DisplayName("CA6, CA7, CA9, CA14: nome da organização em login, sessão e escolha; vínculo encerrado dá 404; outra sessão intacta; sem auditoria")
+    void linkChoiceNamesIsolationAndNoAudit() throws Exception {
+        UUID orgA = org("Academia Alfa"), orgB = org("Academia Beta"), orgC = org("Academia Gama");
+        UUID multi = account("multi@x.com"), other = account("other@x.com");
+        UUID linkA = link(multi, orgA, "ADMINISTRATOR", "ACTIVE");
+        UUID linkB = link(multi, orgB, "STUDENT", "ACTIVE");
+        UUID ended = link(multi, orgC, "TEACHER", "ENDED");
+        link(other, orgC, "ADMINISTRATOR", "ACTIVE");
+        long audits = count("select count(*) from audit_log");
+
+        MvcResult r = login("multi@x.com", PASSWORD);
+        Cookie one = r.getResponse().getCookie("SESSION"), two = sessionOf("multi@x.com");
+        for (com.fasterxml.jackson.databind.JsonNode view : List.of(body(r), body(get("/api/v1/auth/session", one).andReturn()))) {
+            assertThat(view.path("links")).hasSize(2);
+            for (com.fasterxml.jackson.databind.JsonNode l : view.path("links")) {
+                assertThat(l.path("organizationName").asText()).isEqualTo(l.path("organizationId").asText().equals(orgA.toString()) ? "Academia Alfa" : "Academia Beta");
+            }
+            assertThat(view.toString()).doesNotContain("Academia Gama", orgC.toString(), "other@x.com");
+        }
+
+        assertThat(put("/api/v1/auth/session/link", Map.of("linkId", ended), one).andReturn().getResponse().getStatus()).isEqualTo(404);
+        assertThat(put("/api/v1/auth/session/link", Map.of("linkId", linkA), null).andReturn().getResponse().getStatus()).isEqualTo(401);
+        assertThat(body(get("/api/v1/auth/session", one).andReturn()).path("activeLinkId").isNull()).isTrue();
+
+        MvcResult chosen = put("/api/v1/auth/session/link", Map.of("linkId", linkB), one).andReturn();
+        assertThat(chosen.getResponse().getStatus()).isEqualTo(200);
+        assertThat(body(chosen).path("links").get(0).has("organizationName")).isTrue();
+        assertThat(body(chosen).toString()).doesNotContain("Academia Gama");
+        assertThat(body(get("/api/v1/auth/session", two).andReturn()).path("activeLinkId").isNull()).isTrue();
+        assertThat(count("select count(*) from audit_log")).isEqualTo(audits);
+    }
+
+    @Test
     @DisplayName("CA10, CA11: senha errada, e-mail inexistente, convite não aceito e conta desativada dão resposta idêntica")
     void identicalLoginFailures() throws Exception {
         UUID org = org();

@@ -100,6 +100,12 @@ abstract class AuthBase extends PostgresIT {
         return id;
     }
 
+    UUID org(String name) {
+        UUID id = org();
+        admin.update("update organization set name = ? where id = ?", name, id);
+        return id;
+    }
+
     UUID unit(UUID org) {
         UUID id = UUID.randomUUID();
         admin.update("insert into unit (id, organization_id, name, short_name) values (?, ?, 'U', ?)", id, org, "u-" + id);
