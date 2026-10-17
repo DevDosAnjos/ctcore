@@ -212,3 +212,27 @@ Verificação (rodada 1, OK): `verify` do back-end (95 rápidos e 117 de integra
 Limitações aceitas (sugestões da verificação): `setup` não grava auditoria; código de reserva gasto antes do consumo do bilhete (janela mínima); `TwoFactorGateFilter` faz duas consultas por requisição; TOTP usado no login não vale para `reauth` no mesmo passo de 30 s.
 
 Verificações do PR #246: `security` (gitleaks) reprovou — regra `generic-api-key` em `backend/src/test/resources/config/application.properties` linha 2 (`ctcore.security.two-factor-key`, chave fixa de teste). Demais verificações passaram. Corrigir na fase 3 (por exemplo, gerar a chave no teste ou allowlist do gitleaks para esse arquivo) e reverificar.
+
+## Construção (continuação)
+
+### Correção da entrega
+- gitleaks `generic-api-key` em `backend/src/test/resources/config/application.properties:2` (chave fixa de teste, não é segredo) — arquivos: `.gitleaksignore` (impressão digital `ecfc681e…:backend/src/test/resources/config/application.properties:generic-api-key:2`, mesmo padrão do `LogOutputTest`) — prova: não rodou: sem rede para baixar o gitleaks nem a imagem Docker nesta máquina; a conferência fica para o `security` do PR.
+
+## Verificação (continuação)
+
+### Rodada 2 — OK — 2026-10-17, estado c1c5a93d6da8c040042fad2c8d26f68a4aa1649c
+
+Mudança desde a rodada 1 (`git diff d5f7f3f… c1c5a93…`): só `.gitleaksignore`, `specs/backlog.md` e este arquivo; nenhum código, teste, contrato nem migração. Todos os critérios (CA1 a CA26) mantidos da rodada 1 (PASSOU); testes e regressão não foram rodados de novo porque o código não mudou.
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA26 | PASSOU (mantido da rodada 1) | diff sem código de produto nem de teste |
+| Achado de entrega (gitleaks) | PASSOU na leitura; NÃO CONFERIDO na execução | `.gitleaksignore` traz `ecfc681e81f39393d66c8483f0528cbce3efb48b:backend/src/test/resources/config/application.properties:generic-api-key:2`; o hash é o commit `ecfc681` (do PR, existe no histórico), o arquivo e a regra batem com a falha do PR #246 e a linha 2 é `ctcore.security.two-factor-key=...` (a 1 é comentário). Mesmo formato da entrada do `LogOutputTest`. |
+
+Comandos:
+- `git diff d5f7f3f… c1c5a93…` → 3 arquivos, nenhum de código.
+- `which gitleaks` → ausente nesta máquina; a confirmação real é o status `security` do PR.
+
+Achados:
+- sugestão, código, `.gitleaksignore` — a impressão digital usa o commit `ecfc681`; se o PR for reescrito (o AGENTS.md proíbe rebase), ela deixaria de casar. Sem ação.
+- as quatro sugestões da rodada 1 seguem como limitações aceitas.

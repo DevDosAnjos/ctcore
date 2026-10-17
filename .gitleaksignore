@@ -1,3 +1,5 @@
 # Falsos positivos do gitleaks, um por impressão digital (commit:arquivo:regra:linha). Só valor de teste, nunca segredo real.
 # LogOutputTest: "TokenSecreto999" e o CPF 123.456.789-09 são valores fictícios que o teste exige que NÃO apareçam no log (RNF-11).
 7be7dd1b5b3be47a139d5b8eed04ca51a69c609e:backend/src/test/java/br/com/ctcore/logging/LogOutputTest.java:generic-api-key:87
+# Chave fixa de teste das duas etapas (#26), nao e segredo.
+ecfc681e81f39393d66c8483f0528cbce3efb48b:backend/src/test/resources/config/application.properties:generic-api-key:2
