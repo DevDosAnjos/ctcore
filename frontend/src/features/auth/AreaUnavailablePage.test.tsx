@@ -11,6 +11,7 @@ import { SessionProvider, type SessionView } from "./SessionProvider";
 
 const L = (id: string, role: string) => ({ id, organizationId: "o", organizationName: "Alfa", role, unitIds: [] });
 const account = { id: "a", email: "x@x.com", name: "X" };
+const off = { enabled: false, required: false };
 const TITLE = "Esta área não está disponível para o seu perfil";
 
 function setup(view: SessionView | null, path = "/sem-acesso") {
@@ -30,8 +31,8 @@ function setup(view: SessionView | null, path = "/sem-acesso") {
     </ThemeProvider>,
   );
 }
-const one: SessionView = { account, links: [L("l1", "TEACHER")], activeLinkId: "l1" };
-const two: SessionView = { account, links: [L("l1", "TEACHER"), L("l2", "STUDENT")], activeLinkId: "l1" };
+const one: SessionView = { account, links: [L("l1", "TEACHER")], activeLinkId: "l1", twoFactor: off };
+const two: SessionView = { account, links: [L("l1", "TEACHER"), L("l2", "STUDENT")], activeLinkId: "l1", twoFactor: off };
 
 describe("AreaUnavailablePage", () => {
   it("CA1, CA9: título, texto e link para o Início, sem citar recurso", async () => {

@@ -24,6 +24,7 @@ const links = [
   L("l5", "Academia Beta", "COORDINATOR"),
 ];
 const account = { id: "a", email: "x@x.com", name: "X" };
+const off = { enabled: false, required: false };
 let view: SessionView;
 let puts: unknown[];
 
@@ -31,7 +32,7 @@ function setup(
   initial: Partial<SessionView> = {},
   put?: () => Response | Promise<Response>,
 ) {
-  view = { account, links, activeLinkId: null, ...initial };
+  view = { account, links, activeLinkId: null, twoFactor: off, ...initial };
   puts = [];
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(view)),

@@ -22,13 +22,19 @@ paths:
         Falha de senha, e-mail desconhecido, convite não aceito e conta desativada dão a mesma resposta (INVALID_CREDENTIALS, 401).
         5 senhas erradas seguidas travam o e-mail por 15 minutos e há limite por IP (TOO_MANY_REQUESTS, 429).
         Desafio recusado: CHALLENGE_FAILED (400), sem contar como senha errada.
+        Conta com duas etapas ligadas e senha certa não ganha sessão: recebe `{twoFactorRequired:true, ticket}` e conclui em `POST /auth/login/two-factor` (RN-ACE-17).
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
       responses:
         '200':
-          description: Sessão iniciada; cookie SESSION na resposta.
-          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+          description: Sessão iniciada (cookie SESSION na resposta) ou, com duas etapas ligadas, o bilhete do segundo passo (sem cookie).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SessionView'
+                  - $ref: '#/components/schemas/TwoFactorRequired'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { description: "E-mail ou senha incorretos (INVALID_CREDENTIALS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
@@ -130,6 +136,96 @@ paths:
         '204': { description: Senha trocada. }
         '400': { description: "Senha atual incorreta, senha nova fraca ou conhecida demais, ou dados inválidos.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/login/two-factor:
+    post:
+      summary: Segundo passo do login com duas etapas (RN-ACE-17). Rota pública.
+      description: |
+        Recebe o bilhete do login e um código TOTP de 6 dígitos ou um código de reserva. O bilhete vale 5 minutos, é de uso único e
+        morre depois de 5 erros. A resposta de erro é a mesma para código errado, usado ou vencido (INVALID_TWO_FACTOR_CODE).
+        Os erros contam na trava de 15 minutos do e-mail e no limite por IP (TOO_MANY_REQUESTS, 429).
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TwoFactorLoginRequest' } } }
+      responses:
+        '200':
+          description: Sessão iniciada; cookie SESSION na resposta.
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Código inválido (INVALID_TWO_FACTOR_CODE) ou bilhete vencido, usado ou desconhecido (TWO_FACTOR_TICKET_INVALID).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/two-factor/setup:
+    post:
+      summary: Começa a ligar as duas etapas (RN-ACE-17).
+      description: Gera um segredo novo (substitui um pendente). Nada fica ativo até `POST /auth/two-factor/enable`. Com as duas etapas já ligadas responde 409.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '200':
+          description: Segredo em base32 e endereço `otpauth://` para o QR code; mostrados só agora.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TwoFactorSetup' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/two-factor/enable:
+    post:
+      summary: Liga as duas etapas com um código válido (RN-ACE-17, RN-ACE-18).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TwoFactorCode' } } }
+      responses:
+        '200':
+          description: Ligadas. Os 10 códigos de reserva aparecem só nesta resposta.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BackupCodes' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Código inválido (INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/two-factor:
+    delete:
+      summary: Desliga as duas etapas, com senha e código (RN-ACE-17).
+      description: Quem é obrigado a tê-las (Coordenador) recebe 403 FORBIDDEN e nada muda. Apaga o segredo e os códigos de reserva.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PasswordAndCode' } } }
+      responses:
+        '204': { description: Desligadas. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/two-factor/backup-codes:
+    post:
+      summary: Pede 10 códigos de reserva novos, com senha e código (RN-ACE-18).
+      description: Os anteriores deixam de valer. Sem as duas etapas ligadas responde 409.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PasswordAndCode' } } }
+      responses:
+        '200':
+          description: Códigos novos, mostrados só nesta resposta.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BackupCodes' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/reauth:
+    post:
+      summary: Confirma uma ação crítica com a senha (e o código, se as duas etapas estão ligadas) (RN-ACE-21).
+      description: |
+        Devolve um token de uso único, válido por 5 minutos, preso à sessão e à ação. A rota crítica o recebe no cabeçalho `X-Reauth-Token`
+        e o consome; sem token válido ela responde 403 REAUTH_REQUIRED. Senha ou código errados contam na trava de tentativas.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReauthRequest' } } }
+      responses:
+        '200':
+          description: Confirmação aceita.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReauthToken' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 components:
   securitySchemes:
     sessionCookie:
@@ -216,9 +312,66 @@ components:
         unitIds:
           type: array
           items: { type: string, format: uuid }
+    TwoFactorRequired:
+      type: object
+      required: [twoFactorRequired, ticket]
+      properties:
+        twoFactorRequired: { type: boolean, enum: [true] }
+        ticket: { type: string, description: "Bilhete de uso único, 5 minutos, para POST /auth/login/two-factor." }
+    TwoFactorLoginRequest:
+      type: object
+      required: [ticket, code]
+      properties:
+        ticket: { type: string }
+        code: { type: string, description: Código TOTP de 6 dígitos ou código de reserva. }
+    TwoFactorSetup:
+      type: object
+      required: [secret, otpauthUri]
+      properties:
+        secret: { type: string, description: "Segredo em base32, para digitar no app." }
+        otpauthUri: { type: string, description: "Endereço otpauth://totp/... para o QR code." }
+    TwoFactorCode:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, description: Código TOTP de 6 dígitos. }
+    PasswordAndCode:
+      type: object
+      required: [password, code]
+      properties:
+        password: { type: string, format: password }
+        code: { type: string, description: Código TOTP ou de reserva. }
+    BackupCodes:
+      type: object
+      required: [backupCodes]
+      properties:
+        backupCodes:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items: { type: string, description: "10 caracteres sem ambiguidade; uso único." }
+    ReauthRequest:
+      type: object
+      required: [action, password]
+      properties:
+        action: { type: string, enum: [TRANSFER_COORDINATION, CANCEL_SUBSCRIPTION, FULL_EXPORT, DISCONNECT_MERCADO_PAGO, ANONYMIZE_STUDENT, DEACTIVATE_UNIT] }
+        password: { type: string, format: password }
+        code: { type: string, description: Obrigatório quando as duas etapas estão ligadas. }
+    ReauthToken:
+      type: object
+      required: [reauthToken, expiresAt]
+      properties:
+        reauthToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+    TwoFactorState:
+      type: object
+      required: [enabled, required]
+      properties:
+        enabled: { type: boolean }
+        required: { type: boolean, description: "Verdadeiro para quem tem vínculo ativo de Coordenador; sem as duas etapas a sessão só alcança a configuração (403 TWO_FACTOR_SETUP_REQUIRED nas demais rotas)." }
     SessionView:
       type: object
-      required: [account, links]
+      required: [account, links, twoFactor]
       properties:
         account: { $ref: '#/components/schemas/AccountView' }
         links:
@@ -229,6 +382,7 @@ components:
           format: uuid
           nullable: true
           description: Vazio quando a conta tem mais de um vínculo e ainda não escolheu (PUT /auth/session/link).
+        twoFactor: { $ref: '#/components/schemas/TwoFactorState' }
     InviteInfo:
       type: object
       required: [role, existingAccount, organizationId, email, expiresAt]
@@ -268,6 +422,10 @@ components:
             - PASSWORD_WEAK
             - PASSWORD_LEAKED
             - MINOR_HAS_NO_ACCOUNT
+            - INVALID_TWO_FACTOR_CODE
+            - TWO_FACTOR_TICKET_INVALID
+            - TWO_FACTOR_SETUP_REQUIRED
+            - REAUTH_REQUIRED
             - INTERNAL_ERROR
         message: { type: string }
         changed: { type: boolean }

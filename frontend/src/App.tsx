@@ -7,6 +7,8 @@ import { InvitePage } from "@/features/auth/InvitePage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { RequireSession } from "@/features/auth/RequireSession";
+import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/RequireTwoFactor";
+import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ThemeToggle } from "@/theme/ThemeToggle";
 
 function Home() {
@@ -37,8 +39,11 @@ export function App() {
       <Route path="/redefinir-senha/:code" element={<ResetPasswordPage />} />
       <Route path="/convite/:code" element={<InvitePage />} />
       <Route element={<RequireSession />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
+        <Route element={<RequireTwoFactor />}>
+          <Route path={TWO_FACTOR_REQUIRED_PATH} element={<TwoFactorRequiredPage />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
+        </Route>
       </Route>
     </Routes>
   );
