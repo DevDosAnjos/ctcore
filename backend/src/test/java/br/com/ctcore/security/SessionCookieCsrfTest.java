@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -49,8 +48,9 @@ class SessionCookieCsrfTest {
     @RestController
     static class Probe {
         @GetMapping("/probe-session/login")
-        String login(HttpServletRequest request) {
-            return request.getSession(true).getId();
+        String login(jakarta.servlet.http.HttpServletResponse response) {
+            response.addHeader(org.springframework.http.HttpHeaders.SET_COOKIE, br.com.ctcore.identity.SessionCookie.create("probe").toString());
+            return "ok";
         }
 
         @GetMapping("/probe-session/read")
@@ -64,7 +64,7 @@ class SessionCookieCsrfTest {
         }
     }
 
-    /** Login simulado: rota que só existe no teste, fora da cadeia de segurança principal. */
+    /** Login simulado (usa o mesmo cookie do AuthController): rota que só existe no teste, fora da cadeia de segurança principal. */
     @TestConfiguration
     static class OpenLogin {
         @Bean

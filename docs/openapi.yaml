@@ -14,7 +14,122 @@ info:
     - Erros: todo erro usa o schema `Error`.
 servers:
   - url: /api/v1
-paths: {}
+paths:
+  /auth/login:
+    post:
+      summary: Entra com e-mail e senha (RN-ACE-10 a RN-ACE-12). Rota pública.
+      description: |
+        Falha de senha, e-mail desconhecido, convite não aceito e conta desativada dão a mesma resposta (INVALID_CREDENTIALS, 401).
+        5 senhas erradas seguidas travam o e-mail por 15 minutos e há limite por IP (TOO_MANY_REQUESTS, 429).
+        Desafio recusado: CHALLENGE_FAILED (400), sem contar como senha errada.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
+      responses:
+        '200':
+          description: Sessão iniciada; cookie SESSION na resposta.
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "E-mail ou senha incorretos (INVALID_CREDENTIALS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/logout:
+    post:
+      summary: Encerra a sessão atual.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '204': { description: Sessão encerrada e cookie removido. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/session:
+    get:
+      summary: Conta, vínculos e vínculo ativo (RN-ACE-16).
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Sessão válida.
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/session/link:
+    put:
+      summary: Escolhe o vínculo ativo da sessão (RN-ACE-03).
+      description: Vínculo de outra conta, inativo ou inexistente responde 404 e nada muda.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SelectLinkRequest' } } }
+      responses:
+        '200':
+          description: Vínculo ativo escolhido.
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /auth/invitations/{code}:
+    get:
+      summary: Estado do convite para a tela de aceite. Rota pública.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Convite que pode ser aceito.
+          content: { application/json: { schema: { $ref: '#/components/schemas/InviteInfo' } } }
+        '410':
+          description: INVITE_INVALID. Com o código certo, `fields` traz `reason` (USED, EXPIRED ou CANCELED); código desconhecido não traz motivo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /auth/invitations/{code}/accept:
+    post:
+      summary: Aceita o convite e inicia a sessão (RN-ACE-07, RN-ACE-13). Rota pública.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AcceptInviteRequest' } } }
+      responses:
+        '200':
+          description: Vínculo ativado e sessão iniciada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+        '400': { description: "Senha fraca ou conhecida demais (PASSWORD_WEAK, PASSWORD_LEAKED) ou dados inválidos.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: "Senha atual incorreta (INVALID_CREDENTIALS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '410': { description: "Convite inválido (INVITE_INVALID).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/password-reset:
+    post:
+      summary: Pede o link de nova senha (RN-ACE-11, RN-ACE-14). Rota pública.
+      description: Responde sempre a mesma mensagem, exista a conta ou não. Limite de 5 pedidos por e-mail e 20 por IP em 15 minutos.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PasswordResetRequest' } } }
+      responses:
+        '200':
+          description: Pedido recebido.
+          content: { application/json: { schema: { $ref: '#/components/schemas/MessageResponse' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { description: "Muitas tentativas por e-mail ou por IP (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/password-reset/{code}:
+    post:
+      summary: Define a nova senha pelo link e inicia a sessão (RN-ACE-14). Rota pública.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PasswordResetBody' } } }
+      responses:
+        '200':
+          description: Senha trocada, outras sessões encerradas e sessão iniciada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+        '400': { description: "Senha fraca ou conhecida demais (PASSWORD_WEAK, PASSWORD_LEAKED) ou dados inválidos; o link não é consumido.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '410': { description: "Link inválido, vencido ou já usado (RESET_LINK_INVALID).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/password:
+    post:
+      summary: Troca a senha de quem está logado (RN-ACE-20).
+      description: Encerra as sessões da conta em outros aparelhos, mantém a atual e envia e-mail de aviso.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ChangePasswordRequest' } } }
+      responses:
+        '204': { description: Senha trocada. }
+        '400': { description: "Senha atual incorreta, senha nova fraca ou conhecida demais, ou dados inválidos.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 components:
   securitySchemes:
     sessionCookie:
@@ -44,6 +159,86 @@ components:
       description: "Ordenação `campo,asc|desc`; só campos que a rota declara."
       schema: { type: string, example: "name,asc" }
   schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string, format: password }
+        challengeToken: { type: string, description: Desafio invisível (porta ChallengeVerifier). }
+    AcceptInviteRequest:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, format: password, description: Senha nova (conta nova) ou a senha que a pessoa já tem (conta existente). }
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string }
+        challengeToken: { type: string }
+    PasswordResetBody:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, format: password }
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword: { type: string, format: password }
+        newPassword: { type: string, format: password }
+    SelectLinkRequest:
+      type: object
+      required: [linkId]
+      properties:
+        linkId: { type: string, format: uuid }
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    AccountView:
+      type: object
+      required: [id, email]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        name: { type: string, nullable: true }
+    LinkView:
+      type: object
+      required: [id, organizationId, organizationName, role, unitIds]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        organizationName: { type: string, description: Nome da organização do vínculo (só de vínculos da própria conta). }
+        role: { type: string, enum: [COORDINATOR, ADMINISTRATOR, TEACHER, STUDENT, GUARDIAN] }
+        unitIds:
+          type: array
+          items: { type: string, format: uuid }
+    SessionView:
+      type: object
+      required: [account, links]
+      properties:
+        account: { $ref: '#/components/schemas/AccountView' }
+        links:
+          type: array
+          items: { $ref: '#/components/schemas/LinkView' }
+        activeLinkId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Vazio quando a conta tem mais de um vínculo e ainda não escolheu (PUT /auth/session/link).
+    InviteInfo:
+      type: object
+      required: [role, existingAccount, organizationId, email, expiresAt]
+      properties:
+        email: { type: string, description: "E-mail do convite (só para código válido)." }
+        name: { type: string, nullable: true, description: "Nome informado no convite." }
+        expiresAt: { type: string, format: date-time, description: "Vencimento do convite." }
+        role: { type: string, enum: [COORDINATOR, ADMINISTRATOR, TEACHER, STUDENT, GUARDIAN] }
+        existingAccount: { type: boolean, description: Verdadeiro quando a pessoa já tem senha e aceita com ela. }
+        organizationId: { type: string, format: uuid }
     FieldError:
       type: object
       required: [field, message]
@@ -65,6 +260,14 @@ components:
             - METHOD_NOT_ALLOWED
             - CONFLICT
             - UNSUPPORTED_MEDIA_TYPE
+            - INVALID_CREDENTIALS
+            - TOO_MANY_REQUESTS
+            - CHALLENGE_FAILED
+            - INVITE_INVALID
+            - RESET_LINK_INVALID
+            - PASSWORD_WEAK
+            - PASSWORD_LEAKED
+            - MINOR_HAS_NO_ACCOUNT
             - INTERNAL_ERROR
         message: { type: string }
         changed: { type: boolean }

@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import "./i18n";
 import "./index.css";
 import { App } from "./App";
+import { BrowserRouter } from "react-router";
+import { SessionProvider } from "./features/auth/SessionProvider";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 async function start() {
@@ -13,7 +15,11 @@ async function start() {
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <ThemeProvider>
-        <App />
+        <BrowserRouter>
+          <SessionProvider>
+            <App />
+          </SessionProvider>
+        </BrowserRouter>
       </ThemeProvider>
     </StrictMode>,
   );

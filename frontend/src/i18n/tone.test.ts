@@ -9,7 +9,7 @@ function leaves(node: Tree, path = ""): [string, string][] {
 }
 
 // RNF-24. Listas curtas: pegam só o mais objetivo; o tom em si é revisão humana.
-const proibidos = ["prezado", "prezada", "vc ", "tá ", "blz", "mano", "galera", "bora"];
+const proibidos = ["prezado", "prezada", " vc ", " tá ", "blz", "mano", "galera", "bora"];
 const ameacas = ["bloquearemos", "negativar", "negativado", "protestar", "protesto", "cobrança judicial", "processaremos", "spc", "serasa", "sob pena"];
 
 describe("tom dos textos (CA10)", () => {
@@ -17,7 +17,7 @@ describe("tom dos textos (CA10)", () => {
 
   it("nenhum texto tem forma de tratamento formal, gíria ou ameaça", () => {
     for (const [chave, texto] of todos) {
-      const t = `${texto.toLowerCase()} `;
+      const t = ` ${texto.toLowerCase()} `;
       for (const p of [...proibidos, ...ameacas]) expect(t, `${chave} contém "${p}"`).not.toContain(p);
     }
   });

@@ -4,6 +4,106 @@
     "welcomeTitle": "Bem-vindo ao ctcore",
     "welcomeText": "Aqui você vai cuidar da sua academia. As telas chegam aos poucos."
   },
+  "auth": {
+    "title": "Entrar",
+    "email": "E-mail",
+    "password": "Senha",
+    "show": "Mostrar",
+    "hide": "Ocultar",
+    "submit": "Entrar",
+    "sending": "Entrando...",
+    "forgot": "Esqueci minha senha",
+    "errors": {
+      "emailRequired": "Informe o seu e-mail.",
+      "passwordRequired": "Informe a sua senha.",
+      "invalid": "E-mail ou senha incorretos.",
+      "tooMany": "Muitas tentativas. Espere alguns minutos e tente de novo.",
+      "challenge": "Não conseguimos confirmar que é você. Tente de novo."
+    },
+    "support": {
+      "title": "Precisa de ajuda?",
+      "email": "E-mail",
+      "phone": "Telefone"
+    }
+  },
+  "areaUnavailable": {
+    "title": "Esta área não está disponível para o seu perfil",
+    "text": "O seu perfil não permite abrir este endereço. Volte ao Início ou, se precisar, troque de organização ou área.",
+    "home": "Ir para o Início"
+  },
+  "chooseLink": {
+    "title": "Escolher organização e área",
+    "intro": "Você tem acesso a mais de uma organização ou área. Escolha onde quer trabalhar agora.",
+    "current": "Atual",
+    "trigger": "Trocar organização ou área",
+    "sending": "Enviando a escolha...",
+    "retry": "Tentar de novo",
+    "errorFailed": "Não conseguimos salvar a escolha. Tente de novo.",
+    "errorGone": "Essa opção não existe mais. Atualizamos a lista; escolha de novo.",
+    "areaOption": "{{area}} ({{role}})",
+    "areas": { "management": "Gestão", "portal": "Portal" },
+    "roles": {
+      "COORDINATOR": "Coordenador",
+      "ADMINISTRATOR": "Administrador",
+      "TEACHER": "Professor",
+      "STUDENT": "Aluno",
+      "GUARDIAN": "Responsável"
+    }
+  },
+  "password": {
+    "label": "Senha",
+    "confirm": "Confirmar senha",
+    "show": "Mostrar",
+    "hide": "Ocultar",
+    "mismatch": "As senhas não são iguais.",
+    "leaked": "Essa senha é muito conhecida. Escolha outra.",
+    "weak": "A senha não atende às exigências abaixo.",
+    "rules": {
+      "title": "A senha precisa ter:",
+      "length": "8 ou mais caracteres",
+      "number": "1 número",
+      "upper": "1 letra maiúscula",
+      "met": "atendida",
+      "pending": "pendente"
+    }
+  },
+  "invite": {
+    "title": "Criar sua senha",
+    "titleExisting": "Aceitar convite",
+    "name": "Nome",
+    "email": "E-mail",
+    "validUntil": "Vale até {{date}}",
+    "submit": "Criar senha e entrar",
+    "submitExisting": "Aceitar convite e entrar",
+    "sending": "Entrando...",
+    "currentPassword": "Sua senha atual",
+    "existingNotice": "Você já tem uma conta com este e-mail. O novo acesso entra na conta que você já tem.",
+    "help": "Peça um novo convite a quem convidou você.",
+    "invalid": {
+      "title": "Este convite não é válido",
+      "EXPIRED": "Este convite venceu. Os convites valem por 7 dias.",
+      "USED": "Este convite já foi usado. Se foi você, entre com o seu e-mail e a sua senha.",
+      "CANCELED": "Este convite foi cancelado por quem convidou você.",
+      "GENERIC": "O link não leva a um convite que possa ser usado."
+    }
+  },
+  "forgot": {
+    "title": "Recuperar senha",
+    "intro": "Informe o e-mail da sua conta. Se ele tiver uma conta, enviamos um link para criar uma nova senha.",
+    "submit": "Enviar link",
+    "sending": "Enviando...",
+    "back": "Entrar"
+  },
+  "reset": {
+    "title": "Nova senha",
+    "submit": "Criar senha e entrar",
+    "sending": "Entrando...",
+    "invalid": {
+      "title": "Este link não é válido ou já foi usado",
+      "text": "O link venceu, já foi usado ou foi substituído por um mais novo. Peça outro link para criar a sua senha.",
+      "ask": "Pedir novo link"
+    }
+  },
   "theme": {
     "toDark": "Usar tema escuro",
     "toLight": "Usar tema claro"
