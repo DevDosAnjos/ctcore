@@ -194,7 +194,7 @@ Ordem sugerida: A1, A2, A3, A4 e A5 num único PR fora de item (como o #243 da S
 
 #### Resumo e veredito
 
-Rodada 2 sobre `dev` depois do PR #258 ("Ajustes da revisão da Sprint 03 (A1 a A5)"). Li `git diff a01cb56 dev` (14 arquivos: README, `CoordinationTransfer`, 3 testes do back-end, 2 do front, `docs/especificacao` e `specs/`). Os cinco ajustes foram feitos e conferidos. O clone limpo passou em tudo, **com uma exceção**: no primeiro `verify` o `EmailServiceIT.requeue` falhou (R03-12); no segundo, com o mesmo código, passou. Sem BLOQUEIA. Resultado **AJUSTAR** só pelo teste instável, que pode seguir na Sprint 04; o resto está pronto para o PR `dev`→`main`.
+Rodada 2 sobre `dev` depois do PR #258 ("Ajustes da revisão da Sprint 03 (A1 a A5)"). Li `git diff a01cb56 dev` (14 arquivos: README, `CoordinationTransfer`, 3 testes do back-end, 2 do front, `docs/especificacao` e `specs/`). Os cinco ajustes foram feitos e conferidos. O clone limpo passou em tudo, **com uma exceção**: no primeiro `verify` o `EmailServiceIT.requeue` falhou (R03-12); no segundo, com o mesmo código, passou. Sem BLOQUEIA. Resultado **AJUSTAR** só pelo teste instável, que pode seguir na Sprint 04 (não é defeito de produto: é teste da suíte, o código de envio não mudou na sprint e o teste passou na segunda execução); o resto está pronto para o PR `dev`→`main`.
 
 Estado: `dev` = `origin/dev` = `1e67fdb`, pasta limpa; `origin/main` = `537fb68` (Sprint 02). Sem PR aberto contra `dev`; marco com as 12 issues fechadas; `gh auth` válido; Docker 29.8.1; Java 25.0.4 (compila com `release 21`), Node 24.21.0. Branches remotas ainda existentes: `item/28-...` a `item/37-...` e `ajuste/sprint-03` (todas mergeadas; R03-9). Gravei esta rodada na branch local `revisao/sprint-03-r2`, sem commit (a `revisao/sprint-03` local da rodada 1 ficou para trás).
 
@@ -238,11 +238,13 @@ Comparação com a rodada 1: back-end 359 → 361 testes (+2 da A3), 97,38% → 
 
 #### Decisões do dono
 
-D1, D2 e D3 da rodada 1 seguem sem resposta registrada: o #258 aplicou as opções recomendadas de D1 e D2 na especificação, e D3 (e2e só contra MSW até a Sprint 22) não foi decidida. **D4 · Confirmar a liberação e as três decisões.** Recomendada: confirmar D1, D2 e D3 como estão e que revisou a Sprint 02 em 18/10/2026, porque o texto já está na especificação e a linha 5 do backlog afirma essa confirmação.
+**Respondidas em 18/10/2026 (D4, abaixo).** Texto da rodada, antes da resposta: D1, D2 e D3 da rodada 1 seguiam sem resposta registrada: o #258 aplicou as opções recomendadas de D1 e D2 na especificação, e D3 (e2e só contra MSW até a Sprint 22) não foi decidida. **D4 · Confirmar a liberação e as três decisões.** Recomendada: confirmar D1, D2 e D3 como estão e que revisou a Sprint 02 em 18/10/2026, porque o texto já está na especificação e a linha 5 do backlog afirma essa confirmação.
+
+**D4 · Confirmação do dono (18/10/2026).** Mensagem do dono, dada em 18/10/2026: "confirmo D1 a D3 e a liberação da Sprint 03 (18/10/2026)". Efeito: D1 (manter o assistente e reescrever a RN-ORG-07), D2 (taxas por meio só em valor fixo na #31; a #97 decide o percentual) e D3 (e2e só contra MSW até a Sprint 22) ficam decididas como recomendadas, e a Sprint 03 está liberada. Registrada em `specs/backlog.md` (linha "Sprint liberada"). Nada mais muda na especificação: o #258 já trazia D1 e D2.
 
 #### Ações do dono
 
-1. Responder D1 a D4 (uma frase basta).
+1. (Feito em 18/10/2026, D4) Responder D1 a D4 (uma frase basta).
 2. Olhar as telas no navegador (rodada 1, "Ações do dono", item 2); continua só com o dono.
 3. Apagar as 11 branches remotas mergeadas (`item/28-...` a `item/37-...` e `ajuste/sprint-03`) e, se quiser, ligar "Automatically delete head branches".
 4. Decidir se o R03-12 entra antes do PR `dev`→`main` (recomendo seguir sem ele: a falha é de teste, não de produto) e abrir o PR `dev`→`main` com o método "Merge". Depois de revisar, dizer "sim" para liberar a Sprint 04.
@@ -255,4 +257,15 @@ D1, D2 e D3 da rodada 1 seguem sem resposta registrada: o #258 aplicou as opçõ
 
 As da rodada 1 continuam: canvas e tom dos textos só por pessoa; axe em modais e na tela das duas etapas não conferido em navegador real; `e2e:full`, gitleaks, OSV e `actionlint` locais não rodados (o CI roda e passou); publicação, hospedagem e conexões reais são limitação aceita (Sprints 22 e 23). Não acionei `/code-review`, `/security-review` nem `ponytail-audit`: o diff de produção desta rodada é uma função (`CoordinationTransfer.becomes`), lida inteira. Não reproduzi a hipótese do R03-12.
 
-**Resultado da rodada 2: AJUSTAR** — sem BLOQUEIA; R03-12 (teste instável) é o único ajuste, com destino na Sprint 04; decisões D1 a D4 do dono pendentes. A1 a A5 da rodada 1: feitos.
+**Resultado da rodada 2: AJUSTAR** — sem BLOQUEIA; R03-12 (teste instável) é o único ajuste, com destino na Sprint 04; decisões D1 a D4 respondidas pelo dono em 18/10/2026 (D4). A1 a A5 da rodada 1: feitos.
+
+#### Para a Sprint 04 não perder
+
+Este relatório é o registro (a Sprint 02 deixou o A4 e o A5 do mesmo modo, em "Ajustes propostos"; o backlog não tem seção de itens herdados e nenhuma issue foi criada). Ao abrir a Sprint 04, ler esta lista:
+
+- **A6** · guarda de isolamento por rota (R03-6, herdado do R02-4): rota nova da Sprint 04 precisa de teste de isolamento enquanto a guarda não existir.
+- **A7** · cabeçalhos de segurança do front (R03-7): `Content-Security-Policy`, `nosniff`, `X-Frame-Options` e `Referrer-Policy` no `nginx` da imagem; destino final na Sprint 22 (#192, #193).
+- **A8** · impedimento de desativação por contagem real (R03-8): ajuste no texto das issues #46 e #67 (Sprints 05 e 07), com o dono.
+- **A9** · estabilizar `EmailServiceIT.requeue` (R03-12): primeiro PR da Sprint 04 ou ajuste fora de item.
+- **R03-9** · branches remotas mergeadas: apagadas em 18/10/2026 depois deste registro; ligar "Automatically delete head branches" segue com o dono.
+- **R03-13** · acrescentar "erros de campo são 400 `VALIDATION_ERROR`" à especificação (sugestão).
