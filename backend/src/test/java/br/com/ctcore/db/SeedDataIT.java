@@ -37,6 +37,7 @@ class SeedDataIT extends PostgresIT {
             jdbc.update("delete from " + table);
         }
         jdbc.update("delete from organization_feature");
+        jdbc.update("delete from unit_short_name_history");
         jdbc.update("delete from unit_settings");
         jdbc.update("delete from unit");
         jdbc.update("delete from organization_settings");

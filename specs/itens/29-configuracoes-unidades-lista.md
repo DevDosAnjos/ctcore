@@ -144,6 +144,10 @@ Achados:
 - Achado obrigatório da rodada 1 (422 x 400): resolvido na especificação (CA10, D8).
 - sugestão, código, `UnitList.adjustShortName` — teste concorrente do ajuste continua ausente (mantido da rodada 1).
 
+### Correção da entrega
+- Falha do PR #249 (`SeedDataIT.clean` violava a FK de `unit_short_name_history` ao apagar `unit`) — arquivos: `backend/src/test/java/br/com/ctcore/db/SeedDataIT.java` (apaga `unit_short_name_history` antes de `unit`) — prova: `./backend/mvnw -f backend/pom.xml verify` → exit 0, 151 testes sem falha nem erro (SeedDataIT 8/8), JaCoCo ok.
+Regressão: back-end `verify` verde como acima; front não foi alterado nesta correção (última execução: lint, tipos, cobertura 97,93%, e2e 11/11).
+
 ## Entrega
 
 - Lista de unidades em Configurações › Unidades (RF-ORG-02): rota `/api/v1` nova no back-end (`UnitController`, `UnitList`, `ShortName`), migração V13 (cidade e histórico do nome curto), contrato em `docs/openapi.yaml`, tela com os quatro estados, handlers MSW, textos pt-BR e seed `04-unidades.sql`.
@@ -151,3 +155,19 @@ Achados:
 - Decisão: formato inválido responde 400 `VALIDATION_ERROR` (D8), não 422.
 - Limitação: falta teste concorrente do ajuste do nome curto (sugestão, não obrigatória).
 - Verificações do PR #249 falharam: job `backend` (`SeedDataIT`, 8 erros). `SeedDataIT.clean:41` faz `delete from unit` e viola a FK `unit_short_name_history_organization_id_unit_id_fkey` (tabela `unit_short_name_history`, criada na V13 e preenchida por `infra/seed/04-unidades.sql`). Corrigir: o `clean` do `SeedDataIT` apagar `unit_short_name_history` antes de `unit` (ou FK `on delete cascade`). Front, e2e, imagens e segurança passaram.
+
+### Rodada 3 — OK — 2026-10-17, estado d140d5becb4ed5f14c5d63c1fd3f4b3d59a9c93d
+
+Desde a rodada 2 (`git diff 07310f7… d140d5b…`) mudou só `SeedDataIT.clean` (apaga `unit_short_name_history` antes de `unit`), `specs/backlog.md` e este arquivo. Código de produto, contrato e front intactos.
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1–CA16 | PASSOU (mantido da rodada 2) | nenhum arquivo de produto mudou; `verify` reexecutado sem falha |
+
+Comandos:
+- `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 151 testes, 0 falhas, 0 erros (SeedDataIT incluído).
+- Front não rodou de novo: nada em `frontend/` mudou desde a rodada 2.
+
+Achados:
+- Falha do PR #249 (FK em `SeedDataIT.clean`): corrigida, verificada pelo `verify`.
+- sugestão, código, `UnitList.adjustShortName` — teste concorrente do ajuste continua ausente (mantido).
