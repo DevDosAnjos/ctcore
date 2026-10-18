@@ -37,7 +37,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 26 | Duas etapas (TOTP), códigos de reserva e senha nas ações críticas | issue #26 | Sprint 03 | — | agente | feito |
 | 27 | Tabela de permissões aplicada no servidor | issue #27 | Sprint 03 | — | agente | feito |
 | 28 | RF-ORG-01 · Configurações › Organização | issue #28 | Sprint 03 | — | agente | feito |
-| 29 | RF-ORG-02 · Configurações › Unidades (lista) | issue #29 | Sprint 03 | — | agente | a fazer |
+| 29 | RF-ORG-02 · Configurações › Unidades (lista) | issue #29 | Sprint 03 | — | agente | feito |
 | 30 | RF-ORG-03 · Assistente de nova unidade | issue #30 | Sprint 03 | — | agente | a fazer |
 | 31 | RF-ORG-04 · Configurações › Unidade | issue #31 | Sprint 03 | — | agente | a fazer |
 | 32 | RF-ORG-05 · Seletor de unidade e "Todas as unidades" | issue #32 | Sprint 03 | — | agente | a fazer |

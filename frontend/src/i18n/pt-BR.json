@@ -240,6 +240,32 @@
       "loadError": "Não foi possível abrir esta imagem. Escolha outro arquivo."
     }
   },
+  "units": {
+    "title": "Unidades",
+    "city": "Cidade",
+    "noCity": "Não informada",
+    "activeStudents": "Alunos ativos",
+    "administrators": "Administradores",
+    "noAdministrators": "Nenhum Administrador",
+    "status": "Situação",
+    "active": "Ativa",
+    "inactive": "Desativada",
+    "shortName": "Nome curto",
+    "adjust": "Ajustar nome curto",
+    "emptyTitle": "Nenhuma unidade",
+    "emptyText": "Quando a organização tiver unidades, elas aparecem aqui.",
+    "dialog": {
+      "title": "Ajustar o nome curto de {{name}}",
+      "warning": "Você só pode ajustar o nome curto uma vez. O endereço antigo continua valendo e leva ao novo.",
+      "current": "Nome curto atual: {{value}}",
+      "label": "Novo nome curto",
+      "formatInvalid": "Use até 60 letras minúsculas sem acento, números e hífen, sem hífen no começo ou no fim.",
+      "conflict": "Este nome curto não está disponível. Escolha outro.",
+      "error": "Não foi possível ajustar o nome curto. Tente de novo.",
+      "confirm": "Ajustar",
+      "saving": "Ajustando..."
+    }
+  },
   "menu": {
     "groups": {
       "home": "Início",

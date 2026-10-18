@@ -27,19 +27,14 @@ describe("buildMenu", () => {
     expect(buildMenu(mockPermissions(undefined), t, allAvailable)).toEqual([]);
   });
 
-  it("CA12 / CA19: com o catálogo real, só o Início e Configurações › Organização aparecem; o Professor vê só o Início", () => {
+  it("CA12 / CA19 / CA16 (#29): com o catálogo real, o Coordenador vê Organização e Unidades, o Administrador só Organização e o Professor só o Início", () => {
     const home = { id: "home", label: "menu.groups.home", items: [{ id: "home", label: "menu.items.home", href: "/" }] };
     expect(buildMenu(mockPermissions("TEACHER"), t)).toEqual([home]);
-    for (const role of ["COORDINATOR", "ADMINISTRATOR"]) {
-      expect(buildMenu(mockPermissions(role), t)).toEqual([
-        home,
-        {
-          id: "settings",
-          label: "menu.groups.settings",
-          items: [{ id: "organizationSettings", label: "menu.items.organizationSettings", href: "/configuracoes/organizacao" }],
-        },
-      ]);
-    }
+    const organization = { id: "organizationSettings", label: "menu.items.organizationSettings", href: "/configuracoes/organizacao" };
+    const units = { id: "units", label: "menu.items.units", href: "/configuracoes/unidades" };
+    const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
+    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, settings([organization, units])]);
+    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, settings([organization])]);
   });
 });
 

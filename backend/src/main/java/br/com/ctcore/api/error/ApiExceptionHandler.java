@@ -43,6 +43,11 @@ public class ApiExceptionHandler {
         return build(ErrorCode.VALIDATION_ERROR, req, e.fields);
     }
 
+    @ExceptionHandler(ApiStatusException.class)
+    ResponseEntity<ApiError> status(ApiStatusException e, HttpServletRequest req) {
+        return build(e.code, req, List.of());
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<ApiError> tooLarge(HttpServletRequest req) {
         return build(ErrorCode.VALIDATION_ERROR, req, List.of(new ApiError.Field("file", "arquivo acima de 5 MB")));
