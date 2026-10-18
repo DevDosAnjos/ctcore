@@ -40,14 +40,14 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 
 ### Duas etapas
 
-- **RN-ACE-17.** Verificação em duas etapas por app autenticador (TOTP). Obrigatória para Coordenador e equipe da plataforma, que configuram no primeiro acesso. Opcional para Administrador, Professor, Aluno e Responsável.
+- **RN-ACE-17.** Verificação em duas etapas por app autenticador (TOTP). Obrigatória para Coordenador e equipe da plataforma, que configuram no primeiro acesso. Opcional para Administrador, Professor, Aluno e Responsável. O login com duas etapas tem dois passos: a senha gera um bilhete de 5 minutos, que 5 erros de código invalidam; os erros contam na trava da RN-ACE-10. Um código TOTP não vale duas vezes no mesmo passo.
 - **RN-ACE-18.** Ao ativar, a pessoa recebe 10 códigos de reserva de uso único. Sem o celular e sem códigos, abre chamado; o suporte confirma a identidade (documento e dados da organização) antes de desativar. Não existe código por e-mail.
 
 ### Sessão
 
 - **RN-ACE-19.** Sessão sem uso expira em 30 dias para contas que só têm vínculos de Aluno ou Responsável e em 12 horas para quem tem algum vínculo de gestão ou do painel da plataforma. O prazo vem dos vínculos da conta, não da área aberta. Não existe "Manter conectado".
 - **RN-ACE-20.** Trocar a senha, desativar a conta ou remover o último vínculo de gestão encerra na hora todas as sessões em outros aparelhos. A pessoa recebe e-mail avisando da troca de senha.
-- **RN-ACE-21.** Ações críticas pedem a senha de novo (e o código de duas etapas, se ligado): transferir coordenação, cancelar assinatura, exportação completa, desconectar o Mercado Pago, anonimizar aluno, desativar unidade.
+- **RN-ACE-21.** Ações críticas pedem a senha de novo (e o código de duas etapas, se ligado), o que gera um token de uso único, válido por 5 minutos e preso à sessão e à ação: transferir coordenação, cancelar assinatura, exportação completa, desconectar o Mercado Pago, anonimizar aluno, desativar unidade.
 - **RN-ACE-22.** Login em aparelho novo gera e-mail "Novo acesso à sua conta", com aparelho, cidade aproximada e hora. O primeiro acesso da conta não gera o e-mail; enquanto não houver localizador por IP, a cidade sai como "local não identificado".
 
 ## Requisitos
@@ -55,9 +55,9 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 - **RF-ACE-01.** Login: e-mail, senha com "Mostrar"/"Ocultar", "Entrar", "Esqueci minha senha". Antes do login aparece o suporte da plataforma; depois, o contato da unidade. O suporte vem da configuração do ambiente.
 - **RF-ACE-02.** Criar senha pelo convite: nome e e-mail já preenchidos, validade do convite, exigências da senha marcadas enquanto digita, "Criar senha e entrar" só habilitado com a senha válida e igual nos dois campos. Quem já tem conta informa só a senha atual. Convite vencido, usado ou cancelado explica e orienta pedir outro.
 - **RF-ACE-03.** Recuperação de senha (RN-ACE-11, RN-ACE-14) e tela de nova senha com as mesmas exigências. A resposta ao pedido é a mesma para qualquer e-mail. A validade do link só aparece ao enviar a nova senha. Depois de criar, a pessoa entra direto.
-- **RF-ACE-04.** Minha conta (gestão e portal): trocar senha estando logado, trocar e-mail, ligar e desligar duas etapas, ver códigos de reserva novos, lista de sessões ativas com "Encerrar" e "Encerrar todas as outras".
+- **RF-ACE-04.** Minha conta (gestão e portal): trocar senha estando logado, trocar e-mail, ligar e desligar duas etapas, ver códigos de reserva novos, lista de sessões ativas com "Encerrar" e "Encerrar todas as outras" (a sessão atual não se encerra pela lista). A troca de e-mail exige senha e código; senha atual errada conta na trava da RN-ACE-10.
 - **RF-ACE-05.** Modal de escolha de organização e área (RN-ACE-03). A área vem do papel do vínculo: gestão para Coordenador, Administrador e Professor; portal para Aluno e Responsável. Depois do login com mais de um vínculo o modal é obrigatório; reaberto pelo menu, pode ser fechado.
-- **RF-ACE-06.** Configurações › Usuários: lista da equipe com perfil, unidades, último acesso e situação; convidar, reenviar convite, alterar unidades, desativar. O Coordenador gere Administradores; o Administrador gere Professores das suas unidades.
+- **RF-ACE-06.** Configurações › Usuários: lista da equipe com perfil, unidades, último acesso e situação; convidar, reenviar convite, alterar unidades, desativar. O Coordenador gere Administradores; o Administrador gere Professores das suas unidades. O Coordenador vê só Administradores; o Administrador, só Professores das suas unidades. "Desativar" encerra o vínculo, não a conta.
 - **RF-ACE-07.** Atualizar o último acesso a cada login.
 - **RF-ACE-08.** Tela "Esta área não está disponível para o seu perfil", com atalhos para o Início, quando alguém abre um endereço fora do seu alcance. A tela aparece no mesmo endereço, sem redirecionar, e não diz qual área ou recurso foi negado.
 

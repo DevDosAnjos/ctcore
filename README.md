@@ -79,11 +79,11 @@ Cada pasta tem o seu `Dockerfile` (multi-stage): `backend/` gera a imagem do bac
 docker build -t ctcore-backend backend
 docker build -t ctcore-frontend frontend
 docker compose -f infra/docker-compose.yml up -d --wait postgres
-docker run --rm -e DB_HOST=host.docker.internal -p 8080:8080 -p 8081:8081 ctcore-backend   # curl localhost:8081/actuator/health
+docker run --rm -e DB_HOST=host.docker.internal -e TWO_FACTOR_ENCRYPTION_KEY="$(openssl rand -base64 32)" -p 8080:8080 -p 8081:8081 ctcore-backend   # curl localhost:8081/actuator/health
 docker run --rm -p 8082:8080 ctcore-frontend                                                # http://localhost:8082
 ```
 
-No Linux, em vez de `host.docker.internal`, use `--network host` e dispense o `DB_HOST`. Outras variáveis: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`, `MANAGEMENT_PORT`.
+`TWO_FACTOR_ENCRYPTION_KEY` (32 bytes em base64) é obrigatória fora do perfil `local`; gere uma com `openssl rand -base64 32`. Perder a chave invalida os segredos das duas etapas já guardados. No Linux, em vez de `host.docker.internal`, use `--network host` e dispense o `DB_HOST`. Outras variáveis: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`, `MANAGEMENT_PORT`.
 
 O `CI` constrói a imagem do back-end quando a etapa `backend` roda e a do front-end quando a `frontend` roda; as duas entram no `ci-gate`.
 

@@ -41,7 +41,7 @@ const two = (allUnits: boolean) => () => HttpResponse.json({ allUnits, units: [u
 const switcher = () => screen.findByRole("combobox", { name: "Unidade ativa" });
 
 describe("seletor de unidade (RF-ORG-05)", () => {
-  it("CA5: com uma unidade não há seletor; com duas há", async () => {
+  it("RN-ORG-09 / CA5: com uma unidade não há seletor; com duas há", async () => {
     const one = setup("ADMINISTRATOR", () => HttpResponse.json({ allUnits: false, units: [unit(A, "Unidade A")] }));
     expect(await screen.findByText("Unidade: Unidade A")).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Unidade ativa" })).not.toBeInTheDocument();
@@ -50,7 +50,7 @@ describe("seletor de unidade (RF-ORG-05)", () => {
     expect(await switcher()).toBeInTheDocument();
   });
 
-  it("CA6: Coordenador lista Todas as unidades e as duas, começando em Todas; Administrador só as duas", async () => {
+  it("RN-ORG-09 / CA6: Coordenador lista Todas as unidades e as duas, começando em Todas; Administrador só as duas", async () => {
     const coordinator = setup("COORDINATOR", two(true));
     const select = await switcher();
     expect([...select.querySelectorAll("option")].map((o) => o.textContent)).toEqual(["Todas as unidades", "Unidade A", "Unidade B"]);

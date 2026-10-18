@@ -111,7 +111,7 @@ class UnitCreateIT extends UnitBase {
     }
 
     @Test
-    @DisplayName("CA6: CEP conhecido ganha as coordenadas da porta; CEP desconhecido cria sem coordenadas; coordenadas enviadas valem")
+    @DisplayName("RN-ORG-14 / CA6: CEP conhecido ganha as coordenadas da porta; CEP desconhecido cria sem coordenadas; coordenadas enviadas valem")
     void coordinates() throws Exception {
         var a = tenant();
         var coordinator = who(a, Role.COORDINATOR);

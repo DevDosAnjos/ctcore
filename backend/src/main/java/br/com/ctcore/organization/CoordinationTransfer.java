@@ -77,21 +77,39 @@ public class CoordinationTransfer {
     private String swap(AccountPrincipal who, Target target, String ip) {
         UUID org = who.organizationId();
         String name = jdbc.sql("select name from organization where id = :org for update").param("org", org).query(String.class).single();
-        int demoted = jdbc.sql("update account_link set role = 'ADMINISTRATOR' where organization_id = :org and account_id = :self "
-                + "and role = 'COORDINATOR' and status = 'ACTIVE'").param("org", org).param("self", who.accountId()).update();
-        if (demoted != 1) throw new AccessDeniedException("Not the active coordinator");
-        int promoted = jdbc.sql("update account_link set role = 'COORDINATOR' where id = :id and organization_id = :org "
-                + "and role = 'ADMINISTRATOR' and status = 'ACTIVE'").param("id", target.linkId()).param("org", org).update();
-        if (promoted != 1) throw new ApiValidationException("email", "informe um Administrador ativo da organização");
-        jdbc.sql("delete from account_link_unit where link_id = :id").param("id", target.linkId()).update();
+        UUID mine = jdbc.sql("select id from account_link where organization_id = :org and account_id = :self and role = 'COORDINATOR' and status = 'ACTIVE'")
+                .param("org", org).param("self", who.accountId()).query(UUID.class).optional().orElseThrow(() -> new AccessDeniedException("Not the active coordinator"));
+        UUID demoted = becomes(org, who.accountId(), mine, "ADMINISTRATOR");
+        boolean targetStillAdministrator = jdbc.sql("select count(*) from account_link where id = :id and organization_id = :org and role = 'ADMINISTRATOR' and status = 'ACTIVE'")
+                .param("id", target.linkId()).param("org", org).query(Integer.class).single() == 1;
+        if (!targetStillAdministrator) throw new ApiValidationException("email", "informe um Administrador ativo da organização");
+        becomes(org, target.accountId(), target.linkId(), "COORDINATOR");
         jdbc.sql("insert into account_link_unit (link_id, organization_id, unit_id) "
-                + "select l.id, :org, u.id from account_link l cross join unit u where u.organization_id = :org "
-                + "and l.organization_id = :org and l.account_id = :self and l.role = 'ADMINISTRATOR' on conflict do nothing")
-                .param("org", org).param("self", who.accountId()).update();
+                + "select :link, :org, u.id from unit u where u.organization_id = :org on conflict do nothing")
+                .param("link", demoted).param("org", org).update();
         audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name()),
                 "organization.coordination_transferred", "organization", org.toString(), null,
                 Map.of("coordinatorAccount", who.accountId().toString(), "administratorAccount", target.accountId().toString()),
                 Map.of("coordinatorAccount", target.accountId().toString(), "administratorAccount", who.accountId().toString()), null, ip));
         return name;
+    }
+
+    /**
+     * Passa o vínculo para o perfil de destino. Se a conta já tem uma linha desse perfil (unique conta, organização, perfil, mesmo encerrada),
+     * reaproveita essa linha, encerra a antiga e leva as sessões; as unidades da antiga saem. Devolve o vínculo que vale agora.
+     */
+    private UUID becomes(UUID org, UUID account, UUID linkId, String role) {
+        UUID existing = jdbc.sql("select id from account_link where organization_id = :org and account_id = :a and role = :role and id <> :id")
+                .param("org", org).param("a", account).param("role", role).param("id", linkId).query(UUID.class).optional().orElse(null);
+        if (existing == null) {
+            jdbc.sql("update account_link set role = :role where id = :id").param("role", role).param("id", linkId).update();
+            jdbc.sql("delete from account_link_unit where link_id = :id").param("id", linkId).update();
+            return linkId;
+        }
+        jdbc.sql("update account_link set status = 'ENDED', ends_on = current_date where id = :id").param("id", linkId).update();
+        jdbc.sql("update account_link set status = 'ACTIVE', ends_on = null where id = :id").param("id", existing).update();
+        jdbc.sql("delete from account_link_unit where link_id in (:old, :new)").param("old", linkId).param("new", existing).update();
+        jdbc.sql("update account_session set active_link_id = :new where active_link_id = :old").param("old", linkId).param("new", existing).update();
+        return existing;
     }
 }

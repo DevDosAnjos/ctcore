@@ -90,7 +90,7 @@ class UnitDeactivationIT extends UnitBase {
     }
 
     @Test
-    @DisplayName("CA1 / CA5 / CA9: desativa com token e nome em outra caixa, mantém o histórico, tira de reachable e audita sem segredo")
+    @DisplayName("RN-ORG-11 / CA1 / CA5 / CA9: desativa com token e nome em outra caixa, mantém o histórico, tira de reachable e audita sem segredo")
     void deactivates() throws Exception {
         var s = setup();
         var response = send(s.coordinator(), s.target(), "  uNiT ", s.coordinator().reauth);
@@ -127,7 +127,7 @@ class UnitDeactivationIT extends UnitBase {
     }
 
     @Test
-    @DisplayName("CA3 / CA4: com alunos e turmas ativos responde UNIT_HAS_BLOCKERS com as contagens, sem gastar o token; o check devolve o mesmo")
+    @DisplayName("RN-ORG-11 / CA3 / CA4: com alunos e turmas ativos responde UNIT_HAS_BLOCKERS com as contagens, sem gastar o token; o check devolve o mesmo")
     void blocked() throws Exception {
         var s = setup();
         when(blockers.activeStudents(any())).thenReturn(2);
@@ -192,7 +192,7 @@ class UnitDeactivationIT extends UnitBase {
     }
 
     @Test
-    @DisplayName("CA7: a única unidade ativa não desativa (lastActiveUnit) e desativadas não contam como outras")
+    @DisplayName("RN-ORG-11 / CA7: a única unidade ativa não desativa (lastActiveUnit) e desativadas não contam como outras")
     void lastUnit() throws Exception {
         var t = tenant();
         var c = new Member(t, Role.COORDINATOR);
