@@ -190,6 +190,41 @@
     "forbiddenTitle": "Você não tem acesso",
     "forbiddenText": "Seu perfil não permite ver esta tela. Fale com quem administra a sua academia."
   },
+  "menu": {
+    "groups": {
+      "home": "Início",
+      "operation": "Operação",
+      "people": "Pessoas",
+      "finance": "Financeiro",
+      "reports": "Relatórios",
+      "settings": "Configurações"
+    },
+    "items": {
+      "home": "Início",
+      "agenda": "Agenda",
+      "classes": "Turmas",
+      "noClassDays": "Dias sem aula",
+      "graduation": "Graduação",
+      "trialClasses": "Aulas experimentais",
+      "announcements": "Comunicados",
+      "students": "Alunos",
+      "teachers": "Professores",
+      "collections": "Cobranças e pagamentos",
+      "plans": "Planos",
+      "benefits": "Benefícios",
+      "reports": "Relatórios",
+      "allUnits": "Todas as unidades",
+      "unitSettings": "Configurações da unidade",
+      "organizationSettings": "Configurações da organização",
+      "staffUsers": "Usuários da gestão",
+      "units": "Unidades",
+      "subscription": "Assinatura e faturas",
+      "audit": "Auditoria",
+      "import": "Importar",
+      "exportFull": "Exportação completa",
+      "support": "Acesso de suporte"
+    }
+  },
   "layout": {
     "menu": "Menu",
     "openMenu": "Abrir menu",

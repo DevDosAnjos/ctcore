@@ -1,5 +1,6 @@
 import { http, HttpResponse, type HttpResponseResolver } from "msw";
 import { isStrongPassword } from "@/features/auth/PasswordRules";
+import { mockPermissions } from "./permissions";
 
 export type Method = "get" | "post" | "put" | "patch" | "delete";
 
@@ -240,6 +241,14 @@ export const routes: Route[] = [
       current = { ...current, activeLinkId: linkId ?? null };
       return HttpResponse.json(current);
     },
+  },
+  {
+    method: "get",
+    path: "/permissions",
+    resolver: () =>
+      loggedIn
+        ? HttpResponse.json({ permissions: mockPermissions(current.links.find((l) => l.id === current.activeLinkId)?.role) })
+        : unauthenticated(),
   },
 ];
 

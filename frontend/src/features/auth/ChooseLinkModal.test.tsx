@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
+import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
@@ -36,6 +37,9 @@ function setup(
   puts = [];
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(view)),
+    http.get("/api/v1/permissions", () =>
+      HttpResponse.json({ permissions: mockPermissions(view.links.find((l) => l.id === view.activeLinkId)?.role) }),
+    ),
     http.put("/api/v1/auth/session/link", async ({ request }) => {
       const body = (await request.json()) as { linkId: string };
       puts.push(body);
