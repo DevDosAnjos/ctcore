@@ -150,3 +150,4 @@ Achados:
 - Verificação (rodada 2, OK): `verify` do back-end verde (JaCoCo ok); front com lint, tipos, cobertura 97,93% e e2e 11/11.
 - Decisão: formato inválido responde 400 `VALIDATION_ERROR` (D8), não 422.
 - Limitação: falta teste concorrente do ajuste do nome curto (sugestão, não obrigatória).
+- Verificações do PR #249 falharam: job `backend` (`SeedDataIT`, 8 erros). `SeedDataIT.clean:41` faz `delete from unit` e viola a FK `unit_short_name_history_organization_id_unit_id_fkey` (tabela `unit_short_name_history`, criada na V13 e preenchida por `infra/seed/04-unidades.sql`). Corrigir: o `clean` do `SeedDataIT` apagar `unit_short_name_history` antes de `unit` (ou FK `on delete cascade`). Front, e2e, imagens e segurança passaram.
