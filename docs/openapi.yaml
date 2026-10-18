@@ -305,6 +305,33 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /organization/coordination-transfer:
+    post:
+      summary: Transfere a coordenação a um Administrador ativo (RF-ORG-06). Só o Coordenador.
+      description: |
+        Exige `X-Reauth-Token` da ação `TRANSFER_COORDINATION` (uso único; sem token válido, 403 REAUTH_REQUIRED) e a confirmação digitada
+        `TRANSFERIR` (sem diferenciar maiúsculas, sem espaços nas pontas). O novo Coordenador é indicado pelo e-mail e precisa ser Administrador
+        ativo da mesma organização; qualquer outro e-mail responde 400 VALIDATION_ERROR no campo `email`, sem revelar contas de outras organizações.
+        Na troca, o antigo vira Administrador de todas as unidades e o novo perde os vínculos de unidade (tudo ou nada); vale na hora, sem novo
+        login. O novo Coordenador recebe e-mail de confirmação. Grava `organization.coordination_transferred`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: X-Reauth-Token, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, confirmation]
+              properties:
+                email: { type: string }
+                confirmation: { type: string, example: TRANSFERIR }
+      responses:
+        '204': { description: Coordenação transferida. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /units:
     get:
       summary: Lista as unidades da organização do vínculo ativo (RF-ORG-02). Só o Coordenador.

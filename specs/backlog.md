@@ -41,7 +41,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 30 | RF-ORG-03 · Assistente de nova unidade | issue #30 | Sprint 03 | — | agente | feito |
 | 31 | RF-ORG-04 · Configurações › Unidade | issue #31 | Sprint 03 | — | agente | feito |
 | 32 | RF-ORG-05 · Seletor de unidade e "Todas as unidades" | issue #32 | Sprint 03 | — | agente | feito |
-| 33 | RF-ORG-06 · Transferir coordenação | issue #33 | Sprint 03 | — | agente | a fazer |
+| 33 | RF-ORG-06 · Transferir coordenação | issue #33 | Sprint 03 | — | agente | feito |
 | 34 | RF-ORG-07 · Desativar unidade | issue #34 | Sprint 03 | — | agente | a fazer |
 | 35 | RF-ORG-08 · "Última alteração" e auditoria das configurações | issue #35 | Sprint 03 | — | agente | a fazer |
 | 36 | RF-ACE-04 · Minha conta: senha, e-mail, duas etapas e sessões | issue #36 | Sprint 03 | — | agente | a fazer |

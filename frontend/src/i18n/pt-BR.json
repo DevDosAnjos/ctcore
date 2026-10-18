@@ -228,6 +228,18 @@
     "logoUpdated": "Logo atualizada.",
     "logoRemoved": "Logo removida.",
     "logoError": "Não foi possível atualizar a logo. Tente de novo.",
+    "transfer": {
+      "title": "Transferir coordenação",
+      "open": "Transferir coordenação",
+      "summary": "A pessoa indicada passa a ser a Coordenadora da organização e você vira Administrador de todas as unidades. A organização tem sempre uma só pessoa na coordenação.",
+      "email": "E-mail do novo Coordenador",
+      "emailHelp": "Precisa ser um Administrador ativo desta organização.",
+      "typeLabel": "Digite TRANSFERIR para confirmar",
+      "continue": "Continuar",
+      "done": "Coordenação transferida. Agora você é Administrador.",
+      "emailInvalid": "Informe o e-mail de um Administrador ativo da organização.",
+      "confirmationInvalid": "Digite TRANSFERIR para confirmar."
+    },
     "crop": {
       "title": "Cortar a logo",
       "hint": "Arraste a imagem ou use os controles para escolher o quadrado.",
