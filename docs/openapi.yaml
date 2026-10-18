@@ -226,6 +226,63 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/email-change:
+    post:
+      summary: Pede a troca do e-mail da conta (RN-ACE-15).
+      description: |
+        Exige a senha e, com as duas etapas ligadas, o código. Registra um pedido pendente (24 horas) e envia o link de confirmação ao
+        endereço novo; o e-mail da conta não muda neste passo. Novo pedido cancela o pendente; no máximo 3 por hora por conta.
+        Responde 202 também quando o endereço já é de outra conta (nada é enviado), para não revelar quem tem conta (RN-ACE-11).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EmailChangeRequest' } } }
+      responses:
+        '202': { description: Pedido aceito. }
+        '400': { description: "Endereço mal formado ou igual ao atual (VALIDATION_ERROR).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas ou mais de 3 pedidos na hora (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/email-change/{code}/confirm:
+    post:
+      summary: Confirma a troca de e-mail com o link recebido (RN-ACE-15).
+      description: |
+        Só quem está logado na conta dona do pedido. Troca o e-mail, marca o pedido como usado e avisa o endereço antigo. Link vencido, usado,
+        cancelado, de outra conta ou cujo endereço passou a ser de outra conta responde 410 EMAIL_CHANGE_INVALID e nada muda.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: E-mail trocado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '410': { description: "Link inválido (EMAIL_CHANGE_INVALID).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/sessions:
+    get:
+      summary: Sessões ativas da própria conta (RF-ACE-04).
+      description: Sem token, hash nem IP. `device` é um rótulo ("Chrome em Windows") e `city` vem vazia quando desconhecida.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Sessões vivas da conta, a mais recente primeiro.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AccountSession' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      summary: Encerra todas as outras sessões da conta e mantém a atual (RF-ACE-04).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '204': { description: Encerradas. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/sessions/{id}:
+    delete:
+      summary: Encerra uma sessão da própria conta que não seja a atual (RF-ACE-04).
+      description: Sessão de outra conta ou inexistente responde 404; a atual responde 409 SESSION_CURRENT (para ela existe `POST /auth/logout`).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Encerrada. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: "Sessão não encontrada (NOT_FOUND).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: "É a sessão em uso (SESSION_CURRENT).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /permissions:
     get:
       summary: Permissões efetivas do vínculo ativo, para montar o menu (RNF-05, D4 da #27).
@@ -664,6 +721,23 @@ components:
         action: { type: string, enum: [TRANSFER_COORDINATION, CANCEL_SUBSCRIPTION, FULL_EXPORT, DISCONNECT_MERCADO_PAGO, ANONYMIZE_STUDENT, DEACTIVATE_UNIT] }
         password: { type: string, format: password }
         code: { type: string, description: Obrigatório quando as duas etapas estão ligadas. }
+    EmailChangeRequest:
+      type: object
+      required: [newEmail, password]
+      properties:
+        newEmail: { type: string, format: email, maxLength: 254 }
+        password: { type: string, format: password }
+        code: { type: string, description: Obrigatório quando as duas etapas estão ligadas. }
+    AccountSession:
+      type: object
+      required: [id, device, createdAt, lastUsedAt, current]
+      properties:
+        id: { type: string, format: uuid }
+        device: { type: string, description: "Rótulo do aparelho, não o texto bruto do navegador." }
+        city: { type: string, nullable: true, description: Cidade aproximada quando conhecida. }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time }
+        current: { type: boolean }
     ReauthToken:
       type: object
       required: [reauthToken, expiresAt]
@@ -737,6 +811,8 @@ components:
             - TWO_FACTOR_TICKET_INVALID
             - TWO_FACTOR_SETUP_REQUIRED
             - REAUTH_REQUIRED
+            - EMAIL_CHANGE_INVALID
+            - SESSION_CURRENT
             - INTERNAL_ERROR
         message: { type: string }
         changed: { type: boolean }

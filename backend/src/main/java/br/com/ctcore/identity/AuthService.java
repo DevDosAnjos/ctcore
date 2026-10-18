@@ -236,10 +236,24 @@ public class AuthService {
         Found account = jdbc.sql("select id, email, password_hash, status from account where id = :a").param("a", accountId)
                 .query((rs, n) -> new Found(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4)))
                 .single();
+        // RN-ACE-10 (D3): a wrong current password feeds the same lock as the login, so a stolen session cannot guess it.
+        switch (attempts.check(account.email(), ip)) {
+            case EMAIL_LOCKED -> {
+                attempts.record(account.email(), ip, Result.LOCKED);
+                throw new IdentityException(Code.TOO_MANY_REQUESTS, null);
+            }
+            case IP_LIMITED -> {
+                attempts.record(account.email(), ip, Result.IP_LIMITED);
+                throw new IdentityException(Code.TOO_MANY_REQUESTS, null);
+            }
+            default -> { }
+        }
         if (account.hash() == null || !encoder.matches(current, account.hash())) {
+            attempts.record(account.email(), ip, Result.WRONG_PASSWORD);
             throw new ApiValidationException("currentPassword",
                     messages.getMessage("auth.password.current-wrong", null, Locale.forLanguageTag("pt-BR")));
         }
+        attempts.record(account.email(), ip, Result.SUCCESS);
         requireStrong(policy, next);
         String hash = encoder.encode(next);
         accountTx.forAccount(accountId, () -> {

@@ -175,6 +175,10 @@ abstract class AuthBase extends PostgresIT {
         return send(MockMvcRequestBuilders.get(url), null, session);
     }
 
+    ResultActions delete(String url, Cookie session) throws Exception {
+        return send(MockMvcRequestBuilders.delete(url), null, session);
+    }
+
     ResultActions put(String url, Object body, Cookie session) throws Exception {
         return send(MockMvcRequestBuilders.put(url), body, session);
     }

@@ -7,6 +7,11 @@ describe("api", () => {
     document.cookie = "XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT";
   });
 
+  it("202 sem corpo é sucesso", async () => {
+    server.use(http.post("/api/v1/x", () => new HttpResponse(null, { status: 202 })));
+    expect(await api("/x", { method: "POST" })).toBeUndefined();
+  });
+
   it("manda X-XSRF-TOKEN em POST e não em GET", async () => {
     document.cookie = "XSRF-TOKEN=abc%3D";
     const seen: Record<string, string | null> = {};

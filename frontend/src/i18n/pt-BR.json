@@ -524,6 +524,62 @@
     "dateInvalid": "Confira a data: ela precisa existir, no formato dd/mm/aaaa.",
     "moneyInvalid": "Confira o valor digitado."
   },
+  "account": {
+    "title": "Minha conta",
+    "link": "Minha conta",
+    "password": {
+      "title": "Senha",
+      "current": "Senha atual",
+      "currentWrong": "A senha atual está incorreta.",
+      "submit": "Trocar senha",
+      "sending": "Trocando...",
+      "done": "Senha alterada. As outras sessões foram encerradas."
+    },
+    "email": {
+      "title": "E-mail",
+      "intro": "E-mail atual: {{email}}. Para trocar, enviamos um link de confirmação ao endereço novo.",
+      "new": "Novo e-mail",
+      "password": "Sua senha",
+      "required": "Preencha todos os campos.",
+      "invalid": "Informe outro e-mail válido.",
+      "submit": "Enviar link de confirmação",
+      "sending": "Enviando...",
+      "sent": "Se o endereço {{email}} puder ser usado, enviamos um link de confirmação. Ele vale por 24 horas."
+    },
+    "twoFactor": {
+      "title": "Duas etapas",
+      "on": "As duas etapas estão ligadas.",
+      "off": "As duas etapas estão desligadas.",
+      "enable": "Ativar duas etapas",
+      "newCodes": "Gerar códigos de reserva novos",
+      "disable": "Desligar duas etapas",
+      "disableTitle": "Desligar duas etapas",
+      "disableIntro": "Para desligar, confirme a sua senha e um código.",
+      "disableSubmit": "Desligar",
+      "disabling": "Desligando..."
+    },
+    "sessions": {
+      "title": "Sessões ativas",
+      "current": "Esta sessão",
+      "lastUse": "Último uso:",
+      "end": "Encerrar",
+      "endOne": "Encerrar a sessão em {{device}}",
+      "endAll": "Encerrar todas as outras",
+      "endAllTitle": "Encerrar as outras sessões?",
+      "endAllSummary": "Todos os outros aparelhos vão precisar entrar de novo. Esta sessão continua.",
+      "endFailed": "Não conseguimos encerrar a sessão. Tente de novo.",
+      "empty": "Não há outras sessões ativas."
+    },
+    "confirm": {
+      "title": "Confirmar novo e-mail",
+      "text": "Ao confirmar, o e-mail desta conta passa a ser o endereço novo.",
+      "submit": "Confirmar troca",
+      "sending": "Confirmando...",
+      "done": "E-mail alterado. Use o endereço novo para entrar.",
+      "invalid": "Este link venceu, já foi usado ou não é desta conta. Peça um novo na tela Minha conta.",
+      "back": "Ir para Minha conta"
+    }
+  },
   "format": {
     "empty": "—",
     "today": "hoje",

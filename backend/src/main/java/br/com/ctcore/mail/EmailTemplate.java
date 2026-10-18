@@ -4,6 +4,8 @@ package br.com.ctcore.mail;
 public enum EmailTemplate {
     INVITE("mail.invite", true, true),
     PASSWORD_RESET("mail.reset", true, true),
+    EMAIL_CHANGE("mail.email-change", true, true),
+    EMAIL_CHANGED("mail.email-changed", false, false),
     PASSWORD_CHANGED("mail.password-changed", false, false),
     NEW_ACCESS("mail.new-access", false, false),
     COORDINATION_TRANSFERRED("mail.coordination-transferred", false, false);
