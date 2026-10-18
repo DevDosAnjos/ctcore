@@ -17,6 +17,14 @@ abstract class UnitBase extends OrganizationBase {
         return MockMvcRequestBuilders.get("/api/v1/units");
     }
 
+    protected static MockHttpServletRequestBuilder create(String json) {
+        return MockMvcRequestBuilders.post("/api/v1/units").contentType("application/json").content(json);
+    }
+
+    protected int unitCount(Tenant t) {
+        return adminJdbc().queryForObject("select count(*) from unit where organization_id = ?", Integer.class, t.orgId());
+    }
+
     protected static MockHttpServletRequestBuilder adjust(UUID unitId, String shortName) {
         return MockMvcRequestBuilders.patch("/api/v1/units/" + unitId + "/short-name").contentType("application/json")
                 .content("{\"shortName\":" + (shortName == null ? "null" : "\"" + shortName + "\"") + "}");
