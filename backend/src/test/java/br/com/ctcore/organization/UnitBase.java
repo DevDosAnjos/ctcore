@@ -2,6 +2,7 @@ package br.com.ctcore.organization;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +22,35 @@ abstract class UnitBase extends OrganizationBase {
         return MockMvcRequestBuilders.post("/api/v1/units").contentType("application/json").content(json);
     }
 
+    protected static MockHttpServletRequestBuilder mine() {
+        return MockMvcRequestBuilders.get("/api/v1/units/mine");
+    }
+
+    protected static MockHttpServletRequestBuilder read(UUID unitId) {
+        return MockMvcRequestBuilders.get("/api/v1/units/" + unitId);
+    }
+
+    protected static MockHttpServletRequestBuilder put(UUID unitId, JsonNode body) {
+        return MockMvcRequestBuilders.put("/api/v1/units/" + unitId).contentType("application/json").content(body.toString());
+    }
+
+    /** Corpo completo e válido do PUT, com os valores padrão da unidade; cada teste muda o que precisa. */
+    protected ObjectNode payload() {
+        ObjectNode n = json.createObjectNode();
+        n.put("name", "Unidade");
+        ObjectNode s = n.putObject("settings");
+        s.putArray("dueDays").add(1).add(5).add(10).add(15);
+        s.put("enrollmentFeeEnabled", false).put("enrollmentFeeCents", 0);
+        ObjectNode fees = s.putObject("feesCents");
+        for (String key : new String[] {"cash", "pix", "bankSlip", "creditCard", "debitCard", "automaticDebit", "manualPix", "terminalCard", "transfer"}) {
+            fees.put(key, 0);
+        }
+        s.putArray("reminderDays").add(-3).add(0).add(3).add(10);
+        s.putObject("teacherPermissions").put("announcements", true).put("agendaEdit", true).put("studentContacts", true).put("trialClasses", true);
+        s.put("directoryEnabled", false).put("trialLinkEnabled", true).put("selfRegistrationLinkEnabled", true);
+        return n;
+    }
+
     protected int unitCount(Tenant t) {
         return adminJdbc().queryForObject("select count(*) from unit where organization_id = ?", Integer.class, t.orgId());
     }
@@ -33,6 +63,7 @@ abstract class UnitBase extends OrganizationBase {
     protected UUID addUnit(Tenant t, String name, String shortName, String city) {
         UUID id = UUID.randomUUID();
         adminJdbc().update("insert into unit (id, organization_id, name, short_name, city) values (?, ?, ?, ?, ?)", id, t.orgId(), name, shortName, city);
+        adminJdbc().update("insert into unit_settings (organization_id, unit_id) values (?, ?)", t.orgId(), id);
         return id;
     }
 

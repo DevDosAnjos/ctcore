@@ -112,3 +112,9 @@ export function formatCpfCnpj(raw: string): string {
 }
 
 export const isValidCpfOrCnpj = (raw: string) => isValidCpf(raw) || isValidCnpj(raw);
+
+// CEP: 8 dígitos, com hífen depois do quinto.
+export function formatCep(raw: string): string {
+  const d = onlyDigits(raw).slice(0, 8);
+  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
+}

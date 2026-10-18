@@ -64,6 +64,7 @@ export const resetMockSession = () => {
   ticketAccount = null;
   organization = { ...initialOrganization };
   units = initialUnits();
+  unitDetails = {};
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -91,6 +92,57 @@ const unitsAccess = () => {
   return activeRole() === "COORDINATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
 };
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
+
+// Configurações da unidade (RF-ORG-04), em memória. Coordenador: qualquer unidade; Administrador: só a primeira (ADMIN_UNIT);
+// Professor e portal: 403. Unidade que não existe: 404.
+const ADMIN_UNIT = "00000000-0000-0000-0000-000000000021";
+const defaultUnitSettings = () => ({
+  dueDays: [1, 5, 10, 15],
+  enrollmentFeeEnabled: false,
+  enrollmentFeeCents: 0,
+  feesCents: { cash: 0, pix: 0, bankSlip: 0, creditCard: 0, debitCard: 0, automaticDebit: 0, manualPix: 0, terminalCard: 0, transfer: 0 },
+  pixKey: null as string | null,
+  paymentAccount: "NOT_CONNECTED" as "CONNECTED" | "NOT_CONNECTED",
+  reminderDays: [-3, 0, 3, 10],
+  teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true },
+  directoryEnabled: false,
+  trialLinkEnabled: true,
+  selfRegistrationLinkEnabled: true,
+});
+type UnitDetailMock = ReturnType<typeof makeUnitDetail>;
+const makeUnitDetail = (u: (typeof units)[number]) => ({
+  id: u.id,
+  name: u.name,
+  shortName: u.shortName,
+  postalCode: null as string | null,
+  address: null as string | null,
+  city: u.city,
+  latitude: null as number | null,
+  longitude: null as number | null,
+  phone: null as string | null,
+  email: null as string | null,
+  whatsapp: null as string | null,
+  cnpj: null as string | null,
+  active: u.active,
+  settings: defaultUnitSettings(),
+});
+let unitDetails: Record<string, UnitDetailMock> = {};
+const unitDetail = (id: string) => {
+  const unit = units.find((u) => u.id === id)!;
+  // nome curto, situação e cidade vêm da lista, que o ajuste do nome curto (#29) atualiza
+  return (unitDetails[id] = { ...(unitDetails[id] ?? makeUnitDetail(unit)), shortName: unit.shortName, active: unit.active });
+};
+const unitSettingsRole = () => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  return role === "COORDINATOR" || role === "ADMINISTRATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+const unitSettingsAccess = (id: string) => {
+  const denied = unitSettingsRole();
+  if (denied) return denied;
+  if (!units.some((u) => u.id === id)) return error(404, "NOT_FOUND", "Não encontrado.");
+  return activeRole() === "ADMINISTRATOR" && id !== ADMIN_UNIT ? error(403, "FORBIDDEN", "Sem permissão.") : null;
+};
 
 // Convites simulados: "valido" (conta nova), "existente" (já tem senha), "vencido", "usado", "cancelado"; outro código é desconhecido.
 const invites: Record<string, { email: string; name: string | null; existingAccount: boolean }> = {
@@ -373,6 +425,76 @@ export const routes: Route[] = [
       }
       Object.assign(unit, { shortName, shortNameAdjusted: true });
       return HttpResponse.json(unit);
+    },
+  },
+  {
+    method: "get",
+    path: "/units/mine",
+    resolver: () => {
+      const denied = unitSettingsRole();
+      if (denied) return denied;
+      const own = activeRole() === "COORDINATOR" ? units : units.filter((u) => u.id === ADMIN_UNIT);
+      return HttpResponse.json(own.map(({ id, name, shortName, city, active }) => ({ id, name, shortName, city, active })));
+    },
+  },
+  {
+    method: "get",
+    path: "/units/{id}",
+    resolver: ({ params }) => {
+      const denied = unitSettingsAccess(String(params.id));
+      return denied ?? HttpResponse.json(unitDetail(String(params.id)));
+    },
+  },
+  {
+    // Substituição completa (D10). Valida o essencial como o servidor; o nome curto e a conexão do Mercado Pago não mudam.
+    method: "put",
+    path: "/units/{id}",
+    resolver: async ({ request, params }) => {
+      const id = String(params.id);
+      const denied = unitSettingsAccess(id);
+      if (denied) return denied;
+      const b = (await request.json()) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const s = (b.settings ?? {}) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+      const bad: { field: string; message: string }[] = [];
+      const name = String(b.name ?? "").trim();
+      if (!name || name.length > 120) bad.push({ field: "name", message: "entre 1 e 120 caracteres" });
+      if (b.cnpj && !isValidCpfOrCnpj(String(b.cnpj))) bad.push({ field: "cnpj", message: "CNPJ inválido" });
+      const days: number[] = s.dueDays ?? [];
+      if (days.length === 0 || new Set(days).size !== days.length || days.some((d) => d < 1 || d > 28)) bad.push({ field: "settings.dueDays", message: "valores entre 1 e 28" });
+      if (s.pixKey && !/^([^@\s]+@[^@\s]+\.[^@\s]+|\+55\d{10,11}|\d{11}|\d{14}|[0-9a-f-]{36})$/i.test(String(s.pixKey))) bad.push({ field: "settings.pixKey", message: "chave Pix inválida" });
+      for (const [key, cents] of Object.entries((s.feesCents ?? {}) as Record<string, number>)) {
+        if (!(cents >= 0 && cents <= 100000)) bad.push({ field: `settings.feesCents.${key}`, message: "entre 0 e R$ 1.000,00" });
+      }
+      const reminders: number[] = s.reminderDays ?? [];
+      if (new Set(reminders).size !== reminders.length || reminders.length > 8 || reminders.some((d) => d < -30 || d > 60)) bad.push({ field: "settings.reminderDays", message: "valores entre -30 e 60" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const current = unitDetail(id);
+      const next = {
+        ...current,
+        name,
+        postalCode: b.postalCode ? String(b.postalCode).replace(/\D/g, "") : null,
+        address: b.address || null,
+        city: b.city || null,
+        // CEP novo sem coordenadas: o simulador da porta devolve um ponto fixo.
+        latitude: b.latitude ?? (b.postalCode && b.postalCode !== current.postalCode ? -23.5505 : null),
+        longitude: b.longitude ?? (b.postalCode && b.postalCode !== current.postalCode ? -46.6333 : null),
+        phone: b.phone || null,
+        email: b.email || null,
+        whatsapp: b.whatsapp || null,
+        cnpj: b.cnpj ? String(b.cnpj).replace(/\D/g, "") : null,
+        settings: {
+          ...current.settings,
+          ...s,
+          dueDays: [...days].sort((x, y) => x - y),
+          enrollmentFeeCents: s.enrollmentFeeEnabled ? s.enrollmentFeeCents : 0,
+          pixKey: s.pixKey || null,
+          reminderDays: [...reminders].sort((x, y) => x - y),
+          paymentAccount: current.settings.paymentAccount,
+        },
+      };
+      unitDetails[id] = next;
+      Object.assign(units.find((u) => u.id === id)!, { name, city: next.city });
+      return HttpResponse.json(next);
     },
   },
 ];

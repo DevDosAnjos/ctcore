@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 import { Card } from "@/components/Card";
@@ -9,10 +9,10 @@ import { Stepper } from "@/components/Stepper";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
+import { Text } from "./Text";
 import { createUnit, type NewUnit, type NewUnitResult } from "./useUnits";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const inputClass = "min-h-11 w-full rounded-md border bg-background px-2";
 
 type Form = {
   name: string;
@@ -28,36 +28,6 @@ type Form = {
   adminEmail: string;
 };
 const empty: Form = { name: "", postalCode: "", address: "", city: "", latitude: "", longitude: "", phone: "", whatsapp: "", email: "", adminName: "", adminEmail: "" };
-
-function Text({ label, value, onChange, error, help, ...rest }: { label: string; value: string; onChange: (v: string) => void; error?: string; help?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
-  const id = useId();
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-      </label>
-      <input
-        {...rest}
-        id={id}
-        className={inputClass}
-        value={value}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-erro` : help ? `${id}-ajuda` : undefined}
-        onChange={(e) => onChange(e.target.value)}
-      />
-      {help && !error && (
-        <p id={`${id}-ajuda`} className="text-sm text-muted-foreground">
-          {help}
-        </p>
-      )}
-      {error && (
-        <p id={`${id}-erro`} className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
 
 // Latitude e longitude vazias valem como "usar o CEP"; preenchidas, as duas e dentro das faixas.
 const coordinate = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", ".")));

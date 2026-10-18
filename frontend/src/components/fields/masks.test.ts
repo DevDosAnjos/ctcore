@@ -1,4 +1,4 @@
-import { formatCpf, isValidCpf, formatPhone, isValidPhone, formatMoney, parseMoney, parsePastedMoney, formatDate, parseDate, isValidCnpj, formatCpfCnpj, isValidCpfOrCnpj } from "./masks";
+import { formatCpf, isValidCpf, formatPhone, isValidPhone, formatMoney, parseMoney, parsePastedMoney, formatDate, parseDate, isValidCnpj, formatCpfCnpj, isValidCpfOrCnpj, formatCep } from "./masks";
 
 describe("masks", () => {
   it("CPF", () => {
@@ -76,5 +76,14 @@ describe("CNPJ e titular", () => {
     expect(isValidCpfOrCnpj("529.982.247-25")).toBe(true);
     expect(isValidCpfOrCnpj("11.222.333/0001-81")).toBe(true);
     expect(isValidCpfOrCnpj("529.982.247-26")).toBe(false);
+  });
+});
+
+describe("formatCep (#31)", () => {
+  it("coloca o hífen depois do quinto dígito e limita a 8 dígitos", () => {
+    expect(formatCep("01001")).toBe("01001");
+    expect(formatCep("01001000")).toBe("01001-000");
+    expect(formatCep("01001-000999")).toBe("01001-000");
+    expect(formatCep("")).toBe("");
   });
 });

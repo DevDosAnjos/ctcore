@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,10 +25,29 @@ class UnitController {
 
     private final UnitList units;
     private final UnitCreation creation;
+    private final UnitSettings settings;
 
-    UnitController(UnitList units, UnitCreation creation) {
+    UnitController(UnitList units, UnitCreation creation, UnitSettings settings) {
         this.units = units;
         this.creation = creation;
+        this.settings = settings;
+    }
+
+    // RF-ORG-04: /mine antes de /{id}.
+    @GetMapping("/mine")
+    List<UnitSettings.UnitChoice> mine(@AuthenticationPrincipal AccountPrincipal who) {
+        return settings.mine(who);
+    }
+
+    @GetMapping("/{id}")
+    UnitSettings.UnitDetail read(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
+        return settings.read(who, id);
+    }
+
+    @PutMapping("/{id}")
+    UnitSettings.UnitDetail update(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody UnitUpdate body,
+            HttpServletRequest request) {
+        return settings.update(who, id, body, request.getRemoteAddr());
     }
 
     @GetMapping

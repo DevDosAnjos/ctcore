@@ -15,6 +15,13 @@ public final class HolderDocument {
         return d;
     }
 
+    /** CNPJ da unidade: como {@link #normalize}, mas só aceita CNPJ (14 dígitos). Em branco vira null. */
+    public static String normalizeCnpj(String raw) {
+        String d = normalize(raw);
+        if (d != null && d.length() != 14) throw new IllegalArgumentException("CNPJ inválido");
+        return d;
+    }
+
     private static boolean validCpf(String d) {
         if (d.chars().distinct().count() == 1) return false;
         return check(d, 9, 10) == digit(d, 9) && check(d, 10, 11) == digit(d, 10);
