@@ -27,10 +27,18 @@ describe("buildMenu", () => {
     expect(buildMenu(mockPermissions(undefined), t, allAvailable)).toEqual([]);
   });
 
-  it("CA12: com o catálogo real, só o Início aparece (telas ainda não existem) para os três perfis", () => {
-    for (const role of ["COORDINATOR", "ADMINISTRATOR", "TEACHER"]) {
-      const menu = buildMenu(mockPermissions(role), t);
-      expect(menu).toEqual([{ id: "home", label: "menu.groups.home", items: [{ id: "home", label: "menu.items.home", href: "/" }] }]);
+  it("CA12 / CA19: com o catálogo real, só o Início e Configurações › Organização aparecem; o Professor vê só o Início", () => {
+    const home = { id: "home", label: "menu.groups.home", items: [{ id: "home", label: "menu.items.home", href: "/" }] };
+    expect(buildMenu(mockPermissions("TEACHER"), t)).toEqual([home]);
+    for (const role of ["COORDINATOR", "ADMINISTRATOR"]) {
+      expect(buildMenu(mockPermissions(role), t)).toEqual([
+        home,
+        {
+          id: "settings",
+          label: "menu.groups.settings",
+          items: [{ id: "organizationSettings", label: "menu.items.organizationSettings", href: "/configuracoes/organizacao" }],
+        },
+      ]);
     }
   });
 });

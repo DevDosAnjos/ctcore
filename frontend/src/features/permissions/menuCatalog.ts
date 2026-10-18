@@ -48,7 +48,7 @@ export const menuCatalog: CatalogGroup[] = [
     id: "settings",
     items: [
       item("unitSettings", "UNIT_SETTINGS", "/configuracoes/unidade"),
-      item("organizationSettings", "ORGANIZATION_SETTINGS", "/configuracoes/organizacao"),
+      item("organizationSettings", "ORGANIZATION_SETTINGS", "/configuracoes/organizacao", true),
       item("staffUsers", "STAFF_USERS", "/configuracoes/usuarios"),
       item("units", "UNITS", "/configuracoes/unidades"),
       item("subscription", "SUBSCRIPTION", "/configuracoes/assinatura"),

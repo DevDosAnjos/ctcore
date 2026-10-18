@@ -17,6 +17,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -40,6 +41,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ApiValidationException.class)
     ResponseEntity<ApiError> invalidInput(ApiValidationException e, HttpServletRequest req) {
         return build(ErrorCode.VALIDATION_ERROR, req, e.fields);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> tooLarge(HttpServletRequest req) {
+        return build(ErrorCode.VALIDATION_ERROR, req, List.of(new ApiError.Field("file", "arquivo acima de 5 MB")));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)

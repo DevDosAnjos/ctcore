@@ -1,5 +1,7 @@
 import { http, HttpResponse, type HttpResponseResolver } from "msw";
 import { isStrongPassword } from "@/features/auth/PasswordRules";
+import { isValidCpfOrCnpj, onlyDigits } from "@/components/fields/masks";
+import { isHexColor, passesContrast } from "@/features/organization/contrastRatio";
 import { mockPermissions } from "./permissions";
 
 export type Method = "get" | "post" | "put" | "patch" | "delete";
@@ -60,6 +62,22 @@ export const resetMockSession = () => {
   loggedIn = false;
   current = session;
   ticketAccount = null;
+  organization = { ...initialOrganization };
+};
+
+// Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
+const initialOrganization = { name: "Academia Alfa", color: null as string | null, holderDocument: null as string | null, logoUrl: null as string | null };
+let organization = { ...initialOrganization };
+// PNG de 1 pixel: o mock não guarda o arquivo enviado, só que existe uma logo.
+const MOCK_LOGO =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAHnOcQAAAAABJRU5ErkJggg==";
+const activeRole = () => current.links.find((l) => l.id === current.activeLinkId)?.role;
+// Leitura: Coordenador e Administrador; escrita: só o Coordenador. Professor e portal: 403 (FORBIDDEN).
+const organizationAccess = (write: boolean) => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  const allowed = role === "COORDINATOR" || (!write && role === "ADMINISTRATOR");
+  return allowed ? null : error(403, "FORBIDDEN", "Sem permissão.");
 };
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 
@@ -249,6 +267,55 @@ export const routes: Route[] = [
       loggedIn
         ? HttpResponse.json({ permissions: mockPermissions(current.links.find((l) => l.id === current.activeLinkId)?.role) })
         : unauthenticated(),
+  },
+  {
+    method: "get",
+    path: "/organization",
+    resolver: () => organizationAccess(false) ?? HttpResponse.json(organization),
+  },
+  {
+    method: "patch",
+    path: "/organization",
+    resolver: async ({ request }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const body = (await request.json()) as { name?: string; color?: string | null; holderDocument?: string | null };
+      const name = (body.name ?? "").trim();
+      const color = body.color ? body.color : null;
+      const holder = body.holderDocument ? body.holderDocument : null;
+      const fields: { field: string; message: string }[] = [];
+      if (!name || name.length > 120) fields.push({ field: "name", message: "entre 1 e 120 caracteres" });
+      if (color !== null && !(isHexColor(color) && passesContrast(color))) fields.push({ field: "color", message: "use #RRGGBB com contraste mínimo de 4,5:1" });
+      if (holder !== null && !isValidCpfOrCnpj(holder)) fields.push({ field: "holderDocument", message: "CPF ou CNPJ inválido" });
+      if (fields.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", fields);
+      organization = { ...organization, name, color: color?.toLowerCase() ?? null, holderDocument: holder ? onlyDigits(holder) : null };
+      return HttpResponse.json(organization);
+    },
+  },
+  {
+    method: "put",
+    path: "/organization/logo",
+    resolver: async ({ request }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      // O corpo multipart é lido como texto: o parser do Node não aceita o File do jsdom nos testes.
+      const raw = await request.text();
+      if (!raw.includes('name="file"') || raw.length < 20 || raw.length > 5 * 1024 * 1024) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "file", message: "arquivo inválido" }]);
+      }
+      organization = { ...organization, logoUrl: MOCK_LOGO };
+      return HttpResponse.json(organization);
+    },
+  },
+  {
+    method: "delete",
+    path: "/organization/logo",
+    resolver: () => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      organization = { ...organization, logoUrl: null };
+      return HttpResponse.json(organization);
+    },
   },
 ];
 

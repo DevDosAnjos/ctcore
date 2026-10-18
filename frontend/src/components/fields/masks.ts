@@ -92,3 +92,23 @@ export function parseDate(display: string): string | null {
   if (y < 1 || dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
+
+export function isValidCnpj(raw: string): boolean {
+  const d = onlyDigits(raw);
+  if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+  const dv = (weights: number[]) => {
+    const sum = weights.reduce((acc, w, i) => acc + Number(d[i]) * w, 0);
+    const r = sum % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return dv([5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(d[12]) && dv([6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(d[13]);
+}
+
+// Titular da organização: até 11 dígitos é CPF, acima é CNPJ.
+export function formatCpfCnpj(raw: string): string {
+  const d = onlyDigits(raw).slice(0, 14);
+  if (d.length <= 11) return formatCpf(d);
+  return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2})$/, (_, a, b, c, e, f) => `${a}.${b}.${c}/${e}${f ? `-${f}` : ""}`);
+}
+
+export const isValidCpfOrCnpj = (raw: string) => isValidCpf(raw) || isValidCnpj(raw);
