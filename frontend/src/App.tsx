@@ -11,6 +11,7 @@ import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/Requ
 import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
+import { UnitsPage } from "@/features/units/UnitsPage";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ThemeToggle } from "@/theme/ThemeToggle";
@@ -69,6 +70,9 @@ export function App() {
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />
+          </Route>
+          <Route element={<RequireArea roles={["COORDINATOR"]} />}>
+            <Route path="/configuracoes/unidades" element={<UnitsPage />} />
           </Route>
         </Route>
       </Route>

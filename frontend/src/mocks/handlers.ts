@@ -63,6 +63,7 @@ export const resetMockSession = () => {
   current = session;
   ticketAccount = null;
   organization = { ...initialOrganization };
+  units = initialUnits();
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -78,6 +79,16 @@ const organizationAccess = (write: boolean) => {
   const role = activeRole();
   const allowed = role === "COORDINATOR" || (!write && role === "ADMINISTRATOR");
   return allowed ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+// Unidades da organização (RF-ORG-02), em memória. Só o Coordenador lê e ajusta; nome "em-uso" simula nome de outra organização.
+const initialUnits = () => [
+  { id: "00000000-0000-0000-0000-000000000021", name: "Unidade Centro", shortName: "alfa-centro", shortNameAdjusted: false, city: "Rio de Janeiro", activeStudents: 0, administrators: [{ name: "Bruno" }, { name: "Carla" }], active: true },
+  { id: "00000000-0000-0000-0000-000000000022", name: "Unidade Norte", shortName: "alfa-norte", shortNameAdjusted: true, city: null as string | null, activeStudents: 0, administrators: [] as { name: string }[], active: false },
+];
+let units = initialUnits();
+const unitsAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  return activeRole() === "COORDINATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
 };
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 
@@ -315,6 +326,30 @@ export const routes: Route[] = [
       if (denied) return denied;
       organization = { ...organization, logoUrl: null };
       return HttpResponse.json(organization);
+    },
+  },
+  {
+    method: "get",
+    path: "/units",
+    resolver: () => unitsAccess() ?? HttpResponse.json(units),
+  },
+  {
+    method: "patch",
+    path: "/units/{id}/short-name",
+    resolver: async ({ request, params }) => {
+      const denied = unitsAccess();
+      if (denied) return denied;
+      const unit = units.find((u) => u.id === params.id);
+      if (!unit) return error(404, "NOT_FOUND", "Não encontrado.");
+      const { shortName } = (await request.json()) as { shortName?: string | null };
+      if (!shortName || shortName.length > 60 || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(shortName)) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "shortName", message: "formato inválido" }]);
+      }
+      if (unit.shortNameAdjusted || units.some((u) => u.shortName === shortName) || shortName === "em-uso") {
+        return error(409, "CONFLICT", "Conflito.");
+      }
+      Object.assign(unit, { shortName, shortNameAdjusted: true });
+      return HttpResponse.json(unit);
     },
   },
 ];

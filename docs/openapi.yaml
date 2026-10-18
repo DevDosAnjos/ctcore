@@ -305,6 +305,43 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /units:
+    get:
+      summary: Lista as unidades da organização do vínculo ativo (RF-ORG-02). Só o Coordenador.
+      description: |
+        A organização é sempre a do vínculo ativo. Sem paginação (no máximo 10 unidades, RN-ORG-05). `administrators` traz só os
+        Administradores com vínculo ativo na unidade. `activeStudents` é 0 até existir o cadastro de alunos.
+        Administrador, Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Unidades da organização, em ordem de nome.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/UnitSummary' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /units/{id}/short-name:
+    patch:
+      summary: Ajusta o nome curto da unidade, uma única vez (RN-ORG-15). Só o Coordenador.
+      description: |
+        Formato `a-z0-9` e hífen (sem hífen nas pontas), de 1 a 60 caracteres; fora dele responde 400 VALIDATION_ERROR (campo `shortName`).
+        Nome em uso por outra unidade, nome antigo de qualquer unidade (reservado para sempre) ou unidade já ajustada respondem 409.
+        Unidade de outra organização responde 404, igual a id inexistente. O nome antigo passa a redirecionar para o novo.
+        Grava `unit.short_name.update` na auditoria, com antes e depois.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UnitShortNameRequest' } } }
+      responses:
+        '200':
+          description: Nome curto ajustado (`shortNameAdjusted` verdadeiro).
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitSummary' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -543,6 +580,29 @@ components:
         name: { type: string, minLength: 1, maxLength: 120 }
         color: { type: string, nullable: true, description: '#RRGGBB; vazio ou nulo limpa.' }
         holderDocument: { type: string, nullable: true, description: 'CPF ou CNPJ, com ou sem máscara; vazio ou nulo limpa.' }
+    UnitSummary:
+      type: object
+      required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        shortName: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 60 }
+        shortNameAdjusted: { type: boolean, description: 'Verdadeiro depois do ajuste único do nome curto.' }
+        city: { type: string, nullable: true }
+        activeStudents: { type: integer, minimum: 0 }
+        administrators:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string }
+        active: { type: boolean, description: 'Verdadeiro = Ativa; falso = Desativada.' }
+    UnitShortNameRequest:
+      type: object
+      required: [shortName]
+      properties:
+        shortName: { type: string }
     Page:
       type: object
       description: Envelope de lista. Cada rota sobrescreve `items` por composição.
