@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 
-// Espelham UnitChoice, UnitDetail e UnitUpdate do OpenAPI (RF-ORG-04, docs/openapi.yaml). Valores em centavos.
+// Espelham UnitDetail e UnitUpdate do OpenAPI (RF-ORG-04, docs/openapi.yaml). Valores em centavos.
 export interface UnitChoice {
   id: string;
   name: string;
@@ -49,25 +49,6 @@ export type UnitUpdate = Omit<UnitDetail, "id" | "shortName" | "active" | "setti
 
 type Status = "loading" | "ready" | "forbidden" | "error";
 const statusOf = (e: unknown): Status => (e instanceof ApiError && (e.status === 403 || e.status === 404) ? "forbidden" : "error");
-
-// Unidades que o vínculo pode configurar (D1). O servidor decide quem acessa (403).
-export function useMyUnits() {
-  const [tick, setTick] = useState(0);
-  const [done, setDone] = useState<{ tick: number; units?: UnitChoice[]; status?: Status }>();
-  useEffect(() => {
-    let alive = true;
-    api<UnitChoice[]>("/units/mine").then(
-      (units) => alive && setDone({ tick, units }),
-      (e) => alive && setDone({ tick, status: statusOf(e) }),
-    );
-    return () => {
-      alive = false;
-    };
-  }, [tick]);
-  const current = done?.tick === tick ? done : undefined;
-  const status: Status = !current ? "loading" : current.units ? "ready" : (current.status ?? "error");
-  return { status, units: current?.units, retry: () => setTick((n) => n + 1) } as const;
-}
 
 // Leitura e gravação de uma unidade. Erros da gravação sobem (ApiError) para a tela apontar o campo.
 export function useUnitDetail(id: string) {

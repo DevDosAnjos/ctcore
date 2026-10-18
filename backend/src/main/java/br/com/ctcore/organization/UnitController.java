@@ -26,8 +26,10 @@ class UnitController {
     private final UnitList units;
     private final UnitCreation creation;
     private final UnitSettings settings;
+    private final UnitScope scope;
 
-    UnitController(UnitList units, UnitCreation creation, UnitSettings settings) {
+    UnitController(UnitList units, UnitCreation creation, UnitSettings settings, UnitScope scope) {
+        this.scope = scope;
         this.units = units;
         this.creation = creation;
         this.settings = settings;
@@ -37,6 +39,12 @@ class UnitController {
     @GetMapping("/mine")
     List<UnitSettings.UnitChoice> mine(@AuthenticationPrincipal AccountPrincipal who) {
         return settings.mine(who);
+    }
+
+    // RF-ORG-05: /reachable antes de /{id}.
+    @GetMapping("/reachable")
+    UnitScope.Result reachable(@AuthenticationPrincipal AccountPrincipal who) {
+        return scope.reachable(who);
     }
 
     @GetMapping("/{id}")

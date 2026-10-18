@@ -9,7 +9,7 @@ import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
-import type { UnitChoice, UnitDetail } from "./useUnitSettings";
+import type { UnitDetail } from "./useUnitSettings";
 
 const session = (role: string): SessionView => ({
   account: { id: "a", email: "x@x.com", name: "X" },
@@ -47,7 +47,7 @@ const detail = (id: string, name: string): UnitDetail => ({
     selfRegistrationLinkEnabled: true,
   },
 });
-const choice = (d: UnitDetail): UnitChoice => ({ id: d.id, name: d.name, shortName: d.shortName, city: null, active: true });
+const reach = (d: UnitDetail) => ({ id: d.id, name: d.name, shortName: d.shortName });
 
 type Sent = { name: string; settings: Record<string, unknown> } & Record<string, unknown>;
 let stored: Record<string, UnitDetail>;
@@ -55,7 +55,7 @@ let puts: { id: string; body: Sent }[];
 
 function setup(
   role: string,
-  opts: { units?: UnitDetail[]; path?: string; read?: () => Response | Promise<Response>; mine?: () => Response } = {},
+  opts: { units?: UnitDetail[]; path?: string; read?: () => Response | Promise<Response>; reachable?: () => Response } = {},
 ) {
   const units = opts.units ?? [detail(A, "Unidade A")];
   stored = Object.fromEntries(units.map((u) => [u.id, u]));
@@ -63,7 +63,7 @@ function setup(
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(role))),
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
-    http.get("/api/v1/units/mine", opts.mine ?? (() => HttpResponse.json(units.map(choice)))),
+    http.get("/api/v1/units/reachable", opts.reachable ?? (() => HttpResponse.json({ allUnits: role === "COORDINATOR", units: units.map(reach) }))),
     http.get("/api/v1/units/:id", opts.read ?? (({ params }) => HttpResponse.json(stored[String(params.id)]))),
     http.put("/api/v1/units/:id", async ({ request, params }) => {
       const body = (await request.json()) as Sent;
@@ -180,7 +180,7 @@ describe("UnitSettingsPage (RF-ORG-04)", () => {
     await ready();
     second.unmount();
 
-    const third = setup("ADMINISTRATOR", { mine: () => HttpResponse.json({ code: "FORBIDDEN" }, { status: 403 }) });
+    const third = setup("ADMINISTRATOR", { reachable: () => HttpResponse.json({ code: "FORBIDDEN" }, { status: 403 }) });
     expect(await screen.findByRole("heading", { name: "Você não tem acesso" })).toBeInTheDocument();
     third.unmount();
 
@@ -193,19 +193,24 @@ describe("UnitSettingsPage (RF-ORG-04)", () => {
     expect(await screen.findByRole("heading", { name: "Nenhuma unidade para configurar" })).toBeInTheDocument();
   });
 
-  it("CA19: com duas unidades oferece a escolha (e ?unidade= escolhe); com uma, não mostra escolha", async () => {
+  it("CA10: Administrador com duas unidades troca a unidade no topo e o formulário recarrega com a outra", async () => {
     const user = userEvent.setup();
-    const first = setup("ADMINISTRATOR", { units: [detail(A, "Unidade A"), detail(B, "Unidade B")], path: `/configuracoes/unidade?unidade=${B}` });
+    setup("ADMINISTRATOR", { units: [detail(A, "Unidade A"), detail(B, "Unidade B")] });
     await ready();
-    const select = await screen.findByLabelText("Unidade");
-    expect(select).toHaveValue(B);
+    expect(screen.getByLabelText("Nome da unidade")).toHaveValue("Unidade A");
+    expect(screen.queryByRole("option", { name: "Todas as unidades" })).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Unidade ativa"), B);
     await waitFor(() => expect(screen.getByLabelText("Nome da unidade")).toHaveValue("Unidade B"));
-    await user.selectOptions(select, A);
-    await waitFor(() => expect(screen.getByLabelText("Nome da unidade")).toHaveValue("Unidade A"));
-    first.unmount();
-    setup("ADMINISTRATOR");
-    await ready();
     expect(screen.queryByLabelText("Unidade")).not.toBeInTheDocument();
+  });
+
+  it("CA7: Coordenador em \"Todas as unidades\" vê o pedido de escolha e nenhum campo; ao escolher uma, o formulário aparece", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR", { units: [detail(A, "Unidade A"), detail(B, "Unidade B")] });
+    expect(await screen.findByText(/Escolha uma unidade no topo/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Nome da unidade")).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Unidade ativa"), B);
+    await waitFor(() => expect(screen.getByLabelText("Nome da unidade")).toHaveValue("Unidade B"));
   });
 
   it("CA20: Mercado Pago não conectado aparece por texto e ícone, com o aviso, sem botão de conectar", async () => {

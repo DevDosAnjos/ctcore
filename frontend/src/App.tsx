@@ -12,6 +12,7 @@ import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
 import { NewUnitPage } from "@/features/units/NewUnitPage";
+import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 import { RequireArea } from "@/features/auth/RequireArea";
@@ -38,6 +39,7 @@ function Home() {
     return (
       <ManagementLayout>
         <Welcome />
+        <ScopeLine />
       </ManagementLayout>
     );
   }
