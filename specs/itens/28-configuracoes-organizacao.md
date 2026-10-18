@@ -131,6 +131,10 @@ Desvios:
 
 Não é do item: nenhuma mudança alheia na pasta de trabalho além dos arquivos da fase 1 já sem commit.
 
+### Correção da entrega
+- Falha do job `backend` no PR #248 (`No space left on device`, duas vezes): o `IOException` é do agente do runner, sem log do passo, e não reproduz localmente. Mitigação: os dois contêineres SeaweedFS dos IT (`OrganizationBase` e o `S3FileStorageIT` já existente, vivos ao mesmo tempo na JVM) gravam `/data` em tmpfs (`withTmpFs`), sem ocupar o disco do runner — arquivos: `backend/src/test/java/br/com/ctcore/organization/OrganizationBase.java`, `backend/src/test/java/br/com/ctcore/storage/S3FileStorageIT.java` — prova: `./backend/mvnw -f backend/pom.xml verify -Dit.test='OrganizationProfileIT,OrganizationRouteIT,S3FileStorageIT' -Djacoco.skip=true` → 17 testes, 0 falhas, BUILD SUCCESS.
+- Não provado: que o disco do runner era a causa. O rerun do CI (run 39083393699, sem a mudança) estava com `frontend`, `e2e` e `security` verdes e `backend` ainda sem resultado; o PR com esta mudança mostra o resultado. Regressão completa do back-end não repetida (mudança só em contêiner de teste).
+
 ## Verificação
 
 ### Rodada 1 — OK — 2026-10-17, estado faea9f285a072ec66395e9ea611970c15f90dd06
@@ -168,3 +172,19 @@ Achados:
 Refs #28
 
 Verificações do PR #248: o job `backend` falhou duas vezes (também no rerun) com `System.IO.IOException: No space left on device` no runner (disco cheio durante `./mvnw -B verify`, sem log do passo); `frontend`, `e2e`, `security` e `image-frontend` passaram. Localmente o `verify` passou. Suspeita a investigar na fase 3: o `OrganizationBase` sobe um contêiner SeaweedFS real (imagem grande) além do PostgreSQL, ou volume de saída/arquivos temporários dos novos IT.
+
+### Rodada 2 — OK — 2026-10-17, estado fc0ec44dee844f74b5f416e5620e668985d4f2fd
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA22 | PASSOU (mantido da rodada 1) | `git diff faea9f2 fc0ec44` toca só 2 linhas de teste (`withTmpFs` no SeaweedFS de `OrganizationBase` e `S3FileStorageIT`), mais spec e backlog; nenhum código de produto nem front mudou |
+| CA3, CA5 a CA14 (back-end, reconferidos) | PASSOU | `verify -Dit.test='OrganizationProfileIT,OrganizationRouteIT,S3FileStorageIT' -Djacoco.skip=true` -> 17 IT, 0 falhas, 107 testes rápidos, BUILD SUCCESS |
+
+Comandos:
+- `git diff faea9f2 fc0ec44 --stat` -> 4 arquivos, 45 inserções.
+- verify acima -> BUILD SUCCESS. Front-end não relido: sem mudança desde a rodada 1.
+- `gh pr view 248`: `changes`, `security`, `frontend`, `e2e` verdes; `backend` e `image-frontend` ainda em andamento.
+
+Achados:
+- sugestão, código, `OrganizationBase`/`S3FileStorageIT` `withTmpFs("/data")` — que o disco do runner era a causa do "No space left on device" segue não provado (registrado em Correção da entrega); o job `backend` do PR dirá. Se falhar de novo, investigar o runner/Docker, não os IT.
+- Achados da rodada 1: nenhum obrigatório; sugestões mantidas.
