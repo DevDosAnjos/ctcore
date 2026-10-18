@@ -574,6 +574,117 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /users:
+    get:
+      summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
+      description: |
+        O Coordenador vê os Administradores da organização; o Administrador vê os Professores com ao menos uma das suas unidades.
+        Professor, Aluno e Responsável recebem 403. Sem `status` devolve `PENDING` e `ACTIVE`; `ENDED` só quando pedido.
+        `canManage` é falso quando o Professor tem unidade fora do alcance do Administrador. Sem token, hash nem IP. Sem paginação (até 200).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [PENDING, ACTIVE, ENDED] } }
+      responses:
+        '200':
+          description: Equipe, em ordem de nome.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/StaffUser' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Convida alguém da gestão (RF-ACE-06, RN-ACE-05). Coordenador convida Administrador; Administrador convida Professor.
+      description: |
+        O perfil nunca vem do corpo (um `role` enviado é ignorado). O Administrador só convida para unidades dele (senão 403); unidade de
+        outra organização ou inativa responde 400. E-mail já ligado a esta organização no mesmo perfil, com vínculo `PENDING` ou `ACTIVE`,
+        responde 409 `ALREADY_LINKED`; conta desativada, 403. Acima de 200 usuários da gestão, 409 `STAFF_LIMIT_REACHED` (RN-ORG-05).
+        Grava `invite.created` na auditoria, sem o e-mail nem o código.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffInvite' } } }
+      responses:
+        '201':
+          description: Convite enviado; a linha nasce `PENDING`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StaffUser' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/coordinator-appointment:
+    post:
+      summary: O Coordenador se nomeia Administrador de unidades (RN-ORG-07). Só o Coordenador.
+      description: |
+        Cria, ou reativa, para a própria conta um vínculo `ACTIVE` de Administrador nas unidades ativas indicadas, para destravar o
+        409 `LAST_UNIT_ADMINISTRATOR`. Idempotente (um vínculo só; as unidades se somam). Sem unidade, ou com unidade inativa ou de outra
+        organização, 400. Grava `link.coordinator_appointed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffUnits' } } }
+      responses:
+        '200':
+          description: O vínculo de Administrador do Coordenador.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StaffUser' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{linkId}/resend:
+    post:
+      summary: Reenvia o convite de um vínculo pendente (RF-ACE-06, RN-ACE-13).
+      description: |
+        Cancela o convite anterior e envia outro; no máximo 3 reenvios por dia por pessoa (429 `TOO_MANY_REQUESTS` além disso).
+        Vínculo que não é `PENDING`, de outro perfil, de outra organização ou fora do alcance responde 404. Grava `invite.resent`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: linkId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Convite reenviado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429':
+          description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /users/{linkId}/units:
+    put:
+      summary: Troca as unidades de um vínculo pendente ou ativo (RF-ACE-06).
+      description: |
+        O Coordenador define a lista inteira de um Administrador. O Administrador mexe só nas unidades dele num Professor; as demais do
+        Professor ficam. Lista vazia ou que deixaria o vínculo sem unidade: 400; unidade fora do alcance de quem chama: 403; unidade de outra
+        organização ou inativa: 400. Tirar a unidade do último Administrador ativo de uma unidade ativa responde 409 `LAST_UNIT_ADMINISTRATOR`
+        (`fields`, campo `unitIds`, traz os ids separados por vírgula). Vínculo fora do alcance ou do perfil gerido: 404. Grava `link.units_changed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: linkId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffUnits' } } }
+      responses:
+        '200':
+          description: A linha atualizada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StaffUser' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/{linkId}:
+    delete:
+      summary: Desativa o vínculo (RF-ACE-06, RN-ACE-20); a conta e os vínculos em outras organizações ficam.
+      description: |
+        Vínculo `ACTIVE` vira `ENDED` (as sessões acabam se era o último vínculo de gestão); `PENDING` tem o convite cancelado. Ninguém desativa
+        a si mesmo (409 `CONFLICT`) nem o Coordenador (403). O Administrador só desativa Professor cujas unidades estejam todas entre as dele (403).
+        Desativar o último Administrador ativo de uma unidade ativa responde 409 `LAST_UNIT_ADMINISTRATOR`. Alvo de outra organização ou perfil: 404.
+        Grava `link.ended` ou `invite.canceled`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: linkId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Vínculo desativado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -798,6 +909,9 @@ components:
             - PRECONDITION_REQUIRED
             - UNIT_LIMIT_REACHED
             - UNIT_HAS_BLOCKERS
+            - LAST_UNIT_ADMINISTRATOR
+            - STAFF_LIMIT_REACHED
+            - ALREADY_LINKED
             - UNSUPPORTED_MEDIA_TYPE
             - INVALID_CREDENTIALS
             - TOO_MANY_REQUESTS
@@ -871,6 +985,37 @@ components:
             properties:
               name: { type: string }
         active: { type: boolean, description: 'Verdadeiro = Ativa; falso = Desativada.' }
+    StaffUser:
+      type: object
+      required: [linkId, name, email, role, units, lastAccessAt, status, canManage]
+      properties:
+        linkId: { type: string, format: uuid, description: 'Identificador da linha: o vínculo, não a conta.' }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [ADMINISTRATOR, TEACHER] }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+        lastAccessAt: { type: string, format: date-time, nullable: true, description: 'Nulo se a pessoa nunca entrou.' }
+        status: { type: string, enum: [PENDING, ACTIVE, ENDED] }
+        canManage: { type: boolean, description: 'Falso quando alguma unidade da pessoa está fora do alcance de quem chama.' }
+    StaffInvite:
+      type: object
+      required: [email, name, unitIds]
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, minLength: 1 }
+        unitIds: { type: array, minItems: 1, items: { type: string, format: uuid } }
+    StaffUnits:
+      type: object
+      required: [unitIds]
+      properties:
+        unitIds: { type: array, minItems: 1, items: { type: string, format: uuid } }
     NewUnit:
       type: object
       required: [name]

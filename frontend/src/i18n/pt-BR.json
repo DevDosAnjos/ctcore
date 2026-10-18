@@ -274,6 +274,60 @@
       "loadError": "Não foi possível abrir esta imagem. Escolha outro arquivo."
     }
   },
+  "users": {
+    "title": "Usuários da gestão",
+    "email": "E-mail",
+    "role": "Perfil",
+    "units": "Unidades",
+    "lastAccess": "Último acesso",
+    "never": "Nunca entrou",
+    "status": "Situação",
+    "roles": { "ADMINISTRATOR": "Administrador", "TEACHER": "Professor" },
+    "statuses": { "PENDING": "Convite enviado", "ACTIVE": "Ativo", "ENDED": "Desativado" },
+    "emptyTitle": "Nenhum usuário",
+    "emptyText": "Convide alguém da equipe para que ele apareça aqui.",
+    "resend": "Reenviar convite",
+    "resendDone": "Convite reenviado.",
+    "resendError": "Não foi possível reenviar o convite. Tente de novo mais tarde.",
+    "invite": {
+      "button": "Convidar",
+      "title": "Convidar usuário",
+      "name": "Nome",
+      "email": "E-mail",
+      "nameRequired": "Informe o nome.",
+      "emailInvalid": "Informe um e-mail válido.",
+      "unitsRequired": "Escolha ao menos uma unidade.",
+      "send": "Enviar convite",
+      "done": "Convite enviado.",
+      "errors": {
+        "ALREADY_LINKED": "Esta pessoa já está ligada à organização neste perfil.",
+        "STAFF_LIMIT_REACHED": "A organização atingiu o limite de 200 usuários da gestão.",
+        "FORBIDDEN": "Você não tem permissão para convidar nestas unidades.",
+        "generic": "Não foi possível enviar o convite. Tente de novo."
+      }
+    },
+    "editUnits": {
+      "button": "Alterar unidades",
+      "title": "Unidades de {{name}}",
+      "save": "Salvar",
+      "done": "Unidades atualizadas.",
+      "error": "Não foi possível alterar as unidades. Tente de novo."
+    },
+    "deactivate": {
+      "button": "Desativar",
+      "confirm": "Desativar",
+      "title": "Desativar {{name}}",
+      "summary": "A pessoa perde o acesso a esta organização. A conta dela e os acessos em outras organizações continuam. Para voltar, convide o mesmo e-mail de novo.",
+      "done": "Usuário desativado.",
+      "error": "Não foi possível desativar. Tente de novo."
+    },
+    "lastAdmin": {
+      "explain": "Estas unidades ficariam sem Administrador ativo:",
+      "coordinatorHelp": "Nomeie você mesmo como Administrador delas, convide outro Administrador ou altere as unidades de outro.",
+      "adminHelp": "Peça ao Coordenador para nomear outro Administrador antes.",
+      "appoint": "Nomear a mim mesmo"
+    }
+  },
   "units": {
     "title": "Unidades",
     "city": "Cidade",

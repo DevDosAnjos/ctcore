@@ -71,6 +71,7 @@ export const resetMockSession = () => {
   organization = { ...initialOrganization };
   units = initialUnits();
   unitDetails = {};
+  staff = initialStaff();
   sessions = initialSessions();
 };
 
@@ -163,6 +164,36 @@ const unitSettingsRole = () => {
   const role = activeRole();
   return role === "COORDINATOR" || role === "ADMINISTRATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
 };
+// Equipe da gestão (RF-ACE-06), em memória. Bruno é o único Administrador ativo da Unidade Centro (RN-ORG-07);
+// Carla está pendente; Diego é Professor só do Centro e Elisa também da Unidade Norte (fora do alcance do Administrador).
+const CENTRO = "00000000-0000-0000-0000-000000000021";
+const NORTE = "00000000-0000-0000-0000-000000000022";
+const initialStaff = () => [
+  { linkId: "00000000-0000-0000-0000-000000000041", name: "Bruno", email: "bruno@alfa.test", role: "ADMINISTRATOR", unitIds: [CENTRO], lastAccessAt: "2026-10-17T10:00:00Z" as string | null, status: "ACTIVE", self: false, resends: 0 },
+  { linkId: "00000000-0000-0000-0000-000000000042", name: "Carla", email: "carla@alfa.test", role: "ADMINISTRATOR", unitIds: [CENTRO], lastAccessAt: null as string | null, status: "PENDING", self: false, resends: 0 },
+  { linkId: "00000000-0000-0000-0000-000000000043", name: "Diego", email: "diego@alfa.test", role: "TEACHER", unitIds: [CENTRO], lastAccessAt: "2026-10-16T08:00:00Z" as string | null, status: "ACTIVE", self: false, resends: 0 },
+  { linkId: "00000000-0000-0000-0000-000000000044", name: "Elisa", email: "elisa@alfa.test", role: "TEACHER", unitIds: [CENTRO, NORTE], lastAccessAt: null as string | null, status: "ACTIVE", self: false, resends: 0 },
+];
+type MockStaff = ReturnType<typeof initialStaff>[number];
+let staff = initialStaff();
+const managedRole = () => (activeRole() === "COORDINATOR" ? "ADMINISTRATOR" : "TEACHER");
+const reaches = (s: MockStaff) => s.role === managedRole() && (activeRole() === "COORDINATOR" || s.unitIds.includes(ADMIN_UNIT));
+const manageable = (s: MockStaff) => activeRole() === "COORDINATOR" || s.unitIds.every((id) => id === ADMIN_UNIT);
+const staffRow = (s: MockStaff) => ({
+  linkId: s.linkId,
+  name: s.name,
+  email: s.email,
+  role: s.role,
+  units: s.unitIds.map((id) => ({ id, name: units.find((u) => u.id === id)?.name ?? "" })),
+  lastAccessAt: s.lastAccessAt,
+  status: s.status,
+  canManage: manageable(s),
+});
+// RN-ORG-07: unidades ativas, entre as que o Administrador perde, sem outro Administrador ativo.
+const orphans = (row: MockStaff, losing: string[]) =>
+  losing.filter((id) => units.some((u) => u.id === id && u.active) && !staff.some((s) => s !== row && s.role === "ADMINISTRATOR" && s.status === "ACTIVE" && s.unitIds.includes(id)));
+const lastAdministrator = (ids: string[]) =>
+  error(409, "LAST_UNIT_ADMINISTRATOR", "Uma unidade ficaria sem Administrador ativo.", [{ field: "unitIds", message: ids.join(",") }]);
 const unitSettingsAccess = (id: string) => {
   const denied = unitSettingsRole();
   if (denied) return denied;
@@ -677,6 +708,117 @@ export const routes: Route[] = [
       unitDetails[id] = saved;
       Object.assign(units.find((u) => u.id === id)!, { name, city: saved.city });
       return HttpResponse.json(saved);
+    },
+  },
+  {
+    // RF-ACE-06: Coordenador vê os Administradores; Administrador vê os Professores com a unidade dele. Sem filtro, PENDING e ACTIVE.
+    method: "get",
+    path: "/users",
+    resolver: ({ request }) => {
+      const denied = unitSettingsRole();
+      if (denied) return denied;
+      const status = new URL(request.url).searchParams.get("status");
+      if (status !== null && !["PENDING", "ACTIVE", "ENDED"].includes(status)) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "status", message: "valor inválido" }]);
+      }
+      return HttpResponse.json(staff.filter((s) => reaches(s) && (status ? s.status === status : s.status !== "ENDED")).map(staffRow));
+    },
+  },
+  {
+    // Perfil implícito; e-mail "existente@exemplo.com" já está ligado (409 ALREADY_LINKED); 200 vínculos é o limite (STAFF_LIMIT_REACHED).
+    method: "post",
+    path: "/users",
+    resolver: async ({ request }) => {
+      const denied = unitSettingsRole();
+      if (denied) return denied;
+      const body = (await request.json()) as { email?: string; name?: string; unitIds?: string[] };
+      const bad: { field: string; message: string }[] = [];
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email?.trim() ?? "")) bad.push({ field: "email", message: "informe um e-mail válido" });
+      if (!body.name?.trim()) bad.push({ field: "name", message: "informe o nome" });
+      if (!body.unitIds?.length) bad.push({ field: "unitIds", message: "escolha ao menos uma unidade" });
+      else if (body.unitIds.some((id) => !units.some((u) => u.id === id && u.active))) bad.push({ field: "unitIds", message: "escolha unidades ativas da organização" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      if (activeRole() === "ADMINISTRATOR" && body.unitIds!.some((id) => id !== ADMIN_UNIT)) return error(403, "FORBIDDEN", "Sem permissão.");
+      const email = body.email!.trim();
+      if (email === "existente@exemplo.com" || staff.some((s) => s.email === email && s.role === managedRole() && s.status !== "ENDED")) {
+        return error(409, "ALREADY_LINKED", "Esta pessoa já está ligada a esta organização neste perfil.");
+      }
+      const row = { linkId: crypto.randomUUID(), name: body.name!.trim(), email, role: managedRole(), unitIds: body.unitIds!, lastAccessAt: null as string | null, status: "PENDING", self: false, resends: 0 };
+      staff = [...staff, row];
+      return HttpResponse.json(staffRow(row), { status: 201 });
+    },
+  },
+  {
+    // RN-ORG-07 (D7): só o Coordenador; cria ou reativa o próprio vínculo de Administrador e soma as unidades.
+    method: "post",
+    path: "/users/coordinator-appointment",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      if (activeRole() !== "COORDINATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const body = (await request.json()) as { unitIds?: string[] };
+      if (!body.unitIds?.length || body.unitIds.some((id) => !units.some((u) => u.id === id && u.active))) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "unitIds", message: "escolha unidades ativas da organização" }]);
+      }
+      let own = staff.find((s) => s.self);
+      if (!own) {
+        own = { linkId: crypto.randomUUID(), name: current.account.name, email: current.account.email, role: "ADMINISTRATOR", unitIds: [], lastAccessAt: null, status: "ACTIVE", self: true, resends: 0 };
+        staff = [...staff, own];
+      }
+      own.status = "ACTIVE";
+      own.unitIds = [...new Set([...own.unitIds, ...body.unitIds])];
+      return HttpResponse.json(staffRow(own));
+    },
+  },
+  {
+    // No máximo 3 reenvios por dia (429); só vínculo PENDING que a pessoa gere, senão 404.
+    method: "post",
+    path: "/users/{linkId}/resend",
+    resolver: ({ params }) => {
+      const denied = unitSettingsRole();
+      if (denied) return denied;
+      const row = staff.find((s) => s.linkId === params.linkId);
+      if (!row || row.status !== "PENDING" || !reaches(row) || !manageable(row)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (row.resends >= 3) return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      row.resends += 1;
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // D5: o Coordenador define a lista; o Administrador mexe só na unidade dele. RN-ORG-07 em 409 LAST_UNIT_ADMINISTRATOR.
+    method: "put",
+    path: "/users/{linkId}/units",
+    resolver: async ({ request, params }) => {
+      const denied = unitSettingsRole();
+      if (denied) return denied;
+      const row = staff.find((s) => s.linkId === params.linkId);
+      if (!row || row.status === "ENDED" || !reaches(row)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const body = (await request.json()) as { unitIds?: string[] };
+      const desired = body.unitIds ?? [];
+      if (activeRole() === "ADMINISTRATOR" && desired.some((id) => id !== ADMIN_UNIT)) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (desired.length === 0 || desired.some((id) => !units.some((u) => u.id === id && u.active))) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "unitIds", message: "escolha unidades ativas da organização" }]);
+      }
+      const next = activeRole() === "COORDINATOR" ? desired : [...row.unitIds.filter((id) => id !== ADMIN_UNIT), ...desired];
+      const left = row.role === "ADMINISTRATOR" && row.status === "ACTIVE" ? orphans(row, row.unitIds.filter((id) => !next.includes(id))) : [];
+      if (left.length) return lastAdministrator(left);
+      row.unitIds = next;
+      return HttpResponse.json(staffRow(row));
+    },
+  },
+  {
+    method: "delete",
+    path: "/users/{linkId}",
+    resolver: ({ params }) => {
+      const denied = unitSettingsRole();
+      if (denied) return denied;
+      const row = staff.find((s) => s.linkId === params.linkId);
+      if (!row || row.status === "ENDED" || !reaches(row)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (row.self) return error(409, "CONFLICT", "Ninguém desativa a si mesmo.");
+      if (!manageable(row)) return error(403, "FORBIDDEN", "Sem permissão.");
+      const left = row.role === "ADMINISTRATOR" && row.status === "ACTIVE" ? orphans(row, row.unitIds) : [];
+      if (left.length) return lastAdministrator(left);
+      row.status = "ENDED";
+      return new HttpResponse(null, { status: 204 });
     },
   },
 ];
