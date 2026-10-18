@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { Card } from "@/components/Card";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ShortNameDialog } from "./ShortNameDialog";
-import { useUnits, type UnitSummary } from "./useUnits";
+import { MAX_UNITS, useUnits, type UnitSummary } from "./useUnits";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -54,6 +55,20 @@ function Content() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">{t("units.title")}</h1>
+      {api.units.length >= MAX_UNITS ? (
+        <div>
+          <Button disabled aria-describedby="units-limit">
+            {t("units.newButton")}
+          </Button>
+          <p id="units-limit" className="text-sm text-muted-foreground">
+            {t("units.limitReached")}
+          </p>
+        </div>
+      ) : (
+        <Button asChild className="self-start">
+          <Link to="/configuracoes/unidades/nova">{t("units.newButton")}</Link>
+        </Button>
+      )}
       {api.units.length === 0 ? (
         <EmptyState title={t("units.emptyTitle")} text={t("units.emptyText")} />
       ) : (

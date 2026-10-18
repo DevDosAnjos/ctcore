@@ -319,6 +319,28 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/UnitSummary' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria uma unidade na organização do vínculo ativo (RF-ORG-03). Só o Coordenador.
+      description: |
+        Só `name` é obrigatório (até 120 caracteres). `postalCode` (8 dígitos, com ou sem hífen), `phone` e `whatsapp` (DDD + número),
+        `email`, `address` e `city` são opcionais e validados quando enviados. `latitude` e `longitude` (faixas -90..90 e -180..180)
+        vêm juntas; sem elas e com CEP, a porta de localização as obtém; sem resultado a unidade nasce sem coordenadas (RN-ORG-14).
+        O nome curto é gerado do nome e o inicial entra no histórico (RN-ORG-15). A unidade nasce com as configurações padrão.
+        No limite de 10 unidades responde 409 `UNIT_LIMIT_REACHED` e nada é criado (RN-ORG-05).
+        `administrator` (nome e e-mail, juntos) convida um Administrador vinculado só à nova unidade, depois de criada; se o convite
+        falhar, a unidade permanece e `invite` volta `FAILED`. Grava `unit.create` na auditoria, sem o e-mail do convidado.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NewUnit' } } }
+      responses:
+        '201':
+          description: Unidade criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NewUnitResult' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /units/{id}/short-name:
     patch:
       summary: Ajusta o nome curto da unidade, uma única vez (RN-ORG-15). Só o Coordenador.
@@ -545,6 +567,7 @@ components:
             - NOT_FOUND
             - METHOD_NOT_ALLOWED
             - CONFLICT
+            - UNIT_LIMIT_REACHED
             - UNSUPPORTED_MEDIA_TYPE
             - INVALID_CREDENTIALS
             - TOO_MANY_REQUESTS
@@ -598,6 +621,32 @@ components:
             properties:
               name: { type: string }
         active: { type: boolean, description: 'Verdadeiro = Ativa; falso = Desativada.' }
+    NewUnit:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        postalCode: { type: string, nullable: true, pattern: '^[0-9]{5}-?[0-9]{3}$' }
+        address: { type: string, nullable: true, maxLength: 200 }
+        city: { type: string, nullable: true, maxLength: 100 }
+        latitude: { type: number, nullable: true, minimum: -90, maximum: 90 }
+        longitude: { type: number, nullable: true, minimum: -180, maximum: 180 }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true, format: email, maxLength: 254 }
+        whatsapp: { type: string, nullable: true }
+        administrator:
+          type: object
+          nullable: true
+          required: [name, email]
+          properties:
+            name: { type: string, maxLength: 120 }
+            email: { type: string, format: email, maxLength: 254 }
+    NewUnitResult:
+      type: object
+      required: [unit, invite]
+      properties:
+        unit: { $ref: '#/components/schemas/UnitSummary' }
+        invite: { type: string, enum: [NONE, SENT, FAILED], description: 'NONE = sem convite; SENT = enviado; FAILED = a unidade foi criada e o convite não.' }
     UnitShortNameRequest:
       type: object
       required: [shortName]

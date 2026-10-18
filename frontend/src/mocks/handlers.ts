@@ -334,6 +334,29 @@ export const routes: Route[] = [
     resolver: () => unitsAccess() ?? HttpResponse.json(units),
   },
   {
+    // Limite de 10 (409 UNIT_LIMIT_REACHED); convite para "existente@exemplo.com" falha (invite FAILED); nome vazio ou longo é 400.
+    method: "post",
+    path: "/units",
+    resolver: async ({ request }) => {
+      const denied = unitsAccess();
+      if (denied) return denied;
+      const body = (await request.json()) as { name?: string; administrator?: { name?: string; email?: string } | null };
+      const name = body.name?.trim() ?? "";
+      if (name === "" || name.length > 120) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "name", message: "inválido" }]);
+      }
+      if (units.length >= 10) return error(409, "UNIT_LIMIT_REACHED", "Limite de unidades.");
+      const base = name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unidade";
+      let shortName = base;
+      for (let n = 2; units.some((u) => u.shortName === shortName); n++) shortName = `${base}-${n}`;
+      const unit = { id: crypto.randomUUID(), name, shortName, shortNameAdjusted: false, city: null as string | null, activeStudents: 0, administrators: [] as { name: string }[], active: true };
+      units = [...units, unit];
+      const admin = body.administrator;
+      const invite = !admin?.email ? "NONE" : admin.email === "existente@exemplo.com" ? "FAILED" : "SENT";
+      return HttpResponse.json({ unit, invite }, { status: 201 });
+    },
+  },
+  {
     method: "patch",
     path: "/units/{id}/short-name",
     resolver: async ({ request, params }) => {

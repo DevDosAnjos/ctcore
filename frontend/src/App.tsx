@@ -11,6 +11,7 @@ import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/Requ
 import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
+import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
@@ -73,6 +74,7 @@ export function App() {
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR"]} />}>
             <Route path="/configuracoes/unidades" element={<UnitsPage />} />
+            <Route path="/configuracoes/unidades/nova" element={<NewUnitPage />} />
           </Route>
         </Route>
       </Route>

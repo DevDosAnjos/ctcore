@@ -13,6 +13,27 @@ export interface UnitSummary {
   active: boolean;
 }
 
+// Espelha NewUnit e NewUnitResult do OpenAPI (RF-ORG-03).
+export interface NewUnit {
+  name: string;
+  postalCode?: string;
+  address?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  phone?: string;
+  email?: string;
+  whatsapp?: string;
+  administrator?: { name: string; email: string };
+}
+export interface NewUnitResult {
+  unit: UnitSummary;
+  invite: "NONE" | "SENT" | "FAILED";
+}
+
+export const MAX_UNITS = 10;
+export const createUnit = (body: NewUnit) => api<NewUnitResult>("/units", { method: "POST", body });
+
 type Loaded = { tick: number; units?: UnitSummary[]; forbidden?: boolean };
 
 // Consulta e ajuste do nome curto de Configurações › Unidades (RF-ORG-02). O servidor decide quem acessa (403).
