@@ -40,6 +40,12 @@ function UnitRow({ unit, onAdjust }: { unit: UnitSummary; onAdjust: (u: UnitSumm
             )}
           </Field>
         </dl>
+        <Button asChild variant="outline" size="sm" className="mt-3">
+          <Link to={`/configuracoes/unidade?unidade=${unit.id}`}>
+            {t("units.configure")}
+            <span className="sr-only"> {unit.name}</span>
+          </Link>
+        </Button>
       </Card>
     </li>
   );

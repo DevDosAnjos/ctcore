@@ -341,6 +341,57 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /units/mine:
+    get:
+      summary: Unidades que o vínculo pode configurar (RF-ORG-04). Coordenador e Administrador.
+      description: |
+        Unidades da organização do vínculo ativo sobre as quais há permissão de configuração (linha `UNIT_SETTINGS`):
+        todas para o Coordenador, só as suas para o Administrador. Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Unidades, em ordem de nome.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/UnitChoice' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /units/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Dados e configurações de uma unidade (RF-ORG-04). Coordenador e Administrador da unidade.
+      description: |
+        Professor, portal e Administrador de outra unidade recebem 403. Unidade de outra organização ou inexistente responde 404.
+        `settings.paymentAccount` mostra só a situação da conexão; a referência da conta nunca é devolvida.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: A unidade e suas configurações.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Substitui os dados e as configurações da unidade (RF-ORG-04). Coordenador e Administrador da unidade.
+      description: |
+        Substituição completa: campo opcional omitido apaga o valor (a tela sempre envia tudo). `organizationId`, `shortName` e
+        `paymentAccount` enviados são ignorados. `name` obrigatório (até 120). `cnpj` com dígito verificador, guardado só com dígitos.
+        `latitude` e `longitude` vêm juntas; com CEP novo e sem coordenadas a porta de localização as obtém (RN-ORG-14).
+        `dueDays`: de 1 a 28, sem repetição, ao menos um (guardados em ordem crescente). Taxa de matrícula desligada grava 0.
+        Taxas por meio: centavos de 0 a 100000. `pixKey`: CPF, CNPJ, e-mail, telefone (+55) ou UUID; em branco apaga.
+        `reminderDays`: de -30 a 60, sem repetição, até 8, podendo ficar vazio. Grava `unit.update` na auditoria com antes e depois
+        dos campos mudados (chave Pix e CNPJ só como alterados, sem o valor); chamada sem mudança não grava.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UnitUpdate' } } }
+      responses:
+        '200':
+          description: A unidade com os novos valores.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /units/{id}/short-name:
     patch:
       summary: Ajusta o nome curto da unidade, uma única vez (RN-ORG-15). Só o Coordenador.
@@ -647,6 +698,101 @@ components:
       properties:
         unit: { $ref: '#/components/schemas/UnitSummary' }
         invite: { type: string, enum: [NONE, SENT, FAILED], description: 'NONE = sem convite; SENT = enviado; FAILED = a unidade foi criada e o convite não.' }
+    UnitChoice:
+      type: object
+      required: [id, name, shortName, city, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        shortName: { type: string }
+        city: { type: string, nullable: true }
+        active: { type: boolean }
+    FeesCents:
+      type: object
+      description: Taxa fixa por meio de pagamento, em centavos (0 a 100000).
+      required: [cash, pix, bankSlip, creditCard, debitCard, automaticDebit, manualPix, terminalCard, transfer]
+      properties:
+        cash: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        pix: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        bankSlip: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        creditCard: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        debitCard: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        automaticDebit: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        manualPix: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        terminalCard: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        transfer: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+    TeacherPermissions:
+      type: object
+      required: [announcements, agendaEdit, studentContacts, trialClasses]
+      properties:
+        announcements: { type: boolean }
+        agendaEdit: { type: boolean }
+        studentContacts: { type: boolean }
+        trialClasses: { type: boolean }
+    UnitSettingsView:
+      type: object
+      required: [dueDays, enrollmentFeeEnabled, enrollmentFeeCents, feesCents, pixKey, paymentAccount, reminderDays, teacherPermissions,
+        directoryEnabled, trialLinkEnabled, selfRegistrationLinkEnabled]
+      properties:
+        dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
+        enrollmentFeeEnabled: { type: boolean }
+        enrollmentFeeCents: { type: integer, format: int64, minimum: 0 }
+        feesCents: { $ref: '#/components/schemas/FeesCents' }
+        pixKey: { type: string, nullable: true }
+        paymentAccount: { type: string, enum: [CONNECTED, NOT_CONNECTED], description: Só leitura; o PUT não altera. }
+        reminderDays: { type: array, items: { type: integer, minimum: -30, maximum: 60 }, maxItems: 8, uniqueItems: true }
+        teacherPermissions: { $ref: '#/components/schemas/TeacherPermissions' }
+        directoryEnabled: { type: boolean }
+        trialLinkEnabled: { type: boolean }
+        selfRegistrationLinkEnabled: { type: boolean }
+    UnitDetail:
+      type: object
+      required: [id, name, shortName, postalCode, address, city, latitude, longitude, phone, email, whatsapp, cnpj, active, settings]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        shortName: { type: string }
+        postalCode: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        latitude: { type: number, nullable: true }
+        longitude: { type: number, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        whatsapp: { type: string, nullable: true }
+        cnpj: { type: string, nullable: true, description: 14 dígitos. }
+        active: { type: boolean }
+        settings: { $ref: '#/components/schemas/UnitSettingsView' }
+    UnitUpdateSettings:
+      type: object
+      required: [dueDays, enrollmentFeeEnabled, feesCents, reminderDays, teacherPermissions, directoryEnabled, trialLinkEnabled,
+        selfRegistrationLinkEnabled]
+      properties:
+        dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
+        enrollmentFeeEnabled: { type: boolean }
+        enrollmentFeeCents: { type: integer, format: int64, minimum: 0, nullable: true, description: Obrigatório quando a taxa está ligada. }
+        feesCents: { $ref: '#/components/schemas/FeesCents' }
+        pixKey: { type: string, nullable: true }
+        reminderDays: { type: array, items: { type: integer, minimum: -30, maximum: 60 }, maxItems: 8, uniqueItems: true }
+        teacherPermissions: { $ref: '#/components/schemas/TeacherPermissions' }
+        directoryEnabled: { type: boolean }
+        trialLinkEnabled: { type: boolean }
+        selfRegistrationLinkEnabled: { type: boolean }
+    UnitUpdate:
+      type: object
+      required: [name, settings]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        postalCode: { type: string, nullable: true, pattern: '^[0-9]{5}-?[0-9]{3}$' }
+        address: { type: string, nullable: true, maxLength: 200 }
+        city: { type: string, nullable: true, maxLength: 100 }
+        latitude: { type: number, nullable: true, minimum: -90, maximum: 90 }
+        longitude: { type: number, nullable: true, minimum: -180, maximum: 180 }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true, format: email, maxLength: 254 }
+        whatsapp: { type: string, nullable: true }
+        cnpj: { type: string, nullable: true }
+        settings: { $ref: '#/components/schemas/UnitUpdateSettings' }
     UnitShortNameRequest:
       type: object
       required: [shortName]
