@@ -5,12 +5,16 @@ import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.organization.OrganizationProfile.OrganizationView;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -23,10 +27,14 @@ import org.springframework.web.multipart.MultipartFile;
 class OrganizationController {
     record UpdateRequest(String name, String color, String holderDocument) {}
 
-    private final OrganizationProfile profile;
+    record TransferRequest(String email, String confirmation) {}
 
-    OrganizationController(OrganizationProfile profile) {
+    private final OrganizationProfile profile;
+    private final CoordinationTransfer transfer;
+
+    OrganizationController(OrganizationProfile profile, CoordinationTransfer transfer) {
         this.profile = profile;
+        this.transfer = transfer;
     }
 
     @GetMapping
@@ -49,5 +57,13 @@ class OrganizationController {
     @DeleteMapping("/logo")
     OrganizationView removeLogo(@AuthenticationPrincipal AccountPrincipal who, HttpServletRequest request) {
         return profile.removeLogo(who, request.getRemoteAddr());
+    }
+
+    // RF-ORG-06
+    @PostMapping("/coordination-transfer")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void transferCoordination(@AuthenticationPrincipal AccountPrincipal who, @RequestBody TransferRequest body,
+            @RequestHeader(value = "X-Reauth-Token", required = false) String token, HttpServletRequest request) {
+        transfer.transfer(who, body.email(), body.confirmation(), token, request.getRemoteAddr());
     }
 }

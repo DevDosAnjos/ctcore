@@ -91,6 +91,7 @@ const unitsAccess = () => {
   if (!loggedIn) return unauthenticated();
   return activeRole() === "COORDINATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
 };
+export const TRANSFER_TARGET = "admin@alfa.test";
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 
 // Configurações da unidade (RF-ORG-04), em memória. Coordenador: qualquer unidade; Administrador: só a primeira (ADMIN_UNIT);
@@ -378,6 +379,28 @@ export const routes: Route[] = [
       if (denied) return denied;
       organization = { ...organization, logoUrl: null };
       return HttpResponse.json(organization);
+    },
+  },
+  {
+    // RF-ORG-06: só o Coordenador; "admin@alfa.test" é o único Administrador elegível. Com sucesso, o vínculo ativo vira Administrador.
+    method: "post",
+    path: "/organization/coordination-transfer",
+    resolver: async ({ request }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      if (!request.headers.get("X-Reauth-Token")) return error(403, "REAUTH_REQUIRED", "Confirme sua senha para continuar.");
+      const { email, confirmation } = (await request.json()) as { email?: string; confirmation?: string };
+      if ((confirmation ?? "").trim().toUpperCase() !== "TRANSFERIR") {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "confirmation", message: "digite TRANSFERIR" }]);
+      }
+      if ((email ?? "").trim().toLowerCase() !== TRANSFER_TARGET) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "email", message: "informe um Administrador ativo da organização" }]);
+      }
+      current = {
+        ...current,
+        links: current.links.map((l) => (l.id === current.activeLinkId ? { ...l, role: "ADMINISTRATOR" as const } : l)),
+      };
+      return new HttpResponse(null, { status: 204 });
     },
   },
   {

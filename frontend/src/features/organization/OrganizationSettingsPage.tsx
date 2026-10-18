@@ -12,6 +12,7 @@ import { ColorField } from "./ColorField";
 import { isHexColor, passesContrast } from "./contrastRatio";
 import { LogoCropDialog } from "./LogoCropDialog";
 import { checkLogoFile, LOGO_TYPES } from "./logoFile";
+import { TransferCoordinationDialog } from "./TransferCoordinationDialog";
 import { useOrganization, type OrganizationView } from "./useOrganization";
 
 type Notice = { kind: "ok" | "error"; text: string };
@@ -214,9 +215,26 @@ function LogoCard({ view, api, canEdit }: { view: OrganizationView; api: Api; ca
   );
 }
 
+function TransferCard({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <Card heading="h2" title={t("organization.transfer.title")}>
+      <div className="flex flex-col items-start gap-3">
+        <p className="text-sm text-muted-foreground">{t("organization.transfer.summary")}</p>
+        <Button variant="outline" onClick={() => setOpen(true)}>
+          {t("organization.transfer.open")}
+        </Button>
+      </div>
+      <TransferCoordinationDialog open={open} onClose={() => setOpen(false)} onDone={onDone} />
+    </Card>
+  );
+}
+
 function Content({ canEdit }: { canEdit: boolean }) {
   const { t } = useTranslation();
   const api = useOrganization();
+  const [notice, setNotice] = useState<Notice>();
   if (api.status === "loading") return <LoadingState />;
   if (api.status === "forbidden") return <ForbiddenState />;
   if (!api.view) return <ErrorState onRetry={api.retry} />;
@@ -226,6 +244,8 @@ function Content({ canEdit }: { canEdit: boolean }) {
       {!canEdit && <p className="text-muted-foreground">{t("organization.readOnly")}</p>}
       <DataCard view={api.view} save={api.save} canEdit={canEdit} />
       <LogoCard view={api.view} api={api} canEdit={canEdit} />
+      {canEdit && <TransferCard onDone={() => setNotice({ kind: "ok", text: t("organization.transfer.done") })} />}
+      <NoticeText notice={notice} />
     </div>
   );
 }

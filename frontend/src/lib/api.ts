@@ -15,9 +15,9 @@ const cookie = (name: string) =>
     ?.slice(name.length + 1);
 
 /** Chama `/api/v1`; devolve o JSON ou lança ApiError (status 0 com a rede fora). POST/PUT/PATCH/DELETE levam o token CSRF. FormData segue como está (multipart). */
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string> } = {}): Promise<T> {
   const method = init.method ?? "GET";
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...init.headers };
   const form = init.body instanceof FormData;
   if (init.body !== undefined && !form) headers["Content-Type"] = "application/json";
   if (method !== "GET") {

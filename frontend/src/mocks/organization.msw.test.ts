@@ -92,3 +92,38 @@ describe("organização x OpenAPI (CA21)", () => {
     }
   });
 });
+
+describe("transferência da coordenação x OpenAPI (RF-ORG-06, CA16)", () => {
+  const transfer = (body: unknown, token?: string) =>
+    fetch("/api/v1/organization/coordination-transfer", {
+      method: "POST",
+      headers: token ? { ...json, "X-Reauth-Token": token } : json,
+      body: JSON.stringify(body),
+    });
+  const declared = Object.keys(openapi.paths["/organization/coordination-transfer"].post.responses);
+  const ok = { email: " Admin@Alfa.test ", confirmation: " transferir " };
+
+  it("sem sessão 401; Administrador 403; Coordenador sem token 403 REAUTH_REQUIRED; campos errados 400; sucesso 204 e vira Administrador", async () => {
+    expect((await transfer(ok, "t")).status).toBe(401);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await transfer(ok, "t")).status).toBe(403);
+
+    await login("ana@exemplo.com");
+    const noToken = await transfer(ok);
+    expect(noToken.status).toBe(403);
+    expect((await noToken.json()).code).toBe("REAUTH_REQUIRED");
+    for (const [body, field] of [
+      [{ ...ok, confirmation: "" }, "confirmation"],
+      [{ ...ok, email: "outro@x.com" }, "email"],
+    ] as const) {
+      const res = await transfer(body, "t");
+      expect(res.status).toBe(400);
+      expect((await res.json()).fields.map((f: { field: string }) => f.field)).toContain(field);
+    }
+    const done = await transfer(ok, "t");
+    expect(done.status).toBe(204);
+    for (const status of [204, 400, 401, 403]) expect(declared).toContain(String(status));
+    expect((await transfer(ok, "t")).status).toBe(403);
+    expect((await (await fetch("/api/v1/auth/session")).json()).links[0].role).toBe("ADMINISTRATOR");
+  });
+});

@@ -5,7 +5,8 @@ public enum EmailTemplate {
     INVITE("mail.invite", true, true),
     PASSWORD_RESET("mail.reset", true, true),
     PASSWORD_CHANGED("mail.password-changed", false, false),
-    NEW_ACCESS("mail.new-access", false, false);
+    NEW_ACCESS("mail.new-access", false, false),
+    COORDINATION_TRANSFERRED("mail.coordination-transferred", false, false);
 
     final String key;
     final boolean secret;
