@@ -5,6 +5,7 @@ import { Card } from "@/components/Card";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { DeactivateUnitDialog } from "./DeactivateUnitDialog";
 import { ShortNameDialog } from "./ShortNameDialog";
 import { MAX_UNITS, useUnits, type UnitSummary } from "./useUnits";
 
@@ -18,7 +19,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 // Cartão em 360 px; em telas largas os campos viram colunas lado a lado.
-function UnitRow({ unit, onAdjust }: { unit: UnitSummary; onAdjust: (u: UnitSummary) => void }) {
+function UnitRow({ unit, onAdjust, onDeactivate }: { unit: UnitSummary; onAdjust: (u: UnitSummary) => void; onDeactivate: (u: UnitSummary) => void }) {
   const { t } = useTranslation();
   return (
     <li>
@@ -40,12 +41,20 @@ function UnitRow({ unit, onAdjust }: { unit: UnitSummary; onAdjust: (u: UnitSumm
             )}
           </Field>
         </dl>
-        <Button asChild variant="outline" size="sm" className="mt-3">
-          <Link to={`/configuracoes/unidade?unidade=${unit.id}`}>
-            {t("units.configure")}
-            <span className="sr-only"> {unit.name}</span>
-          </Link>
-        </Button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/configuracoes/unidade?unidade=${unit.id}`}>
+              {t("units.configure")}
+              <span className="sr-only"> {unit.name}</span>
+            </Link>
+          </Button>
+          {unit.active && (
+            <Button variant="outline" size="sm" onClick={() => onDeactivate(unit)}>
+              {t("units.deactivate.button")}
+              <span className="sr-only"> {unit.name}</span>
+            </Button>
+          )}
+        </div>
       </Card>
     </li>
   );
@@ -55,12 +64,19 @@ function Content() {
   const { t } = useTranslation();
   const api = useUnits();
   const [adjusting, setAdjusting] = useState<UnitSummary | null>(null);
+  const [deactivating, setDeactivating] = useState<UnitSummary | null>(null);
+  const [notice, setNotice] = useState(false);
   if (api.status === "loading") return <LoadingState />;
   if (api.status === "forbidden") return <ForbiddenState />;
   if (!api.units) return <ErrorState onRetry={api.retry} />;
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">{t("units.title")}</h1>
+      {notice && (
+        <p role="status" className="text-sm">
+          {t("units.deactivate.done")}
+        </p>
+      )}
       {api.units.length >= MAX_UNITS ? (
         <div>
           <Button disabled aria-describedby="units-limit">
@@ -80,10 +96,18 @@ function Content() {
       ) : (
         <ul className="flex flex-col gap-4">
           {api.units.map((u) => (
-            <UnitRow key={u.id} unit={u} onAdjust={setAdjusting} />
+            <UnitRow key={u.id} unit={u} onAdjust={setAdjusting} onDeactivate={setDeactivating} />
           ))}
         </ul>
       )}
+      <DeactivateUnitDialog
+        unit={deactivating}
+        onClose={() => setDeactivating(null)}
+        onDone={() => {
+          setNotice(true);
+          void api.refresh();
+        }}
+      />
       <ShortNameDialog unit={adjusting} onClose={() => setAdjusting(null)} onSave={api.adjustShortName} />
     </div>
   );

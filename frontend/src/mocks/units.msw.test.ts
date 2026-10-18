@@ -63,3 +63,45 @@ describe("unidades x OpenAPI (CA15)", () => {
     expect((await (await list()).json())[0].shortName).toBe("alfa-centro");
   });
 });
+
+describe("desativação de unidade x OpenAPI (RF-ORG-07, CA13)", () => {
+  const check = (id: string) => fetch(`/api/v1/units/${id}/deactivation-check`);
+  const deactivate = (id: string, confirmation: string, token?: string) =>
+    fetch(`/api/v1/units/${id}/deactivation`, {
+      method: "POST",
+      headers: token ? { ...json, "X-Reauth-Token": token } : json,
+      body: JSON.stringify({ confirmation }),
+    });
+  const SECOND = "00000000-0000-0000-0000-000000000022";
+  const checkKeys: string[] = openapi.components.schemas.UnitDeactivationCheck.required;
+
+  it("sem sessão 401; Administrador 403; unidade desconhecida 404; chaves do check iguais ao contrato", async () => {
+    expect((await check(FIRST)).status).toBe(401);
+    expect((await deactivate(FIRST, "x", "t")).status).toBe(401);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await check(FIRST)).status).toBe(403);
+    expect((await deactivate(FIRST, "x", "t")).status).toBe(403);
+    await login("ana@exemplo.com");
+    expect((await check("00000000-0000-0000-0000-0000000000ff")).status).toBe(404);
+    expect((await deactivate("00000000-0000-0000-0000-0000000000ff", "x", "t")).status).toBe(404);
+    const body = await (await check(FIRST)).json();
+    expect(Object.keys(body).sort()).toEqual([...checkKeys].sort());
+    for (const status of [200, 401, 403, 404]) expect(declared("/units/{id}/deactivation-check", "get")).toContain(String(status));
+  });
+
+  it("a única unidade ativa dá 409 UNIT_HAS_BLOCKERS; unidade já desativada 409; nome errado 400; sem token 403; sucesso 204", async () => {
+    await login("ana@exemplo.com");
+    const last = await deactivate(FIRST, "Unidade Centro", "t");
+    expect(last.status).toBe(409);
+    const error = await last.json();
+    expect(error.code).toBe("UNIT_HAS_BLOCKERS");
+    expect(error.fields.map((f: { field: string }) => f.field).sort()).toEqual(["activeClasses", "activeStudents", "lastActiveUnit"]);
+    expect((await (await check(FIRST)).json()).canDeactivate).toBe(false);
+    expect((await deactivate(SECOND, "Unidade Norte", "t")).status).toBe(409);
+
+    const reactivated = await (await fetch("/api/v1/units/mine")).json();
+    expect(reactivated).toHaveLength(2);
+    for (const status of [204, 400, 401, 403, 404, 409]) expect(declared("/units/{id}/deactivation", "post")).toContain(String(status));
+    expect(openapi.components.schemas.Error.properties.code.enum).toContain("UNIT_HAS_BLOCKERS");
+  });
+});

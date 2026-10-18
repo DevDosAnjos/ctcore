@@ -456,6 +456,53 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /units/{id}/deactivation-check:
+    get:
+      summary: O que impede desativar a unidade (RF-ORG-07). Só o Coordenador.
+      description: |
+        `canDeactivate` é verdadeiro só sem alunos com modalidade ativa, sem turmas ativas e havendo outra unidade ativa
+        (`lastActiveUnit` falso). `activeStudents` e `activeClasses` são 0 até existirem matrícula e turmas.
+        Unidade de outra organização ou inexistente responde 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Situação da unidade para a desativação.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitDeactivationCheck' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /units/{id}/deactivation:
+    post:
+      summary: Desativa a unidade (RF-ORG-07, RN-ORG-11). Só o Coordenador.
+      description: |
+        Exige `X-Reauth-Token` da ação `DEACTIVATE_UNIT` (uso único; sem token válido, 403 REAUTH_REQUIRED) e a confirmação digitada igual ao
+        nome da unidade (sem diferenciar maiúsculas, sem espaços nas pontas; senão 400 VALIDATION_ERROR no campo `confirmation`).
+        Com aluno de modalidade ativa, turma ativa ou sendo a única unidade ativa, responde 409 `UNIT_HAS_BLOCKERS` e `fields` traz
+        `activeStudents`, `activeClasses` e `lastActiveUnit` (valores em texto); nada muda e o token não é gasto.
+        Unidade já desativada responde 409 `CONFLICT`; de outra organização ou inexistente, 404. Nada é apagado: a unidade segue em
+        `GET /units` com `active = false` e sai de `GET /units/reachable`. Grava `unit.deactivated` na auditoria, com antes e depois.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: X-Reauth-Token, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation]
+              properties:
+                confirmation: { type: string, description: 'Nome da unidade.' }
+      responses:
+        '204': { description: Unidade desativada. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -660,6 +707,7 @@ components:
             - METHOD_NOT_ALLOWED
             - CONFLICT
             - UNIT_LIMIT_REACHED
+            - UNIT_HAS_BLOCKERS
             - UNSUPPORTED_MEDIA_TYPE
             - INVALID_CREDENTIALS
             - TOO_MANY_REQUESTS
@@ -695,6 +743,14 @@ components:
         name: { type: string, minLength: 1, maxLength: 120 }
         color: { type: string, nullable: true, description: '#RRGGBB; vazio ou nulo limpa.' }
         holderDocument: { type: string, nullable: true, description: 'CPF ou CNPJ, com ou sem máscara; vazio ou nulo limpa.' }
+    UnitDeactivationCheck:
+      type: object
+      required: [activeStudents, activeClasses, lastActiveUnit, canDeactivate]
+      properties:
+        activeStudents: { type: integer, minimum: 0 }
+        activeClasses: { type: integer, minimum: 0 }
+        lastActiveUnit: { type: boolean }
+        canDeactivate: { type: boolean }
     UnitSummary:
       type: object
       required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]
