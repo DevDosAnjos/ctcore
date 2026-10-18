@@ -166,3 +166,5 @@ Achados:
 - Decisões e limitações: erros de validação respondem 400 `VALIDATION_ERROR` (não 422); WebP validado só por cabeçalho e tamanho RIFF; o mock perde a sessão ao recarregar, então o e2e volta à tela pela navegação.
 
 Refs #28
+
+Verificações do PR #248: o job `backend` falhou duas vezes (também no rerun) com `System.IO.IOException: No space left on device` no runner (disco cheio durante `./mvnw -B verify`, sem log do passo); `frontend`, `e2e`, `security` e `image-frontend` passaram. Localmente o `verify` passou. Suspeita a investigar na fase 3: o `OrganizationBase` sobe um contêiner SeaweedFS real (imagem grande) além do PostgreSQL, ou volume de saída/arquivos temporários dos novos IT.
