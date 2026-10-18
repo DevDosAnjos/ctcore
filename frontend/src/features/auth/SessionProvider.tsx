@@ -5,6 +5,7 @@ export interface SessionView {
   account: { id: string; email: string; name?: string | null };
   links: { id: string; organizationId: string; organizationName: string; role: string; unitIds: string[] }[];
   activeLinkId?: string | null;
+  twoFactor: { enabled: boolean; required: boolean };
 }
 
 type State = { status: "loading" | "anon" | "error" } | { status: "ready"; session: SessionView };

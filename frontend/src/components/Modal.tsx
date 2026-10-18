@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ export function Modal({
   children,
   className,
   dismissible = true,
+  returnFocusRef,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -21,6 +22,8 @@ export function Modal({
   className?: string;
   /** Falso: sem Esc, sem clique fora e sem botão de fechar (a pessoa precisa decidir). */
   dismissible?: boolean;
+  /** Quem recebe o foco ao fechar, quando a janela abre depois de uma resposta e o foco original se perdeu. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const opener = useRef<HTMLElement | null>(null);
@@ -38,7 +41,7 @@ export function Modal({
           }}
           onCloseAutoFocus={(e) => {
             e.preventDefault();
-            opener.current?.focus();
+            (returnFocusRef?.current ?? opener.current)?.focus();
           }}
           className={cn(
             "fixed left-1/2 top-1/2 z-50 max-h-full w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md border bg-background p-4",

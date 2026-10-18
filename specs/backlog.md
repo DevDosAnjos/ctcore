@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 02 · Contas, login, convites e sessões. O dono confirmou em 17/10/2026 que revisou a Sprint 01 e fez o PR dev→main. Só o dono libera a seguinte.
+Sprint liberada: Sprint 03 · Duas etapas, usuários, permissões e configurações. O dono liberou a Sprint 03 em 18/10/2026, com a mensagem "confirmo D1 a D3 e a liberação da Sprint 03 (18/10/2026)" (D4 da revisão da Sprint 03, `specs/revisoes/sprint-03.md`, R03-1). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -34,18 +34,18 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 24 | RF-ACE-07 · Registrar o último acesso a cada login | issue #24 | Sprint 02 | — | agente | feito |
 | 25 | RF-ACE-08 · Tela de área indisponível para o perfil | issue #25 | Sprint 02 | — | agente | feito |
 | 231 | Limites de tempo (timeout) nos jobs do CI | issue #231 | Sprint 02 | — | agente | feito |
-| 26 | Duas etapas (TOTP), códigos de reserva e senha nas ações críticas | issue #26 | Sprint 03 | — | agente | a fazer |
-| 27 | Tabela de permissões aplicada no servidor | issue #27 | Sprint 03 | — | agente | a fazer |
-| 28 | RF-ORG-01 · Configurações › Organização | issue #28 | Sprint 03 | — | agente | a fazer |
-| 29 | RF-ORG-02 · Configurações › Unidades (lista) | issue #29 | Sprint 03 | — | agente | a fazer |
-| 30 | RF-ORG-03 · Assistente de nova unidade | issue #30 | Sprint 03 | — | agente | a fazer |
-| 31 | RF-ORG-04 · Configurações › Unidade | issue #31 | Sprint 03 | — | agente | a fazer |
-| 32 | RF-ORG-05 · Seletor de unidade e "Todas as unidades" | issue #32 | Sprint 03 | — | agente | a fazer |
-| 33 | RF-ORG-06 · Transferir coordenação | issue #33 | Sprint 03 | — | agente | a fazer |
-| 34 | RF-ORG-07 · Desativar unidade | issue #34 | Sprint 03 | — | agente | a fazer |
-| 35 | RF-ORG-08 · "Última alteração" e auditoria das configurações | issue #35 | Sprint 03 | — | agente | a fazer |
-| 36 | RF-ACE-04 · Minha conta: senha, e-mail, duas etapas e sessões | issue #36 | Sprint 03 | — | agente | a fazer |
-| 37 | RF-ACE-06 · Configurações › Usuários | issue #37 | Sprint 03 | — | agente | a fazer |
+| 26 | Duas etapas (TOTP), códigos de reserva e senha nas ações críticas | issue #26 | Sprint 03 | — | agente | feito |
+| 27 | Tabela de permissões aplicada no servidor | issue #27 | Sprint 03 | — | agente | feito |
+| 28 | RF-ORG-01 · Configurações › Organização | issue #28 | Sprint 03 | — | agente | feito |
+| 29 | RF-ORG-02 · Configurações › Unidades (lista) | issue #29 | Sprint 03 | — | agente | feito |
+| 30 | RF-ORG-03 · Assistente de nova unidade | issue #30 | Sprint 03 | — | agente | feito |
+| 31 | RF-ORG-04 · Configurações › Unidade | issue #31 | Sprint 03 | — | agente | feito |
+| 32 | RF-ORG-05 · Seletor de unidade e "Todas as unidades" | issue #32 | Sprint 03 | — | agente | feito |
+| 33 | RF-ORG-06 · Transferir coordenação | issue #33 | Sprint 03 | — | agente | feito |
+| 34 | RF-ORG-07 · Desativar unidade | issue #34 | Sprint 03 | — | agente | feito |
+| 35 | RF-ORG-08 · "Última alteração" e auditoria das configurações | issue #35 | Sprint 03 | — | agente | feito |
+| 36 | RF-ACE-04 · Minha conta: senha, e-mail, duas etapas e sessões | issue #36 | Sprint 03 | — | agente | feito |
+| 37 | RF-ACE-06 · Configurações › Usuários | issue #37 | Sprint 03 | — | agente | feito |
 | 38 | RF-MOD-01 · Configurações › Modalidades | issue #38 | Sprint 04 | — | agente | a fazer |
 | 39 | RF-MOD-02 · Graduação por modalidade e editor do sistema de graduação | issue #39 | Sprint 04 | — | agente | a fazer |
 | 40 | RF-MOD-03 · Modalidades oferecidas pela unidade | issue #40 | Sprint 04 | — | agente | a fazer |
@@ -209,8 +209,8 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Pendências para o dono
 
-Último número usado: P0. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
+Último número usado: P1. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
 
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
-| — | nenhuma | — | — | — |
+| P1 | Quando o Administrador inativa um Professor (RF-PRO-04, RN-PRO-05) que também dá aula em unidade de outro Administrador, o que acontece? A especificação só diz que "Professores" é do Administrador nas suas unidades. | O Administrador só inativa se todas as unidades do Professor forem suas; senão, só tira as próprias unidades do cadastro (#44). O Coordenador inativa em qualquer caso (mesma regra do D5 do #37). | #45 (parte do Administrador) | O agente segue a opção recomendada na #45 e registra a decisão no arquivo do item. |

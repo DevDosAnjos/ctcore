@@ -22,13 +22,19 @@ paths:
         Falha de senha, e-mail desconhecido, convite não aceito e conta desativada dão a mesma resposta (INVALID_CREDENTIALS, 401).
         5 senhas erradas seguidas travam o e-mail por 15 minutos e há limite por IP (TOO_MANY_REQUESTS, 429).
         Desafio recusado: CHALLENGE_FAILED (400), sem contar como senha errada.
+        Conta com duas etapas ligadas e senha certa não ganha sessão: recebe `{twoFactorRequired:true, ticket}` e conclui em `POST /auth/login/two-factor` (RN-ACE-17).
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
       responses:
         '200':
-          description: Sessão iniciada; cookie SESSION na resposta.
-          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+          description: Sessão iniciada (cookie SESSION na resposta) ou, com duas etapas ligadas, o bilhete do segundo passo (sem cookie).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SessionView'
+                  - $ref: '#/components/schemas/TwoFactorRequired'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { description: "E-mail ou senha incorretos (INVALID_CREDENTIALS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
@@ -130,6 +136,555 @@ paths:
         '204': { description: Senha trocada. }
         '400': { description: "Senha atual incorreta, senha nova fraca ou conhecida demais, ou dados inválidos.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/login/two-factor:
+    post:
+      summary: Segundo passo do login com duas etapas (RN-ACE-17). Rota pública.
+      description: |
+        Recebe o bilhete do login e um código TOTP de 6 dígitos ou um código de reserva. O bilhete vale 5 minutos, é de uso único e
+        morre depois de 5 erros. A resposta de erro é a mesma para código errado, usado ou vencido (INVALID_TWO_FACTOR_CODE).
+        Os erros contam na trava de 15 minutos do e-mail e no limite por IP (TOO_MANY_REQUESTS, 429).
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TwoFactorLoginRequest' } } }
+      responses:
+        '200':
+          description: Sessão iniciada; cookie SESSION na resposta.
+          content: { application/json: { schema: { $ref: '#/components/schemas/SessionView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Código inválido (INVALID_TWO_FACTOR_CODE) ou bilhete vencido, usado ou desconhecido (TWO_FACTOR_TICKET_INVALID).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/two-factor/setup:
+    post:
+      summary: Começa a ligar as duas etapas (RN-ACE-17).
+      description: Gera um segredo novo (substitui um pendente). Nada fica ativo até `POST /auth/two-factor/enable`. Com as duas etapas já ligadas responde 409.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '200':
+          description: Segredo em base32 e endereço `otpauth://` para o QR code; mostrados só agora.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TwoFactorSetup' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/two-factor/enable:
+    post:
+      summary: Liga as duas etapas com um código válido (RN-ACE-17, RN-ACE-18).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TwoFactorCode' } } }
+      responses:
+        '200':
+          description: Ligadas. Os 10 códigos de reserva aparecem só nesta resposta.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BackupCodes' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Código inválido (INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/two-factor:
+    delete:
+      summary: Desliga as duas etapas, com senha e código (RN-ACE-17).
+      description: Quem é obrigado a tê-las (Coordenador) recebe 403 FORBIDDEN e nada muda. Apaga o segredo e os códigos de reserva.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PasswordAndCode' } } }
+      responses:
+        '204': { description: Desligadas. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/two-factor/backup-codes:
+    post:
+      summary: Pede 10 códigos de reserva novos, com senha e código (RN-ACE-18).
+      description: Os anteriores deixam de valer. Sem as duas etapas ligadas responde 409.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PasswordAndCode' } } }
+      responses:
+        '200':
+          description: Códigos novos, mostrados só nesta resposta.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BackupCodes' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/reauth:
+    post:
+      summary: Confirma uma ação crítica com a senha (e o código, se as duas etapas estão ligadas) (RN-ACE-21).
+      description: |
+        Devolve um token de uso único, válido por 5 minutos, preso à sessão e à ação. A rota crítica o recebe no cabeçalho `X-Reauth-Token`
+        e o consome; sem token válido ela responde 403 REAUTH_REQUIRED. Senha ou código errados contam na trava de tentativas.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReauthRequest' } } }
+      responses:
+        '200':
+          description: Confirmação aceita.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReauthToken' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/email-change:
+    post:
+      summary: Pede a troca do e-mail da conta (RN-ACE-15).
+      description: |
+        Exige a senha e, com as duas etapas ligadas, o código. Registra um pedido pendente (24 horas) e envia o link de confirmação ao
+        endereço novo; o e-mail da conta não muda neste passo. Novo pedido cancela o pendente; no máximo 3 por hora por conta.
+        Responde 202 também quando o endereço já é de outra conta (nada é enviado), para não revelar quem tem conta (RN-ACE-11).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EmailChangeRequest' } } }
+      responses:
+        '202': { description: Pedido aceito. }
+        '400': { description: "Endereço mal formado ou igual ao atual (VALIDATION_ERROR).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas ou mais de 3 pedidos na hora (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/email-change/{code}/confirm:
+    post:
+      summary: Confirma a troca de e-mail com o link recebido (RN-ACE-15).
+      description: |
+        Só quem está logado na conta dona do pedido. Troca o e-mail, marca o pedido como usado e avisa o endereço antigo. Link vencido, usado,
+        cancelado, de outra conta ou cujo endereço passou a ser de outra conta responde 410 EMAIL_CHANGE_INVALID e nada muda.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: E-mail trocado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '410': { description: "Link inválido (EMAIL_CHANGE_INVALID).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/sessions:
+    get:
+      summary: Sessões ativas da própria conta (RF-ACE-04).
+      description: Sem token, hash nem IP. `device` é um rótulo ("Chrome em Windows") e `city` vem vazia quando desconhecida.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Sessões vivas da conta, a mais recente primeiro.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AccountSession' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      summary: Encerra todas as outras sessões da conta e mantém a atual (RF-ACE-04).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '204': { description: Encerradas. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/sessions/{id}:
+    delete:
+      summary: Encerra uma sessão da própria conta que não seja a atual (RF-ACE-04).
+      description: Sessão de outra conta ou inexistente responde 404; a atual responde 409 SESSION_CURRENT (para ela existe `POST /auth/logout`).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Encerrada. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: "Sessão não encontrada (NOT_FOUND).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409': { description: "É a sessão em uso (SESSION_CURRENT).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /permissions:
+    get:
+      summary: Permissões efetivas do vínculo ativo, para montar o menu (RNF-05, D4 da #27).
+      description: |
+        Um nível por linha da tabela de permissões (`docs/especificacao/02-contas-e-acesso.md`). Aluno, Responsável e sessão sem
+        vínculo ativo recebem tudo `NONE`. Para o Professor, a permissão "*" aparece ligada se estiver ligada em ao menos uma unidade;
+        cada rota ainda confere a unidade no servidor. Só lê: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Níveis do vínculo ativo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PermissionsView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /organization:
+    get:
+      summary: Dados da organização do vínculo ativo (RF-ORG-01).
+      description: |
+        A organização é sempre a do vínculo ativo; nenhum identificador de organização é aceito. Coordenador e Administrador leem;
+        Professor e portal recebem 403. Não traz credencial nem segredo de integração (RNF-08). `logoUrl` é uma URL temporária
+        assinada (RN-ORG-03), nula quando não há logo.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Dados da organização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      summary: Altera nome, cor principal e titular (RF-ORG-01). Só o Coordenador.
+      description: |
+        Os três campos são enviados juntos; `color` e `holderDocument` vazios ou nulos voltam ao padrão. Cor reprovada no contraste AA
+        (menos de 4,5:1 com texto branco), CPF/CNPJ inválido ou nome fora de 1 a 120 caracteres respondem 400 VALIDATION_ERROR com o campo
+        apontado e nada é salvo. Grava `organization.update` na auditoria quando algum valor muda.
+        Exige `If-Match` com o `version` lido (RNF-15): versão diferente da atual responde 409 `EDIT_CONFLICT` e nada é gravado; cabeçalho
+        ausente ou não numérico responde 428 `PRECONDITION_REQUIRED`. A permissão é conferida antes da versão. A versão só sobe quando algum
+        valor muda.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string, pattern: '^"?[0-9]+"?$' }, description: Versão lida em `version`. }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationUpdateRequest' } } }
+      responses:
+        '200':
+          description: Dados salvos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/EditConflict' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /organization/logo:
+    put:
+      summary: Troca a logo (RF-ORG-01). Só o Coordenador.
+      description: |
+        Campo `file` com PNG, JPEG ou WebP, exatamente 512 x 512 px e até 5 MB; o tipo é conferido pelo conteúdo. Outro tipo, outro tamanho,
+        arquivo corrompido ou grande demais respondem 400 VALIDATION_ERROR (campo `file`) e a logo anterior permanece. O arquivo antigo é apagado.
+        Grava `organization.logo.update`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Logo trocada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+    delete:
+      summary: Remove a logo (RF-ORG-01). Só o Coordenador. Idempotente.
+      description: Sem logo, repete sem erro e sem auditoria. Com logo, apaga o arquivo e grava `organization.logo.remove`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '200':
+          description: Logo removida (`logoUrl` nula).
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /organization/coordination-transfer:
+    post:
+      summary: Transfere a coordenação a um Administrador ativo (RF-ORG-06). Só o Coordenador.
+      description: |
+        Exige `X-Reauth-Token` da ação `TRANSFER_COORDINATION` (uso único; sem token válido, 403 REAUTH_REQUIRED) e a confirmação digitada
+        `TRANSFERIR` (sem diferenciar maiúsculas, sem espaços nas pontas). O novo Coordenador é indicado pelo e-mail e precisa ser Administrador
+        ativo da mesma organização; qualquer outro e-mail responde 400 VALIDATION_ERROR no campo `email`, sem revelar contas de outras organizações.
+        Na troca, o antigo vira Administrador de todas as unidades e o novo perde os vínculos de unidade (tudo ou nada); vale na hora, sem novo
+        login. O novo Coordenador recebe e-mail de confirmação. Grava `organization.coordination_transferred`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: X-Reauth-Token, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, confirmation]
+              properties:
+                email: { type: string }
+                confirmation: { type: string, example: TRANSFERIR }
+      responses:
+        '204': { description: Coordenação transferida. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /units:
+    get:
+      summary: Lista as unidades da organização do vínculo ativo (RF-ORG-02). Só o Coordenador.
+      description: |
+        A organização é sempre a do vínculo ativo. Sem paginação (no máximo 10 unidades, RN-ORG-05). `administrators` traz só os
+        Administradores com vínculo ativo na unidade. `activeStudents` é 0 até existir o cadastro de alunos.
+        Administrador, Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Unidades da organização, em ordem de nome.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/UnitSummary' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria uma unidade na organização do vínculo ativo (RF-ORG-03). Só o Coordenador.
+      description: |
+        Só `name` é obrigatório (até 120 caracteres). `postalCode` (8 dígitos, com ou sem hífen), `phone` e `whatsapp` (DDD + número),
+        `email`, `address` e `city` são opcionais e validados quando enviados. `latitude` e `longitude` (faixas -90..90 e -180..180)
+        vêm juntas; sem elas e com CEP, a porta de localização as obtém; sem resultado a unidade nasce sem coordenadas (RN-ORG-14).
+        O nome curto é gerado do nome e o inicial entra no histórico (RN-ORG-15). A unidade nasce com as configurações padrão.
+        No limite de 10 unidades responde 409 `UNIT_LIMIT_REACHED` e nada é criado (RN-ORG-05).
+        `administrator` (nome e e-mail, juntos) convida um Administrador vinculado só à nova unidade, depois de criada; se o convite
+        falhar, a unidade permanece e `invite` volta `FAILED`. Grava `unit.create` na auditoria, sem o e-mail do convidado.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NewUnit' } } }
+      responses:
+        '201':
+          description: Unidade criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NewUnitResult' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /units/mine:
+    get:
+      summary: Unidades que o vínculo pode configurar (RF-ORG-04). Coordenador e Administrador.
+      description: |
+        Unidades da organização do vínculo ativo sobre as quais há permissão de configuração (linha `UNIT_SETTINGS`):
+        todas para o Coordenador, só as suas para o Administrador. Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Unidades, em ordem de nome.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/UnitChoice' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /units/reachable:
+    get:
+      summary: Unidades ao alcance do vínculo, para o seletor da barra superior (RF-ORG-05). Coordenador, Administrador e Professor.
+      description: |
+        Unidades ativas da organização do vínculo ativo: todas para o Coordenador (com `allUnits` verdadeiro, que habilita
+        "Todas as unidades" só para consulta); só as do vínculo para Administrador e Professor (`allUnits` falso). Em ordem de nome.
+        Somente leitura, sem auditoria. `organizationId` na consulta é ignorado. Portal recebe 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: As unidades ao alcance.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReachableUnits' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /units/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Dados e configurações de uma unidade (RF-ORG-04). Coordenador e Administrador da unidade.
+      description: |
+        Professor, portal e Administrador de outra unidade recebem 403. Unidade de outra organização ou inexistente responde 404.
+        `settings.paymentAccount` mostra só a situação da conexão; a referência da conta nunca é devolvida.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: A unidade e suas configurações.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Substitui os dados e as configurações da unidade (RF-ORG-04). Coordenador e Administrador da unidade.
+      description: |
+        Substituição completa: campo opcional omitido apaga o valor (a tela sempre envia tudo). `organizationId`, `shortName` e
+        `paymentAccount` enviados são ignorados. `name` obrigatório (até 120). `cnpj` com dígito verificador, guardado só com dígitos.
+        `latitude` e `longitude` vêm juntas; com CEP novo e sem coordenadas a porta de localização as obtém (RN-ORG-14).
+        `dueDays`: de 1 a 28, sem repetição, ao menos um (guardados em ordem crescente). Taxa de matrícula desligada grava 0.
+        Taxas por meio: centavos de 0 a 100000. `pixKey`: CPF, CNPJ, e-mail, telefone (+55) ou UUID; em branco apaga.
+        `reminderDays`: de -30 a 60, sem repetição, até 8, podendo ficar vazio. Grava `unit.update` na auditoria com antes e depois
+        dos campos mudados (chave Pix e CNPJ só como alterados, sem o valor); chamada sem mudança não grava.
+        Exige `If-Match` com o `version` lido (RNF-15): versão diferente da atual responde 409 `EDIT_CONFLICT` e nada é gravado; cabeçalho
+        ausente ou não numérico responde 428 `PRECONDITION_REQUIRED`. A permissão é conferida antes da versão. A versão só sobe quando algum
+        valor muda.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string, pattern: '^"?[0-9]+"?$' }, description: Versão lida em `version`. }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UnitUpdate' } } }
+      responses:
+        '200':
+          description: A unidade com os novos valores.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/EditConflict' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /units/{id}/short-name:
+    patch:
+      summary: Ajusta o nome curto da unidade, uma única vez (RN-ORG-15). Só o Coordenador.
+      description: |
+        Formato `a-z0-9` e hífen (sem hífen nas pontas), de 1 a 60 caracteres; fora dele responde 400 VALIDATION_ERROR (campo `shortName`).
+        Nome em uso por outra unidade, nome antigo de qualquer unidade (reservado para sempre) ou unidade já ajustada respondem 409.
+        Unidade de outra organização responde 404, igual a id inexistente. O nome antigo passa a redirecionar para o novo.
+        Grava `unit.short_name.update` na auditoria, com antes e depois.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/UnitShortNameRequest' } } }
+      responses:
+        '200':
+          description: Nome curto ajustado (`shortNameAdjusted` verdadeiro).
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitSummary' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /units/{id}/deactivation-check:
+    get:
+      summary: O que impede desativar a unidade (RF-ORG-07). Só o Coordenador.
+      description: |
+        `canDeactivate` é verdadeiro só sem alunos com modalidade ativa, sem turmas ativas e havendo outra unidade ativa
+        (`lastActiveUnit` falso). `activeStudents` e `activeClasses` são 0 até existirem matrícula e turmas.
+        Unidade de outra organização ou inexistente responde 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Situação da unidade para a desativação.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitDeactivationCheck' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /units/{id}/deactivation:
+    post:
+      summary: Desativa a unidade (RF-ORG-07, RN-ORG-11). Só o Coordenador.
+      description: |
+        Exige `X-Reauth-Token` da ação `DEACTIVATE_UNIT` (uso único; sem token válido, 403 REAUTH_REQUIRED) e a confirmação digitada igual ao
+        nome da unidade (sem diferenciar maiúsculas, sem espaços nas pontas; senão 400 VALIDATION_ERROR no campo `confirmation`).
+        Com aluno de modalidade ativa, turma ativa ou sendo a única unidade ativa, responde 409 `UNIT_HAS_BLOCKERS` e `fields` traz
+        `activeStudents`, `activeClasses` e `lastActiveUnit` (valores em texto); nada muda e o token não é gasto.
+        Unidade já desativada responde 409 `CONFLICT`; de outra organização ou inexistente, 404. Nada é apagado: a unidade segue em
+        `GET /units` com `active = false` e sai de `GET /units/reachable`. Grava `unit.deactivated` na auditoria, com antes e depois.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: X-Reauth-Token, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation]
+              properties:
+                confirmation: { type: string, description: 'Nome da unidade.' }
+      responses:
+        '204': { description: Unidade desativada. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users:
+    get:
+      summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
+      description: |
+        O Coordenador vê os Administradores da organização; o Administrador vê os Professores com ao menos uma das suas unidades.
+        Professor, Aluno e Responsável recebem 403. Sem `status` devolve `PENDING` e `ACTIVE`; `ENDED` só quando pedido.
+        `canManage` é falso quando o Professor tem unidade fora do alcance do Administrador. Sem token, hash nem IP. Sem paginação (até 200).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [PENDING, ACTIVE, ENDED] } }
+      responses:
+        '200':
+          description: Equipe, em ordem de nome.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/StaffUser' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Convida alguém da gestão (RF-ACE-06, RN-ACE-05). Coordenador convida Administrador; Administrador convida Professor.
+      description: |
+        O perfil nunca vem do corpo (um `role` enviado é ignorado). O Administrador só convida para unidades dele (senão 403); unidade de
+        outra organização ou inativa responde 400. E-mail já ligado a esta organização no mesmo perfil, com vínculo `PENDING` ou `ACTIVE`,
+        responde 409 `ALREADY_LINKED`; conta desativada, 403. Acima de 200 usuários da gestão, 409 `STAFF_LIMIT_REACHED` (RN-ORG-05).
+        Grava `invite.created` na auditoria, sem o e-mail nem o código.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffInvite' } } }
+      responses:
+        '201':
+          description: Convite enviado; a linha nasce `PENDING`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StaffUser' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/coordinator-appointment:
+    post:
+      summary: O Coordenador se nomeia Administrador de unidades (RN-ORG-07). Só o Coordenador.
+      description: |
+        Cria, ou reativa, para a própria conta um vínculo `ACTIVE` de Administrador nas unidades ativas indicadas, para destravar o
+        409 `LAST_UNIT_ADMINISTRATOR`. Idempotente (um vínculo só; as unidades se somam). Sem unidade, ou com unidade inativa ou de outra
+        organização, 400. Grava `link.coordinator_appointed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffUnits' } } }
+      responses:
+        '200':
+          description: O vínculo de Administrador do Coordenador.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StaffUser' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{linkId}/resend:
+    post:
+      summary: Reenvia o convite de um vínculo pendente (RF-ACE-06, RN-ACE-13).
+      description: |
+        Cancela o convite anterior e envia outro; no máximo 3 reenvios por dia por pessoa (429 `TOO_MANY_REQUESTS` além disso).
+        Vínculo que não é `PENDING`, de outro perfil, de outra organização ou fora do alcance responde 404. Grava `invite.resent`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: linkId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Convite reenviado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429':
+          description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /users/{linkId}/units:
+    put:
+      summary: Troca as unidades de um vínculo pendente ou ativo (RF-ACE-06).
+      description: |
+        O Coordenador define a lista inteira de um Administrador. O Administrador mexe só nas unidades dele num Professor; as demais do
+        Professor ficam. Lista vazia ou que deixaria o vínculo sem unidade: 400; unidade fora do alcance de quem chama: 403; unidade de outra
+        organização ou inativa: 400. Tirar a unidade do último Administrador ativo de uma unidade ativa responde 409 `LAST_UNIT_ADMINISTRATOR`
+        (`fields`, campo `unitIds`, traz os ids separados por vírgula). Vínculo fora do alcance ou do perfil gerido: 404. Grava `link.units_changed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: linkId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StaffUnits' } } }
+      responses:
+        '200':
+          description: A linha atualizada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StaffUser' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /users/{linkId}:
+    delete:
+      summary: Desativa o vínculo (RF-ACE-06, RN-ACE-20); a conta e os vínculos em outras organizações ficam.
+      description: |
+        Vínculo `ACTIVE` vira `ENDED` (as sessões acabam se era o último vínculo de gestão); `PENDING` tem o convite cancelado. Ninguém desativa
+        a si mesmo (409 `CONFLICT`) nem o Coordenador (403). O Administrador só desativa Professor cujas unidades estejam todas entre as dele (403).
+        Desativar o último Administrador ativo de uma unidade ativa responde 409 `LAST_UNIT_ADMINISTRATOR`. Alvo de outra organização ou perfil: 404.
+        Grava `link.ended` ou `invite.canceled`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: linkId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Vínculo desativado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -188,6 +743,22 @@ components:
       properties:
         currentPassword: { type: string, format: password }
         newPassword: { type: string, format: password }
+    Access:
+      type: string
+      description: "Nível da célula: FULL (pode), READ (só consulta), OWN (o próprio resumo), NOTICE (faixa de aviso), NONE (não acessa)."
+      enum: [FULL, READ, OWN, NOTICE, NONE]
+    Permission:
+      type: string
+      description: Linha "Área / ação" da tabela de permissões, na ordem da especificação.
+      enum: [HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS, CHARGE_ADJUSTMENTS, CLASSES_MANAGE, AGENDA_VIEW, AGENDA_EDIT, NO_CLASS_DAYS, GRADUATION, ANNOUNCEMENTS, TRIAL_CLASSES, TEACHERS, STAFF_USERS, UNIT_SETTINGS, ORGANIZATION_SETTINGS, UNITS, SUBSCRIPTION, AUDIT, REPORTS, EXPORT_LISTS, EXPORT_FULL, IMPORT, SUPPORT_ACCESS]
+    PermissionsView:
+      type: object
+      required: [permissions]
+      properties:
+        permissions:
+          type: object
+          description: Uma chave `Permission` por linha da tabela, com o nível `Access` do vínculo ativo.
+          additionalProperties: { $ref: '#/components/schemas/Access' }
     SelectLinkRequest:
       type: object
       required: [linkId]
@@ -216,9 +787,83 @@ components:
         unitIds:
           type: array
           items: { type: string, format: uuid }
+    TwoFactorRequired:
+      type: object
+      required: [twoFactorRequired, ticket]
+      properties:
+        twoFactorRequired: { type: boolean, enum: [true] }
+        ticket: { type: string, description: "Bilhete de uso único, 5 minutos, para POST /auth/login/two-factor." }
+    TwoFactorLoginRequest:
+      type: object
+      required: [ticket, code]
+      properties:
+        ticket: { type: string }
+        code: { type: string, description: Código TOTP de 6 dígitos ou código de reserva. }
+    TwoFactorSetup:
+      type: object
+      required: [secret, otpauthUri]
+      properties:
+        secret: { type: string, description: "Segredo em base32, para digitar no app." }
+        otpauthUri: { type: string, description: "Endereço otpauth://totp/... para o QR code." }
+    TwoFactorCode:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, description: Código TOTP de 6 dígitos. }
+    PasswordAndCode:
+      type: object
+      required: [password, code]
+      properties:
+        password: { type: string, format: password }
+        code: { type: string, description: Código TOTP ou de reserva. }
+    BackupCodes:
+      type: object
+      required: [backupCodes]
+      properties:
+        backupCodes:
+          type: array
+          minItems: 10
+          maxItems: 10
+          items: { type: string, description: "10 caracteres sem ambiguidade; uso único." }
+    ReauthRequest:
+      type: object
+      required: [action, password]
+      properties:
+        action: { type: string, enum: [TRANSFER_COORDINATION, CANCEL_SUBSCRIPTION, FULL_EXPORT, DISCONNECT_MERCADO_PAGO, ANONYMIZE_STUDENT, DEACTIVATE_UNIT] }
+        password: { type: string, format: password }
+        code: { type: string, description: Obrigatório quando as duas etapas estão ligadas. }
+    EmailChangeRequest:
+      type: object
+      required: [newEmail, password]
+      properties:
+        newEmail: { type: string, format: email, maxLength: 254 }
+        password: { type: string, format: password }
+        code: { type: string, description: Obrigatório quando as duas etapas estão ligadas. }
+    AccountSession:
+      type: object
+      required: [id, device, createdAt, lastUsedAt, current]
+      properties:
+        id: { type: string, format: uuid }
+        device: { type: string, description: "Rótulo do aparelho, não o texto bruto do navegador." }
+        city: { type: string, nullable: true, description: Cidade aproximada quando conhecida. }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: string, format: date-time }
+        current: { type: boolean }
+    ReauthToken:
+      type: object
+      required: [reauthToken, expiresAt]
+      properties:
+        reauthToken: { type: string }
+        expiresAt: { type: string, format: date-time }
+    TwoFactorState:
+      type: object
+      required: [enabled, required]
+      properties:
+        enabled: { type: boolean }
+        required: { type: boolean, description: "Verdadeiro para quem tem vínculo ativo de Coordenador; sem as duas etapas a sessão só alcança a configuração (403 TWO_FACTOR_SETUP_REQUIRED nas demais rotas)." }
     SessionView:
       type: object
-      required: [account, links]
+      required: [account, links, twoFactor]
       properties:
         account: { $ref: '#/components/schemas/AccountView' }
         links:
@@ -229,6 +874,7 @@ components:
           format: uuid
           nullable: true
           description: Vazio quando a conta tem mais de um vínculo e ainda não escolheu (PUT /auth/session/link).
+        twoFactor: { $ref: '#/components/schemas/TwoFactorState' }
     InviteInfo:
       type: object
       required: [role, existingAccount, organizationId, email, expiresAt]
@@ -259,6 +905,13 @@ components:
             - NOT_FOUND
             - METHOD_NOT_ALLOWED
             - CONFLICT
+            - EDIT_CONFLICT
+            - PRECONDITION_REQUIRED
+            - UNIT_LIMIT_REACHED
+            - UNIT_HAS_BLOCKERS
+            - LAST_UNIT_ADMINISTRATOR
+            - STAFF_LIMIT_REACHED
+            - ALREADY_LINKED
             - UNSUPPORTED_MEDIA_TYPE
             - INVALID_CREDENTIALS
             - TOO_MANY_REQUESTS
@@ -268,6 +921,12 @@ components:
             - PASSWORD_WEAK
             - PASSWORD_LEAKED
             - MINOR_HAS_NO_ACCOUNT
+            - INVALID_TWO_FACTOR_CODE
+            - TWO_FACTOR_TICKET_INVALID
+            - TWO_FACTOR_SETUP_REQUIRED
+            - REAUTH_REQUIRED
+            - EMAIL_CHANGE_INVALID
+            - SESSION_CURRENT
             - INTERNAL_ERROR
         message: { type: string }
         changed: { type: boolean }
@@ -275,6 +934,230 @@ components:
           type: array
           items: { $ref: '#/components/schemas/FieldError' }
         traceId: { type: string }
+    OrganizationView:
+      type: object
+      required: [name, color, holderDocument, logoUrl, version, lastChange]
+      properties:
+        version: { type: integer, minimum: 0, description: 'Versão para o If-Match da próxima gravação (RNF-15).' }
+        lastChange: { $ref: '#/components/schemas/LastChange' }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        color: { type: string, nullable: true, pattern: '^#[0-9a-f]{6}$', description: 'Cor principal (contraste mínimo 4,5:1 com texto branco); nula usa a cor padrão da plataforma.' }
+        holderDocument: { type: string, nullable: true, pattern: '^([0-9]{11}|[0-9]{14})$', description: 'CPF ou CNPJ do titular, só dígitos.' }
+        logoUrl: { type: string, nullable: true, description: 'URL temporária assinada da logo (512 x 512); nula sem logo.' }
+    LastChange:
+      type: object
+      nullable: true
+      description: 'Última alteração de configuração da entidade, tirada da auditoria (RF-ORG-08); nula sem registro. `by` é o nome da pessoa, ou o e-mail se não houver nome; nulo quando o autor não é uma pessoa.'
+      required: [at, by]
+      properties:
+        at: { type: string, format: date-time }
+        by: { type: string, nullable: true }
+    OrganizationUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        color: { type: string, nullable: true, description: '#RRGGBB; vazio ou nulo limpa.' }
+        holderDocument: { type: string, nullable: true, description: 'CPF ou CNPJ, com ou sem máscara; vazio ou nulo limpa.' }
+    UnitDeactivationCheck:
+      type: object
+      required: [activeStudents, activeClasses, lastActiveUnit, canDeactivate]
+      properties:
+        activeStudents: { type: integer, minimum: 0 }
+        activeClasses: { type: integer, minimum: 0 }
+        lastActiveUnit: { type: boolean }
+        canDeactivate: { type: boolean }
+    UnitSummary:
+      type: object
+      required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        shortName: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 60 }
+        shortNameAdjusted: { type: boolean, description: 'Verdadeiro depois do ajuste único do nome curto.' }
+        city: { type: string, nullable: true }
+        activeStudents: { type: integer, minimum: 0 }
+        administrators:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string }
+        active: { type: boolean, description: 'Verdadeiro = Ativa; falso = Desativada.' }
+    StaffUser:
+      type: object
+      required: [linkId, name, email, role, units, lastAccessAt, status, canManage]
+      properties:
+        linkId: { type: string, format: uuid, description: 'Identificador da linha: o vínculo, não a conta.' }
+        name: { type: string }
+        email: { type: string }
+        role: { type: string, enum: [ADMINISTRATOR, TEACHER] }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+        lastAccessAt: { type: string, format: date-time, nullable: true, description: 'Nulo se a pessoa nunca entrou.' }
+        status: { type: string, enum: [PENDING, ACTIVE, ENDED] }
+        canManage: { type: boolean, description: 'Falso quando alguma unidade da pessoa está fora do alcance de quem chama.' }
+    StaffInvite:
+      type: object
+      required: [email, name, unitIds]
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, minLength: 1 }
+        unitIds: { type: array, minItems: 1, items: { type: string, format: uuid } }
+    StaffUnits:
+      type: object
+      required: [unitIds]
+      properties:
+        unitIds: { type: array, minItems: 1, items: { type: string, format: uuid } }
+    NewUnit:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        postalCode: { type: string, nullable: true, pattern: '^[0-9]{5}-?[0-9]{3}$' }
+        address: { type: string, nullable: true, maxLength: 200 }
+        city: { type: string, nullable: true, maxLength: 100 }
+        latitude: { type: number, nullable: true, minimum: -90, maximum: 90 }
+        longitude: { type: number, nullable: true, minimum: -180, maximum: 180 }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true, format: email, maxLength: 254 }
+        whatsapp: { type: string, nullable: true }
+        administrator:
+          type: object
+          nullable: true
+          required: [name, email]
+          properties:
+            name: { type: string, maxLength: 120 }
+            email: { type: string, format: email, maxLength: 254 }
+    NewUnitResult:
+      type: object
+      required: [unit, invite]
+      properties:
+        unit: { $ref: '#/components/schemas/UnitSummary' }
+        invite: { type: string, enum: [NONE, SENT, FAILED], description: 'NONE = sem convite; SENT = enviado; FAILED = a unidade foi criada e o convite não.' }
+    ReachableUnits:
+      type: object
+      required: [allUnits, units]
+      properties:
+        allUnits: { type: boolean }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name, shortName]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              shortName: { type: string }
+    UnitChoice:
+      type: object
+      required: [id, name, shortName, city, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        shortName: { type: string }
+        city: { type: string, nullable: true }
+        active: { type: boolean }
+    FeesCents:
+      type: object
+      description: Taxa fixa por meio de pagamento, em centavos (0 a 100000).
+      required: [cash, pix, bankSlip, creditCard, debitCard, automaticDebit, manualPix, terminalCard, transfer]
+      properties:
+        cash: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        pix: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        bankSlip: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        creditCard: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        debitCard: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        automaticDebit: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        manualPix: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        terminalCard: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+        transfer: { type: integer, format: int64, minimum: 0, maximum: 100000 }
+    TeacherPermissions:
+      type: object
+      required: [announcements, agendaEdit, studentContacts, trialClasses]
+      properties:
+        announcements: { type: boolean }
+        agendaEdit: { type: boolean }
+        studentContacts: { type: boolean }
+        trialClasses: { type: boolean }
+    UnitSettingsView:
+      type: object
+      required: [dueDays, enrollmentFeeEnabled, enrollmentFeeCents, feesCents, pixKey, paymentAccount, reminderDays, teacherPermissions,
+        directoryEnabled, trialLinkEnabled, selfRegistrationLinkEnabled]
+      properties:
+        dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
+        enrollmentFeeEnabled: { type: boolean }
+        enrollmentFeeCents: { type: integer, format: int64, minimum: 0 }
+        feesCents: { $ref: '#/components/schemas/FeesCents' }
+        pixKey: { type: string, nullable: true }
+        paymentAccount: { type: string, enum: [CONNECTED, NOT_CONNECTED], description: Só leitura; o PUT não altera. }
+        reminderDays: { type: array, items: { type: integer, minimum: -30, maximum: 60 }, maxItems: 8, uniqueItems: true }
+        teacherPermissions: { $ref: '#/components/schemas/TeacherPermissions' }
+        directoryEnabled: { type: boolean }
+        trialLinkEnabled: { type: boolean }
+        selfRegistrationLinkEnabled: { type: boolean }
+    UnitDetail:
+      type: object
+      required: [id, name, shortName, postalCode, address, city, latitude, longitude, phone, email, whatsapp, cnpj, active, settings, version, lastChange]
+      properties:
+        version: { type: integer, minimum: 0, description: 'Versão para o If-Match da próxima gravação (RNF-15).' }
+        lastChange: { $ref: '#/components/schemas/LastChange' }
+        id: { type: string, format: uuid }
+        name: { type: string }
+        shortName: { type: string }
+        postalCode: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        latitude: { type: number, nullable: true }
+        longitude: { type: number, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        whatsapp: { type: string, nullable: true }
+        cnpj: { type: string, nullable: true, description: 14 dígitos. }
+        active: { type: boolean }
+        settings: { $ref: '#/components/schemas/UnitSettingsView' }
+    UnitUpdateSettings:
+      type: object
+      required: [dueDays, enrollmentFeeEnabled, feesCents, reminderDays, teacherPermissions, directoryEnabled, trialLinkEnabled,
+        selfRegistrationLinkEnabled]
+      properties:
+        dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
+        enrollmentFeeEnabled: { type: boolean }
+        enrollmentFeeCents: { type: integer, format: int64, minimum: 0, nullable: true, description: Obrigatório quando a taxa está ligada. }
+        feesCents: { $ref: '#/components/schemas/FeesCents' }
+        pixKey: { type: string, nullable: true }
+        reminderDays: { type: array, items: { type: integer, minimum: -30, maximum: 60 }, maxItems: 8, uniqueItems: true }
+        teacherPermissions: { $ref: '#/components/schemas/TeacherPermissions' }
+        directoryEnabled: { type: boolean }
+        trialLinkEnabled: { type: boolean }
+        selfRegistrationLinkEnabled: { type: boolean }
+    UnitUpdate:
+      type: object
+      required: [name, settings]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        postalCode: { type: string, nullable: true, pattern: '^[0-9]{5}-?[0-9]{3}$' }
+        address: { type: string, nullable: true, maxLength: 200 }
+        city: { type: string, nullable: true, maxLength: 100 }
+        latitude: { type: number, nullable: true, minimum: -90, maximum: 90 }
+        longitude: { type: number, nullable: true, minimum: -180, maximum: 180 }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true, format: email, maxLength: 254 }
+        whatsapp: { type: string, nullable: true }
+        cnpj: { type: string, nullable: true }
+        settings: { $ref: '#/components/schemas/UnitUpdateSettings' }
+    UnitShortNameRequest:
+      type: object
+      required: [shortName]
+      properties:
+        shortName: { type: string }
     Page:
       type: object
       description: Envelope de lista. Cada rota sobrescreve `items` por composição.
@@ -302,6 +1185,12 @@ components:
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     Conflict:
       description: Conflito com dado existente (CONFLICT).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    EditConflict:
+      description: Outra pessoa alterou os dados depois da leitura; versão do If-Match diferente da atual (EDIT_CONFLICT). Nada é gravado.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    PreconditionRequired:
+      description: Cabeçalho If-Match ausente ou inválido (PRECONDITION_REQUIRED). Nada é gravado.
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     UnsupportedMediaType:
       description: Tipo de mídia não suportado (UNSUPPORTED_MEDIA_TYPE).

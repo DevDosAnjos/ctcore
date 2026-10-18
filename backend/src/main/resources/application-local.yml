@@ -2,3 +2,5 @@
 ctcore:
   security:
     require-https: false
+    # Só desenvolvimento: chave fixa (não é segredo). Outros ambientes definem TWO_FACTOR_ENCRYPTION_KEY.
+    two-factor-key: ${TWO_FACTOR_ENCRYPTION_KEY:Y3Rjb3JlLWxvY2FsLWRldi1rZXktMDEyMzQ1Njc4OSE=}

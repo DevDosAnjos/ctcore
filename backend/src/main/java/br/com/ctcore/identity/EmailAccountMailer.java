@@ -41,6 +41,16 @@ public class EmailAccountMailer implements AccountMailer {
     }
 
     @Override
+    public void emailChange(String to, String code) {
+        email.send(to, EmailTemplate.EMAIL_CHANGE, baseUrl + "/confirmar-email/" + code);
+    }
+
+    @Override
+    public void emailChanged(String to) {
+        email.send(to, EmailTemplate.EMAIL_CHANGED);
+    }
+
+    @Override
     public void newAccess(String to, String device, String city, Instant at) {
         String where = city != null ? city : messages.getMessage("mail.new-access.unknown-city", null, PT_BR);
         email.send(to, EmailTemplate.NEW_ACCESS, device, where, WHEN.format(at));

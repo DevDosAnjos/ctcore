@@ -49,13 +49,13 @@ Coordenador (tudo), Administrador (vê as configurações da organização e alt
 - **RN-ORG-02.** O isolamento é aplicado na camada de dados do back-end e confirmado pelo PostgreSQL (row-level security). Uma consulta sem organização definida não retorna nada.
 - **RN-ORG-03.** Arquivos ficam em pastas por organização. A URL de um arquivo é temporária e assinada.
 - **RN-ORG-04.** Toda organização nasce com uma unidade. Com uma unidade só, a interface não mostra seletor de unidade e fala "academia".
-- **RN-ORG-05.** Máximo de 10 unidades e 200 usuários da gestão por organização. Acima disso, só pelo suporte.
-- **RN-ORG-06.** O Coordenador é um só por organização. Ele pode transferir a coordenação a outra conta com confirmação digitada, senha e e-mail de confirmação ao novo Coordenador. O antigo vira Administrador de todas as unidades.
-- **RN-ORG-07.** Toda unidade ativa tem pelo menos um Administrador. Para desativar o último, o Coordenador nomeia outro, podendo ser ele mesmo.
+- **RN-ORG-05.** Máximo de 10 unidades (409 `UNIT_LIMIT_REACHED`) e 200 usuários da gestão por organização; convites pendentes contam entre os usuários. Acima disso, só pelo suporte.
+- **RN-ORG-06.** O Coordenador é um só por organização. Ele pode transferir a coordenação a outra conta com confirmação digitada, senha e e-mail de confirmação ao novo Coordenador. A troca é imediata, sem aceite do novo Coordenador, que é um Administrador ativo da organização. O antigo vira Administrador de todas as unidades existentes naquele momento.
+- **RN-ORG-07.** Nenhuma ação de usuário deixa uma unidade ativa com zero Administradores. Para desativar o último, o Coordenador nomeia outro, podendo ser ele mesmo. A unidade recém-criada pode nascer sem Administrador, quando o convite opcional do assistente (RF-ORG-03) é omitido ou falha; ela aparece com o aviso "sem Administrador" nos Primeiros passos.
 - **RN-ORG-08.** "Todas as unidades" existe só para o Coordenador e só para consulta: Início, financeiro e relatórios somados e comparados. Para cadastrar ou alterar, ele entra numa unidade.
 - **RN-ORG-09.** Administrador de duas ou mais unidades escolhe a unidade no seletor do topo. Ele não tem visão somada.
 - **RN-ORG-10.** Planos, turmas, cobranças, dias de vencimento e conta de pagamento são da unidade. Faixas etárias, graduação, termos e prazos são da organização.
-- **RN-ORG-11.** Desativar uma unidade exige que não haja alunos com modalidade ativa nem turmas ativas nela (transferidos ou encerrados antes). O histórico fica para consulta. Confirmação digitada.
+- **RN-ORG-11.** Desativar uma unidade exige que não haja alunos com modalidade ativa nem turmas ativas nela (transferidos ou encerrados antes). A única unidade ativa da organização não pode ser desativada. O histórico fica para consulta. Confirmação digitada: o nome da unidade.
 - **RN-ORG-12.** Transferência: uma modalidade da matrícula pode ir para outra unidade da mesma organização, mantendo histórico e graduação. Cobranças já geradas ficam na unidade de origem. A nova unidade escolhe turma, plano e vencimento.
 - **RN-ORG-13.** "Treinar em outra unidade": com "Depende do plano", cada plano diz se vale também em outras unidades. Com "Sim" ou "Não", vale para todos os planos.
 - **RN-ORG-14.** O endereço da unidade é guardado com latitude e longitude (geocodificação no cadastro, ajustável no mapa), para o diretório.
@@ -65,14 +65,14 @@ Coordenador (tudo), Administrador (vê as configurações da organização e alt
 
 ## Requisitos
 
-- **RF-ORG-01.** Configurações › Organização: nome, logo (JPG, PNG ou WebP, cortado em quadrado, 512 px), cor principal com prévia de contraste, titular. Só o Coordenador altera; o Administrador vê.
-- **RF-ORG-02.** Configurações › Unidades: lista com nome, cidade, alunos ativos, Administradores e situação.
-- **RF-ORG-03.** Nova unidade: assistente curto com nome, endereço, contato, modalidades oferecidas e convite opcional do Administrador. O resto vai para os "Primeiros passos" da unidade.
-- **RF-ORG-04.** Configurações › Unidade: dados, dias de vencimento, taxa de matrícula, taxas por meio de pagamento, chave Pix, conexão do Mercado Pago (ver `11`), lembretes, permissões do Professor, diretório e links públicos.
-- **RF-ORG-05.** Seletor de unidade no topo da gestão, visível com duas ou mais unidades ao alcance do usuário. O Coordenador vê também "Todas as unidades".
+- **RF-ORG-01.** Configurações › Organização: nome, logo (JPG, PNG ou WebP, cortado em quadrado, 512 px), cor principal com prévia de contraste, titular. Cor com contraste menor que 4,5:1 (AA) é recusada. Só o Coordenador altera; o Administrador vê em leitura.
+- **RF-ORG-02.** Configurações › Unidades: lista com nome, cidade, alunos ativos, Administradores e situação. O nome curto antigo fica reservado à unidade que o usou.
+- **RF-ORG-03.** Nova unidade: assistente curto com nome, endereço, contato, modalidades oferecidas e convite opcional do Administrador. Até a Sprint 04 as modalidades ficam fora do assistente e latitude e longitude ocupam o lugar do mapa. O resto vai para os "Primeiros passos" da unidade.
+- **RF-ORG-04.** Configurações › Unidade: dados, dias de vencimento, taxa de matrícula, taxas por meio de pagamento (por ora só em valor fixo, em centavos, até R$ 1.000,00 por meio; a taxa de matrícula vai até R$ 1.000.000,00; o percentual e a prévia do total serão decididos na #97), chave Pix, conexão do Mercado Pago (ver `11`), lembretes, permissões do Professor, diretório e links públicos.
+- **RF-ORG-05.** Seletor de unidade no topo da gestão, visível com duas ou mais unidades ao alcance do usuário. O Coordenador vê também "Todas as unidades", que é o seu padrão.
 - **RF-ORG-06.** Transferir coordenação (RN-ORG-06).
 - **RF-ORG-07.** Desativar unidade (RN-ORG-11), mostrando o que impede.
-- **RF-ORG-08.** Toda alteração de configuração mostra "Última alteração em [data] por [pessoa]" e vai para a auditoria com o valor antes e depois.
+- **RF-ORG-08.** Toda alteração de configuração mostra "Última alteração em [data] por [pessoa]" e vai para a auditoria com o valor antes e depois. A edição de organização e de unidade exige `If-Match` (428 sem ele).
 
 ## Pronto quando
 

@@ -17,6 +17,11 @@ spring:
     user: ${DB_MIGRATION_USER:${POSTGRES_USER:ctcore}}
     password: ${DB_MIGRATION_PASSWORD:${POSTGRES_PASSWORD:ctcore_dev}}
     validate-on-migrate: true
+  servlet:
+    multipart:
+      # #28: logo de até 5 MB (FileStorage.MAX_BYTES); acima disso a requisição é recusada antes de ler o arquivo.
+      max-file-size: 5MB
+      max-request-size: 6MB
   jackson:
     time-zone: UTC
     serialization:
@@ -43,6 +48,8 @@ ctcore:
     backoff: 1m,5m,30m,2h
   security:
     require-https: true
+    # D7 (#26): chave AES-256 (base64 de 32 bytes) que criptografa o segredo das duas etapas; sem ela fora do perfil local a aplicação não sobe.
+    two-factor-key: ${TWO_FACTOR_ENCRYPTION_KEY:}
     # D4 (#18): 5 senhas erradas seguidas travam o e-mail por 15 minutos; 20 falhas por IP na mesma janela.
     login:
       max-failures: 5

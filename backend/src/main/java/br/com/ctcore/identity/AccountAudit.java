@@ -25,7 +25,10 @@ public class AccountAudit {
         List<UUID> organizations = accountTx.forAccount(accountId, () -> jdbc.sql(
                 "select distinct organization_id from account_link where account_id = :a and status = 'ACTIVE'")
                 .param("a", accountId).query(UUID.class).list());
+        // Dentro de uma requisição só a organização da sessão pode ser escrita; as demais não são alcançáveis (RN-ORG-01).
+        UUID scope = br.com.ctcore.isolation.OrganizationContext.organizationId();
         for (UUID org : organizations) {
+            if (scope != null && !scope.equals(org)) continue;
             for (String action : actions) {
                 audit.record(org, new AuditEntry(actor, action, "account", accountId.toString(), null, null, null, null, ip));
             }

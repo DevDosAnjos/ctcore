@@ -1,4 +1,4 @@
-import { formatCpf, isValidCpf, formatPhone, isValidPhone, formatMoney, parseMoney, parsePastedMoney, formatDate, parseDate } from "./masks";
+import { formatCpf, isValidCpf, formatPhone, isValidPhone, formatMoney, parseMoney, parsePastedMoney, formatDate, parseDate, isValidCnpj, formatCpfCnpj, isValidCpfOrCnpj, formatCep } from "./masks";
 
 describe("masks", () => {
   it("CPF", () => {
@@ -57,5 +57,33 @@ describe("masks", () => {
     expect(parseDate("31/02/2026")).toBeNull();
     expect(parseDate("29/02/2024")).toBe("2024-02-29");
     expect(parseDate("08/10")).toBeNull();
+  });
+});
+
+describe("CNPJ e titular", () => {
+  it("valida os dígitos verificadores do CNPJ", () => {
+    expect(isValidCnpj("11.222.333/0001-81")).toBe(true);
+    expect(isValidCnpj("11222333000182")).toBe(false);
+    expect(isValidCnpj("11111111111111")).toBe(false);
+    expect(isValidCnpj("123")).toBe(false);
+  });
+
+  it("formata CPF até 11 dígitos e CNPJ acima, e aceita os dois", () => {
+    expect(formatCpfCnpj("52998224725")).toBe("529.982.247-25");
+    expect(formatCpfCnpj("11222333000181")).toBe("11.222.333/0001-81");
+    expect(formatCpfCnpj("112223330001")).toBe("11.222.333/0001");
+    expect(formatCpfCnpj("1122233300018199")).toBe("11.222.333/0001-81");
+    expect(isValidCpfOrCnpj("529.982.247-25")).toBe(true);
+    expect(isValidCpfOrCnpj("11.222.333/0001-81")).toBe(true);
+    expect(isValidCpfOrCnpj("529.982.247-26")).toBe(false);
+  });
+});
+
+describe("formatCep (#31)", () => {
+  it("coloca o hífen depois do quinto dígito e limita a 8 dígitos", () => {
+    expect(formatCep("01001")).toBe("01001");
+    expect(formatCep("01001000")).toBe("01001-000");
+    expect(formatCep("01001-000999")).toBe("01001-000");
+    expect(formatCep("")).toBe("");
   });
 });

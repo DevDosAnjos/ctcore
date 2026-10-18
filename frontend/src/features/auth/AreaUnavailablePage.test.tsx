@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
+import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
@@ -11,6 +12,7 @@ import { SessionProvider, type SessionView } from "./SessionProvider";
 
 const L = (id: string, role: string) => ({ id, organizationId: "o", organizationName: "Alfa", role, unitIds: [] });
 const account = { id: "a", email: "x@x.com", name: "X" };
+const off = { enabled: false, required: false };
 const TITLE = "Esta área não está disponível para o seu perfil";
 
 function setup(view: SessionView | null, path = "/sem-acesso") {
@@ -19,6 +21,9 @@ function setup(view: SessionView | null, path = "/sem-acesso") {
       view ? HttpResponse.json(view) : HttpResponse.json({ code: "UNAUTHENTICATED", message: "m", changed: false, fields: [], traceId: "t" }, { status: 401 }),
     ),
     http.get("/api/v1/auth/login", () => HttpResponse.json({})),
+    http.get("/api/v1/permissions", () =>
+      HttpResponse.json({ permissions: mockPermissions(view?.links.find((l) => l.id === view.activeLinkId)?.role) }),
+    ),
   );
   return render(
     <ThemeProvider>
@@ -30,8 +35,8 @@ function setup(view: SessionView | null, path = "/sem-acesso") {
     </ThemeProvider>,
   );
 }
-const one: SessionView = { account, links: [L("l1", "TEACHER")], activeLinkId: "l1" };
-const two: SessionView = { account, links: [L("l1", "TEACHER"), L("l2", "STUDENT")], activeLinkId: "l1" };
+const one: SessionView = { account, links: [L("l1", "TEACHER")], activeLinkId: "l1", twoFactor: off };
+const two: SessionView = { account, links: [L("l1", "TEACHER"), L("l2", "STUDENT")], activeLinkId: "l1", twoFactor: off };
 
 describe("AreaUnavailablePage", () => {
   it("CA1, CA9: título, texto e link para o Início, sem citar recurso", async () => {

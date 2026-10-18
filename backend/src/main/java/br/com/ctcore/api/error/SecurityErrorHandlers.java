@@ -32,7 +32,7 @@ public class SecurityErrorHandlers implements AuthenticationEntryPoint, AccessDe
         write(req, res, ErrorCode.FORBIDDEN);
     }
 
-    private void write(HttpServletRequest req, HttpServletResponse res, ErrorCode code) throws IOException {
+    public void write(HttpServletRequest req, HttpServletResponse res, ErrorCode code) throws IOException {
         res.setStatus(code.status.value());
         res.setContentType(MediaType.APPLICATION_JSON_VALUE);
         res.setCharacterEncoding("UTF-8");

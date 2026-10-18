@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import br.com.ctcore.audit.AuditActor;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,8 @@ public class SessionService {
     public record Created(UUID accountId, String token, UUID activeLinkId) {}
     public record AccountView(UUID id, String email, String name) {}
     public record LinkView(UUID id, UUID organizationId, String organizationName, String role, Set<UUID> unitIds) {}
-    public record SessionView(AccountView account, List<LinkView> links, UUID activeLinkId) {}
+    public record TwoFactorView(boolean enabled, boolean required) {}
+    public record SessionView(AccountView account, List<LinkView> links, UUID activeLinkId, TwoFactorView twoFactor) {}
 
     record Link(UUID id, UUID organizationId, Role role) {}
 
@@ -34,8 +36,16 @@ public class SessionService {
     private final AccountTransactions accountTx;
     private final Clock clock;
     private final NewAccessNotifier newAccess;
+    private final TwoFactorService twoFactor;
+    private final IpLocator locator;
+    private final AccountAudit audit;
 
-    public SessionService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, Clock clock, NewAccessNotifier newAccess) {
+    public SessionService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, Clock clock, NewAccessNotifier newAccess,
+            IpLocator locator, AccountAudit audit,
+            TwoFactorService twoFactor) {
+        this.twoFactor = twoFactor;
+        this.locator = locator;
+        this.audit = audit;
         this.newAccess = newAccess;
         this.jdbc = jdbc;
         this.accountTx = accountTx;
@@ -121,7 +131,8 @@ public class SessionService {
                     .query((rs, n) -> new AccountView(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3))).single();
             List<LinkView> links = activeLinks(accountId).stream()
                     .map(l -> new LinkView(l.id(), l.organizationId(), organizationName(l.organizationId()), l.role().name(), unitsOf(l.id()))).toList();
-            return new SessionView(account, links, activeLinkId);
+            return new SessionView(account, links, activeLinkId,
+                    new TwoFactorView(twoFactor.enabled(accountId), twoFactor.requiredFor(accountId)));
         });
     }
 
@@ -145,6 +156,43 @@ public class SessionService {
     public void endAll(UUID accountId, UUID except) {
         jdbc.sql("delete from account_session where account_id = :a and (cast(:x as uuid) is null or id <> cast(:x as uuid))")
                 .param("a", accountId).param("x", except).update();
+    }
+
+
+    /** RF-ACE-04: what a person may see of a session; never the token, its hash or the IP (D9). */
+    public record SessionItem(UUID id, String device, String city, OffsetDateTime createdAt, OffsetDateTime lastUsedAt, boolean current) {}
+
+    /** Live sessions of the account only (account_session has no RLS: the filter by account is the barrier). */
+    public List<SessionItem> list(UUID accountId, UUID currentId) {
+        return jdbc.sql("select id, device, ip, created_at, last_used_at from account_session "
+                + "where account_id = :a and expires_at > :now order by last_used_at desc, id")
+                .param("a", accountId).param("now", now())
+                .query((rs, n) -> {
+                    String ip = rs.getString(3);
+                    UUID id = rs.getObject(1, UUID.class);
+                    return new SessionItem(id, DeviceLabel.of(rs.getString(2)),
+                            ip == null ? null : locator.city(ip).orElse(null),
+                            rs.getObject(4, OffsetDateTime.class), rs.getObject(5, OffsetDateTime.class), id.equals(currentId));
+                }).list();
+    }
+
+    /** Ends another session of the account: 409 for the current one (D7), 404 for anything that is not the account's. */
+    public void endOne(UUID accountId, UUID id, UUID currentId, String ip) {
+        if (id.equals(currentId)) {
+            throw new IdentityException(Code.SESSION_CURRENT, null);
+        }
+        int ended = jdbc.sql("delete from account_session where id = :id and account_id = :a and expires_at > :now")
+                .param("id", id).param("a", accountId).param("now", now()).update();
+        if (ended == 0) {
+            throw new IdentityException(Code.SESSION_NOT_FOUND, null);
+        }
+        audit.record(accountId, new AuditActor(AuditActor.Type.ACCOUNT, accountId, null), ip, "account.session_ended");
+    }
+
+    /** Ends every other session of the account and keeps the current one. */
+    public void endOthers(UUID accountId, UUID currentId, String ip) {
+        endAll(accountId, currentId);
+        audit.record(accountId, new AuditActor(AuditActor.Type.ACCOUNT, accountId, null), ip, "account.sessions_ended");
     }
 
     /** RN-ACE-20: after a management link ends, the account without any other one loses every session. */

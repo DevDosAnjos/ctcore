@@ -17,6 +17,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -40,6 +41,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ApiValidationException.class)
     ResponseEntity<ApiError> invalidInput(ApiValidationException e, HttpServletRequest req) {
         return build(ErrorCode.VALIDATION_ERROR, req, e.fields);
+    }
+
+    @ExceptionHandler(ApiStatusException.class)
+    ResponseEntity<ApiError> status(ApiStatusException e, HttpServletRequest req) {
+        return build(e.code, req, e.fields);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> tooLarge(HttpServletRequest req) {
+        return build(ErrorCode.VALIDATION_ERROR, req, List.of(new ApiError.Field("file", "arquivo acima de 5 MB")));
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
@@ -92,10 +103,17 @@ public class ApiExceptionHandler {
             case INVALID_CREDENTIALS -> ErrorCode.INVALID_CREDENTIALS;
             case PASSWORD_WEAK -> ErrorCode.PASSWORD_WEAK;
             case PASSWORD_LEAKED -> ErrorCode.PASSWORD_LEAKED;
-            case ALREADY_LINKED -> ErrorCode.CONFLICT;
+            case ALREADY_LINKED -> ErrorCode.ALREADY_LINKED;
             case CHALLENGE_FAILED -> ErrorCode.CHALLENGE_FAILED;
             case RESET_INVALID -> ErrorCode.RESET_LINK_INVALID;
             case LINK_NOT_FOUND -> ErrorCode.NOT_FOUND;
+            case INVALID_TWO_FACTOR_CODE -> ErrorCode.INVALID_TWO_FACTOR_CODE;
+            case TWO_FACTOR_TICKET_INVALID -> ErrorCode.TWO_FACTOR_TICKET_INVALID;
+            case REAUTH_REQUIRED -> ErrorCode.REAUTH_REQUIRED;
+            case TWO_FACTOR_STATE -> ErrorCode.CONFLICT;
+            case EMAIL_CHANGE_INVALID -> ErrorCode.EMAIL_CHANGE_INVALID;
+            case SESSION_CURRENT -> ErrorCode.SESSION_CURRENT;
+            case SESSION_NOT_FOUND -> ErrorCode.NOT_FOUND;
         };
         // Motivo (usado, vencido, cancelado) só para quem tem o código certo; convite desconhecido não diz nada.
         boolean reason = code == ErrorCode.INVITE_INVALID && List.of("USED", "EXPIRED", "CANCELED").contains(e.detail());

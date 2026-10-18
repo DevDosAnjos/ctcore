@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
+import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
@@ -24,6 +25,7 @@ const links = [
   L("l5", "Academia Beta", "COORDINATOR"),
 ];
 const account = { id: "a", email: "x@x.com", name: "X" };
+const off = { enabled: false, required: false };
 let view: SessionView;
 let puts: unknown[];
 
@@ -31,10 +33,17 @@ function setup(
   initial: Partial<SessionView> = {},
   put?: () => Response | Promise<Response>,
 ) {
-  view = { account, links, activeLinkId: null, ...initial };
+  view = { account, links, activeLinkId: null, twoFactor: off, ...initial };
   puts = [];
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(view)),
+    http.get("/api/v1/permissions", () =>
+      HttpResponse.json({
+        permissions: mockPermissions(
+          view.links.find((l) => l.id === view.activeLinkId)?.role,
+        ),
+      }),
+    ),
     http.put("/api/v1/auth/session/link", async ({ request }) => {
       const body = (await request.json()) as { linkId: string };
       puts.push(body);
@@ -242,5 +251,38 @@ describe("ChooseLink", () => {
     await user.click(screen.getByRole("button", { name: /Alfa Portal/ }));
     await screen.findByRole("status");
     expect(await axeViolations(document.body)).toEqual([]);
+  });
+
+  it("RN-ORG-07 / D7 do #37: Coordenador que também é Administrador da mesma organização vê duas opções distintas e cada uma escolhe o vínculo certo", async () => {
+    const user = userEvent.setup();
+    setup({
+      links: [
+        L("c1", "Academia Alfa", "COORDINATOR"),
+        L("a1", "Academia Alfa", "ADMINISTRATOR"),
+      ],
+      activeLinkId: "c1",
+    });
+    await user.click(
+      await screen.findByRole("button", { name: "Trocar organização ou área" }),
+    );
+    const coordinator = screen.getByRole("button", {
+      name: /Alfa Gestão \(Coordenador\)/,
+    });
+    const administrator = screen.getByRole("button", {
+      name: /Alfa Gestão \(Administrador\)/,
+    });
+    expect(coordinator).toHaveAttribute("aria-current", "true");
+    expect(administrator).not.toHaveAttribute("aria-current");
+    await user.click(administrator);
+    await waitFor(() => expect(puts).toEqual([{ linkId: "a1" }]));
+    await user.click(
+      await screen.findByRole("button", { name: "Trocar organização ou área" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /Alfa Gestão \(Coordenador\)/ }),
+    );
+    await waitFor(() =>
+      expect(puts).toEqual([{ linkId: "a1" }, { linkId: "c1" }]),
+    );
   });
 });
