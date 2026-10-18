@@ -102,7 +102,7 @@ class CoordinationTransferIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA1 / CA6 / CA8 / CA11: troca os perfis, dá todas as unidades ao antigo, tira as do novo, envia o e-mail e audita sem segredo")
+    @DisplayName("RN-ORG-06 / CA1 / CA6 / CA8 / CA11: troca os perfis, dá todas as unidades ao antigo, tira as do novo, envia o e-mail e audita sem segredo")
     void transfers() throws Exception {
         var t = tenant();
         adminJdbc().update("insert into unit (organization_id, name, short_name) values (?, 'Outra', ?)", t.orgId(), "outra-" + t.orgId());
@@ -199,17 +199,70 @@ class CoordinationTransferIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA6: falha no meio da troca desfaz tudo e não envia e-mail")
+    @DisplayName("RN-ORG-06 / CA6: falha no meio da troca desfaz tudo e não envia e-mail")
     void atomic() throws Exception {
         var t = tenant();
         var a = new Member(t, Role.COORDINATOR, "ACTIVE");
         var b = new Member(t, Role.ADMINISTRATOR, "ACTIVE");
-        // vínculo de Administrador encerrado do próprio Coordenador: rebaixá-lo viola unique (conta, organização, perfil)
-        adminJdbc().update("insert into account_link (account_id, organization_id, role, status) values (?, ?, 'ADMINISTRATOR', 'ENDED')",
-                a.account, t.orgId());
-        var response = send(a, b.email, "TRANSFERIR", a.reauth);
-        assertThat(response.getStatus()).isEqualTo(409);
+        // o último passo da troca (dar as unidades ao antigo Coordenador) falha: os perfis já trocados voltam
+        adminJdbc().execute("create or replace function atomic_probe_fail() returns trigger language plpgsql as $$ begin raise exception 'probe'; end $$");
+        adminJdbc().execute("create trigger atomic_probe before insert on account_link_unit for each row when (new.organization_id = '" + t.orgId()
+                + "') execute function atomic_probe_fail()");
+        try {
+            assertThat(send(a, b.email, "TRANSFERIR", a.reauth).getStatus()).isGreaterThanOrEqualTo(500);
+        } finally {
+            adminJdbc().execute("drop trigger atomic_probe on account_link_unit");
+            adminJdbc().execute("drop function atomic_probe_fail()");
+        }
         untouched(a, b);
+    }
+
+    @Test
+    @DisplayName("RN-ORG-06 / RN-ORG-07: Coordenador que se nomeou Administrador transfere a coordenação sem erro e fica com um só vínculo ativo, de Administrador, com todas as unidades")
+    void selfAppointedCoordinatorTransfers() throws Exception {
+        var t = tenant();
+        adminJdbc().update("insert into unit (organization_id, name, short_name) values (?, 'Outra', ?)", t.orgId(), "outra-" + t.orgId());
+        var a = new Member(t, Role.COORDINATOR, "ACTIVE");
+        var b = new Member(t, Role.ADMINISTRATOR, "ACTIVE");
+        adminJdbc().update("insert into account_link_unit (link_id, organization_id, unit_id) values (?, ?, ?)", b.link, t.orgId(), t.unitId());
+        var appointment = call(MockMvcRequestBuilders.post("/api/v1/users/coordinator-appointment").contentType("application/json")
+                .content("{\"unitIds\":[\"" + t.unitId() + "\"]}"), a.principal()).getResponse();
+        assertThat(appointment.getStatus()).as(appointment.getContentAsString()).isEqualTo(200);
+
+        var response = send(a, b.email, "TRANSFERIR", a.reauth);
+
+        assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(204);
+        assertThat(roles(a.account)).containsExactlyInAnyOrder("ADMINISTRATOR:ACTIVE", "COORDINATOR:ENDED");
+        assertThat(roles(b.account)).containsExactly("COORDINATOR:ACTIVE");
+        assertThat(adminJdbc().queryForList("select lu.unit_id from account_link_unit lu join account_link l on l.id = lu.link_id "
+                + "where l.account_id = ? and l.status = 'ACTIVE'", UUID.class, a.account)).hasSize(2);
+        assertThat(adminJdbc().queryForObject("select count(*) from account_link where organization_id = ? and role = 'COORDINATOR' and status = 'ACTIVE'",
+                Integer.class, t.orgId())).isEqualTo(1);
+        assertThat(adminJdbc().queryForObject("select active_link_id from account_session where id = ?", UUID.class, a.session))
+                .isEqualTo(adminJdbc().queryForObject("select id from account_link where account_id = ? and role = 'ADMINISTRATOR'", UUID.class, a.account));
+    }
+
+    @Test
+    @DisplayName("RN-ORG-06: o novo Coordenador que já teve uma linha de Coordenador reaproveita essa linha e o vínculo de Administrador dele é encerrado")
+    void targetWithOldCoordinatorRow() throws Exception {
+        var t = tenant();
+        var a = new Member(t, Role.COORDINATOR, "ACTIVE");
+        var b = new Member(t, Role.ADMINISTRATOR, "ACTIVE");
+        adminJdbc().update("insert into account_link_unit (link_id, organization_id, unit_id) values (?, ?, ?)", b.link, t.orgId(), t.unitId());
+        adminJdbc().update("insert into account_link (account_id, organization_id, role, status) values (?, ?, 'COORDINATOR', 'ENDED')", b.account, t.orgId());
+
+        var response = send(a, b.email, "TRANSFERIR", a.reauth);
+
+        assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(204);
+        assertThat(roles(b.account)).containsExactlyInAnyOrder("COORDINATOR:ACTIVE", "ADMINISTRATOR:ENDED");
+        assertThat(b.units()).isEmpty();
+        assertThat(roles(a.account)).containsExactly("ADMINISTRATOR:ACTIVE");
+        assertThat(adminJdbc().queryForObject("select active_link_id from account_session where id = ?", UUID.class, b.session))
+                .isEqualTo(adminJdbc().queryForObject("select id from account_link where account_id = ? and role = 'COORDINATOR'", UUID.class, b.account));
+    }
+
+    private List<String> roles(UUID account) {
+        return adminJdbc().queryForList("select role || ':' || status from account_link where account_id = ?", String.class, account);
     }
 
     @Test

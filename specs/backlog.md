@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 02 · Contas, login, convites e sessões. O dono confirmou em 17/10/2026 que revisou a Sprint 01 e fez o PR dev→main. Só o dono libera a seguinte.
+Sprint liberada: Sprint 03 · Duas etapas, usuários, permissões e configurações. O dono confirmou em 18/10/2026 que revisou a Sprint 02 e fez o PR dev→main (liberação registrada na revisão da Sprint 03, `specs/revisoes/sprint-03.md`, R03-1). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -209,8 +209,8 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Pendências para o dono
 
-Último número usado: P0. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
+Último número usado: P1. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
 
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
-| — | nenhuma | — | — | — |
+| P1 | Quando o Administrador inativa um Professor (RF-PRO-04, RN-PRO-05) que também dá aula em unidade de outro Administrador, o que acontece? A especificação só diz que "Professores" é do Administrador nas suas unidades. | O Administrador só inativa se todas as unidades do Professor forem suas; senão, só tira as próprias unidades do cadastro (#44). O Coordenador inativa em qualquer caso (mesma regra do D5 do #37). | #45 (parte do Administrador) | O agente segue a opção recomendada na #45 e registra a decisão no arquivo do item. |

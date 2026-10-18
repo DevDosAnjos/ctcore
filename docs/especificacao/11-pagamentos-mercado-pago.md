@@ -9,7 +9,7 @@ Receber online, direto na conta do Mercado Pago de cada unidade, com baixa autom
 ## Dados
 
 - **Conexão de pagamento:** unidade, provedor (Mercado Pago), identificador da conta, tokens (criptografados), conectado em, conectado por, situação (Conectada, Desconectada, Token expirado).
-- **Taxas da unidade:** percentual e/ou valor fixo por meio (Pix, crédito, débito, boleto, débito automático).
+- **Taxas da unidade:** percentual e/ou valor fixo por meio (até a #97, só valor fixo em centavos) (Pix, crédito, débito, boleto, débito automático).
 - **Tentativa de pagamento:** cobrança(s), meio, valor com taxa, identificador no provedor, situação (Criada, Aprovada, Recusada, Expirada, Estornada, Contestada), resposta do provedor.
 - **Débito automático:** aluno ou responsável, unidade, cartão (código do provedor e 4 últimos dígitos), ativo, falhas seguidas.
 - **Aviso do provedor (webhook):** identificador, conteúdo, recebido em, processado em, resultado.

@@ -38,7 +38,11 @@ function setup(
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(view)),
     http.get("/api/v1/permissions", () =>
-      HttpResponse.json({ permissions: mockPermissions(view.links.find((l) => l.id === view.activeLinkId)?.role) }),
+      HttpResponse.json({
+        permissions: mockPermissions(
+          view.links.find((l) => l.id === view.activeLinkId)?.role,
+        ),
+      }),
     ),
     http.put("/api/v1/auth/session/link", async ({ request }) => {
       const body = (await request.json()) as { linkId: string };
@@ -247,5 +251,38 @@ describe("ChooseLink", () => {
     await user.click(screen.getByRole("button", { name: /Alfa Portal/ }));
     await screen.findByRole("status");
     expect(await axeViolations(document.body)).toEqual([]);
+  });
+
+  it("RN-ORG-07 / D7 do #37: Coordenador que também é Administrador da mesma organização vê duas opções distintas e cada uma escolhe o vínculo certo", async () => {
+    const user = userEvent.setup();
+    setup({
+      links: [
+        L("c1", "Academia Alfa", "COORDINATOR"),
+        L("a1", "Academia Alfa", "ADMINISTRATOR"),
+      ],
+      activeLinkId: "c1",
+    });
+    await user.click(
+      await screen.findByRole("button", { name: "Trocar organização ou área" }),
+    );
+    const coordinator = screen.getByRole("button", {
+      name: /Alfa Gestão \(Coordenador\)/,
+    });
+    const administrator = screen.getByRole("button", {
+      name: /Alfa Gestão \(Administrador\)/,
+    });
+    expect(coordinator).toHaveAttribute("aria-current", "true");
+    expect(administrator).not.toHaveAttribute("aria-current");
+    await user.click(administrator);
+    await waitFor(() => expect(puts).toEqual([{ linkId: "a1" }]));
+    await user.click(
+      await screen.findByRole("button", { name: "Trocar organização ou área" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /Alfa Gestão \(Coordenador\)/ }),
+    );
+    await waitFor(() =>
+      expect(puts).toEqual([{ linkId: "a1" }, { linkId: "c1" }]),
+    );
   });
 });

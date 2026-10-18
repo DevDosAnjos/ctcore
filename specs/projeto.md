@@ -79,3 +79,4 @@ Até a Sprint 22 todas usam só a versão simulada; nenhuma regra cita fornecedo
 | Backlog = issues do GitHub; `specs/backlog.md` só espelha | Fonte única | Duplicar o conteúdo em arquivos |
 | Onde a spec 1.2 diz "OpenAPI no repositório compose", vale `docs/` do monorepo | Decisão de monorepo acima | — |
 | Sprint 00 revisada e Sprint 01 liberada (dono, 16/10/2026) | Confirmação explícita: "A sprint 00 foi revisada, pode prosseguir com a sprint 01." | Manter a parada entre sprints após a liberação do dono |
+| Sprint 02 revisada e Sprint 03 liberada (dono, 18/10/2026) | Liberação registrada na revisão da Sprint 03 (R03-1) | Manter a parada entre sprints após a liberação do dono |
