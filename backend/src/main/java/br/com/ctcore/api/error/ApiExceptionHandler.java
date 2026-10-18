@@ -111,6 +111,9 @@ public class ApiExceptionHandler {
             case TWO_FACTOR_TICKET_INVALID -> ErrorCode.TWO_FACTOR_TICKET_INVALID;
             case REAUTH_REQUIRED -> ErrorCode.REAUTH_REQUIRED;
             case TWO_FACTOR_STATE -> ErrorCode.CONFLICT;
+            case EMAIL_CHANGE_INVALID -> ErrorCode.EMAIL_CHANGE_INVALID;
+            case SESSION_CURRENT -> ErrorCode.SESSION_CURRENT;
+            case SESSION_NOT_FOUND -> ErrorCode.NOT_FOUND;
         };
         // Motivo (usado, vencido, cancelado) só para quem tem o código certo; convite desconhecido não diz nada.
         boolean reason = code == ErrorCode.INVITE_INVALID && List.of("USED", "EXPIRED", "CANCELED").contains(e.detail());

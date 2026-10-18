@@ -231,6 +231,24 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
+    @DisplayName("RN-ACE-10, RF-ACE-04: CA2: 5 senhas atuais erradas seguidas travam a troca de senha (429) e nada muda")
+    void changePasswordLockout() throws Exception {
+        link(account("ana@x.com"), org(), "ADMINISTRATOR", "ACTIVE");
+        Cookie a = sessionOf("ana@x.com");
+        for (int i = 0; i < 5; i++) {
+            assertThat(shape(post("/api/v1/auth/password", Map.of("currentPassword", "Errada123", "newPassword", "Novasenha1"), a).andReturn()))
+                    .startsWith("400|VALIDATION_ERROR");
+        }
+        assertThat(shape(post("/api/v1/auth/password", Map.of("currentPassword", PASSWORD, "newPassword", "Novasenha1"), a).andReturn()))
+                .startsWith("429|TOO_MANY_REQUESTS");
+        assertThat(login("ana@x.com", PASSWORD).getResponse().getStatus()).isEqualTo(429);
+        assertThat(count("select count(*) from login_attempt where email = 'ana@x.com' and result = 'WRONG_PASSWORD'")).isEqualTo(5);
+        clock.now = clock.now.plus(Duration.ofMinutes(16));
+        assertThat(post("/api/v1/auth/password", Map.of("currentPassword", PASSWORD, "newPassword", "Novasenha1"), a).andReturn()
+                .getResponse().getStatus()).isEqualTo(204);
+    }
+
+    @Test
     @DisplayName("RN-ACE-11, RN-ACE-14: CA10, CA12, CA14: recuperação com a mesma resposta, novo pedido cancela o anterior, senha fraca não consome, uso único e sessão iniciada")
     void passwordReset() throws Exception {
         UUID org = org();

@@ -15,6 +15,9 @@ import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
+import { AccountLink } from "@/features/account/AccountFrame";
+import { AccountPage } from "@/features/account/AccountPage";
+import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ThemeToggle } from "@/theme/ThemeToggle";
@@ -48,6 +51,7 @@ function Home() {
       <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
         <span className="text-lg font-semibold">{t("app.name")}</span>
         <div className="flex items-center gap-2">
+          <AccountLink />
           <ChooseLinkTrigger />
           <ThemeToggle />
         </div>
@@ -71,6 +75,8 @@ export function App() {
         <Route element={<RequireTwoFactor />}>
           <Route path={TWO_FACTOR_REQUIRED_PATH} element={<TwoFactorRequiredPage />} />
           <Route path="/" element={<Home />} />
+          <Route path="/conta" element={<AccountPage />} />
+          <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

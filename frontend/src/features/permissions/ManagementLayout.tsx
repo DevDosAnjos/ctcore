@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorState, LoadingState } from "@/components/states";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AccountLink } from "@/features/account/AccountFrame";
 import { AreaUnavailablePage } from "@/features/auth/AreaUnavailablePage";
 import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { UnitScopeProvider } from "@/features/units/UnitScopeProvider";
@@ -30,6 +31,7 @@ export function ManagementLayout({ activeId = "home", children }: { activeId?: s
         headerExtra={
           <>
             <UnitSwitcher />
+            <AccountLink />
             <ChooseLinkTrigger />
           </>
         }

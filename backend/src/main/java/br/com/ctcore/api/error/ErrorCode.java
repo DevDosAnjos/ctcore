@@ -28,6 +28,8 @@ public enum ErrorCode {
     TWO_FACTOR_TICKET_INVALID(HttpStatus.UNAUTHORIZED),
     TWO_FACTOR_SETUP_REQUIRED(HttpStatus.FORBIDDEN),
     REAUTH_REQUIRED(HttpStatus.FORBIDDEN),
+    EMAIL_CHANGE_INVALID(HttpStatus.GONE),
+    SESSION_CURRENT(HttpStatus.CONFLICT),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 
     public final HttpStatus status;

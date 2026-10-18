@@ -55,6 +55,12 @@ const VALID_CODES = ["123456", "RESERVA001"];
 const backupCodes = () => ({ backupCodes: Array.from({ length: 10 }, (_, i) => `RESERVA${String(i + 1).padStart(3, "0")}`) });
 let current: typeof session = session;
 
+const initialSessions = () => [
+  { id: "00000000-0000-0000-0000-000000000031", device: "Chrome em Windows", city: null as string | null, createdAt: "2026-10-17T12:00:00Z", lastUsedAt: "2026-10-18T09:00:00Z", current: true },
+  { id: "00000000-0000-0000-0000-000000000032", device: "Safari em iOS", city: "São Paulo" as string | null, createdAt: "2026-10-10T08:00:00Z", lastUsedAt: "2026-10-16T20:00:00Z", current: false },
+];
+let sessions = initialSessions();
+
 // Sessão simulada: abre com um login bem-sucedido. Senha "errada" dá 401, "limite" dá 429.
 let loggedIn = false;
 let ticketAccount: string | null = null;
@@ -65,6 +71,7 @@ export const resetMockSession = () => {
   organization = { ...initialOrganization };
   units = initialUnits();
   unitDetails = {};
+  sessions = initialSessions();
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -271,6 +278,73 @@ export const routes: Route[] = [
       if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
       if (current.twoFactor.enabled && (!code || !VALID_CODES.includes(code))) return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
       return HttpResponse.json({ reauthToken: "token-de-confirmacao", expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() });
+    },
+  },
+  {
+    method: "post",
+    path: "/auth/password",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const { currentPassword, newPassword } = (await request.json()) as { currentPassword?: string; newPassword?: string };
+      if (currentPassword === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      if (currentPassword === "errada") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "currentPassword", message: "A senha atual está incorreta." }]);
+      if (newPassword === "Password1") return error(400, "PASSWORD_LEAKED", "Senha conhecida demais.");
+      if (!newPassword || !isStrongPassword(newPassword)) return error(400, "PASSWORD_WEAK", "Senha fraca.");
+      sessions = sessions.filter((s) => s.current);
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  // Troca de e-mail (RN-ACE-15): senha "errada" 401, "limite" 429; com as duas etapas, código válido 123456; o link "valido" confirma, outro é 410.
+  {
+    method: "post",
+    path: "/auth/email-change",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const { newEmail, password, code } = (await request.json()) as { newEmail?: string; password?: string; code?: string };
+      if (!newEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newEmail) || newEmail.toLowerCase() === current.account.email) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "newEmail", message: "Informe outro e-mail válido." }]);
+      }
+      if (password === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
+      if (current.twoFactor.enabled && (!code || !VALID_CODES.includes(code))) return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
+      return new HttpResponse(null, { status: 202 });
+    },
+  },
+  {
+    method: "post",
+    path: "/auth/email-change/{code}/confirm",
+    resolver: ({ params }) => {
+      if (!loggedIn) return unauthenticated();
+      if (params.code !== "valido") return error(410, "EMAIL_CHANGE_INVALID", "Link inválido.");
+      current = { ...current, account: { ...current.account, email: "novo@exemplo.com" } };
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  // Sessões da conta (RF-ACE-04): a atual e mais uma, em outro aparelho.
+  {
+    method: "get",
+    path: "/auth/sessions",
+    resolver: () => (loggedIn ? HttpResponse.json(sessions) : unauthenticated()),
+  },
+  {
+    method: "delete",
+    path: "/auth/sessions",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      sessions = sessions.filter((s) => s.current);
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    method: "delete",
+    path: "/auth/sessions/{id}",
+    resolver: ({ params }) => {
+      if (!loggedIn) return unauthenticated();
+      const found = sessions.find((s) => s.id === params.id);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (found.current) return error(409, "SESSION_CURRENT", "Esta é a sessão em uso.");
+      sessions = sessions.filter((s) => s.id !== params.id);
+      return new HttpResponse(null, { status: 204 });
     },
   },
   {

@@ -39,5 +39,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     const err = await res.json().catch(() => ({}));
     throw new ApiError(res.status, err.code ?? "INTERNAL_ERROR", err.fields ?? []);
   }
-  return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+  if (res.status === 204) return undefined as T;
+  const text = await res.text(); // 202 sem corpo (ex.: pedido de troca de e-mail) também é sucesso
+  return (text ? JSON.parse(text) : undefined) as T;
 }
