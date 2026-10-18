@@ -6,19 +6,22 @@ export function Card({
   actions,
   children,
   className,
+  heading: Heading = "h3",
 }: {
   title: string;
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** Nível do título; h3 por padrão, h2 quando o título da tela é um h1. */
+  heading?: "h2" | "h3";
 }) {
   const id = useId();
   return (
     <section aria-labelledby={id} className={cn("rounded-lg border bg-card p-4 text-card-foreground", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 id={id} className="text-base font-semibold">
+        <Heading id={id} className="text-base font-semibold">
           {title}
-        </h3>
+        </Heading>
         {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
       <div className="mt-2">{children}</div>

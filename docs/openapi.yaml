@@ -239,6 +239,72 @@ paths:
           description: Níveis do vínculo ativo.
           content: { application/json: { schema: { $ref: '#/components/schemas/PermissionsView' } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /organization:
+    get:
+      summary: Dados da organização do vínculo ativo (RF-ORG-01).
+      description: |
+        A organização é sempre a do vínculo ativo; nenhum identificador de organização é aceito. Coordenador e Administrador leem;
+        Professor e portal recebem 403. Não traz credencial nem segredo de integração (RNF-08). `logoUrl` é uma URL temporária
+        assinada (RN-ORG-03), nula quando não há logo.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Dados da organização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    patch:
+      summary: Altera nome, cor principal e titular (RF-ORG-01). Só o Coordenador.
+      description: |
+        Os três campos são enviados juntos; `color` e `holderDocument` vazios ou nulos voltam ao padrão. Cor reprovada no contraste AA
+        (menos de 4,5:1 com texto branco), CPF/CNPJ inválido ou nome fora de 1 a 120 caracteres respondem 400 VALIDATION_ERROR com o campo
+        apontado e nada é salvo. Grava `organization.update` na auditoria quando algum valor muda.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationUpdateRequest' } } }
+      responses:
+        '200':
+          description: Dados salvos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /organization/logo:
+    put:
+      summary: Troca a logo (RF-ORG-01). Só o Coordenador.
+      description: |
+        Campo `file` com PNG, JPEG ou WebP, exatamente 512 x 512 px e até 5 MB; o tipo é conferido pelo conteúdo. Outro tipo, outro tamanho,
+        arquivo corrompido ou grande demais respondem 400 VALIDATION_ERROR (campo `file`) e a logo anterior permanece. O arquivo antigo é apagado.
+        Grava `organization.logo.update`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Logo trocada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+    delete:
+      summary: Remove a logo (RF-ORG-01). Só o Coordenador. Idempotente.
+      description: Sem logo, repete sem erro e sem auditoria. Com logo, apaga o arquivo e grava `organization.logo.remove`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '200':
+          description: Logo removida (`logoUrl` nula).
+          content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 components:
   securitySchemes:
     sessionCookie:
@@ -462,6 +528,21 @@ components:
           type: array
           items: { $ref: '#/components/schemas/FieldError' }
         traceId: { type: string }
+    OrganizationView:
+      type: object
+      required: [name, color, holderDocument, logoUrl]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        color: { type: string, nullable: true, pattern: '^#[0-9a-f]{6}$', description: 'Cor principal (contraste mínimo 4,5:1 com texto branco); nula usa a cor padrão da plataforma.' }
+        holderDocument: { type: string, nullable: true, pattern: '^([0-9]{11}|[0-9]{14})$', description: 'CPF ou CNPJ do titular, só dígitos.' }
+        logoUrl: { type: string, nullable: true, description: 'URL temporária assinada da logo (512 x 512); nula sem logo.' }
+    OrganizationUpdateRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        color: { type: string, nullable: true, description: '#RRGGBB; vazio ou nulo limpa.' }
+        holderDocument: { type: string, nullable: true, description: 'CPF ou CNPJ, com ou sem máscara; vazio ou nulo limpa.' }
     Page:
       type: object
       description: Envelope de lista. Cada rota sobrescreve `items` por composição.

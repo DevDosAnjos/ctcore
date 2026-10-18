@@ -17,6 +17,11 @@ spring:
     user: ${DB_MIGRATION_USER:${POSTGRES_USER:ctcore}}
     password: ${DB_MIGRATION_PASSWORD:${POSTGRES_PASSWORD:ctcore_dev}}
     validate-on-migrate: true
+  servlet:
+    multipart:
+      # #28: logo de até 5 MB (FileStorage.MAX_BYTES); acima disso a requisição é recusada antes de ler o arquivo.
+      max-file-size: 5MB
+      max-request-size: 6MB
   jackson:
     time-zone: UTC
     serialization:
