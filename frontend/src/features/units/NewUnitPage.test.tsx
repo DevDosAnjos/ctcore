@@ -36,6 +36,7 @@ function setup(role: string, path: string, opts: { list?: UnitSummary[]; post?: 
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(role))),
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
+    http.get("/api/v1/units/reachable", () => HttpResponse.json({ allUnits: false, units: [] })),
     http.get("/api/v1/units", () => HttpResponse.json(opts.list ?? [unit(1)])),
     http.post("/api/v1/units", async ({ request }) => {
       posts.push((await request.json()) as NewUnit);

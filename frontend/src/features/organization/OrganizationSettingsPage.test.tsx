@@ -30,6 +30,7 @@ function setup(role: string, initial: OrganizationView = empty, read?: () => Res
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(role))),
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
+    http.get("/api/v1/units/reachable", () => HttpResponse.json({ allUnits: false, units: [] })),
     http.get("/api/v1/organization", read ?? (() => HttpResponse.json(stored))),
     http.patch("/api/v1/organization", async ({ request }) => {
       const body = (await request.json()) as Partial<OrganizationView>;

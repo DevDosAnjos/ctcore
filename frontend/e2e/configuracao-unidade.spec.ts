@@ -19,7 +19,6 @@ test("@critical configurações da unidade: Coordenador edita e Professor vê a 
   await open(page, "/configuracoes/unidade");
   await expect(page.getByRole("heading", { name: "Configurações da unidade", level: 1 })).toBeVisible();
 
-  await page.getByLabel("Unidade", { exact: true }).selectOption({ label: "Unidade Centro" });
   await page.getByLabel("Telefone").fill("21999998888");
   await page.getByRole("checkbox", { name: "Cobrar taxa de matrícula" }).check();
   await page.getByLabel("Valor da taxa de matrícula").fill("");

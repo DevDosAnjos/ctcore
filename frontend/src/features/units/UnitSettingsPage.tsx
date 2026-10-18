@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSearchParams } from "react-router";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { Card } from "@/components/Card";
 import { MoneyField, PhoneField } from "@/components/fields/fields";
@@ -10,10 +9,10 @@ import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
 import { Text } from "./Text";
+import { ALL, useUnitScope } from "./UnitScopeProvider";
 import {
   FEE_KEYS,
   TEACHER_KEYS,
-  useMyUnits,
   useUnitDetail,
   type FeeKey,
   type TeacherKey,
@@ -314,37 +313,16 @@ function Detail({ id }: { id: string }) {
 
 function Content() {
   const { t } = useTranslation();
-  const mine = useMyUnits();
-  const [params, setParams] = useSearchParams();
-  if (mine.status === "loading") return <LoadingState />;
-  if (mine.status === "forbidden") return <ForbiddenState />;
-  if (!mine.units) return <ErrorState onRetry={mine.retry} />;
-  if (mine.units.length === 0) return <EmptyState title={t("unitSettings.emptyTitle")} text={t("unitSettings.emptyText")} />;
-  // D1: sem o seletor do topo (#32), a unidade vem de ?unidade= ou é a primeira da lista.
-  const chosen = mine.units.find((u) => u.id === params.get("unidade")) ?? mine.units[0]!;
+  const scope = useUnitScope();
+  if (scope.status === "loading") return <LoadingState />;
+  if (scope.status === "forbidden") return <ForbiddenState />;
+  if (scope.status === "error") return <ErrorState onRetry={scope.retry} />;
+  if (scope.selected === null) return <EmptyState title={t("unitSettings.emptyTitle")} text={t("unitSettings.emptyText")} />;
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">{t("unitSettings.title")}</h1>
-      {mine.units.length > 1 && (
-        <div className="max-w-sm">
-          <label htmlFor="unit-choice" className="block text-sm font-medium">
-            {t("unitSettings.choose")}
-          </label>
-          <select
-            id="unit-choice"
-            className="min-h-11 w-full rounded-md border bg-background px-2"
-            value={chosen.id}
-            onChange={(e) => setParams({ unidade: e.target.value })}
-          >
-            {mine.units.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      <Detail id={chosen.id} />
+      {/* RN-ORG-08: em "Todas as unidades" nada é alterado; a unidade vem do seletor do topo (RF-ORG-05). */}
+      {scope.selected === ALL ? <p role="status">{t("unitScope.chooseToEdit")}</p> : <Detail id={scope.selected} />}
     </div>
   );
 }

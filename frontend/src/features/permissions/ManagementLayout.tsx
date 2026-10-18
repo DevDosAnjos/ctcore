@@ -4,6 +4,8 @@ import { ErrorState, LoadingState } from "@/components/states";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AreaUnavailablePage } from "@/features/auth/AreaUnavailablePage";
 import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
+import { UnitScopeProvider } from "@/features/units/UnitScopeProvider";
+import { UnitSwitcher } from "@/features/units/UnitSwitcher";
 import { buildMenu } from "./buildMenu";
 import { usePermissions } from "./usePermissions";
 
@@ -21,8 +23,19 @@ export function ManagementLayout({ activeId = "home", children }: { activeId?: s
   const groups = buildMenu(permissions, t);
   if (groups.length === 0) return <AreaUnavailablePage />;
   return (
-    <AppLayout groups={groups} activeId={activeId} headerExtra={<ChooseLinkTrigger />}>
-      {children}
-    </AppLayout>
+    <UnitScopeProvider>
+      <AppLayout
+        groups={groups}
+        activeId={activeId}
+        headerExtra={
+          <>
+            <UnitSwitcher />
+            <ChooseLinkTrigger />
+          </>
+        }
+      >
+        {children}
+      </AppLayout>
+    </UnitScopeProvider>
   );
 }

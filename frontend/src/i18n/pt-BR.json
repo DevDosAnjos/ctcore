@@ -260,7 +260,11 @@
     "new": {
       "title": "Nova unidade",
       "back": "Voltar para as unidades",
-      "steps": { "unit": "Unidade", "address": "Endereço", "contact": "Contato e convite" },
+      "steps": {
+        "unit": "Unidade",
+        "address": "Endereço",
+        "contact": "Contato e convite"
+      },
       "name": "Nome da unidade",
       "nameHelp": "Obrigatório, até 120 caracteres. O nome curto é gerado a partir dele.",
       "nameRequired": "Informe o nome da unidade.",
@@ -307,7 +311,6 @@
   },
   "unitSettings": {
     "title": "Configurações da unidade",
-    "choose": "Unidade",
     "emptyTitle": "Nenhuma unidade para configurar",
     "emptyText": "Seu acesso não inclui nenhuma unidade. Peça ao Coordenador da organização.",
     "sections": {
@@ -378,6 +381,15 @@
     "saving": "Salvando...",
     "saved": "Dados salvos.",
     "saveError": "Não foi possível salvar. Confira os campos e tente de novo."
+  },
+  "unitScope": {
+    "label": "Unidade ativa",
+    "all": "Todas as unidades",
+    "loading": "Carregando unidades...",
+    "error": "Não foi possível carregar as unidades.",
+    "chooseToEdit": "Escolha uma unidade no topo da tela para ver e alterar as configurações.",
+    "scopeAll": "Você está vendo todas as unidades, só para consulta.",
+    "scopeOne": "Unidade: {{name}}"
   },
   "menu": {
     "groups": {

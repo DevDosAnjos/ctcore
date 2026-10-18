@@ -438,6 +438,19 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-ORG-05: unidades ativas ao alcance; Coordenador todas e allUnits, os demais só a ADMIN_UNIT.
+    method: "get",
+    path: "/units/reachable",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
+      const coordinator = role === "COORDINATOR";
+      const own = units.filter((u) => u.active && (coordinator || u.id === ADMIN_UNIT));
+      return HttpResponse.json({ allUnits: coordinator, units: own.map(({ id, name, shortName }) => ({ id, name, shortName })) });
+    },
+  },
+  {
     method: "get",
     path: "/units/{id}",
     resolver: ({ params }) => {

@@ -354,6 +354,20 @@ paths:
           content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/UnitChoice' } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /units/reachable:
+    get:
+      summary: Unidades ao alcance do vínculo, para o seletor da barra superior (RF-ORG-05). Coordenador, Administrador e Professor.
+      description: |
+        Unidades ativas da organização do vínculo ativo: todas para o Coordenador (com `allUnits` verdadeiro, que habilita
+        "Todas as unidades" só para consulta); só as do vínculo para Administrador e Professor (`allUnits` falso). Em ordem de nome.
+        Somente leitura, sem auditoria. `organizationId` na consulta é ignorado. Portal recebe 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: As unidades ao alcance.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReachableUnits' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /units/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -698,6 +712,20 @@ components:
       properties:
         unit: { $ref: '#/components/schemas/UnitSummary' }
         invite: { type: string, enum: [NONE, SENT, FAILED], description: 'NONE = sem convite; SENT = enviado; FAILED = a unidade foi criada e o convite não.' }
+    ReachableUnits:
+      type: object
+      required: [allUnits, units]
+      properties:
+        allUnits: { type: boolean }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name, shortName]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              shortName: { type: string }
     UnitChoice:
       type: object
       required: [id, name, shortName, city, active]
