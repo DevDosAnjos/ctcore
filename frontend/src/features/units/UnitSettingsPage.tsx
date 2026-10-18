@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { Card } from "@/components/Card";
+import { EditConflictDialog, type Difference } from "@/components/EditConflictDialog";
+import { LastChange } from "@/components/LastChange";
 import { MoneyField, PhoneField } from "@/components/fields/fields";
 import { formatCep, formatCpfCnpj, isValidCnpj, isValidPhone, onlyDigits } from "@/components/fields/masks";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
+import { formatCurrency } from "@/lib/format";
+import { useEditConflict } from "@/lib/useEditConflict";
 import { Text } from "./Text";
 import { ALL, useUnitScope } from "./UnitScopeProvider";
 import {
@@ -130,8 +134,12 @@ function Err({ text }: { text?: string }) {
   return text ? <p className="text-sm text-destructive">{text}</p> : null;
 }
 
-function Form({ detail, save }: { detail: UnitDetail; save: (b: UnitUpdate) => Promise<UnitDetail> }) {
+function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useUnitDetail> }) {
   const { t } = useTranslation();
+  const { save, adopt } = api;
+  const saveButton = useRef<HTMLButtonElement>(null);
+  const conflict = useEditConflict(api.fetchCurrent);
+  const [nonce, setNonce] = useState(0); // "Recarregar" remonta os campos, que guardam o valor inicial por conta própria
   const [base, setBase] = useState(() => toDraft(detail));
   const [d, setD] = useState(base);
   const [busy, setBusy] = useState(false);
@@ -163,24 +171,72 @@ function Form({ detail, save }: { detail: UnitDetail; save: (b: UnitUpdate) => P
   const blocked = Object.values(problems).some(Boolean);
   const shown = (field: string, problem?: string) => errors[field] ?? problem;
 
-  async function submit() {
-    if (blocked || !dirty || busy) return;
+  // Devolve false quando outra pessoa salvou antes (409): a janela de conflito abre e a edição fica como está (RNF-15).
+  async function submit(version?: number): Promise<boolean> {
     setBusy(true);
     setErrors({});
     setNotice(undefined);
     try {
-      const saved = await save(toBody(d, base));
+      const saved = await save(toBody(d, base), version);
       const next = toDraft(saved);
       setBase(next);
       setD(next);
       setNotice({ ok: true, text: t("unitSettings.saved") });
     } catch (e) {
+      if (e instanceof ApiError && e.code === "EDIT_CONFLICT") {
+        conflict.open();
+        return false;
+      }
       const fields = e instanceof ApiError ? e.fields : [];
       setErrors(Object.fromEntries(fields.map((f) => [f.field, f.message])));
       setNotice({ ok: false, text: t("unitSettings.saveError") });
     } finally {
       setBusy(false);
     }
+    return true;
+  }
+
+  function differences(current: UnitDetail): Difference[] {
+    const c = toDraft(current);
+    const text = (v: unknown) =>
+      typeof v === "boolean" ? t(v ? "editConflict.yes" : "editConflict.no") : Array.isArray(v) ? v.join(", ") : v === null || v === "" ? t("editConflict.empty") : String(v);
+    const money = (v: unknown) => (typeof v === "number" ? formatCurrency(v) : text(v));
+    const fields: [string, unknown, unknown, (v: unknown) => string][] = [
+      [t("unitSettings.name"), d.name.trim(), c.name, text],
+      [t("unitSettings.cnpj"), d.cnpj, c.cnpj, text],
+      [t("unitSettings.postalCode"), d.postalCode, c.postalCode, text],
+      [t("unitSettings.address"), d.address, c.address, text],
+      [t("unitSettings.city"), d.city, c.city, text],
+      [t("unitSettings.latitude"), d.latitude, c.latitude, text],
+      [t("unitSettings.longitude"), d.longitude, c.longitude, text],
+      [t("unitSettings.phone"), d.phone, c.phone, text],
+      [t("unitSettings.whatsapp"), d.whatsapp, c.whatsapp, text],
+      [t("unitSettings.email"), d.email.trim(), c.email, text],
+      [t("unitSettings.dueDays"), d.dueDays, c.dueDays, text],
+      [t("unitSettings.enrollmentFee"), d.enrollmentFeeEnabled, c.enrollmentFeeEnabled, text],
+      [t("unitSettings.enrollmentFeeValue"), d.enrollmentFeeCents, c.enrollmentFeeCents, money],
+      ...FEE_KEYS.map((k): [string, unknown, unknown, (v: unknown) => string] => [t(`unitSettings.fees.${k}`), d.fees[k], c.fees[k], money]),
+      [t("unitSettings.pixKey"), d.pixKey, c.pixKey, text],
+      [t("unitSettings.reminders"), d.reminders, c.reminders, text],
+      ...TEACHER_KEYS.map((k): [string, unknown, unknown, (v: unknown) => string] => [t(`unitSettings.teacher.${k}`), d.teacher[k], c.teacher[k], text]),
+      [t("unitSettings.directory"), d.directoryEnabled, c.directoryEnabled, text],
+      [t("unitSettings.trialLink"), d.trialLinkEnabled, c.trialLinkEnabled, text],
+      [t("unitSettings.selfRegistrationLink"), d.selfRegistrationLinkEnabled, c.selfRegistrationLinkEnabled, text],
+    ];
+    return fields
+      .filter(([, mine, now]) => JSON.stringify(mine) !== JSON.stringify(now))
+      .map(([label, mine, now, show]) => ({ label, mine: show(mine), current: show(now) }));
+  }
+
+  function reload(current: UnitDetail) {
+    const next = toDraft(current);
+    setBase(next);
+    setD(next);
+    setErrors({});
+    setNotice(undefined);
+    adopt(current);
+    setNonce((n) => n + 1);
+    conflict.close();
   }
 
   const connected = detail.settings.paymentAccount === "CONNECTED";
@@ -188,14 +244,17 @@ function Form({ detail, save }: { detail: UnitDetail; save: (b: UnitUpdate) => P
     set("dueDays")(d.dueDays.includes(day) ? d.dueDays.filter((x) => x !== day) : [...d.dueDays, day].sort((a, b) => a - b));
 
   return (
+    <>
     <form
+      key={nonce}
       className="flex max-w-3xl flex-col gap-4"
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        void submit();
+        if (!blocked && dirty && !busy) void submit();
       }}
     >
+      <LastChange value={detail.lastChange} />
       <Card heading="h2" title={t("unitSettings.sections.data")}>
         <div className="flex flex-col gap-3">
           <Text label={t("unitSettings.name")} value={d.name} onChange={set("name")} maxLength={120} autoComplete="off" error={shown("name", problems.name)} />
@@ -295,11 +354,25 @@ function Form({ detail, save }: { detail: UnitDetail; save: (b: UnitUpdate) => P
         </p>
       )}
       <div>
-        <Button type="submit" disabled={blocked || !dirty || busy}>
+        <Button ref={saveButton} type="submit" disabled={blocked || !dirty || busy}>
           {busy ? t("unitSettings.saving") : t("unitSettings.save")}
         </Button>
       </div>
     </form>
+    <EditConflictDialog
+      state={conflict.state}
+      differences={conflict.state?.status === "ready" ? differences(conflict.state.current) : []}
+      busy={busy}
+      returnFocusRef={saveButton}
+      onRetry={conflict.open}
+      onClose={conflict.close}
+      onReload={() => conflict.state?.status === "ready" && reload(conflict.state.current)}
+      onOverwrite={() => {
+        if (conflict.state?.status !== "ready") return;
+        void submit(conflict.state.current.version).then((done) => done && conflict.close());
+      }}
+    />
+    </>
   );
 }
 
@@ -308,7 +381,7 @@ function Detail({ id }: { id: string }) {
   if (api.status === "loading") return <LoadingState />;
   if (api.status === "forbidden") return <ForbiddenState />;
   if (!api.detail) return <ErrorState onRetry={api.retry} />;
-  return <Form key={api.detail.id} detail={api.detail} save={api.save} />;
+  return <Form key={api.detail.id} detail={api.detail} api={api} />;
 }
 
 function Content() {

@@ -1,6 +1,8 @@
 package br.com.ctcore.organization;
 
+import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
+import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.audit.AuditActor;
 import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
@@ -28,9 +30,11 @@ public class OrganizationProfile {
     static final int MAX_NAME = 120;
 
     /** Resposta de GET e das escritas; {@code logoUrl} é a URL temporária assinada, nunca o caminho no armazenamento. */
-    public record OrganizationView(String name, String color, String holderDocument, String logoUrl) {}
+    public record OrganizationView(String name, String color, String holderDocument, String logoUrl, int version, LastChange lastChange) {}
 
-    private record Row(String name, String color, String holder, String logo) {}
+    private record Row(String name, String color, String holder, String logo, int version) {}
+
+    private record Loaded(Row row, LastChange last) {}
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
@@ -49,26 +53,29 @@ public class OrganizationProfile {
 
     public OrganizationView read(AccountPrincipal who) {
         if (permissions.grant(who, Permission.ORGANIZATION_SETTINGS, null) == Access.NONE) throw new AccessDeniedException("Permission denied");
-        return view(transactions.execute(() -> row(who.organizationId())));
+        return view(transactions.execute(() -> loaded(row(who.organizationId()), who)));
     }
 
-    public OrganizationView update(AccountPrincipal who, String name, String color, String holderDocument, String ip) {
+    public OrganizationView update(AccountPrincipal who, String ifMatch, String name, String color, String holderDocument, String ip) {
         requireWrite(who);
+        int expectedVersion = IfMatch.version(ifMatch);
         String newName = name == null ? "" : name.trim();
         if (newName.isEmpty()) throw new ApiValidationException("name", "obrigatório");
         if (newName.length() > MAX_NAME) throw new ApiValidationException("name", "no máximo 120 caracteres");
         String newColor = field("color", () -> BrandColor.normalize(color));
         String newHolder = field("holderDocument", () -> HolderDocument.normalize(holderDocument));
-        Row after = transactions.execute(() -> {
-            Row before = row(who.organizationId());
-            Row next = new Row(newName, newColor, newHolder, before.logo());
+        Loaded after = transactions.execute(() -> {
+            Row before = lockedRow(who.organizationId());
+            if (before.version() != expectedVersion) throw new ApiStatusException(ErrorCode.EDIT_CONFLICT);
+            Row next = new Row(newName, newColor, newHolder, before.logo(), before.version());
             if (!next.equals(before)) {
-                jdbc.sql("update organization set name = :name, color = :color, holder_document = :holder where id = :id")
+                next = new Row(newName, newColor, newHolder, before.logo(), before.version() + 1);
+                jdbc.sql("update organization set name = :name, color = :color, holder_document = :holder, version = version + 1 where id = :id")
                         .param("name", newName).param("color", newColor).param("holder", newHolder)
                         .param("id", who.organizationId()).update();
                 audit.record(entry(who, "organization.update", ip, auditValues(before), auditValues(next)));
             }
-            return next;
+            return loaded(next, who);
         });
         return view(after);
     }
@@ -123,11 +130,25 @@ public class OrganizationProfile {
     }
 
     private Row row(UUID organizationId) {
-        return jdbc.sql("select name, color, holder_document, logo_url from organization where id = :id").param("id", organizationId)
-                .query((rs, i) -> new Row(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4))).single();
+        return row(organizationId, "");
     }
 
-    private OrganizationView view(Row row) {
+    // RNF-15: trava a linha até o fim da transação, para a checagem de versão e a gravação serem atômicas.
+    private Row lockedRow(UUID organizationId) {
+        return row(organizationId, " for update");
+    }
+
+    private Row row(UUID organizationId, String lock) {
+        return jdbc.sql("select name, color, holder_document, logo_url, version from organization where id = :id" + lock).param("id", organizationId)
+                .query((rs, i) -> new Row(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getInt(5))).single();
+    }
+
+    private Loaded loaded(Row row, AccountPrincipal who) {
+        return new Loaded(row, LastChange.find(jdbc, who.organizationId(), "organization", who.organizationId(), LastChange.ORGANIZATION_ACTIONS));
+    }
+
+    private OrganizationView view(Loaded loaded) {
+        Row row = loaded.row();
         String url = null;
         if (row.logo() != null) {
             try {
@@ -136,7 +157,7 @@ public class OrganizationProfile {
                 LOG.warn("Organization logo file is missing from storage");
             }
         }
-        return new OrganizationView(row.name(), row.color(), row.holder(), url);
+        return new OrganizationView(row.name(), row.color(), row.holder(), url, row.version(), loaded.last());
     }
 
     private static <T> T field(String field, Supplier<T> parse) {

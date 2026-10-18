@@ -68,7 +68,23 @@ export const resetMockSession = () => {
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
-const initialOrganization = { name: "Academia Alfa", color: null as string | null, holderDocument: null as string | null, logoUrl: null as string | null };
+type MockLastChange = { at: string; by: string | null } | null;
+const initialOrganization = {
+  name: "Academia Alfa",
+  color: null as string | null,
+  holderDocument: null as string | null,
+  logoUrl: null as string | null,
+  version: 0,
+  lastChange: null as MockLastChange,
+};
+// RNF-15: If-Match com a versão lida; ausente ou não numérico é 428, versão diferente da atual é 409.
+// Sem `version`, só o formato é conferido (a versão é conferida depois da validação do corpo).
+const precondition = (request: Request, version?: number) => {
+  const header = request.headers.get("If-Match");
+  if (header === null || !/^"?[0-9]+"?$/.test(header)) return error(428, "PRECONDITION_REQUIRED", "Recarregue a tela para obter a versão atual dos dados.");
+  return version === undefined || Number(header.replace(/"/g, "")) === version ? null : error(409, "EDIT_CONFLICT", "Outra pessoa alterou estes dados.");
+};
+const changedNow = (): MockLastChange => ({ at: new Date().toISOString(), by: current.account.name });
 let organization = { ...initialOrganization };
 // PNG de 1 pixel: o mock não guarda o arquivo enviado, só que existe uma logo.
 const MOCK_LOGO =
@@ -126,6 +142,8 @@ const makeUnitDetail = (u: (typeof units)[number]) => ({
   cnpj: null as string | null,
   active: u.active,
   settings: defaultUnitSettings(),
+  version: 0,
+  lastChange: null as MockLastChange,
 });
 let unitDetails: Record<string, UnitDetailMock> = {};
 const unitDetail = (id: string) => {
@@ -343,6 +361,8 @@ export const routes: Route[] = [
     resolver: async ({ request }) => {
       const denied = organizationAccess(true);
       if (denied) return denied;
+      const missing = precondition(request);
+      if (missing) return missing;
       const body = (await request.json()) as { name?: string; color?: string | null; holderDocument?: string | null };
       const name = (body.name ?? "").trim();
       const color = body.color ? body.color : null;
@@ -352,7 +372,11 @@ export const routes: Route[] = [
       if (color !== null && !(isHexColor(color) && passesContrast(color))) fields.push({ field: "color", message: "use #RRGGBB com contraste mínimo de 4,5:1" });
       if (holder !== null && !isValidCpfOrCnpj(holder)) fields.push({ field: "holderDocument", message: "CPF ou CNPJ inválido" });
       if (fields.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", fields);
-      organization = { ...organization, name, color: color?.toLowerCase() ?? null, holderDocument: holder ? onlyDigits(holder) : null };
+      const stale = precondition(request, organization.version);
+      if (stale) return stale;
+      const next = { ...organization, name, color: color?.toLowerCase() ?? null, holderDocument: holder ? onlyDigits(holder) : null };
+      const changed = next.name !== organization.name || next.color !== organization.color || next.holderDocument !== organization.holderDocument;
+      organization = changed ? { ...next, version: organization.version + 1, lastChange: changedNow() } : organization;
       return HttpResponse.json(organization);
     },
   },
@@ -367,7 +391,7 @@ export const routes: Route[] = [
       if (!raw.includes('name="file"') || raw.length < 20 || raw.length > 5 * 1024 * 1024) {
         return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "file", message: "arquivo inválido" }]);
       }
-      organization = { ...organization, logoUrl: MOCK_LOGO };
+      organization = { ...organization, logoUrl: MOCK_LOGO, lastChange: changedNow() };
       return HttpResponse.json(organization);
     },
   },
@@ -377,7 +401,7 @@ export const routes: Route[] = [
     resolver: () => {
       const denied = organizationAccess(true);
       if (denied) return denied;
-      organization = { ...organization, logoUrl: null };
+      organization = { ...organization, logoUrl: null, lastChange: changedNow() };
       return HttpResponse.json(organization);
     },
   },
@@ -527,6 +551,8 @@ export const routes: Route[] = [
       const id = String(params.id);
       const denied = unitSettingsAccess(id);
       if (denied) return denied;
+      const missing = precondition(request);
+      if (missing) return missing;
       const b = (await request.json()) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
       const s = (b.settings ?? {}) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
       const bad: { field: string; message: string }[] = [];
@@ -542,6 +568,8 @@ export const routes: Route[] = [
       const reminders: number[] = s.reminderDays ?? [];
       if (new Set(reminders).size !== reminders.length || reminders.length > 8 || reminders.some((d) => d < -30 || d > 60)) bad.push({ field: "settings.reminderDays", message: "valores entre -30 e 60" });
       if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const stale = precondition(request, unitDetail(id).version);
+      if (stale) return stale;
       const current = unitDetail(id);
       const next = {
         ...current,
@@ -566,9 +594,15 @@ export const routes: Route[] = [
           paymentAccount: current.settings.paymentAccount,
         },
       };
-      unitDetails[id] = next;
-      Object.assign(units.find((u) => u.id === id)!, { name, city: next.city });
-      return HttpResponse.json(next);
+      const { version, lastChange, ...rest } = next;
+      const { version: oldVersion, lastChange: oldLast, ...old } = current;
+      void oldVersion;
+      void oldLast;
+      void lastChange;
+      const saved = JSON.stringify(rest) !== JSON.stringify(old) ? { ...next, version: version + 1, lastChange: changedNow() } : current;
+      unitDetails[id] = saved;
+      Object.assign(units.find((u) => u.id === id)!, { name, city: saved.city });
+      return HttpResponse.json(saved);
     },
   },
 ];

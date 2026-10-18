@@ -259,7 +259,12 @@ paths:
         Os três campos são enviados juntos; `color` e `holderDocument` vazios ou nulos voltam ao padrão. Cor reprovada no contraste AA
         (menos de 4,5:1 com texto branco), CPF/CNPJ inválido ou nome fora de 1 a 120 caracteres respondem 400 VALIDATION_ERROR com o campo
         apontado e nada é salvo. Grava `organization.update` na auditoria quando algum valor muda.
+        Exige `If-Match` com o `version` lido (RNF-15): versão diferente da atual responde 409 `EDIT_CONFLICT` e nada é gravado; cabeçalho
+        ausente ou não numérico responde 428 `PRECONDITION_REQUIRED`. A permissão é conferida antes da versão. A versão só sobe quando algum
+        valor muda.
       security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string, pattern: '^"?[0-9]+"?$' }, description: Versão lida em `version`. }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/OrganizationUpdateRequest' } } }
@@ -270,6 +275,8 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/EditConflict' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
   /organization/logo:
     put:
       summary: Troca a logo (RF-ORG-01). Só o Coordenador.
@@ -421,7 +428,12 @@ paths:
         Taxas por meio: centavos de 0 a 100000. `pixKey`: CPF, CNPJ, e-mail, telefone (+55) ou UUID; em branco apaga.
         `reminderDays`: de -30 a 60, sem repetição, até 8, podendo ficar vazio. Grava `unit.update` na auditoria com antes e depois
         dos campos mudados (chave Pix e CNPJ só como alterados, sem o valor); chamada sem mudança não grava.
+        Exige `If-Match` com o `version` lido (RNF-15): versão diferente da atual responde 409 `EDIT_CONFLICT` e nada é gravado; cabeçalho
+        ausente ou não numérico responde 428 `PRECONDITION_REQUIRED`. A permissão é conferida antes da versão. A versão só sobe quando algum
+        valor muda.
       security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string, pattern: '^"?[0-9]+"?$' }, description: Versão lida em `version`. }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/UnitUpdate' } } }
@@ -433,6 +445,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/EditConflict' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
   /units/{id}/short-name:
     patch:
       summary: Ajusta o nome curto da unidade, uma única vez (RN-ORG-15). Só o Coordenador.
@@ -706,6 +720,8 @@ components:
             - NOT_FOUND
             - METHOD_NOT_ALLOWED
             - CONFLICT
+            - EDIT_CONFLICT
+            - PRECONDITION_REQUIRED
             - UNIT_LIMIT_REACHED
             - UNIT_HAS_BLOCKERS
             - UNSUPPORTED_MEDIA_TYPE
@@ -730,12 +746,22 @@ components:
         traceId: { type: string }
     OrganizationView:
       type: object
-      required: [name, color, holderDocument, logoUrl]
+      required: [name, color, holderDocument, logoUrl, version, lastChange]
       properties:
+        version: { type: integer, minimum: 0, description: 'Versão para o If-Match da próxima gravação (RNF-15).' }
+        lastChange: { $ref: '#/components/schemas/LastChange' }
         name: { type: string, minLength: 1, maxLength: 120 }
         color: { type: string, nullable: true, pattern: '^#[0-9a-f]{6}$', description: 'Cor principal (contraste mínimo 4,5:1 com texto branco); nula usa a cor padrão da plataforma.' }
         holderDocument: { type: string, nullable: true, pattern: '^([0-9]{11}|[0-9]{14})$', description: 'CPF ou CNPJ do titular, só dígitos.' }
         logoUrl: { type: string, nullable: true, description: 'URL temporária assinada da logo (512 x 512); nula sem logo.' }
+    LastChange:
+      type: object
+      nullable: true
+      description: 'Última alteração de configuração da entidade, tirada da auditoria (RF-ORG-08); nula sem registro. `by` é o nome da pessoa, ou o e-mail se não houver nome; nulo quando o autor não é uma pessoa.'
+      required: [at, by]
+      properties:
+        at: { type: string, format: date-time }
+        by: { type: string, nullable: true }
     OrganizationUpdateRequest:
       type: object
       required: [name]
@@ -858,8 +884,10 @@ components:
         selfRegistrationLinkEnabled: { type: boolean }
     UnitDetail:
       type: object
-      required: [id, name, shortName, postalCode, address, city, latitude, longitude, phone, email, whatsapp, cnpj, active, settings]
+      required: [id, name, shortName, postalCode, address, city, latitude, longitude, phone, email, whatsapp, cnpj, active, settings, version, lastChange]
       properties:
+        version: { type: integer, minimum: 0, description: 'Versão para o If-Match da próxima gravação (RNF-15).' }
+        lastChange: { $ref: '#/components/schemas/LastChange' }
         id: { type: string, format: uuid }
         name: { type: string }
         shortName: { type: string }
@@ -936,6 +964,12 @@ components:
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     Conflict:
       description: Conflito com dado existente (CONFLICT).
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    EditConflict:
+      description: Outra pessoa alterou os dados depois da leitura; versão do If-Match diferente da atual (EDIT_CONFLICT). Nada é gravado.
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    PreconditionRequired:
+      description: Cabeçalho If-Match ausente ou inválido (PRECONDITION_REQUIRED). Nada é gravado.
       content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     UnsupportedMediaType:
       description: Tipo de mídia não suportado (UNSUPPORTED_MEDIA_TYPE).

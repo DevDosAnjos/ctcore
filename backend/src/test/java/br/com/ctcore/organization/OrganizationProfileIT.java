@@ -61,7 +61,7 @@ class OrganizationProfileIT extends OrganizationBase {
         var a = tenant();
         for (Role role : new Role[] {Role.COORDINATOR, Role.ADMINISTRATOR}) {
             var view = ok(get(), a, role);
-            assertThat(view.fieldNames()).toIterable().containsExactlyInAnyOrder("name", "color", "holderDocument", "logoUrl");
+            assertThat(view.fieldNames()).toIterable().containsExactlyInAnyOrder("name", "color", "holderDocument", "logoUrl", "version", "lastChange");
             assertThat(view.path("name").asText()).isEqualTo("Synthetic " + a.orgId());
             assertThat(view.path("logoUrl").isNull()).isTrue();
         }

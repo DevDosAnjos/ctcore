@@ -190,6 +190,28 @@
     "forbiddenTitle": "Você não tem acesso",
     "forbiddenText": "Seu perfil não permite ver esta tela. Fale com quem administra a sua academia."
   },
+  "lastChange": {
+    "line": "Última alteração em {{date}} por {{person}}",
+    "lineSystem": "Última alteração em {{date}}",
+    "none": "Ainda sem alterações"
+  },
+  "editConflict": {
+    "title": "Estes dados foram alterados por outra pessoa",
+    "intro": "Alguém salvou alterações depois que você abriu esta tela. Nada do que você digitou foi salvo.",
+    "loading": "Consultando o estado atual...",
+    "error": "Não foi possível consultar o estado atual. Nada foi alterado.",
+    "differences": "O que está diferente",
+    "mine": "Seu valor",
+    "currentValue": "Valor atual",
+    "empty": "(vazio)",
+    "yes": "Sim",
+    "no": "Não",
+    "noDifferences": "Nenhum campo digitado por você difere do valor atual.",
+    "reload": "Recarregar",
+    "overwrite": "Sobrescrever",
+    "overwriting": "Sobrescrevendo...",
+    "help": "Recarregar descarta o que você digitou e mostra os dados atuais. Sobrescrever salva o que você digitou por cima das alterações da outra pessoa."
+  },
   "organization": {
     "title": "Organização",
     "readOnly": "Você pode ver estes dados, mas só o Coordenador altera.",

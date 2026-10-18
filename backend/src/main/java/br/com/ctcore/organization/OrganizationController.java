@@ -43,8 +43,9 @@ class OrganizationController {
     }
 
     @PatchMapping
-    OrganizationView update(@AuthenticationPrincipal AccountPrincipal who, @RequestBody UpdateRequest body, HttpServletRequest request) {
-        return profile.update(who, body.name(), body.color(), body.holderDocument(), request.getRemoteAddr());
+    OrganizationView update(@AuthenticationPrincipal AccountPrincipal who, @RequestHeader(value = "If-Match", required = false) String ifMatch,
+            @RequestBody UpdateRequest body, HttpServletRequest request) {
+        return profile.update(who, ifMatch,body.name(), body.color(), body.holderDocument(), request.getRemoteAddr());
     }
 
     @PutMapping(value = "/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

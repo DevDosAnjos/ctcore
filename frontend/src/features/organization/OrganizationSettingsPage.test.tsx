@@ -18,8 +18,8 @@ const session = (role: string): SessionView => ({
   activeLinkId: "l1",
   twoFactor: { enabled: false, required: false },
 });
-const empty: OrganizationView = { name: "Academia Alfa", color: null, holderDocument: null, logoUrl: null };
-const full: OrganizationView = { name: "Academia Alfa", color: "#1a56db", holderDocument: "11222333000181", logoUrl: "data:image/png;base64,AAAA" };
+const empty: OrganizationView = { name: "Academia Alfa", color: null, holderDocument: null, logoUrl: null, version: 0, lastChange: null };
+const full: OrganizationView = { name: "Academia Alfa", color: "#1a56db", holderDocument: "11222333000181", logoUrl: "data:image/png;base64,AAAA", version: 0, lastChange: null };
 
 let writes: { method: string; body?: unknown }[];
 let stored: OrganizationView;
@@ -43,7 +43,7 @@ function setup(role: string, initial: OrganizationView = empty, read?: () => Res
     }),
     http.delete("/api/v1/organization/logo", () => {
       writes.push({ method: "DELETE" });
-      stored = { ...stored, logoUrl: null };
+      stored = { ...stored, logoUrl: null, version: 0, lastChange: null };
       return HttpResponse.json(stored);
     }),
     http.put("/api/v1/organization/logo", () => {
@@ -259,5 +259,147 @@ describe("OrganizationSettingsPage", () => {
     const { container } = setup("ADMINISTRATOR", full);
     await ready();
     expect(await axeViolations(container)).toEqual([]);
+  });
+});
+
+const BIA = { at: "2026-05-20T15:30:00Z", by: "Bia" };
+const DIALOG = "Estes dados foram alterados por outra pessoa";
+const saveButton = () => screen.getByRole("button", { name: "Salvar" });
+
+// A outra pessoa já salvou: o servidor está na versão 3 com outro nome; o primeiro PATCH responde 409.
+function conflicting(patchStatuses: number[] = [409]) {
+  const sent: { version: string | null; body: Partial<OrganizationView> }[] = [];
+  const reads = { count: 0 };
+  setup("COORDINATOR", { ...full, name: "Nome da outra pessoa", version: 3, lastChange: BIA }, () => {
+    reads.count += 1;
+    return HttpResponse.json(stored);
+  });
+  server.use(
+    http.patch("/api/v1/organization", async ({ request }) => {
+      const body = (await request.json()) as Partial<OrganizationView>;
+      sent.push({ version: request.headers.get("If-Match"), body });
+      const status = patchStatuses[Math.min(sent.length - 1, patchStatuses.length - 1)];
+      if (status === 409) return HttpResponse.json({ code: "EDIT_CONFLICT", message: "x", changed: false, fields: [], traceId: "t" }, { status });
+      stored = { ...stored, ...body, version: stored.version + 1 } as OrganizationView;
+      return HttpResponse.json(stored);
+    }),
+  );
+  return { sent, reads };
+}
+
+describe("OrganizationSettingsPage: última alteração e edição simultânea (RF-ORG-08, RNF-15)", () => {
+  it("CA9: mostra quem alterou por último e quando, ou 'Ainda sem alterações'; o Administrador também vê", async () => {
+    setup("ADMINISTRATOR", { ...full, lastChange: BIA });
+    await ready();
+    expect(screen.getByText("Última alteração em 20/05/2026 12h30 por Bia")).toBeInTheDocument();
+  });
+
+  it("CA9: sem registro mostra 'Ainda sem alterações'", async () => {
+    setup("COORDINATOR", empty);
+    await ready();
+    expect(screen.getByText("Ainda sem alterações")).toBeInTheDocument();
+  });
+
+  it("RNF-15: a gravação envia a versão lida no If-Match", async () => {
+    const user = userEvent.setup();
+    const { sent } = conflicting([200]);
+    await ready();
+    await user.type(screen.getByLabelText("Nome da organização"), "!");
+    await user.click(saveButton());
+    expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+    expect(sent[0]?.version).toBe("3");
+  });
+
+  it("CA10: o 409 abre a janela com quem alterou, o campo diferente com os dois valores e os dois botões", async () => {
+    const user = userEvent.setup();
+    conflicting();
+    await ready();
+    await user.clear(screen.getByLabelText("Nome da organização"));
+    await user.type(screen.getByLabelText("Nome da organização"), "Meu nome");
+    await user.click(saveButton());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    expect(await within(dialog).findByText("Última alteração em 20/05/2026 12h30 por Bia")).toBeInTheDocument();
+    const item = within(dialog).getByText("Nome da organização").closest("li")!;
+    expect(item).toHaveTextContent("Seu valor: Meu nome");
+    expect(item).toHaveTextContent("Valor atual: Nome da outra pessoa");
+    expect(within(dialog).queryByText("Cor principal")).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Recarregar" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Sobrescrever" })).toBeInTheDocument();
+  });
+
+  it("CA10: Recarregar descarta a edição, mostra o atual e devolve o foco ao Salvar", async () => {
+    const user = userEvent.setup();
+    conflicting();
+    await ready();
+    await user.clear(screen.getByLabelText("Nome da organização"));
+    await user.type(screen.getByLabelText("Nome da organização"), "Meu nome");
+    await user.click(saveButton());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await user.click(await within(dialog).findByRole("button", { name: "Recarregar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByLabelText("Nome da organização")).toHaveValue("Nome da outra pessoa");
+    expect(screen.getByText("Última alteração em 20/05/2026 12h30 por Bia")).toBeInTheDocument();
+    await waitFor(() => expect(saveButton()).toHaveFocus());
+  });
+
+  it("CA10: Sobrescrever regrava com a versão atual, mantém a edição e mostra 'Dados salvos.'", async () => {
+    const user = userEvent.setup();
+    const { sent } = conflicting([409, 200]);
+    await ready();
+    await user.clear(screen.getByLabelText("Nome da organização"));
+    await user.type(screen.getByLabelText("Nome da organização"), "Meu nome");
+    await user.click(saveButton());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await user.click(await within(dialog).findByRole("button", { name: "Sobrescrever" }));
+    expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(sent.map((s) => s.version)).toEqual(["3", "3"]);
+    expect(sent[1]?.body.name).toBe("Meu nome");
+    expect(screen.getByLabelText("Nome da organização")).toHaveValue("Meu nome");
+    await waitFor(() => expect(saveButton()).toHaveFocus());
+  });
+
+  it("CA10: novo 409 durante o Sobrescrever consulta de novo e mantém o aviso aberto", async () => {
+    const user = userEvent.setup();
+    const { sent, reads } = conflicting([409, 409]);
+    await ready();
+    await user.type(screen.getByLabelText("Nome da organização"), "!");
+    await user.click(saveButton());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await user.click(await within(dialog).findByRole("button", { name: "Sobrescrever" }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(await screen.findByRole("dialog", { name: DIALOG })).toBeInTheDocument();
+    await waitFor(() => expect(reads.count).toBe(3));
+    expect(await within(screen.getByRole("dialog")).findByRole("button", { name: "Sobrescrever" })).toBeEnabled();
+    expect(screen.queryByText("Dados salvos.")).not.toBeInTheDocument();
+  });
+
+  it("CA10: erro de rede na consulta do estado atual mostra o erro com 'Tentar de novo'", async () => {
+    const user = userEvent.setup();
+    conflicting();
+    await ready();
+    await user.type(screen.getByLabelText("Nome da organização"), "!");
+    server.use(http.get("/api/v1/organization", () => HttpResponse.error(), { once: true }));
+    await user.click(saveButton());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    expect(await within(dialog).findByText("Não foi possível consultar o estado atual. Nada foi alterado.")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Tentar de novo" }));
+    expect(await within(dialog).findByRole("button", { name: "Sobrescrever" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["claro", false],
+    ["escuro", true],
+  ])("CA11: a janela de conflito a 360 px não tem violações no axe no tema %s", async (_n, dark) => {
+    const user = userEvent.setup();
+    setDevicePrefersDark(dark);
+    window.innerWidth = 360;
+    conflicting();
+    await ready();
+    await user.type(screen.getByLabelText("Nome da organização"), "!");
+    await user.click(saveButton());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await within(dialog).findByRole("button", { name: "Sobrescrever" });
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

@@ -12,7 +12,11 @@ const login = async (email: string, linkId?: string) => {
 };
 const mine = () => fetch("/api/v1/units/mine");
 const read = (id: string) => fetch(`/api/v1/units/${id}`);
-const put = (id: string, body: unknown) => fetch(`/api/v1/units/${id}`, { method: "PUT", headers: json, body: JSON.stringify(body) });
+// Sem versão explícita lê a atual (RNF-15); null omite o If-Match.
+const put = async (id: string, body: unknown, ifMatch?: string | null) => {
+  const version = ifMatch === undefined ? String((await (await read(id)).json()).version) : ifMatch;
+  return fetch(`/api/v1/units/${id}`, { method: "PUT", headers: version === null ? json : { ...json, "If-Match": version }, body: JSON.stringify(body) });
+};
 const declared = (path: string, method: string) => Object.keys(openapi.paths[path][method].responses);
 const keys = (name: string) => Object.keys(openapi.components.schemas[name].properties).sort();
 
@@ -106,5 +110,27 @@ describe("configurações da unidade x OpenAPI (CA22)", () => {
       for (const res of [await mine(), await read(FIRST), await put(FIRST, body())]) expect(res.status).toBe(403);
     }
     expect(declared("/units/mine", "get")).toContain("403");
+  });
+});
+
+describe("última alteração e versão da unidade x OpenAPI (RF-ORG-08, RNF-15)", () => {
+  it("lastChange nulo no início; PUT que muda valor sobe a versão e preenche o ator; PUT idêntico não muda; 409 e 428 do contrato", async () => {
+    await login("ana@exemplo.com");
+    expect(await (await read(FIRST)).json()).toMatchObject({ version: 0, lastChange: null });
+    const saved = await (await put(FIRST, body())).json();
+    expect(saved.version).toBe(1);
+    expect(saved.lastChange).toEqual({ at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/), by: "Ana" });
+    expect(await (await put(FIRST, body())).json()).toEqual(saved);
+
+    const stale = await put(FIRST, body((b) => (b.name = "Outro")), "0");
+    expect(stale.status).toBe(409);
+    expect((await stale.json()).code).toBe("EDIT_CONFLICT");
+    for (const header of [null, "x"]) {
+      const res = await put(FIRST, body((b) => (b.name = "Outro")), header);
+      expect(res.status).toBe(428);
+      expect((await res.json()).code).toBe("PRECONDITION_REQUIRED");
+    }
+    expect((await (await read(FIRST)).json()).name).toBe("Unidade Centro");
+    expect(declared("/units/{id}", "put")).toEqual(expect.arrayContaining(["409", "428"]));
   });
 });

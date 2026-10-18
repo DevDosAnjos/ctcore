@@ -75,7 +75,7 @@ class OpenApiContractTest {
         JsonNode spec = spec();
         assertThat(spec.at("/info/description").asText()).contains("camelCase", "centavos", "date-time", "sort");
         JsonNode responses = spec.at("/components/responses");
-        assertThat(responses.size()).isEqualTo(8);
+        assertThat(responses.size()).isEqualTo(10);
         responses.forEach(r ->
                 assertThat(r.at("/content/application~1json/schema/$ref").asText()).isEqualTo("#/components/schemas/Error"));
         spec.at("/components/schemas/Page/properties").fieldNames()

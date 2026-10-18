@@ -2,12 +2,15 @@ import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EditConflictDialog, type Difference } from "@/components/EditConflictDialog";
+import { LastChange } from "@/components/LastChange";
 import { formatCpfCnpj, isValidCpfOrCnpj, onlyDigits } from "@/components/fields/masks";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
+import { useEditConflict } from "@/lib/useEditConflict";
 import { ColorField } from "./ColorField";
 import { isHexColor, passesContrast } from "./contrastRatio";
 import { LogoCropDialog } from "./LogoCropDialog";
@@ -29,8 +32,11 @@ function NoticeText({ notice }: { notice?: Notice }) {
   );
 }
 
-function DataCard({ view, save, canEdit }: { view: OrganizationView; save: Api["save"]; canEdit: boolean }) {
+function DataCard({ view, api, canEdit }: { view: OrganizationView; api: Api; canEdit: boolean }) {
   const { t } = useTranslation();
+  const { save, adopt } = api;
+  const saveButton = useRef<HTMLButtonElement>(null);
+  const conflict = useEditConflict(api.fetchCurrent);
   const [name, setName] = useState(view.name);
   const [color, setColor] = useState(view.color ?? "");
   const [holder, setHolder] = useState(view.holderDocument ? formatCpfCnpj(view.holderDocument) : "");
@@ -46,21 +52,48 @@ function DataCard({ view, save, canEdit }: { view: OrganizationView; save: Api["
   const nameShown = canEdit ? (errors.name ?? nameError) : undefined;
   const holderShown = errors.holderDocument ?? (holderTouched && holderBad ? t("organization.holderInvalid") : undefined);
 
-  async function submit() {
-    if (blocked) return;
+  // Devolve false quando outra pessoa salvou antes (409): a janela de conflito abre e a edição fica como está (RNF-15).
+  async function submit(version?: number): Promise<boolean> {
     setBusy(true);
     setErrors({});
     setNotice(undefined);
     try {
-      await save({ name: name.trim(), color: color === "" ? null : color.toLowerCase(), holderDocument: holder === "" ? null : onlyDigits(holder) });
+      await save({ name: name.trim(), color: color === "" ? null : color.toLowerCase(), holderDocument: holder === "" ? null : onlyDigits(holder) }, version);
       setNotice({ kind: "ok", text: t("organization.saved") });
     } catch (e) {
+      if (e instanceof ApiError && e.code === "EDIT_CONFLICT") {
+        conflict.open();
+        return false;
+      }
       const fields = e instanceof ApiError ? e.fields : [];
       setErrors(Object.fromEntries(fields.map((f) => [f.field, f.message])));
       setNotice({ kind: "error", text: t("organization.saveError") });
     } finally {
       setBusy(false);
     }
+    return true;
+  }
+
+  const shownValue = (v: string) => (v === "" ? t("editConflict.empty") : v);
+  function differences(current: OrganizationView): Difference[] {
+    const fields: [string, string, string, (v: string) => string][] = [
+      [t("organization.name"), name.trim(), current.name, (v) => v],
+      [t("organization.color"), color.toLowerCase(), current.color ?? "", (v) => v],
+      [t("organization.holder"), onlyDigits(holder), current.holderDocument ?? "", formatCpfCnpj],
+    ];
+    return fields
+      .filter(([, mine, now]) => mine !== now)
+      .map(([label, mine, now, show]) => ({ label, mine: shownValue(show(mine)), current: shownValue(show(now)) }));
+  }
+  function reload(current: OrganizationView) {
+    setName(current.name);
+    setColor(current.color ?? "");
+    setHolder(current.holderDocument ? formatCpfCnpj(current.holderDocument) : "");
+    setHolderTouched(false);
+    setErrors({});
+    setNotice(undefined);
+    adopt(current);
+    conflict.close();
   }
 
   return (
@@ -70,7 +103,7 @@ function DataCard({ view, save, canEdit }: { view: OrganizationView; save: Api["
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          void submit();
+          if (!blocked) void submit();
         }}
       >
         <div>
@@ -122,12 +155,25 @@ function DataCard({ view, save, canEdit }: { view: OrganizationView; save: Api["
         <NoticeText notice={notice} />
         {canEdit && (
           <div>
-            <Button type="submit" disabled={blocked}>
+            <Button ref={saveButton} type="submit" disabled={blocked}>
               {busy ? t("organization.saving") : t("organization.save")}
             </Button>
           </div>
         )}
       </form>
+      <EditConflictDialog
+        state={conflict.state}
+        differences={conflict.state?.status === "ready" ? differences(conflict.state.current) : []}
+        busy={busy}
+        returnFocusRef={saveButton}
+        onRetry={conflict.open}
+        onClose={conflict.close}
+        onReload={() => conflict.state?.status === "ready" && reload(conflict.state.current)}
+        onOverwrite={() => {
+          if (conflict.state?.status !== "ready") return;
+          void submit(conflict.state.current.version).then((done) => done && conflict.close());
+        }}
+      />
     </Card>
   );
 }
@@ -242,7 +288,8 @@ function Content({ canEdit }: { canEdit: boolean }) {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">{t("organization.title")}</h1>
       {!canEdit && <p className="text-muted-foreground">{t("organization.readOnly")}</p>}
-      <DataCard view={api.view} save={api.save} canEdit={canEdit} />
+      <LastChange value={api.view.lastChange} />
+      <DataCard view={api.view} api={api} canEdit={canEdit} />
       <LogoCard view={api.view} api={api} canEdit={canEdit} />
       {canEdit && <TransferCard onDone={() => setNotice({ kind: "ok", text: t("organization.transfer.done") })} />}
       <NoticeText notice={notice} />

@@ -58,9 +58,9 @@ class UnitController {
     }
 
     @PutMapping("/{id}")
-    UnitSettings.UnitDetail update(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody UnitUpdate body,
-            HttpServletRequest request) {
-        return settings.update(who, id, body, request.getRemoteAddr());
+    UnitSettings.UnitDetail update(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch, @RequestBody UnitUpdate body, HttpServletRequest request) {
+        return settings.update(who, id, ifMatch, body, request.getRemoteAddr());
     }
 
     @GetMapping
