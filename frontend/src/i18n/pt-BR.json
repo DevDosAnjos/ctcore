@@ -269,6 +269,21 @@
     "emptyText": "Quando a organização tiver unidades, elas aparecem aqui.",
     "newButton": "Nova unidade",
     "limitReached": "A organização já tem 10 unidades, o máximo do plano. Para abrir outra, fale com o suporte.",
+    "deactivate": {
+      "button": "Desativar",
+      "title": "Desativar {{name}}",
+      "summary": "A unidade deixa de aparecer nos seletores e fica só para consulta do histórico. Nada é apagado.",
+      "blocked": "Não é possível desativar esta unidade agora:",
+      "students_one": "{{count}} aluno com modalidade ativa. Transfira ou encerre as matrículas antes.",
+      "students_other": "{{count}} alunos com modalidade ativa. Transfira ou encerre as matrículas antes.",
+      "classes_one": "{{count}} turma ativa. Encerre a turma antes.",
+      "classes_other": "{{count}} turmas ativas. Encerre as turmas antes.",
+      "lastUnit": "É a única unidade ativa da organização.",
+      "typeLabel": "Digite o nome da unidade ({{name}}) para confirmar",
+      "nameInvalid": "O nome digitado não confere com o da unidade.",
+      "continue": "Continuar",
+      "done": "Unidade desativada. O histórico continua disponível para consulta."
+    },
     "new": {
       "title": "Nova unidade",
       "back": "Voltar para as unidades",

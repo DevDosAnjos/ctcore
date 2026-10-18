@@ -59,6 +59,11 @@ export function useUnits() {
     status,
     units: current?.units,
     retry: () => setTick((n) => n + 1),
+    // Recarrega a lista sem passar por "carregando" (depois de desativar uma unidade).
+    refresh: async () => {
+      const units = await api<UnitSummary[]>("/units");
+      setDone({ tick, units });
+    },
     // Erros sobem (ApiError) para o diálogo explicar; a lista passa a mostrar o nome novo.
     adjustShortName: async (id: string, shortName: string) => {
       const updated = await api<UnitSummary>(`/units/${id}/short-name`, { method: "PATCH", body: { shortName } });

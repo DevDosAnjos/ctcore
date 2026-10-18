@@ -451,6 +451,44 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-ORG-07: sem alunos nem turmas no mock; a única unidade ativa não pode ser desativada.
+    method: "get",
+    path: "/units/{id}/deactivation-check",
+    resolver: ({ params }) => {
+      const denied = unitsAccess();
+      if (denied) return denied;
+      const unit = units.find((u) => u.id === params.id);
+      if (!unit) return error(404, "NOT_FOUND", "Não encontrado.");
+      const last = !units.some((u) => u.active && u.id !== unit.id);
+      return HttpResponse.json({ activeStudents: 0, activeClasses: 0, lastActiveUnit: last, canDeactivate: !last });
+    },
+  },
+  {
+    method: "post",
+    path: "/units/{id}/deactivation",
+    resolver: async ({ request, params }) => {
+      const denied = unitsAccess();
+      if (denied) return denied;
+      const unit = units.find((u) => u.id === params.id);
+      if (!unit) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (!unit.active) return error(409, "CONFLICT", "Conflito.");
+      const { confirmation } = (await request.json()) as { confirmation?: string };
+      if ((confirmation ?? "").trim().toLowerCase() !== unit.name.toLowerCase()) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "confirmation", message: "digite o nome da unidade" }]);
+      }
+      if (!units.some((u) => u.active && u.id !== unit.id)) {
+        return error(409, "UNIT_HAS_BLOCKERS", "Única unidade ativa.", [
+          { field: "activeStudents", message: "0" },
+          { field: "activeClasses", message: "0" },
+          { field: "lastActiveUnit", message: "true" },
+        ]);
+      }
+      if (!request.headers.get("X-Reauth-Token")) return error(403, "REAUTH_REQUIRED", "Confirme sua senha para continuar.");
+      unit.active = false;
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
     method: "get",
     path: "/units/mine",
     resolver: () => {

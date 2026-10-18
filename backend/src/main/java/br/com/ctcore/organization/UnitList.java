@@ -42,8 +42,11 @@ public class UnitList {
     private final Permissions permissions;
     private final AuditService audit;
     private final Clock clock;
+    private final UnitDeactivationBlockers blockers;
 
-    public UnitList(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, AuditService audit, Clock clock) {
+    public UnitList(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, AuditService audit, Clock clock,
+            UnitDeactivationBlockers blockers) {
+        this.blockers = blockers;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.permissions = permissions;
@@ -110,13 +113,8 @@ public class UnitList {
         return byUnit;
     }
 
-    // ponytail: sem tabela de alunos até a Sprint de cadastro (D2); trocar por count de alunos ativos da unidade.
-    private static int activeStudents(UUID unitId) {
-        return 0;
-    }
-
-    private static UnitSummary summary(Row r, Map<UUID, List<Administrator>> admins) {
-        return new UnitSummary(r.id(), r.name(), r.shortName(), r.adjusted(), r.city(), activeStudents(r.id()),
+    private UnitSummary summary(Row r, Map<UUID, List<Administrator>> admins) {
+        return new UnitSummary(r.id(), r.name(), r.shortName(), r.adjusted(), r.city(), blockers.activeStudents(r.id()),
                 admins.getOrDefault(r.id(), List.of()), r.active());
     }
 

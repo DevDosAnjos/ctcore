@@ -45,7 +45,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ApiStatusException.class)
     ResponseEntity<ApiError> status(ApiStatusException e, HttpServletRequest req) {
-        return build(e.code, req, List.of());
+        return build(e.code, req, e.fields);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
