@@ -103,7 +103,7 @@ public class ApiExceptionHandler {
             case INVALID_CREDENTIALS -> ErrorCode.INVALID_CREDENTIALS;
             case PASSWORD_WEAK -> ErrorCode.PASSWORD_WEAK;
             case PASSWORD_LEAKED -> ErrorCode.PASSWORD_LEAKED;
-            case ALREADY_LINKED -> ErrorCode.CONFLICT;
+            case ALREADY_LINKED -> ErrorCode.ALREADY_LINKED;
             case CHALLENGE_FAILED -> ErrorCode.CHALLENGE_FAILED;
             case RESET_INVALID -> ErrorCode.RESET_LINK_INVALID;
             case LINK_NOT_FOUND -> ErrorCode.NOT_FOUND;

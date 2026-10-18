@@ -15,6 +15,7 @@ import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
+import { UsersPage } from "@/features/users/UsersPage";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
 import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
@@ -81,6 +82,7 @@ export function App() {
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />
             <Route path="/configuracoes/unidade" element={<UnitSettingsPage />} />
+            <Route path="/configuracoes/usuarios" element={<UsersPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR"]} />}>
             <Route path="/configuracoes/unidades" element={<UnitsPage />} />

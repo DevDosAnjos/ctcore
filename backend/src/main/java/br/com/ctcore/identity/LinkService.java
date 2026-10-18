@@ -15,7 +15,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class LinkService {
-    private record Before(UUID accountId, Role role, String status) {}
+    /** What the link was before ending; {@link #sessionsAfter} needs it once the transaction is over. */
+    public record Before(UUID accountId, Role role, String status) {}
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions orgTx;
@@ -39,7 +40,12 @@ public class LinkService {
      * RN-ACE-20: ending the last management link of the account ends all its sessions.
      */
     public void end(AuditActor actor, UUID organizationId, UUID linkId) {
-        Before before = orgTx.provision(organizationId, () -> {
+        sessionsAfter(actor, orgTx.provision(organizationId, () -> endInScope(actor, organizationId, linkId)));
+    }
+
+    /** The database part of {@link #end}; for callers that already hold the organization transaction. */
+    public Before endInScope(AuditActor actor, UUID organizationId, UUID linkId) {
+        return orgTx.provision(organizationId, () -> {
             Before b = jdbc.sql("select account_id, role, status from account_link where id = :id and organization_id = :o and status <> 'ENDED'")
                     .param("id", linkId).param("o", organizationId)
                     .query((rs, n) -> new Before(rs.getObject(1, UUID.class), Role.valueOf(rs.getString(2)), rs.getString(3)))
@@ -51,6 +57,10 @@ public class LinkService {
                     Map.of("status", b.status()), Map.of("status", "ENDED"), null, null));
             return b;
         });
+    }
+
+    /** RN-ACE-20, once the transaction of {@link #endInScope} is over (it audits in other organizations). */
+    public void sessionsAfter(AuditActor actor, Before before) {
         if (before.status().equals("ACTIVE") && before.role().management() && sessions.endAllIfNoManagement(before.accountId())) {
             accountAudit.record(before.accountId(), actor, null, "account.sessions_ended");
         }
