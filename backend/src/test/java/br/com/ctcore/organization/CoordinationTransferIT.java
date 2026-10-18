@@ -238,7 +238,7 @@ class CoordinationTransferIT extends OrganizationBase {
         assertThat(withSession(get(), a).getStatus()).isEqualTo(200);
         assertThat(withSession(patch("{\"name\":\"Novo nome\"}"), a).getStatus()).isEqualTo(403);
         assertThat(withSession(get(), b).getStatus()).isEqualTo(200);
-        assertThat(withSession(patch("{\"name\":\"Novo nome\"}"), b).getStatus()).isEqualTo(200);
+        assertThat(withSession(patch("{\"name\":\"Novo nome\"}").header("If-Match", "0"), b).getStatus()).isEqualTo(200);
         assertThat(twoFactor.setupRequired(a.account)).isFalse();
     }
 

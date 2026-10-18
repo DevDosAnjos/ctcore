@@ -61,7 +61,24 @@ abstract class OrganizationBase extends PostgresIT {
         return new AccountPrincipal(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), t.orgId(), role, Set.of(t.unitId()));
     }
 
+    /** Como {@link #raw}, mas PATCH /organization e PUT /units/{id} sem If-Match levam a versão atual do banco (RNF-15). */
     protected MvcResult call(MockHttpServletRequestBuilder request, AccountPrincipal who) throws Exception {
+        request.with(r -> {
+            String uri = r.getRequestURI();
+            boolean org = "PATCH".equals(r.getMethod()) && uri.equals("/api/v1/organization");
+            boolean unit = "PUT".equals(r.getMethod()) && uri.matches("/api/v1/units/[0-9a-f-]{36}");
+            if (who != null && who.organizationId() != null && r.getHeader("If-Match") == null && (org || unit)) {
+                var versions = org
+                        ? adminJdbc().queryForList("select version from organization where id = ?", Integer.class, who.organizationId())
+                        : adminJdbc().queryForList("select version from unit where id = ?", Integer.class, UUID.fromString(uri.substring(uri.lastIndexOf('/') + 1)));
+                r.addHeader("If-Match", versions.isEmpty() ? "0" : versions.get(0).toString());
+            }
+            return r;
+        });
+        return raw(request, who);
+    }
+
+    protected MvcResult raw(MockHttpServletRequestBuilder request, AccountPrincipal who) throws Exception {
         request.secure(true).with(csrf());
         if (who != null) {
             request.with(authentication(UsernamePasswordAuthenticationToken.authenticated(who, "synthetic",

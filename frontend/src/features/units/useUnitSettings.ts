@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { LastChangeValue } from "@/components/LastChange";
 import { api, ApiError } from "@/lib/api";
 
 // Espelham UnitDetail e UnitUpdate do OpenAPI (RF-ORG-04, docs/openapi.yaml). Valores em centavos.
@@ -42,8 +43,10 @@ export interface UnitDetail {
   cnpj: string | null;
   active: boolean;
   settings: UnitSettingsData;
+  version: number;
+  lastChange: LastChangeValue | null;
 }
-export type UnitUpdate = Omit<UnitDetail, "id" | "shortName" | "active" | "settings"> & {
+export type UnitUpdate = Omit<UnitDetail, "id" | "shortName" | "active" | "settings" | "version" | "lastChange"> & {
   settings: Omit<UnitSettingsData, "paymentAccount" | "enrollmentFeeCents"> & { enrollmentFeeCents: number | null };
 };
 
@@ -70,10 +73,13 @@ export function useUnitDetail(id: string) {
     status,
     detail: current?.detail,
     retry: () => setTick((n) => n + 1),
-    save: async (body: UnitUpdate) => {
-      const detail = await api<UnitDetail>(`/units/${id}`, { method: "PUT", body });
+    // RNF-15: sem versão explícita vai a lida; "Sobrescrever" manda a versão atual consultada.
+    save: async (body: UnitUpdate, version = current?.detail?.version) => {
+      const detail = await api<UnitDetail>(`/units/${id}`, { method: "PUT", body, headers: { "If-Match": String(version) } });
       setDone({ tick, id, detail });
       return detail;
     },
+    fetchCurrent: () => api<UnitDetail>(`/units/${id}`),
+    adopt: (detail: UnitDetail) => setDone({ tick, id, detail }),
   } as const;
 }

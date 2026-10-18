@@ -9,7 +9,11 @@ const login = async (email: string, linkId?: string) => {
   if (linkId) await fetch("/api/v1/auth/session/link", { method: "PUT", headers: json, body: JSON.stringify({ linkId }) });
 };
 const get = () => fetch("/api/v1/organization");
-const patch = (body: unknown) => fetch("/api/v1/organization", { method: "PATCH", headers: json, body: JSON.stringify(body) });
+// Sem versão explícita lê a atual (RNF-15); null omite o If-Match.
+const patch = async (body: unknown, ifMatch?: string | null) => {
+  const version = ifMatch === undefined ? String((await (await get()).json()).version) : ifMatch;
+  return fetch("/api/v1/organization", { method: "PATCH", headers: version === null ? json : { ...json, "If-Match": version }, body: JSON.stringify(body) });
+};
 // FormData e File do jsdom não passam pelo fetch do Node; o corpo multipart vai montado à mão.
 const putLogo = (size = 10) =>
   fetch("/api/v1/organization/logo", {
@@ -43,7 +47,7 @@ describe("organização x OpenAPI (CA21)", () => {
 
     const saved = await patch({ name: " Dojo ", color: "#1A56DB", holderDocument: "11.222.333/0001-81" });
     expect(saved.status).toBe(200);
-    expect(await saved.json()).toEqual({ name: "Dojo", color: "#1a56db", holderDocument: "11222333000181", logoUrl: null });
+    expect(await saved.json()).toMatchObject({ name: "Dojo", color: "#1a56db", holderDocument: "11222333000181", logoUrl: null, version: 1 });
     expect(await (await get()).json()).toMatchObject({ name: "Dojo" });
 
     const invalid = [
@@ -125,5 +129,35 @@ describe("transferência da coordenação x OpenAPI (RF-ORG-06, CA16)", () => {
     for (const status of [204, 400, 401, 403]) expect(declared).toContain(String(status));
     expect((await transfer(ok, "t")).status).toBe(403);
     expect((await (await fetch("/api/v1/auth/session")).json()).links[0].role).toBe("ADMINISTRATOR");
+  });
+});
+
+describe("última alteração e versão x OpenAPI (RF-ORG-08, RNF-15)", () => {
+  it("lastChange nulo no início; gravação que muda valor sobe a versão e preenche ator e instante; sem mudança nada muda", async () => {
+    await login("ana@exemplo.com");
+    const first = await (await get()).json();
+    expect(first).toMatchObject({ version: 0, lastChange: null });
+    const saved = await (await patch({ name: "Novo nome" })).json();
+    expect(saved.version).toBe(1);
+    expect(saved.lastChange).toEqual({ at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/), by: "Ana" });
+    const same = await (await patch({ name: "Novo nome" })).json();
+    expect(same).toEqual(saved);
+    expect(Object.keys(openapi.components.schemas.LastChange.properties).sort()).toEqual(["at", "by"]);
+  });
+
+  it("versão antiga responde 409 EDIT_CONFLICT; sem If-Match ou inválido, 428 PRECONDITION_REQUIRED; nada é gravado", async () => {
+    await login("ana@exemplo.com");
+    await patch({ name: "Primeiro" });
+    const stale = await patch({ name: "Segundo" }, "0");
+    expect(stale.status).toBe(409);
+    expect((await stale.json()).code).toBe("EDIT_CONFLICT");
+    for (const header of [null, "abc", ""]) {
+      const res = await patch({ name: "Segundo" }, header);
+      expect(res.status).toBe(428);
+      expect((await res.json()).code).toBe("PRECONDITION_REQUIRED");
+    }
+    expect((await (await get()).json()).name).toBe("Primeiro");
+    expect(Object.keys(openapi.paths["/organization"].patch.responses)).toEqual(expect.arrayContaining(["409", "428"]));
+    expect(openapi.paths["/organization"].patch.parameters.map((p: { name: string }) => p.name)).toContain("If-Match");
   });
 });

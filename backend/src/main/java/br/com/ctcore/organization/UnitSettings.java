@@ -45,7 +45,13 @@ public class UnitSettings {
             boolean directoryEnabled, boolean trialLinkEnabled, boolean selfRegistrationLinkEnabled) {}
 
     public record UnitDetail(UUID id, String name, String shortName, String postalCode, String address, String city, Double latitude,
-            Double longitude, String phone, String email, String whatsapp, String cnpj, boolean active, Settings settings) {}
+            Double longitude, String phone, String email, String whatsapp, String cnpj, boolean active, Settings settings, int version,
+            LastChange lastChange) {
+        UnitDetail with(LastChange last) {
+            return new UnitDetail(id, name, shortName, postalCode, address, city, latitude, longitude, phone, email, whatsapp, cnpj, active,
+                    settings, version, last);
+        }
+    }
 
     // Valores diferentes nos dois lados, senão o AuditService descartaria o campo como "sem mudança".
     private static final String CHANGED = "[alterado]";
@@ -55,7 +61,7 @@ public class UnitSettings {
             select u.id, u.name, u.short_name, u.postal_code, u.address, u.city, u.latitude, u.longitude, u.phone, u.email, u.whatsapp,
                    u.cnpj, u.active, s.due_days, s.enrollment_fee_enabled, s.enrollment_fee_cents, %s, s.pix_key,
                    s.payment_account_reference is not null, s.reminder_days, s.teacher_permissions, s.directory_enabled,
-                   s.trial_link_enabled, s.self_registration_link_enabled
+                   s.trial_link_enabled, s.self_registration_link_enabled, u.version
             from unit u join unit_settings s on s.unit_id = u.id and s.organization_id = u.organization_id
             """.formatted(String.join(", ", UnitUpdate.FEE_COLUMNS.values().stream().map(c -> "s." + c).toList()));
 
@@ -91,14 +97,17 @@ public class UnitSettings {
         return detail;
     }
 
-    public UnitDetail update(AccountPrincipal who, UUID unitId, UnitUpdate request, String ip) {
+    public UnitDetail update(AccountPrincipal who, UUID unitId, String ifMatch, UnitUpdate request, String ip) {
         UnitDetail current = locate(who, unitId);
         if (permissions.grant(who, Permission.UNIT_SETTINGS, unitId) != Access.FULL) throw new AccessDeniedException("Permission denied");
+        int expectedVersion = IfMatch.version(ifMatch);
         UnitUpdate next = request.validated();
         double[] coordinates = coordinates(current, next);
         return transactions.execute(() -> {
-            UnitDetail before = load(unitId).orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+            // RNF-15: a trava vem antes da leitura, para a checagem de versão e a gravação serem atômicas.
             jdbc.sql("select id from unit where id = :id for update").param("id", unitId).query(UUID.class).optional();
+            UnitDetail before = load(unitId).orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+            if (before.version() != expectedVersion) throw new ApiStatusException(ErrorCode.EDIT_CONFLICT);
             UnitUpdate.Settings s = next.settings();
             jdbc.sql("""
                     update unit set name = :name, postal_code = :cep, address = :address, city = :city, latitude = :lat, longitude = :lon,
@@ -132,10 +141,11 @@ public class UnitSettings {
                 now.put(key, hidden ? CHANGED : value);
             });
             if (!now.isEmpty()) {
+                jdbc.sql("update unit set version = version + 1 where id = :id").param("id", unitId).update();
                 audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name()), "unit.update", "unit",
                         unitId.toString(), unitId, was, now, null, ip));
             }
-            return after;
+            return loadWithLast(who, unitId).orElseThrow();
         });
     }
 
@@ -148,7 +158,11 @@ public class UnitSettings {
 
     private UnitDetail locate(AccountPrincipal who, UUID unitId) {
         requireRole(who);
-        return transactions.execute(() -> load(unitId)).orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+        return transactions.execute(() -> loadWithLast(who, unitId)).orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+    }
+
+    private Optional<UnitDetail> loadWithLast(AccountPrincipal who, UUID unitId) {
+        return load(unitId).map(d -> d.with(LastChange.find(jdbc, who.organizationId(), "unit", unitId, LastChange.UNIT_ACTIONS)));
     }
 
     // Latitude e longitude enviadas valem; senão o CEP novo é geocodificado pela porta; CEP igual mantém as atuais (D3).
@@ -179,7 +193,7 @@ public class UnitSettings {
                 rs.getBoolean(30), rs.getBoolean(31), rs.getBoolean(32));
         return new UnitDetail(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6),
                 number(rs.getBigDecimal(7)), number(rs.getBigDecimal(8)), rs.getString(9), rs.getString(10), rs.getString(11),
-                rs.getString(12), rs.getBoolean(13), settings);
+                rs.getString(12), rs.getBoolean(13), settings, rs.getInt(33), null);
     }
 
     private static Double number(BigDecimal value) {

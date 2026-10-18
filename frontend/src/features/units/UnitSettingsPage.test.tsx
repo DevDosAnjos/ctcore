@@ -33,6 +33,8 @@ const detail = (id: string, name: string): UnitDetail => ({
   whatsapp: null,
   cnpj: null,
   active: true,
+  version: 0,
+  lastChange: null,
   settings: {
     dueDays: [1, 5, 10, 15],
     enrollmentFeeEnabled: false,
@@ -251,5 +253,141 @@ describe("UnitSettingsPage (RF-ORG-04)", () => {
     const teacher = screen.getByText("O que o Professor pode fazer nesta unidade.").closest("fieldset")!;
     expect(within(teacher).getAllByRole("checkbox")).toHaveLength(4);
     expect(screen.getByRole("heading", { name: "Divulgação", level: 2 })).toBeInTheDocument();
+  });
+});
+
+const BIA = { at: "2026-05-20T15:30:00Z", by: "Bia" };
+const DIALOG = "Estes dados foram alterados por outra pessoa";
+
+// A outra pessoa já salvou: o servidor está na versão 3 com outro nome; o primeiro PUT responde 409.
+function conflicting(putStatuses: number[] = [409]) {
+  const sent: { version: string | null; body: Sent }[] = [];
+  const reads = { count: 0 };
+  setup("COORDINATOR", {
+    units: [{ ...detail(A, "Unidade A"), name: "Nome da outra pessoa", version: 3, lastChange: BIA }],
+    read: () => {
+      reads.count += 1;
+      return HttpResponse.json(stored[A]);
+    },
+  });
+  server.use(
+    http.put("/api/v1/units/:id", async ({ request }) => {
+      const body = (await request.json()) as Sent;
+      sent.push({ version: request.headers.get("If-Match"), body });
+      const status = putStatuses[Math.min(sent.length - 1, putStatuses.length - 1)];
+      if (status === 409) return HttpResponse.json({ code: "EDIT_CONFLICT", message: "x", changed: false, fields: [], traceId: "t" }, { status });
+      stored[A] = { ...stored[A]!, ...body, version: stored[A]!.version + 1 } as unknown as UnitDetail;
+      return HttpResponse.json(stored[A]);
+    }),
+  );
+  return { sent, reads };
+}
+
+describe("UnitSettingsPage: última alteração e edição simultânea (RF-ORG-08, RNF-15)", () => {
+  it("CA9: mostra quem alterou por último e quando, ou 'Ainda sem alterações'", async () => {
+    setup("ADMINISTRATOR", { units: [{ ...detail(A, "Unidade A"), lastChange: BIA }] });
+    await ready();
+    expect(screen.getByText("Última alteração em 20/05/2026 12h30 por Bia")).toBeInTheDocument();
+  });
+
+  it("CA9: sem registro mostra 'Ainda sem alterações'", async () => {
+    setup("COORDINATOR");
+    await ready();
+    expect(screen.getByText("Ainda sem alterações")).toBeInTheDocument();
+  });
+
+  it("CA10: o 409 abre a janela com quem alterou, os campos diferentes com os dois valores e os dois botões; a gravação levou o If-Match lido", async () => {
+    const user = userEvent.setup();
+    const { sent } = conflicting();
+    await ready();
+    await user.clear(screen.getByLabelText("Nome da unidade"));
+    await user.type(screen.getByLabelText("Nome da unidade"), "Meu nome");
+    await user.click(await screen.findByRole("checkbox", { name: "Editar a agenda" }));
+    await user.click(save());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    expect(sent[0]?.version).toBe("3");
+    expect(await within(dialog).findByText("Última alteração em 20/05/2026 12h30 por Bia")).toBeInTheDocument();
+    const nome = within(dialog).getByText("Nome da unidade").closest("li")!;
+    expect(nome).toHaveTextContent("Seu valor: Meu nome");
+    expect(nome).toHaveTextContent("Valor atual: Nome da outra pessoa");
+    const agenda = within(dialog).getByText("Editar a agenda").closest("li")!;
+    expect(agenda).toHaveTextContent("Seu valor: Não");
+    expect(agenda).toHaveTextContent("Valor atual: Sim");
+    expect(within(dialog).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(dialog).getByRole("button", { name: "Recarregar" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Sobrescrever" })).toBeInTheDocument();
+  });
+
+  it("CA10: Recarregar preenche o formulário com o atual, fecha e devolve o foco ao Salvar", async () => {
+    const user = userEvent.setup();
+    conflicting();
+    await ready();
+    await user.clear(screen.getByLabelText("Nome da unidade"));
+    await user.type(screen.getByLabelText("Nome da unidade"), "Meu nome");
+    await user.click(save());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await user.click(await within(dialog).findByRole("button", { name: "Recarregar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByLabelText("Nome da unidade")).toHaveValue("Nome da outra pessoa");
+    expect(save()).toBeDisabled();
+  });
+
+  it("CA10: Sobrescrever regrava com a versão atual e mostra 'Dados salvos.'", async () => {
+    const user = userEvent.setup();
+    const { sent } = conflicting([409, 200]);
+    await ready();
+    await user.clear(screen.getByLabelText("Nome da unidade"));
+    await user.type(screen.getByLabelText("Nome da unidade"), "Meu nome");
+    await user.click(save());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await user.click(await within(dialog).findByRole("button", { name: "Sobrescrever" }));
+    expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(sent.map((s) => s.version)).toEqual(["3", "3"]);
+    expect(sent[1]?.body.name).toBe("Meu nome");
+    expect(screen.getByLabelText("Nome da unidade")).toHaveValue("Meu nome");
+  });
+
+  it("CA10: novo 409 durante o Sobrescrever reabre o aviso", async () => {
+    const user = userEvent.setup();
+    const { sent, reads } = conflicting([409, 409]);
+    await ready();
+    await user.type(screen.getByLabelText("Nome da unidade"), "!");
+    await user.click(save());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await user.click(await within(dialog).findByRole("button", { name: "Sobrescrever" }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    await waitFor(() => expect(reads.count).toBe(3));
+    expect(await within(screen.getByRole("dialog")).findByRole("button", { name: "Sobrescrever" })).toBeEnabled();
+    expect(screen.queryByText("Dados salvos.")).not.toBeInTheDocument();
+  });
+
+  it("CA10: erro de rede na consulta do estado atual mostra o erro com 'Tentar de novo'", async () => {
+    const user = userEvent.setup();
+    conflicting();
+    await ready();
+    await user.type(screen.getByLabelText("Nome da unidade"), "!");
+    server.use(http.get("/api/v1/units/:id", () => HttpResponse.error(), { once: true }));
+    await user.click(save());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    expect(await within(dialog).findByText("Não foi possível consultar o estado atual. Nada foi alterado.")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Tentar de novo" }));
+    expect(await within(dialog).findByRole("button", { name: "Sobrescrever" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["claro", false],
+    ["escuro", true],
+  ])("CA11: a janela de conflito a 360 px não tem violações no axe no tema %s", async (_n, dark) => {
+    const user = userEvent.setup();
+    setDevicePrefersDark(dark);
+    window.innerWidth = 360;
+    conflicting();
+    await ready();
+    await user.type(screen.getByLabelText("Nome da unidade"), "!");
+    await user.click(save());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    await within(dialog).findByRole("button", { name: "Sobrescrever" });
+    expect(await axeViolations(document.body)).toEqual([]);
   });
 });

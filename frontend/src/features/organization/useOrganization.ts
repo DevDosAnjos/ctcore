@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { LastChangeValue } from "@/components/LastChange";
 import { api, ApiError } from "@/lib/api";
 
 // Espelha OrganizationView do OpenAPI (docs/openapi.yaml). `logoUrl` é a URL temporária assinada.
@@ -7,6 +8,8 @@ export interface OrganizationView {
   color: string | null;
   holderDocument: string | null;
   logoUrl: string | null;
+  version: number;
+  lastChange: LastChangeValue | null;
 }
 export interface OrganizationUpdate {
   name: string;
@@ -45,7 +48,11 @@ export function useOrganization() {
     status,
     view: current?.view,
     retry: () => setTick((n) => n + 1),
-    save: (body: OrganizationUpdate) => apply(api<OrganizationView>("/organization", { method: "PATCH", body })),
+    // RNF-15: sem versão explícita vai a lida; "Sobrescrever" manda a versão atual consultada.
+    save: (body: OrganizationUpdate, version = current?.view?.version) =>
+      apply(api<OrganizationView>("/organization", { method: "PATCH", body, headers: { "If-Match": String(version) } })),
+    fetchCurrent: () => api<OrganizationView>("/organization"),
+    adopt: (view: OrganizationView) => setDone({ tick, view }),
     uploadLogo: (logo: Blob) => {
       const form = new FormData();
       form.append("file", logo, "logo.png");
