@@ -290,6 +290,35 @@ const teacherFor = (id: string) => {
 // D3: o Coordenador inativa qualquer um; o Administrador só quem não tem unidade fora do alcance dele.
 const teacherInReach = (t: MockTeacher) => activeRole() === "COORDINATOR" || t.units.every((u) => u.id === ADMIN_UNIT);
 const teacherKey = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+// Turmas (RF-TUR-01), fixas: a faixa etária é resolvida pelo nome na hora, porque as faixas do mock têm id novo a cada carga.
+const TEACHER_ANA = "00000000-0000-0000-0000-000000000501";
+const TEACHER_JOAO = "00000000-0000-0000-0000-000000000502";
+const TEACHER_MARCOS = "00000000-0000-0000-0000-000000000503";
+type MockClass = { id: string; name: string; unitId: string; modalityId: string; ageRange: string | null; schedule: [number, string, string][]; head: string; assistants: string[]; capacity: number | null; status: string };
+const mockClasses: MockClass[] = [
+  { id: "00000000-0000-0000-0000-000000000601", name: "Jiu-Jitsu Adulto", unitId: ADMIN_UNIT, modalityId: modalityCatalog[3].id, ageRange: "Adulto", schedule: [[1, "19:00", "20:00"], [3, "19:00", "20:00"]], head: TEACHER_ANA, assistants: [TEACHER_JOAO], capacity: 30, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000602", name: "Judô Infantil", unitId: ADMIN_UNIT, modalityId: modalityCatalog[4].id, ageRange: "Infantil", schedule: [[2, "18:00", "19:00"], [4, "18:00", "19:00"]], head: TEACHER_JOAO, assistants: [], capacity: 20, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000603", name: "Boxe Noturno", unitId: UNIT_NORTE, modalityId: modalityCatalog[0].id, ageRange: null, schedule: [[5, "20:00", "21:30"]], head: TEACHER_MARCOS, assistants: [], capacity: null, status: "INACTIVE" },
+];
+const classRow = (c: MockClass) => {
+  const unit = units.find((u) => u.id === c.unitId)!;
+  const range = ageRanges.find((r) => r.name === c.ageRange);
+  const person = (id: string) => ({ id, name: mockTeachers.find((t) => t.id === id)!.name });
+  return {
+    id: c.id,
+    name: c.name,
+    unit: { id: unit.id, name: unit.name },
+    modality: { id: c.modalityId, name: modalityCatalog.find((m) => m.id === c.modalityId)!.name },
+    ageRange: range ?? null,
+    schedule: c.schedule.map(([weekday, startsAt, endsAt]) => ({ weekday, startsAt, endsAt })),
+    head: person(c.head),
+    assistants: c.assistants.map(person),
+    activeStudents: 0,
+    capacity: c.capacity,
+    overCapacity: false,
+    status: c.status,
+  };
+};
 // RF-PRO-03: opções do formulário (modalidades ativas; as dos professores fixos contam como ativas) e validação como no servidor.
 const SEEDED_MODALITIES = [3, 4, 0].map((i) => modalityCatalog[i].id);
 const teacherOptions = () =>
@@ -1042,6 +1071,43 @@ export const routes: Route[] = [
         .filter((t) => teacherKey(t.name).includes(q) && (!status || t.status === status))
         .filter((t) => !modalityId || t.modalities.some((m) => m.id === modalityId))
         .filter((t) => !unitId || (role === "COORDINATOR" || unitId === ADMIN_UNIT) && t.units.some((u) => u.id === unitId))
+        .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-TUR-01: Coordenador e Administrador (só as turmas da unidade dele); Professor e portal 403. Sem `status`, Ativas e Desativadas; filtros combinam.
+    method: "get",
+    path: "/classes",
+    resolver: ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const p = new URL(request.url).searchParams;
+      const bad: { field: string; message: string }[] = [];
+      const status = p.get("status");
+      const weekday = p.get("weekday");
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      if (status !== null && !["ACTIVE", "INACTIVE"].includes(status)) bad.push({ field: "status", message: "valor inválido" });
+      if (weekday !== null && !(Number.isInteger(Number(weekday)) && Number(weekday) >= 1 && Number(weekday) <= 7)) bad.push({ field: "weekday", message: "deve ser de 1 a 7" });
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const modalityId = p.get("modalityId");
+      const teacherId = p.get("teacherId");
+      const ageRangeId = p.get("ageRangeId");
+      const unitId = p.get("unitId");
+      const found = mockClasses
+        .filter((c) => role === "COORDINATOR" || c.unitId === ADMIN_UNIT)
+        .map((c) => classRow(c))
+        .filter((c) => teacherKey(c.name).includes(q) && (!status || c.status === status))
+        .filter((c) => !modalityId || c.modality.id === modalityId)
+        .filter((c) => !teacherId || c.head.id === teacherId || c.assistants.some((a) => a.id === teacherId))
+        .filter((c) => !ageRangeId || c.ageRange?.id === ageRangeId)
+        .filter((c) => !weekday || c.schedule.some((s) => s.weekday === Number(weekday)))
+        .filter((c) => !unitId || c.unit.id === unitId)
         .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
     },

@@ -802,13 +802,40 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /classes:
+    get:
+      summary: Lista paginada de turmas da organização do vínculo ativo (RF-TUR-01). Coordenador e Administrador.
+      description: |
+        Ordenada por nome e depois id (`sort=name`). O Coordenador vê todas as unidades; o Administrador, as dele (`unitId` fora do alcance
+        devolve lista vazia). Professor, Aluno e Responsável recebem 403. Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e
+        maiúsculas; `teacherId` casa titular e auxiliar; `weekday` vai de 1 (segunda) a 7 (domingo); os filtros combinam (E).
+        `activeStudents` vale 0 até existir matrícula; `overCapacity` só avisa (RN-TUR-02). A resposta não traz link do grupo nem contato.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: teacherId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: ageRangeId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: weekday, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 7 } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
+      responses:
+        '200':
+          description: Página de turmas.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /teachers:
     get:
       summary: Lista paginada de professores da organização do vínculo ativo (RF-PRO-01). Coordenador e Administrador.
       description: |
         Ordenada por nome e depois id (`sort=name`). O Coordenador vê todos; o Administrador vê os professores com ao menos uma das suas
         unidades (e todas as unidades deles); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e Responsável recebem 403.
-        Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros combinam (E). `classCount` é 0 até existirem turmas.
+        Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros combinam (E). `classCount` conta as turmas ativas em que é titular ou auxiliar.
         `photoUrl` é uma URL temporária assinada. A resposta nunca traz telefone nem e-mail (RN-PRO-04).
       security: [{ sessionCookie: [] }]
       parameters:
@@ -986,7 +1013,7 @@ paths:
     get:
       summary: Pré-visualiza a inativação do professor (RF-PRO-04). Coordenador e Administrador.
       description: |
-        Não altera nada. `headClasses` lista as turmas em que o professor é titular e que ficarão sem titular (vazia até a Sprint 05).
+        Não altera nada. `headClasses` lista as turmas em que o professor é titular e que ficarão sem titular (turmas ativas).
         `canDeactivate` é falso se o professor já está inativo ou, para o Administrador, se alguma unidade do professor (ativa ou não)
         está fora do alcance dele. Administrador sem alcance sobre o professor: 404.
       security: [{ sessionCookie: [] }]
@@ -1540,6 +1567,51 @@ components:
         status: { type: string, enum: [ACTIVE, INACTIVE] }
         directoryConsent: { type: boolean }
         access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED], description: Estado do vínculo TEACHER da conta; NONE sem conta ou sem vínculo. }
+    ClassRow:
+      type: object
+      required: [id, name, unit, modality, ageRange, schedule, head, assistants, activeStudents, capacity, overCapacity, status]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name, minAge, maxAge]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            minAge: { type: integer }
+            maxAge: { type: integer, nullable: true }
+        schedule:
+          type: array
+          description: Um horário por dia da semana, ordenado por dia (1 segunda a 7 domingo); horas de parede da unidade (`HH:mm`).
+          items:
+            type: object
+            required: [weekday, startsAt, endsAt]
+            properties:
+              weekday: { type: integer, minimum: 1, maximum: 7 }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+        head: { $ref: '#/components/schemas/ClassRef' }
+        assistants: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+        activeStudents: { type: integer, minimum: 0 }
+        capacity: { type: integer, minimum: 1, maximum: 200, nullable: true }
+        overCapacity: { type: boolean, description: Verdadeiro quando `activeStudents` passa de `capacity`; só avisa. }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    ClassRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    ClassList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/ClassRow' } }
     TeacherList:
       allOf:
         - $ref: '#/components/schemas/Page'
@@ -1588,7 +1660,7 @@ components:
       properties:
         headClasses:
           type: array
-          description: Turmas que ficarão sem titular; vazia até a Sprint 05.
+          description: Turmas ativas que ficarão sem titular.
           items:
             type: object
             required: [id, name, role]

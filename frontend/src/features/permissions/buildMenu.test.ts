@@ -27,7 +27,7 @@ describe("buildMenu", () => {
     expect(buildMenu(mockPermissions(undefined), t, allAvailable)).toEqual([]);
   });
 
-  it("CA12 / CA19 / CA16 (#29), CA21 (#31) e #37: com o catálogo real, o Coordenador vê Unidade, Organização, Usuários e Unidades, o Administrador Unidade, Organização e Usuários e o Professor só o Início", () => {
+  it("CA12 / CA19 / CA16 (#29), CA21 (#31) e #37 e #46: com o catálogo real, o Coordenador vê Unidade, Organização, Usuários e Unidades, o Administrador Unidade, Organização e Usuários e o Professor só o Início", () => {
     const home = { id: "home", label: "menu.groups.home", items: [{ id: "home", label: "menu.items.home", href: "/" }] };
     expect(buildMenu(mockPermissions("TEACHER"), t)).toEqual([home]);
     const unit = { id: "unitSettings", label: "menu.items.unitSettings", href: "/configuracoes/unidade" };
@@ -36,10 +36,11 @@ describe("buildMenu", () => {
     const modalities = { id: "modalities", label: "menu.items.modalities", href: "/configuracoes/modalidades" };
     const ageRanges = { id: "ageRanges", label: "menu.items.ageRanges", href: "/configuracoes/faixas-etarias" };
     const units = { id: "units", label: "menu.items.units", href: "/configuracoes/unidades" };
+    const operation = { id: "operation", label: "menu.groups.operation", items: [{ id: "classes", label: "menu.items.classes", href: "/turmas" }] };
     const people = { id: "people", label: "menu.groups.people", items: [{ id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
     const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
-    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, people, settings([unit, organization, modalities, ageRanges, users, units])]);
-    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, people, settings([unit, organization, modalities, ageRanges, users])]);
+    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, operation, people, settings([unit, organization, modalities, ageRanges, users, units])]);
+    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, operation, people, settings([unit, organization, modalities, ageRanges, users])]);
   });
 });
 
