@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { Page, Query } from "@/components/query/QueryPage";
 
 // Espelham TeacherRow do OpenAPI (docs/openapi.yaml). Telefone e e-mail nunca vêm na lista (RN-PRO-04).
@@ -46,4 +46,50 @@ export function useTeacherFilterOptions() {
     };
   }, []);
   return options;
+}
+
+// Espelha TeacherDetail do OpenAPI (RF-PRO-02). Contato só vem aqui; classes e upcomingClasses vêm vazias até a Sprint 05.
+export interface TeacherDetail {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  bio: string | null;
+  email: string | null;
+  phone: string | null;
+  directoryConsent: boolean;
+  status: "ACTIVE" | "INACTIVE";
+  modalities: Teacher["modalities"];
+  units: Teacher["units"];
+  classes: { id: string; name: string; role: "HEAD" | "ASSISTANT" }[];
+  upcomingClasses: { classId: string; name: string; startsAt: string }[];
+  access: Teacher["access"];
+}
+
+export const grantAccess = (id: string, unitIds: string[]) => api<TeacherDetail>(`/teachers/${id}/access`, { method: "POST", body: { unitIds } });
+export const resendTeacherInvite = (id: string) => api<void>(`/teachers/${id}/access/resend`, { method: "POST" });
+
+type Loaded = { tick: number; id: string; teacher?: TeacherDetail; failure?: "forbidden" | "notFound" | "error" };
+
+// Painel do professor. O servidor decide o alcance: 403 vira "sem permissão" e 404 "não encontrado".
+export function useTeacher(id: string) {
+  const [tick, setTick] = useState(0);
+  const [done, setDone] = useState<Loaded>();
+  useEffect(() => {
+    let alive = true;
+    api<TeacherDetail>(`/teachers/${id}`).then(
+      (teacher) => alive && setDone({ tick, id, teacher }),
+      (e) => alive && setDone({ tick, id, failure: e instanceof ApiError && e.status === 403 ? "forbidden" : e instanceof ApiError && e.status === 404 ? "notFound" : "error" }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [id, tick]);
+  const current = done?.tick === tick && done.id === id ? done : undefined;
+  return {
+    status: !current ? "loading" : (current.failure ?? "ready"),
+    teacher: current?.teacher,
+    retry: () => setTick((n) => n + 1),
+    // Recarrega sem passar por "carregando" (depois de dar acesso ou reenviar).
+    refresh: async () => setDone({ tick, id, teacher: await api<TeacherDetail>(`/teachers/${id}`) }),
+  } as const;
 }

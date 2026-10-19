@@ -350,6 +350,54 @@
       "allModalities": "Todas as modalidades",
       "allUnits": "Todas as unidades",
       "allStatuses": "Todas"
+    },
+    "panel": {
+      "back": "Voltar aos professores",
+      "edit": "Editar",
+      "deactivate": "Inativar",
+      "resend": "Reenviar convite",
+      "resendDone": "Convite reenviado.",
+      "resendError": "Não foi possível reenviar o convite. Tente de novo mais tarde.",
+      "about": "Apresentação",
+      "noBio": "Sem apresentação.",
+      "contact": "Contato",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "none": "Não informado",
+      "graduations": "Graduação por modalidade",
+      "units": "Unidades",
+      "classes": "Turmas",
+      "noClasses": "Nenhuma turma ainda.",
+      "classLine": "{{name}} · {{role}}",
+      "classRoles": {
+        "HEAD": "Titular",
+        "ASSISTANT": "Auxiliar"
+      },
+      "upcoming": "Próximas aulas",
+      "noUpcoming": "Nenhuma aula agendada.",
+      "access": "Acesso ao sistema",
+      "accessStates": {
+        "NONE": "Sem acesso",
+        "PENDING": "Convite enviado",
+        "ACTIVE": "Acesso ativo",
+        "ENDED": "Acesso encerrado"
+      },
+      "notFoundTitle": "Professor não encontrado",
+      "notFoundText": "Ele não existe ou não está ao seu alcance.",
+      "grant": {
+        "button": "Dar acesso",
+        "title": "Dar acesso a {{name}}",
+        "explain": "O convite será enviado para {{email}}. Escolha as unidades do vínculo de Professor.",
+        "send": "Enviar convite",
+        "done": "Convite enviado.",
+        "errors": {
+          "ALREADY_LINKED": "O e-mail deste professor já está ligado a outro cadastro desta organização.",
+          "STAFF_LIMIT_REACHED": "A organização atingiu o limite de 200 usuários da gestão.",
+          "FORBIDDEN": "Você não tem permissão para dar acesso nestas unidades.",
+          "CONFLICT": "Este professor não pode receber acesso agora: ele está inativo ou já tem acesso.",
+          "generic": "Não foi possível enviar o convite. Tente de novo."
+        }
+      }
     }
   },
   "ageRanges": {

@@ -230,6 +230,77 @@ class TeacherIT extends OrganizationBase {
     }
 
     @Test
+    @DisplayName("RF-PRO-02 CA1, CA3: painel traz todos os campos com contato; a lista continua sem e-mail e telefone")
+    void detail() throws Exception {
+        var t = tenant();
+        UUID second = unit(t, "Zona Sul");
+        UUID jj = modality("Jiu-Jitsu");
+        UUID blue = level(t, jj, "Azul", 4);
+        UUID ana = teacher(t, "Ana", "ACTIVE", null, t.unitId(), second);
+        adminJdbc().update("update teacher set bio = 'Faixa azul' where id = ?", ana);
+        teaches(t, ana, jj, blue, 2);
+        teaches(t, ana, modality("Judô"), null, 0);
+        var c = who(t, Role.COORDINATOR);
+        var r = call(MockMvcRequestBuilders.get("/api/v1/teachers/" + ana), c).getResponse();
+        assertThat(r.getStatus()).isEqualTo(200);
+        var d = body(r);
+        assertThat(d.get("id").asText()).isEqualTo(ana.toString());
+        assertThat(d.get("name").asText()).isEqualTo("Ana");
+        assertThat(d.get("bio").asText()).isEqualTo("Faixa azul");
+        assertThat(d.get("email").asText()).isEqualTo("prof.secreto@synthetic.example");
+        assertThat(d.get("phone").asText()).isEqualTo("+55 11 98888-7777");
+        assertThat(d.get("directoryConsent").asBoolean()).isTrue();
+        assertThat(d.get("status").asText()).isEqualTo("ACTIVE");
+        assertThat(d.get("access").asText()).isEqualTo("NONE");
+        assertThat(d.get("photoUrl").isNull()).isTrue();
+        assertThat(d.get("units").findValuesAsText("name")).containsExactly("Unit", "Zona Sul");
+        assertThat(d.get("modalities").findValuesAsText("name")).containsExactly("Jiu-Jitsu", "Judô");
+        assertThat(d.get("modalities").get(0).get("level").asText()).isEqualTo("Azul");
+        assertThat(d.get("modalities").get(0).get("degree").asInt()).isEqualTo(2);
+        assertThat(d.get("classes")).isEmpty();
+        assertThat(d.get("upcomingClasses")).isEmpty();
+        assertThat(get("", c).getContentAsString()).doesNotContain("prof.secreto", "98888", "\"email\"", "\"phone\"");
+    }
+
+    @Test
+    @DisplayName("RF-PRO-02 CA2: Administrador só abre professor com unidade dele (e vê todas); demais perfis 403; anônimo 401; inexistente 404")
+    void detailPermissions() throws Exception {
+        var t = tenant();
+        UUID second = unit(t, "Zona Sul");
+        UUID shared = teacher(t, "Ana", "ACTIVE", null, t.unitId(), second);
+        UUID foreign = teacher(t, "Beto", "ACTIVE", null, second);
+        var admin = who(t, Role.ADMINISTRATOR);
+        var open = call(MockMvcRequestBuilders.get("/api/v1/teachers/" + shared), admin).getResponse();
+        assertThat(open.getStatus()).isEqualTo(200);
+        assertThat(body(open).get("units")).hasSize(2);
+        assertThat(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + foreign), admin).getResponse().getStatus()).isEqualTo(404);
+        var noUnits = new AccountPrincipal(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), t.orgId(), Role.ADMINISTRATOR, Set.of());
+        assertThat(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + shared), noUnits).getResponse().getStatus()).isEqualTo(404);
+        assertThat(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + UUID.randomUUID()), who(t, Role.COORDINATOR)).getResponse().getStatus()).isEqualTo(404);
+        for (Role role : new Role[] {Role.TEACHER, Role.STUDENT, Role.GUARDIAN}) {
+            assertThat(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + shared), who(t, role)).getResponse().getStatus()).as(role.name()).isEqualTo(403);
+        }
+        assertThat(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + shared), null).getResponse().getStatus()).isEqualTo(401);
+    }
+
+    @Test
+    @DisplayName("RF-PRO-02 CA2: id de outra organização é 404 e, com ctcore_app, a consulta direta não enxerga a linha")
+    void detailIsolation() throws Exception {
+        var a = tenant();
+        var b = tenant();
+        UUID tb = teacher(b, "Ana", "ACTIVE", null, b.unitId());
+        assertThat(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + tb), who(a, Role.COORDINATOR)).getResponse().getStatus()).isEqualTo(404);
+        try (Connection app = DriverManager.getConnection(POSTGRES.getJdbcUrl(), "ctcore_app", "synthetic_runtime"); Statement sql = app.createStatement()) {
+            app.setAutoCommit(false);
+            sql.execute("select set_config('app.organization_id', '" + a.orgId() + "', true)");
+            try (var rows = sql.executeQuery("select 1 from teacher where id = '" + tb + "'")) {
+                assertThat(rows.next()).isFalse();
+            }
+            app.rollback();
+        }
+    }
+
+    @Test
     @DisplayName("CA7: cada organização só vê os seus professores de mesmo nome; RLS com ctcore_app nas três tabelas")
     void isolation() throws Exception {
         var a = tenant();

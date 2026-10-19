@@ -90,6 +90,15 @@ describe("TeachersPage", () => {
     expect(calls.at(-1)!.get("size")).toBe("25");
   });
 
+  it("RF-PRO-02 CA9: o nome na linha leva ao painel do professor", async () => {
+    const user = userEvent.setup();
+    setup();
+    server.use(http.get("/api/v1/teachers/t1", () => HttpResponse.json({ ...all[0], bio: null, email: null, phone: null, classes: [], upcomingClasses: [] })));
+    await user.click(await screen.findByRole("link", { name: "Ana Souza" }));
+    expect(await screen.findByRole("heading", { name: "Ana Souza", level: 1 })).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma turma ainda.")).toBeInTheDocument();
+  });
+
   it("CA8: foto aparece quando há URL", async () => {
     setup("COORDINATOR", () => HttpResponse.json({ items: [teacher({ photoUrl: "https://files.example/foto.png" })], page: 1, size: 25, total: 1 }));
     await screen.findByText("Ana Souza");

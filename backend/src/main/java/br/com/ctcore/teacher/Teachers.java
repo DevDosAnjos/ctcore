@@ -1,6 +1,8 @@
 package br.com.ctcore.teacher;
 
+import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
+import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
@@ -44,6 +46,18 @@ public class Teachers {
     public record Row(UUID id, String name, String photoUrl, List<ModalityRef> modalities, List<UnitRef> units, int classCount,
             String status, boolean directoryConsent, String access) {}
 
+    /** Turmas e aulas (D1): sem tipo próprio até a Sprint 05; hoje a lista é sempre vazia. */
+    public record ClassRef(UUID id, String name, String role) {}
+
+    public record UpcomingClass(UUID classId, String name, java.time.OffsetDateTime startsAt) {}
+
+    public record Detail(UUID id, String name, String photoUrl, String bio, String email, String phone, boolean directoryConsent,
+            String status, List<ModalityRef> modalities, List<UnitRef> units, List<ClassRef> classes,
+            List<UpcomingClass> upcomingClasses, String access) {}
+
+    record Basic(UUID id, String name, String photo, String bio, String email, String phone, boolean consent, String status,
+            UUID accountId, String access) {}
+
     private record Head(UUID id, String name, String photo, String status, boolean consent, String access) {}
 
     private record Loaded(long total, List<Head> heads, Map<UUID, List<UnitRef>> units, Map<UUID, List<ModalityRef>> modalities) {}
@@ -61,9 +75,7 @@ public class Teachers {
     }
 
     public PageResponse<Row> list(AccountPrincipal who, String q, UUID modalityId, UUID unitId, String status, PageRequest page) {
-        if (who.role() == null || permissions.effective(who).get(Permission.TEACHERS) == Access.NONE) {
-            throw new AccessDeniedException("Permission denied");
-        }
+        requireAccess(who);
         String st = status == null || status.isBlank() ? null : status.strip().toUpperCase(Locale.ROOT);
         if (st != null && !STATUSES.contains(st)) throw new ApiValidationException("status", "valor inválido");
         boolean admin = who.role() == Role.ADMINISTRATOR;
@@ -106,27 +118,67 @@ public class Teachers {
             List<UUID> ids = heads.stream().map(Head::id).toList();
             Map<UUID, List<UnitRef>> units = new HashMap<>();
             Map<UUID, List<ModalityRef>> modalities = new HashMap<>();
-            if (!ids.isEmpty()) {
-                jdbc.sql("select tu.teacher_id, u.id, u.name from teacher_unit tu join unit u on u.id = tu.unit_id "
-                        + "where tu.organization_id = :org and tu.teacher_id in (:ids) order by u.name, u.id")
-                        .param("org", who.organizationId()).param("ids", ids)
-                        .query((rs, n) -> units.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
-                                .add(new UnitRef(rs.getObject(2, UUID.class), rs.getString(3)))).list();
-                jdbc.sql("select tm.teacher_id, m.id, m.name, g.name, tm.degree from teacher_modality tm join modality m on m.id = tm.modality_id "
-                        + "left join graduation_level g on g.id = tm.level_id where tm.organization_id = :org and tm.teacher_id in (:ids) order by m.name, m.id")
-                        .param("org", who.organizationId()).param("ids", ids)
-                        .query((rs, n) -> {
-                            String level = rs.getString(4);
-                            return modalities.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
-                                    .add(new ModalityRef(rs.getObject(2, UUID.class), rs.getString(3), level, level == null ? null : rs.getInt(5)));
-                        }).list();
-            }
+            refs(who.organizationId(), ids, units, modalities);
             return new Loaded(total, heads, units, modalities);
         });
         List<Row> rows = loaded.heads().stream().map(h -> new Row(h.id(), h.name(), photoUrl(h.photo()),
                 loaded.modalities().getOrDefault(h.id(), List.of()), loaded.units().getOrDefault(h.id(), List.of()), CLASS_COUNT,
                 h.status(), h.consent(), h.access())).toList();
         return PageResponse.of(rows, page, loaded.total());
+    }
+
+    private void refs(UUID org, List<UUID> ids, Map<UUID, List<UnitRef>> units, Map<UUID, List<ModalityRef>> modalities) {
+        if (ids.isEmpty()) return;
+        jdbc.sql("select tu.teacher_id, u.id, u.name from teacher_unit tu join unit u on u.id = tu.unit_id "
+                + "where tu.organization_id = :org and tu.teacher_id in (:ids) order by u.name, u.id")
+                .param("org", org).param("ids", ids)
+                .query((rs, n) -> units.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
+                        .add(new UnitRef(rs.getObject(2, UUID.class), rs.getString(3)))).list();
+        jdbc.sql("select tm.teacher_id, m.id, m.name, g.name, tm.degree from teacher_modality tm join modality m on m.id = tm.modality_id "
+                + "left join graduation_level g on g.id = tm.level_id where tm.organization_id = :org and tm.teacher_id in (:ids) order by m.name, m.id")
+                .param("org", org).param("ids", ids)
+                .query((rs, n) -> {
+                    String level = rs.getString(4);
+                    return modalities.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
+                            .add(new ModalityRef(rs.getObject(2, UUID.class), rs.getString(3), level, level == null ? null : rs.getInt(5)));
+                }).list();
+    }
+
+    /** RF-PRO-02: o painel. Contato só aqui (D2). Turmas e aulas vêm vazias até a Sprint 05 (D1): ponto único abaixo. */
+    public Detail get(AccountPrincipal who, UUID id) {
+        requireAccess(who);
+        return transactions.execute(() -> detail(who, id));
+    }
+
+    void requireAccess(AccountPrincipal who) {
+        if (who.role() == null || permissions.effective(who).get(Permission.TEACHERS) == Access.NONE) {
+            throw new AccessDeniedException("Permission denied");
+        }
+    }
+
+    /** Linha do professor dentro do alcance de quem chama; fora dele, é o mesmo 404 de quem não existe. Roda dentro da transação da organização. */
+    Basic find(AccountPrincipal who, UUID id) {
+        boolean admin = who.role() == Role.ADMINISTRATOR;
+        Set<UUID> reach = who.units() == null ? Set.of() : who.units();
+        if (admin && reach.isEmpty()) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        String scope = admin ? " and exists (select 1 from teacher_unit tr where tr.teacher_id = t.id and tr.unit_id in (:reach))" : "";
+        var query = jdbc.sql("select t.id, t.name, t.photo, t.bio, t.email, t.phone, t.directory_consent, t.status, t.account_id, "
+                + "coalesce(l.status, 'NONE') from teacher t left join account_link l on l.organization_id = t.organization_id "
+                + "and l.account_id = t.account_id and l.role = 'TEACHER' where t.organization_id = :org and t.id = :id" + scope)
+                .param("org", who.organizationId()).param("id", id);
+        if (admin) query = query.param("reach", reach);
+        return query.query((rs, n) -> new Basic(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
+                rs.getString(5), rs.getString(6), rs.getBoolean(7), rs.getString(8), rs.getObject(9, UUID.class), rs.getString(10)))
+                .optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+    }
+
+    Detail detail(AccountPrincipal who, UUID id) {
+        Basic b = find(who, id);
+        Map<UUID, List<UnitRef>> units = new HashMap<>();
+        Map<UUID, List<ModalityRef>> modalities = new HashMap<>();
+        refs(who.organizationId(), List.of(id), units, modalities);
+        return new Detail(b.id(), b.name(), photoUrl(b.photo()), b.bio(), b.email(), b.phone(), b.consent(), b.status(),
+                modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), List.of(), List.of(), b.access());
     }
 
     private String photoUrl(String photo) {

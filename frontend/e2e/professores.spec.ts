@@ -23,3 +23,22 @@ test("@critical Coordenador filtra a lista de professores", async ({ page }) => 
   await expect(page.getByText("João Pereira")).toBeVisible();
   await expect(page.getByText("Ana Souza")).toHaveCount(0);
 });
+
+// RF-PRO-02 / RN-PRO-02: o Coordenador abre o painel de um professor com e-mail e sem acesso, dá acesso e vê o convite enviado.
+test("@critical Coordenador dá acesso a um professor", async ({ page }) => {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill("ana@exemplo.com");
+  await page.getByLabel("Senha").fill("segredo123");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+  await open(page, "/professores");
+  await page.getByRole("link", { name: "João Pereira" }).click(); // pelo roteador, sem recarregar
+  await expect(page.getByRole("heading", { name: "João Pereira", level: 1 })).toBeVisible();
+  await expect(page.getByText("Sem acesso", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Dar acesso" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Enviar convite" }).click();
+  await expect(page.getByText("Convite enviado", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reenviar convite" })).toBeVisible();
+});
