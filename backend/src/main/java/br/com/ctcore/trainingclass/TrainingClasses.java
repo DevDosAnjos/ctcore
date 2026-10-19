@@ -12,6 +12,7 @@ import br.com.ctcore.modality.Modalities;
 import br.com.ctcore.permission.Access;
 import br.com.ctcore.permission.Permission;
 import br.com.ctcore.permission.Permissions;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,7 +54,13 @@ public class TrainingClasses {
 
     public record Detail(UUID id, String name, String status, Ref unit, Ref modality, AgeRangeRef ageRange, List<Slot> schedule, Ref head,
             List<Ref> assistants, Integer capacity, int activeStudents, boolean overCapacity, String groupLink, NextClass nextClass,
-            List<Student> students, Deactivation deactivation) {}
+            List<Student> students, Deactivation deactivation,
+            @JsonInclude(JsonInclude.Include.NON_NULL) Boolean scheduleChanged) {
+        Detail withScheduleChanged(boolean changed) {
+            return new Detail(id, name, status, unit, modality, ageRange, schedule, head, assistants, capacity, activeStudents, overCapacity,
+                    groupLink, nextClass, students, deactivation, changed);
+        }
+    }
 
     private record Head(UUID id, String name, Ref unit, Ref modality, AgeRangeRef ageRange, Ref head, Integer capacity, String status) {}
 
@@ -155,7 +162,7 @@ public class TrainingClasses {
                         .add(new Ref(rs.getObject(2, UUID.class), rs.getString(3)))).list();
     }
 
-    private void requireAccess(AccountPrincipal who) {
+    void requireAccess(AccountPrincipal who) {
         if (who.role() == null || permissions.effective(who).get(Permission.CLASSES_MANAGE) == Access.NONE) {
             throw new AccessDeniedException("Permission denied");
         }
@@ -189,7 +196,7 @@ public class TrainingClasses {
             int blocking = primaryStudents(id);
             return new Detail(h.id(), h.name(), h.status(), h.unit(), h.modality(), h.ageRange(), schedule.getOrDefault(id, List.of()), h.head(),
                     assistants.getOrDefault(id, List.of()), h.capacity(), students, overCapacity(students, h.capacity()), groupLink, nextClass(id),
-                    students(id), new Deactivation(h.status().equals("ACTIVE") && blocking == 0, blocking));
+                    students(id), new Deactivation(h.status().equals("ACTIVE") && blocking == 0, blocking), null);
         });
     }
 

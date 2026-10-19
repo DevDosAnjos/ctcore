@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import type { TFunction } from "i18next";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
+import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { usePermissions } from "@/features/permissions/usePermissions";
 import { ClassFilters } from "./ClassFilters";
+import { ClassFormDialog } from "./ClassFormDialog";
 import { fetchClasses, type TrainingClass } from "./useClasses";
 
 const columns = (t: TFunction): Column<TrainingClass>[] => [
@@ -61,9 +65,20 @@ const columns = (t: TFunction): Column<TrainingClass>[] => [
 
 function Content() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
+  const { permissions } = usePermissions();
+  const canManage = !!permissions && permissions.CLASSES_MANAGE !== "NONE";
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("classes.title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">{t("classes.title")}</h1>
+        {canManage && (
+          <Button className="min-h-11" onClick={() => setCreating(true)}>
+            {t("classes.newButton")}
+          </Button>
+        )}
+      </div>
       <p className="text-muted-foreground">{t("classes.intro")}</p>
       <QueryPage
         columns={columns(t)}
@@ -72,11 +87,12 @@ function Content() {
         filterKeys={["modalityId", "teacherId", "ageRangeId", "weekday", "unitId", "status"]}
         filters={(p) => <ClassFilters {...p} />}
       />
+      <ClassFormDialog open={creating} onClose={() => setCreating(false)} onSaved={(saved) => void navigate(`/turmas/${saved.id}`)} />
     </div>
   );
 }
 
-// RF-TUR-01: lista de turmas, só leitura; a barreira de dados é o servidor (403 vira "sem permissão" na própria lista).
+// RF-TUR-01 e RF-TUR-03: lista de turmas com "Nova turma"; a barreira de dados é o servidor (403 vira "sem permissão" na própria lista).
 export function ClassesPage() {
   return (
     <ManagementLayout activeId="classes">
