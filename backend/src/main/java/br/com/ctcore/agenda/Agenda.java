@@ -9,6 +9,7 @@ import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.permission.Access;
 import br.com.ctcore.permission.Permission;
 import br.com.ctcore.permission.Permissions;
+import br.com.ctcore.trainingclass.TrainingClasses;
 import br.com.ctcore.trainingclass.TrainingClasses.Ref;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.Clock;
@@ -16,6 +17,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
@@ -41,6 +43,11 @@ public class Agenda {
     public record Lesson(UUID id, String date, String startsAt, String endsAt, Status status, String cancelReason,
             @JsonProperty("class") Ref trainingClass, Ref unit, Ref modality, Ref teacher, boolean substitute, boolean canEdit, boolean canCancel) {}
 
+    /** RF-AGE-02: painel da aula. {@code head} só vem na substituição (D6). */
+    public record LessonDetail(UUID id, String date, String startsAt, String endsAt, Status status, String cancelReason,
+            @JsonProperty("class") Ref trainingClass, Ref unit, Ref modality, Ref teacher, Ref head, boolean substitute, int activeStudents,
+            int trialClasses, String groupLink, boolean canEdit, boolean canCancel, boolean canViewClass) {}
+
     public record NoClassDay(String startsOn, String endsOn, String reason) {}
 
     public record View(List<Ref> units, Ref unit, List<Ref> teachers, List<Ref> modalities, List<Lesson> lessons, List<NoClassDay> noClassDays) {}
@@ -51,8 +58,11 @@ public class Agenda {
     private final OrganizationTransactions transactions;
     private final Permissions permissions;
     private final Clock clock;
+    private final TrainingClasses classes;
 
-    public Agenda(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, Clock clock) {
+    public Agenda(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, Clock clock,
+            TrainingClasses classes) {
+        this.classes = classes;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.permissions = permissions;
@@ -152,6 +162,75 @@ public class Agenda {
                     + "order by m.name, m.id").param("org", org).param("unit", unit.id())
                     .query((rs, n) -> new Ref(rs.getObject(1, UUID.class), rs.getString(2))).list();
             return new View(units, unit, teachers, modalities, lessons, days);
+        });
+    }
+
+    /** RN-PRO-06: o substituto só abre a aula do início ao fim do dia dela, no fuso da unidade. */
+    static boolean substituteWindow(LocalDate lessonDate, ZoneId zone, Instant now) {
+        return !now.isBefore(lessonDate.atStartOfDay(zone).toInstant()) && now.isBefore(lessonDate.plusDays(1).atStartOfDay(zone).toInstant());
+    }
+
+    /** Aulas experimentais marcadas: 0 até a Sprint 18; é o único ponto a trocar. */
+    int trialClasses(UUID lessonId) {
+        return 0;
+    }
+
+    private record LessonRow(LessonDetail d, boolean inClass, boolean lessonTeacher, ZoneId zone, LocalDateTime start, LocalDateTime end,
+            boolean cancelled) {}
+
+    /** RF-AGE-02: leitura do painel. Fora do alcance, da janela do substituto ou de outra organização, 404. */
+    public LessonDetail lesson(AccountPrincipal who, UUID id) {
+        if (who == null || who.role() == null || permissions.effective(who).get(Permission.AGENDA_VIEW) == Access.NONE) {
+            throw new AccessDeniedException("Permission denied");
+        }
+        boolean teacher = who.role() == Role.TEACHER;
+        boolean admin = who.role() == Role.ADMINISTRATOR;
+        Set<UUID> reach = who.units() == null ? Set.of() : who.units();
+        return transactions.execute(() -> {
+            UUID org = who.organizationId();
+            UUID me = teacher
+                    ? jdbc.sql("select id from teacher where organization_id = :org and account_id = :acc")
+                            .param("org", org).param("acc", who.accountId()).query(UUID.class).optional().orElse(null)
+                    : null;
+            if (teacher && me == null) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+            LessonRow r = jdbc.sql("select l.id, l.lesson_date, l.starts_at, l.ends_at, l.cancelled, l.cancel_reason, c.id, c.name, m.id, m.name, t.id, t.name, "
+                    + "l.substitute, u.id, u.name, u.timezone, c.group_link, h.id, h.name, "
+                    + "(c.head_teacher_id = :me or exists (select 1 from training_class_assistant a where a.class_id = c.id and a.teacher_id = :me "
+                    + "and a.organization_id = :org)), l.teacher_id = :me "
+                    + "from lesson l join training_class c on c.id = l.class_id and c.organization_id = l.organization_id "
+                    + "join modality m on m.id = c.modality_id join teacher t on t.id = l.teacher_id and t.organization_id = l.organization_id "
+                    + "join teacher h on h.id = c.head_teacher_id and h.organization_id = l.organization_id "
+                    + "join unit u on u.id = l.unit_id and u.organization_id = l.organization_id "
+                    + "where l.organization_id = :org and l.id = :id")
+                    .param("org", org).param("id", id).param("me", me)
+                    .query((rs, n) -> {
+                        LocalDate day = rs.getObject(2, LocalDate.class);
+                        LocalTime s = rs.getObject(3, LocalTime.class);
+                        LocalTime e = rs.getObject(4, LocalTime.class);
+                        boolean sub = rs.getBoolean(13);
+                        LessonDetail d = new LessonDetail(rs.getObject(1, UUID.class), day.toString(), s.toString(), e.toString(), null,
+                                rs.getString(6), new Ref(rs.getObject(7, UUID.class), rs.getString(8)),
+                                new Ref(rs.getObject(14, UUID.class), rs.getString(15)), new Ref(rs.getObject(9, UUID.class), rs.getString(10)),
+                                new Ref(rs.getObject(11, UUID.class), rs.getString(12)),
+                                sub ? new Ref(rs.getObject(18, UUID.class), rs.getString(19)) : null, sub, 0, 0, rs.getString(17), false, false, false);
+                        return new LessonRow(d, rs.getBoolean(20), rs.getBoolean(21), ZoneId.of(rs.getString(16)), day.atTime(s), day.atTime(e),
+                                rs.getBoolean(5));
+                    }).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+            LessonDetail d = r.d();
+            UUID unitId = d.unit().id();
+            if (admin && !reach.contains(unitId)) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+            Instant now = clock.instant();
+            if (teacher && !r.inClass() && !(r.lessonTeacher() && d.substitute() && substituteWindow(LocalDate.parse(d.date()), r.zone(), now))) {
+                throw new ApiStatusException(ErrorCode.NOT_FOUND);
+            }
+            LocalDateTime local = LocalDateTime.ofInstant(now, r.zone());
+            Status st = status(r.cancelled(), r.start(), r.end(), local);
+            boolean editPermission = permissions.grant(who, Permission.AGENDA_EDIT, unitId) != Access.NONE;
+            Can can = can(who.role(), editPermission, r.inClass() || r.lessonTeacher(), st, r.end(), local);
+            boolean viewClass = permissions.effective(who).get(Permission.CLASSES_MANAGE) != Access.NONE && (!admin || reach.contains(unitId));
+            return new LessonDetail(d.id(), d.date(), d.startsAt(), d.endsAt(), st, st == Status.CANCELLED ? d.cancelReason() : null,
+                    d.trainingClass(), d.unit(), d.modality(), d.teacher(), d.head(), d.substitute(), classes.activeStudentsOf(d.trainingClass().id()),
+                    trialClasses(d.id()), d.groupLink(), can.edit(), can.cancel(), viewClass);
         });
     }
 

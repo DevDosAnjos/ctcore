@@ -331,6 +331,29 @@ const classDetail = (c: MockClass) => ({
   deactivation: { allowed: c.status === "ACTIVE" && !c.blocking, blockingStudents: c.blocking ?? 0 },
 });
 // Quem chama: 401 sem sessão, 403 sem CLASSES_MANAGE, 404 fora do alcance (Administrador) ou inexistente.
+// RF-AGE-01: a aula de uma turma numa data (o id junta turma, data e início). Hoje é dia sem aula; a de quarta do Jiu-Jitsu é substituição.
+const mockLesson = (c: MockClass, unit: { id: string; name: string }, date: string, wd: number, startsAt: string, endsAt: string, today: string) => {
+  const row = classRow(c);
+  const substitute = c.id.endsWith("601") && wd === 3;
+  const teacher = substitute ? { id: TEACHER_JOAO, name: mockTeachers.find((x) => x.id === TEACHER_JOAO)!.name } : row.head;
+  const cancelled = date === today;
+  const future = date > today;
+  return {
+    id: `${c.id}-${date}-${startsAt}`,
+    date,
+    startsAt,
+    endsAt,
+    status: cancelled ? "CANCELLED" : future ? "SCHEDULED" : "COMPLETED",
+    cancelReason: cancelled ? "Feriado sintético" : null,
+    class: { id: c.id, name: c.name },
+    unit: { id: unit.id, name: unit.name },
+    modality: row.modality,
+    teacher,
+    substitute,
+    canEdit: !cancelled,
+    canCancel: !cancelled && future,
+  };
+};
 const classFor = (id: string) => {
   if (!loggedIn) return unauthenticated();
   const role = activeRole();
@@ -1253,27 +1276,9 @@ export const routes: Route[] = [
         const weekday = ((new Date(t).getUTCDay() + 6) % 7) + 1;
         for (const c of mockClasses.filter((k) => k.status === "ACTIVE" && k.unitId === unit.id)) {
           for (const [wd, startsAt, endsAt] of c.schedule.filter(([d]) => d === weekday)) {
-            const row = classRow(c);
-            const substitute = c.id.endsWith("601") && wd === 3;
-            const teacher = substitute ? { id: TEACHER_JOAO, name: mockTeachers.find((x) => x.id === TEACHER_JOAO)!.name } : row.head;
-            if ((teacherId && teacher.id !== teacherId) || (modalityId && row.modality.id !== modalityId)) continue;
-            const cancelled = date === today;
-            const future = date > today;
-            lessons.push({
-              id: `${c.id}-${date}-${startsAt}`,
-              date,
-              startsAt,
-              endsAt,
-              status: cancelled ? "CANCELLED" : future ? "SCHEDULED" : "COMPLETED",
-              cancelReason: cancelled ? "Feriado sintético" : null,
-              class: { id: c.id, name: c.name },
-              unit: { id: unit.id, name: unit.name },
-              modality: row.modality,
-              teacher,
-              substitute,
-              canEdit: !cancelled,
-              canCancel: !cancelled && future,
-            });
+            const lesson = mockLesson(c, unit, date, wd, startsAt, endsAt, today);
+            if ((teacherId && lesson.teacher.id !== teacherId) || (modalityId && lesson.modality.id !== modalityId)) continue;
+            lessons.push(lesson);
           }
         }
       }
@@ -1285,6 +1290,34 @@ export const routes: Route[] = [
         modalities: teacherOptions().map(({ id, name }) => ({ id, name })),
         lessons: lessons.sort((a, b) => `${(a as { date: string; startsAt: string }).date}${(a as { startsAt: string }).startsAt}`.localeCompare(`${(b as { date: string }).date}${(b as { startsAt: string }).startsAt}`)),
         noClassDays,
+      });
+    },
+  },
+  {
+    // RF-AGE-02: painel da aula; o id é o da lista (turma, data e início). Administrador só da unidade dele (404); Professor sem acesso a turmas.
+    method: "get",
+    path: "/agenda/lessons/{id}",
+    resolver: ({ params }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
+      const m = /^(.+)-(\d{4}-\d{2}-\d{2})-(\d{2}:\d{2})$/.exec(params.id as string);
+      const c = m && mockClasses.find((k) => k.id === m[1] && k.status === "ACTIVE" && (role !== "ADMINISTRATOR" || k.unitId === ADMIN_UNIT));
+      const unit = c && units.find((u) => u.id === c.unitId);
+      const slot = c && m && c.schedule.find(([d, s]) => s === m[3] && d === ((new Date(`${m[2]}T12:00:00Z`).getUTCDay() + 6) % 7) + 1);
+      if (!m || !c || !unit || !slot) return error(404, "NOT_FOUND", "Não encontrado.");
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const { canEdit, canCancel, ...lesson } = mockLesson(c, unit, m[2], slot[0], slot[1], slot[2], today);
+      return HttpResponse.json({
+        ...lesson,
+        head: lesson.substitute ? classRow(c).head : null,
+        activeStudents: 0,
+        trialClasses: 0,
+        groupLink: c.groupLink ?? null,
+        canEdit: role === "TEACHER" ? false : canEdit,
+        canCancel: role === "TEACHER" ? false : canCancel,
+        canViewClass: role !== "TEACHER",
       });
     },
   },

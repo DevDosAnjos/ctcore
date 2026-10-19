@@ -4,6 +4,7 @@ import br.com.ctcore.identity.AccountPrincipal;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,5 +24,11 @@ class AgendaController {
             @RequestParam(required = false) String to, @RequestParam(required = false) UUID unitId,
             @RequestParam(required = false) UUID teacherId, @RequestParam(required = false) UUID modalityId) {
         return agenda.view(who, new Agenda.Filter(from, to, unitId, teacherId, modalityId));
+    }
+
+    /** RF-AGE-02: painel da aula. */
+    @GetMapping("/lessons/{id}")
+    Agenda.LessonDetail lesson(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
+        return agenda.lesson(who, id);
     }
 }

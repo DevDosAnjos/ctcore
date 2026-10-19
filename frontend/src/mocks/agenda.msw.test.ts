@@ -59,3 +59,66 @@ describe("agenda x OpenAPI (RF-AGE-01, CA17)", () => {
     expect((await get(week())).status).toBe(403);
   });
 });
+
+describe("painel da aula x OpenAPI (RF-AGE-02)", () => {
+  const lessonOf = async (
+    pick: (l: { substitute: boolean }) => boolean = () => true,
+  ) => {
+    const all = (
+      await (
+        await get(
+          `from=${addDays(todayIso(), 1)}&to=${addDays(todayIso(), 14)}`,
+        )
+      ).json()
+    ).lessons;
+    return all.find(pick);
+  };
+
+  it("sem sessão 401; contrato declara 200, 400, 401, 403 e 404", async () => {
+    expect((await fetch("/api/v1/agenda/lessons/x")).status).toBe(401);
+    expect(
+      Object.keys(openapi.paths["/agenda/lessons/{id}"].get.responses),
+    ).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404"]));
+  });
+
+  it("Coordenador: corpo no formato do contrato; titular só na substituição; Professor sem canViewClass", async () => {
+    await login("ana@exemplo.com");
+    const plain = await lessonOf((l) => !l.substitute);
+    const res = await fetch(`/api/v1/agenda/lessons/${plain.id}`);
+    expect(res.status).toBe(200);
+    const detail = await res.json();
+    expect(Object.keys(detail).sort()).toEqual(
+      [...openapi.components.schemas.LessonDetail.required].sort(),
+    );
+    expect(detail).toMatchObject({
+      head: null,
+      activeStudents: 0,
+      trialClasses: 0,
+      canViewClass: true,
+    });
+    expect(JSON.stringify(detail)).not.toMatch(/espera|presen|frequ/i);
+    const sub = await lessonOf((l) => l.substitute);
+    const swapped = await (
+      await fetch(`/api/v1/agenda/lessons/${sub.id}`)
+    ).json();
+    expect(swapped.head).not.toBeNull();
+    expect(swapped.head.id).not.toBe(swapped.teacher.id);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect(
+      (await (await fetch(`/api/v1/agenda/lessons/${plain.id}`)).json())
+        .canViewClass,
+    ).toBe(false);
+  });
+
+  it("id desconhecido 404; portal 403", async () => {
+    await login("ana@exemplo.com");
+    expect((await fetch("/api/v1/agenda/lessons/inexistente")).status).toBe(
+      404,
+    );
+    const known = await lessonOf();
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000012");
+    expect((await fetch(`/api/v1/agenda/lessons/${known.id}`)).status).toBe(
+      403,
+    );
+  });
+});

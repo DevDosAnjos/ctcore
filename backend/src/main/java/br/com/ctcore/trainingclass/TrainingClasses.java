@@ -235,6 +235,11 @@ public class TrainingClasses {
         return 0;
     }
 
+    /** Mesmo ponto para outros pacotes (painel da aula, RF-AGE-02). */
+    public int activeStudentsOf(UUID classId) {
+        return activeStudents(classId);
+    }
+
     /** RN-TUR-02: a capacidade só avisa. */
     static boolean overCapacity(int activeStudents, Integer capacity) {
         return capacity != null && activeStudents > capacity;

@@ -24,4 +24,13 @@ test("@critical Coordenador abre a Agenda", async ({ page }) => {
   await expect(page.getByText("Jiu-Jitsu Adulto").first()).toBeVisible();
   await page.getByRole("button", { name: "Hoje" }).click();
   await expect(page.getByText("Sem aula").first()).toBeVisible();
+
+  // RF-AGE-02: clicar numa aula abre o painel dela.
+  await page.getByRole("button", { name: "Próxima semana" }).click();
+  await page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).first().click();
+  await expect(page.getByRole("heading", { name: "Jiu-Jitsu Adulto", level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ver turma" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Avisar turma" })).toBeDisabled();
+  await page.getByRole("link", { name: "Voltar à agenda" }).click();
+  await expect(page.getByRole("heading", { name: "Agenda", level: 1 })).toBeVisible();
 });
