@@ -802,6 +802,30 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /teachers:
+    get:
+      summary: Lista paginada de professores da organização do vínculo ativo (RF-PRO-01). Coordenador e Administrador.
+      description: |
+        Ordenada por nome e depois id (`sort=name`). O Coordenador vê todos; o Administrador vê os professores com ao menos uma das suas
+        unidades (e todas as unidades deles); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e Responsável recebem 403.
+        Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros combinam (E). `classCount` é 0 até existirem turmas.
+        `photoUrl` é uma URL temporária assinada. A resposta nunca traz telefone nem e-mail (RN-PRO-04).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
+      responses:
+        '200':
+          description: Página de professores.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /users:
     get:
       summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
@@ -1293,6 +1317,41 @@ components:
       properties:
         canManage: { type: boolean }
         items: { type: array, items: { $ref: '#/components/schemas/AgeRange' } }
+    TeacherRow:
+      type: object
+      required: [id, name, photoUrl, modalities, units, classCount, status, directoryConsent, access]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true, description: URL temporária assinada; nulo sem foto. }
+        modalities:
+          type: array
+          items:
+            type: object
+            required: [id, name, level, degree]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              level: { type: string, nullable: true, description: Nível de graduação no sistema da organização. }
+              degree: { type: integer, nullable: true, minimum: 0, maximum: 10 }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+        classCount: { type: integer, minimum: 0 }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        directoryConsent: { type: boolean }
+        access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED], description: Estado do vínculo TEACHER da conta; NONE sem conta ou sem vínculo. }
+    TeacherList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/TeacherRow' } }
     UnitSummary:
       type: object
       required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]

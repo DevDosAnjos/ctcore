@@ -36,9 +36,10 @@ describe("buildMenu", () => {
     const modalities = { id: "modalities", label: "menu.items.modalities", href: "/configuracoes/modalidades" };
     const ageRanges = { id: "ageRanges", label: "menu.items.ageRanges", href: "/configuracoes/faixas-etarias" };
     const units = { id: "units", label: "menu.items.units", href: "/configuracoes/unidades" };
+    const people = { id: "people", label: "menu.groups.people", items: [{ id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
     const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
-    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, settings([unit, organization, modalities, ageRanges, users, units])]);
-    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, settings([unit, organization, modalities, ageRanges, users])]);
+    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, people, settings([unit, organization, modalities, ageRanges, users, units])]);
+    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, people, settings([unit, organization, modalities, ageRanges, users])]);
   });
 });
 
