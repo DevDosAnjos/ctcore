@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,13 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 class ModalityIT extends OrganizationBase {
     @Autowired ObjectMapper json;
     @MockitoBean ModalityUsage usage;
+
+    /** O banco é compartilhado: pedidos prendem a conta por chave estrangeira e quebrariam os testes que apagam contas. */
+    @AfterEach
+    void cleanModalityTables() {
+        adminJdbc().update("delete from modality_request");
+        adminJdbc().update("delete from organization_modality");
+    }
 
     private static MockHttpServletRequestBuilder list() {
         return MockMvcRequestBuilders.get("/api/v1/modalities");

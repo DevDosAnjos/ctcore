@@ -8,6 +8,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +24,12 @@ class ModalityCatalogIT extends PostgresIT {
                 assertThatThrownBy(() -> sql.executeUpdate(denied)).hasMessageContaining("permission denied");
             }
         }
+    }
+
+    @AfterEach
+    void cleanModalityTables() {
+        adminJdbc().update("delete from modality_request");
+        adminJdbc().update("delete from organization_modality");
     }
 
     @Test

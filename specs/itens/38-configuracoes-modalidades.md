@@ -142,3 +142,17 @@ Achados: nenhum obrigatório; a sugestão da rodada 1 foi atendida.
 - Decisão D5: a tela usa `ORGANIZATION_SETTINGS` (Coordenador altera, Administrador só consulta). D6: o canvas não estava acessível; o dono confere o layout no PR.
 - Limitação: limites de 2 a 60 caracteres (nome) e 300 (observação) são suposição, ajustáveis só na validação.
 - Verificações do PR #263 falharam (job `backend`, `ci-gate`): `ReauthIT` e `AccountIT` (e outros que apagam contas) quebram com `update or delete on table "account" violates foreign key constraint "modality_request_requested_by_fkey"`; linhas de `modality_request` deixadas por `ModalityIT` impedem a limpeza de `account` nos testes que rodam depois. Corrigir na fase 3: limpar `modality_request` (e `organization_modality`) onde os testes apagam contas, ou fazer o `ModalityIT` limpar o que cria. Front-end, e2e, segurança e imagem do front-end passaram.
+
+### Correção da entrega
+- `ReauthIT`, `AccountIT` e outros quebravam com `modality_request_requested_by_fkey`: `ModalityIT` e `ModalityCatalogIT` deixavam linhas em `modality_request` e `organization_modality` no banco compartilhado — arquivos: `backend/src/test/java/br/com/ctcore/modality/ModalityIT.java`, `ModalityCatalogIT.java` (`@AfterEach` apaga as duas tabelas) — prova: `./backend/mvnw -f backend/pom.xml verify` → 243 testes, 0 falhas, BUILD SUCCESS
+Regressão: só testes mudaram; front-end não repetido.
+
+### Rodada 3 — OK — 2026-10-19, estado 8c1c468a276bbeff56d225641b7d616ddaa558fc
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA10, CA14 | PASSOU (mantido das rodadas 1 e 2) | `verify` completo passa de novo; só testes mudaram (`@AfterEach` em `ModalityIT` e `ModalityCatalogIT`) |
+| CA11 a CA13, CA15 | PASSOU (mantido da rodada 1) | nenhum arquivo do front-end mudou desde a rodada 2 |
+
+Comandos: `./backend/mvnw -f backend/pom.xml verify` → 243 testes de integração, 0 falhas, BUILD SUCCESS (a falha do PR #263, `modality_request_requested_by_fkey` em `ReauthIT`/`AccountIT`, não se repete). Diff desde a rodada 2: dois testes (limpeza de `modality_request` e `organization_modality`), `specs/backlog.md` e este arquivo; nenhum código de produção.
+Achados: nenhum.
