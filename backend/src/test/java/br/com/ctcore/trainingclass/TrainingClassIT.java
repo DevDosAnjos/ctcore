@@ -37,6 +37,7 @@ class TrainingClassIT extends OrganizationBase {
     void clean() {
         adminJdbc().update("delete from training_class_assistant");
         adminJdbc().update("delete from training_class_schedule");
+        adminJdbc().update("delete from lesson");
         adminJdbc().update("delete from training_class");
         adminJdbc().update("delete from teacher_unit");
         adminJdbc().update("delete from teacher");

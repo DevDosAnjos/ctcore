@@ -1220,6 +1220,75 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-AGE-01: Coordenador (todas as unidades), Administrador e Professor (a unidade dele); portal 403. As aulas saem das turmas ativas pelos
+    // horários semanais, como a tarefa diária do servidor; hoje é dia sem aula (as aulas de hoje nascem canceladas) e a de quarta do Jiu-Jitsu é substituição.
+    method: "get",
+    path: "/agenda",
+    resolver: ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
+      const p = new URL(request.url).searchParams;
+      const from = p.get("from");
+      const to = p.get("to");
+      const isDate = (v: string | null): v is string => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(`${v}T12:00:00Z`));
+      if (!isDate(from)) return classBad("from", "data inválida, use yyyy-MM-dd");
+      if (!isDate(to)) return classBad("to", "data inválida, use yyyy-MM-dd");
+      const day = 86400000;
+      const span = (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / day;
+      if (span < 0) return classBad("to", "não pode ser anterior a from");
+      if (span + 1 > 31) return classBad("to", "período de no máximo 31 dias");
+      const reach = units.filter((u) => u.active && (role === "COORDINATOR" || u.id === ADMIN_UNIT));
+      const sorted = [...reach].sort((a, b) => a.name.localeCompare(b.name));
+      const unitId = p.get("unitId");
+      const unit = unitId ? sorted.find((u) => u.id === unitId) : sorted[0];
+      if (!unit) return error(404, "NOT_FOUND", "Não encontrado.");
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const teacherId = p.get("teacherId");
+      const modalityId = p.get("modalityId");
+      const lessons: unknown[] = [];
+      for (let t = Date.parse(`${from}T12:00:00Z`); t <= Date.parse(`${to}T12:00:00Z`); t += day) {
+        const date = new Date(t).toISOString().slice(0, 10);
+        const weekday = ((new Date(t).getUTCDay() + 6) % 7) + 1;
+        for (const c of mockClasses.filter((k) => k.status === "ACTIVE" && k.unitId === unit.id)) {
+          for (const [wd, startsAt, endsAt] of c.schedule.filter(([d]) => d === weekday)) {
+            const row = classRow(c);
+            const substitute = c.id.endsWith("601") && wd === 3;
+            const teacher = substitute ? { id: TEACHER_JOAO, name: mockTeachers.find((x) => x.id === TEACHER_JOAO)!.name } : row.head;
+            if ((teacherId && teacher.id !== teacherId) || (modalityId && row.modality.id !== modalityId)) continue;
+            const cancelled = date === today;
+            const future = date > today;
+            lessons.push({
+              id: `${c.id}-${date}-${startsAt}`,
+              date,
+              startsAt,
+              endsAt,
+              status: cancelled ? "CANCELLED" : future ? "SCHEDULED" : "COMPLETED",
+              cancelReason: cancelled ? "Feriado sintético" : null,
+              class: { id: c.id, name: c.name },
+              unit: { id: unit.id, name: unit.name },
+              modality: row.modality,
+              teacher,
+              substitute,
+              canEdit: !cancelled,
+              canCancel: !cancelled && future,
+            });
+          }
+        }
+      }
+      const noClassDays = today >= from && today <= to ? [{ startsOn: today, endsOn: today, reason: "Feriado sintético" }] : [];
+      return HttpResponse.json({
+        units: sorted.map(({ id, name }) => ({ id, name })),
+        unit: { id: unit.id, name: unit.name },
+        teachers: mockTeachers.filter((t) => t.status === "ACTIVE" && t.units.some((x) => x.id === unit.id)).map(({ id, name }) => ({ id, name })),
+        modalities: teacherOptions().map(({ id, name }) => ({ id, name })),
+        lessons: lessons.sort((a, b) => `${(a as { date: string; startsAt: string }).date}${(a as { startsAt: string }).startsAt}`.localeCompare(`${(b as { date: string }).date}${(b as { startsAt: string }).startsAt}`)),
+        noClassDays,
+      });
+    },
+  },
+  {
     // RN-TUR-03: com aluno principal 409 HAS_PRIMARY_STUDENTS (contagem em fields); desativada 409; nada é apagado.
     method: "post",
     path: "/classes/{id}/deactivate",

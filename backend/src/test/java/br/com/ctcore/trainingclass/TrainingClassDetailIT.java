@@ -34,6 +34,7 @@ class TrainingClassDetailIT extends OrganizationBase {
         reset(classes);
         adminJdbc().update("delete from training_class_assistant");
         adminJdbc().update("delete from training_class_schedule");
+        adminJdbc().update("delete from lesson");
         adminJdbc().update("delete from training_class");
         adminJdbc().update("delete from teacher_unit");
         adminJdbc().update("delete from teacher");
@@ -89,6 +90,31 @@ class TrainingClassDetailIT extends OrganizationBase {
 
     private int audits(Tenant t) {
         return adminJdbc().queryForObject("select count(*) from audit_log where organization_id = ? and action = 'class.deactivated'", Integer.class, t.orgId());
+    }
+
+    private void lesson(Tenant t, UUID klass, UUID head, java.time.LocalDate date, boolean cancelled) {
+        adminJdbc().update("insert into lesson (id, organization_id, unit_id, class_id, lesson_date, starts_at, ends_at, teacher_id, cancelled) values (?, ?, ?, ?, ?, '19:00', '20:00', ?, ?)",
+                UUID.randomUUID(), t.orgId(), t.unitId(), klass, date, head, cancelled);
+    }
+
+    @Test
+    @DisplayName("CA16 (#49): próxima aula é a primeira não cancelada que ainda não terminou; sem aula ou só canceladas, nula")
+    void nextClass() throws Exception {
+        var t = tenant();
+        UUID id = fullClass(t);
+        UUID head = adminJdbc().queryForObject("select head_teacher_id from training_class where id = ?", UUID.class, id);
+        var today = java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
+        var coord = who(t, Role.COORDINATOR);
+        assertThat(body(get(id, coord)).get("nextClass").isNull()).isTrue();
+        lesson(t, id, head, today.minusDays(3), false);
+        lesson(t, id, head, today.plusDays(2), true);
+        assertThat(body(get(id, coord)).get("nextClass").isNull()).isTrue();
+        lesson(t, id, head, today.plusDays(9), false);
+        lesson(t, id, head, today.plusDays(5), false);
+        var next = body(get(id, coord)).get("nextClass");
+        assertThat(next.get("date").asText()).isEqualTo(today.plusDays(5).toString());
+        assertThat(next.get("startsAt").asText()).isEqualTo("19:00");
+        assertThat(next.get("endsAt").asText()).isEqualTo("20:00");
     }
 
     @Test

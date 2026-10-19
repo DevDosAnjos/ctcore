@@ -452,6 +452,50 @@
       }
     }
   },
+  "agenda": {
+    "title": "Agenda",
+    "intro": "As aulas da semana da sua unidade, com o professor, a modalidade e o que foi cancelado.",
+    "today": "Hoje",
+    "thisWeek": "Esta semana",
+    "prevWeek": "Semana anterior",
+    "nextWeek": "Próxima semana",
+    "prevDay": "Dia anterior",
+    "nextDay": "Próximo dia",
+    "weekLabel": "{{from}} a {{to}}",
+    "dayLabel": "{{day}}, {{date}}",
+    "gridCaption": "Aulas de {{from}} a {{to}}",
+    "time": "Horário",
+    "noClass": "Sem aula",
+    "cancelled": "Cancelada",
+    "substitute": "Substituição",
+    "emptyTitle": "Nenhuma aula neste período",
+    "emptyText": "Quando houver aulas nos dias e filtros escolhidos, elas aparecem aqui.",
+    "filters": {
+      "unit": "Unidade",
+      "teacher": "Professor",
+      "modality": "Modalidade",
+      "allTeachers": "Todos os professores",
+      "allModalities": "Todas as modalidades"
+    },
+    "weekdays": {
+      "1": "Seg",
+      "2": "Ter",
+      "3": "Qua",
+      "4": "Qui",
+      "5": "Sex",
+      "6": "Sáb",
+      "7": "Dom"
+    },
+    "weekdaysLong": {
+      "1": "Segunda-feira",
+      "2": "Terça-feira",
+      "3": "Quarta-feira",
+      "4": "Quinta-feira",
+      "5": "Sexta-feira",
+      "6": "Sábado",
+      "7": "Domingo"
+    }
+  },
   "classes": {
     "title": "Turmas",
     "intro": "Turmas das suas unidades, com os dias, os horários, o professor e a situação de cada uma.",

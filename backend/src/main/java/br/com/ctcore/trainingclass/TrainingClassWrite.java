@@ -1,5 +1,6 @@
 package br.com.ctcore.trainingclass;
 
+import br.com.ctcore.agenda.LessonGenerator;
 import br.com.ctcore.api.error.ApiError;
 import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
@@ -12,6 +13,7 @@ import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.modality.Modalities;
 import java.net.URI;
+import java.time.Clock;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -56,9 +58,13 @@ public class TrainingClassWrite {
     private final TrainingClasses classes;
     private final ClassScheduleChange scheduleChange;
     private final AuditService audit;
+    private final LessonGenerator lessons;
+    private final Clock clock;
 
     public TrainingClassWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, TrainingClasses classes,
-            ClassScheduleChange scheduleChange, AuditService audit) {
+            ClassScheduleChange scheduleChange, AuditService audit, LessonGenerator lessons, Clock clock) {
+        this.lessons = lessons;
+        this.clock = clock;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.classes = classes;
@@ -146,6 +152,7 @@ public class TrainingClassWrite {
                 throw nameTaken();
             }
             replaceChildren(who, id, c);
+            lessons.forClass(who.organizationId(), id, clock.instant(), actor(who), "CLASS_CREATED", ip); // RN-AGE-01 (D3)
             audit.record(new AuditEntry(actor(who), "class.created", "training_class", id.toString(), c.unitId(), null,
                     snapshot(c.name(), c.modalityId(), c.ageRangeId(), c.schedule(), c.capacity(), c.headId(), c.assistants(), c.groupLink(), null),
                     null, ip));
@@ -176,7 +183,7 @@ public class TrainingClassWrite {
             replaceChildren(who, id, c);
             boolean changed = !before.schedule().equals(c.schedule());
             boolean notify = changed && !Boolean.FALSE.equals(c.notifyClass());
-            if (changed) scheduleChange.changed(id, before.schedule(), c.schedule());
+            if (changed) scheduleChange.changed(id, before.schedule(), c.schedule(), actor(who), ip);
             Set<UUID> oldAssistants = new LinkedHashSet<>(before.assistants().stream().map(TrainingClasses.Ref::id).toList());
             Map<String, Object> old = snapshot(before.name(), before.modality().id(), before.ageRange() == null ? null : before.ageRange().id(),
                     before.schedule(), before.capacity(), before.head().id(), oldAssistants, before.groupLink(), before.groupLink());
