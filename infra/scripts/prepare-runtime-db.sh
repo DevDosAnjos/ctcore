@@ -29,5 +29,6 @@ select format('alter role %I login nosuperuser nocreatedb nocreaterole noinherit
 select format('grant connect on database %I to %I', current_database(), :'runtime_user') \gexec
 grant usage on schema public to :"runtime_user";
 grant select, insert, update, delete on all tables in schema public to :"runtime_user";
+select format('revoke insert, update, delete on modality from %I', :'runtime_user') where to_regclass('public.modality') is not null \gexec
 alter default privileges in schema public grant select, insert, update, delete on tables to :"runtime_user";
 SQL

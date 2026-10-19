@@ -73,6 +73,8 @@ export const resetMockSession = () => {
   unitDetails = {};
   staff = initialStaff();
   sessions = initialSessions();
+  activeModalities.clear();
+  modalityRequests = [];
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -115,6 +117,11 @@ const unitsAccess = () => {
   if (!loggedIn) return unauthenticated();
   return activeRole() === "COORDINATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
 };
+// Modalidades (RF-MOD-01), em memória: catálogo fixo de 14, ativas por organização e pedidos enviados.
+const MODALITY_NAMES = ["Boxe", "Capoeira", "Defesa pessoal", "Jiu-Jitsu", "Judô", "Karatê", "Kickboxing", "Krav Magá", "Kung Fu", "Luta Livre", "MMA", "Muay Thai", "Taekwondo", "Wrestling"];
+const modalityCatalog = MODALITY_NAMES.map((name, i) => ({ id: `00000000-0000-0000-0000-0000000001${String(i).padStart(2, "0")}`, name }));
+const activeModalities = new Set<string>();
+let modalityRequests: { id: string; name: string; note: string | null; status: string; createdAt: string }[] = [];
 export const TRANSFER_TARGET = "admin@alfa.test";
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 
@@ -530,6 +537,64 @@ export const routes: Route[] = [
         links: current.links.map((l) => (l.id === current.activeLinkId ? { ...l, role: "ADMINISTRATOR" as const } : l)),
       };
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    method: "get",
+    path: "/modalities",
+    resolver: () => {
+      const denied = organizationAccess(false);
+      if (denied) return denied;
+      const canManage = activeRole() === "COORDINATOR";
+      return HttpResponse.json(modalityCatalog.map((m) => ({ ...m, active: activeModalities.has(m.id), canManage })));
+    },
+  },
+  {
+    // "Boxe" simula modalidade em uso (2 turmas, 3 alunos): desativar responde 409 MODALITY_IN_USE.
+    method: "put",
+    path: "/modalities/{id}/activation",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const found = modalityCatalog.find((m) => m.id === params.id);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      const { active } = (await request.json()) as { active?: boolean };
+      if (typeof active !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "active", message: "obrigatório" }]);
+      if (!active && found.name === "Boxe" && activeModalities.has(found.id)) {
+        return error(409, "MODALITY_IN_USE", "Em uso.", [
+          { field: "activeClasses", message: "2" },
+          { field: "activeStudents", message: "3" },
+        ]);
+      }
+      if (active) activeModalities.add(found.id);
+      else activeModalities.delete(found.id);
+      return HttpResponse.json({ ...found, active, canManage: true });
+    },
+  },
+  {
+    method: "get",
+    path: "/modalities/requests",
+    resolver: () => organizationAccess(false) ?? HttpResponse.json(modalityRequests),
+  },
+  {
+    method: "post",
+    path: "/modalities/requests",
+    resolver: async ({ request }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const body = (await request.json()) as { name?: string; note?: string | null };
+      const name = body.name?.trim() ?? "";
+      const note = body.note?.trim() || null;
+      if (name.length < 2 || name.length > 60) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "name", message: "de 2 a 60 caracteres" }]);
+      if (note && note.length > 300) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "note", message: "no máximo 300 caracteres" }]);
+      const key = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+      if (modalityCatalog.some((m) => key(m.name) === key(name))) return error(409, "ALREADY_IN_CATALOG", "Esta modalidade já existe no catálogo. Ative-a na lista.");
+      if (modalityRequests.some((r) => r.status === "OPEN" && key(r.name) === key(name))) {
+        return error(409, "REQUEST_ALREADY_OPEN", "Você já pediu esta modalidade e o pedido ainda está aberto.");
+      }
+      const created = { id: crypto.randomUUID(), name, note, status: "OPEN", createdAt: new Date().toISOString() };
+      modalityRequests = [created, ...modalityRequests];
+      return HttpResponse.json(created, { status: 201 });
     },
   },
   {
