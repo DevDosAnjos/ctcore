@@ -134,13 +134,16 @@ public class Teachers {
                 .param("org", org).param("ids", ids)
                 .query((rs, n) -> units.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
                         .add(new UnitRef(rs.getObject(2, UUID.class), rs.getString(3)))).list();
+        // RF-MOD-02: com a graduação da modalidade desligada o nível e o grau gravados ficam, mas não saem (volta ao religar)
         jdbc.sql("select tm.teacher_id, m.id, m.name, g.name, tm.degree, tm.level_id from teacher_modality tm join modality m on m.id = tm.modality_id "
-                + "left join graduation_level g on g.id = tm.level_id where tm.organization_id = :org and tm.teacher_id in (:ids) order by m.name, m.id")
+                + "left join organization_modality om on om.organization_id = tm.organization_id and om.modality_id = tm.modality_id "
+                + "left join graduation_level g on g.id = tm.level_id and coalesce(om.graduation_enabled, false) "
+                + "where tm.organization_id = :org and tm.teacher_id in (:ids) order by m.name, m.id")
                 .param("org", org).param("ids", ids)
                 .query((rs, n) -> {
                     String level = rs.getString(4);
                     return modalities.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
-                            .add(new ModalityRef(rs.getObject(2, UUID.class), rs.getString(3), rs.getObject(6, UUID.class), level, level == null ? null : rs.getInt(5)));
+                            .add(new ModalityRef(rs.getObject(2, UUID.class), rs.getString(3), level == null ? null : rs.getObject(6, UUID.class), level, level == null ? null : rs.getInt(5)));
                 }).list();
     }
 

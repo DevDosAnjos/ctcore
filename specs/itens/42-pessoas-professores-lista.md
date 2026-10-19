@@ -64,6 +64,7 @@ Uma parte só: servidor (T1 e T2), contrato (T3) e tela (T4 e T5).
 - D6: `access` vem do vínculo `TEACHER` da conta ligada ao cadastro; professor sem conta tem `NONE`. A lista não mostra o vínculo de aluno (RN-PRO-07 só exige conta única).
 - D7 (muda o comportamento): o Administrador vê o professor com ao menos uma unidade dele e vê todas as unidades desse professor, como em Configurações › Usuários (#37). Alternativa: mostrar só as unidades dele; descartada por esconder onde o professor trabalha.
 - D8: o canvas `Professores.dc.html` não está acessível; a tela segue os padrões do projeto (tabela em cartão, filtros no topo) e o dono confere o layout no PR.
+- D9 (muda o comportamento, ajuste da revisão da Sprint 04, R04-1): com a graduação da modalidade desligada em `organization_modality` (ou sem linha), a lista (`GET /teachers`) e o painel (`GET /teachers/{id}`) devolvem `levelId`, `level` e `degree` nulos para ela, como o "Pronto quando" de `04` pede ("com graduação desligada, nenhuma tela mostra faixa"). O dado em `teacher_modality` não é apagado: volta a aparecer ao religar, e o PUT de #44 também o preserva. Sem migração nem mudança de contrato. Provado em `TeacherIT.graduationOff` e `TeacherWriteIT.updateKeepsHiddenLevel`.
 - Suposição: o nome da modalidade e o nível vêm de `modality` e `graduation_level` (#38, #39); se um nível for apagado depois, `level_id` fica nulo e a lista mostra só a modalidade.
 
 ## Construção

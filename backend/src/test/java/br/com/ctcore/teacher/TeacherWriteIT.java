@@ -211,6 +211,24 @@ class TeacherWriteIT extends OrganizationBase {
     }
 
     @Test
+    @DisplayName("RF-MOD-02: editar com a graduação desligada não apaga o nível gravado")
+    void updateKeepsHiddenLevel() throws Exception {
+        var t = tenant();
+        UUID jj = modality("Jiu-Jitsu", true, true, t);
+        UUID blue = level(t, jj, "Azul", 4);
+        UUID id = create(t, mod(input("Ana", t.unitId()), jj, blue, 2));
+        modality("Jiu-Jitsu", true, false, t);
+        var c = who(t, Role.COORDINATOR);
+        var r = ok(send(HttpMethod.PUT, "/" + id, mod(input("Ana Maria", t.unitId()), jj, null, null), c), 200);
+        assertThat(r.get("modalities").get(0).get("level").isNull()).isTrue();
+        assertThat(adminJdbc().queryForObject("select level_id from teacher_modality where teacher_id = ?", UUID.class, id)).isEqualTo(blue);
+        modality("Jiu-Jitsu", true, true, t);
+        var back = ok(send(HttpMethod.GET, "/" + id, null, c), 200);
+        assertThat(back.get("modalities").get(0).get("level").asText()).isEqualTo("Azul");
+        assertThat(back.get("modalities").get(0).get("degree").asInt()).isEqualTo(2);
+    }
+
+    @Test
     @DisplayName("CA4: graduação obrigatória só com graduação ligada; nível de outra modalidade, grau acima, repetida e inativa dão 400; grau 0 e máximo salvam")
     void modalities() throws Exception {
         var t = tenant();
