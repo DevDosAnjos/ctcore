@@ -827,6 +827,25 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /agenda/lessons/{id}:
+    get:
+      summary: Painel da aula (RF-AGE-02). Coordenador, Administrador e Professor.
+      description: |
+        Só leitura, sem auditoria. O Coordenador abre qualquer aula da organização; o Administrador, as de unidade dele (outra: 404). O Professor
+        abre as aulas das turmas dele (titular ou auxiliar) e, como substituto de outra turma (RN-PRO-06), só do início ao fim do dia da aula no fuso
+        da unidade; fora disso, 404. Aluno e Responsável recebem 403; aula inexistente ou de outra organização, 404. `head` (titular) só vem na
+        substituição. `activeStudents` e `trialClasses` valem 0 até as Sprints 07 e 18. `canEdit`, `canCancel` e `canViewClass` são dicas.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel da aula.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /classes:
     get:
       summary: Lista paginada de turmas da organização do vínculo ativo (RF-TUR-01). Coordenador e Administrador.
@@ -1750,6 +1769,28 @@ components:
         substitute: { type: boolean }
         canEdit: { type: boolean }
         canCancel: { type: boolean }
+    LessonDetail:
+      type: object
+      required: [id, date, startsAt, endsAt, status, cancelReason, class, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
+        cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
+        class: { $ref: '#/components/schemas/ClassRef' }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        teacher: { $ref: '#/components/schemas/ClassRef', description: Professor da aula. }
+        head: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Titular da turma; só na substituição. }
+        substitute: { type: boolean }
+        activeStudents: { type: integer, minimum: 0 }
+        trialClasses: { type: integer, minimum: 0 }
+        groupLink: { type: string, nullable: true }
+        canEdit: { type: boolean }
+        canCancel: { type: boolean }
+        canViewClass: { type: boolean, description: Verdadeiro só para quem gerencia turmas (`CLASSES_MANAGE`). }
     NoClassDay:
       type: object
       required: [startsOn, endsOn, reason]

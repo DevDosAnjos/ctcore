@@ -63,4 +63,18 @@ class AgendaRulesTest {
         assertThat(can(Role.TEACHER, true, true, Agenda.Status.COMPLETED, END.plusDays(1))).isEqualTo(new Agenda.Can(false, false));
         assertThat(can(Role.TEACHER, true, true, Agenda.Status.CANCELLED, START)).isEqualTo(new Agenda.Can(false, false));
     }
+
+    @Test
+    @DisplayName("RN-PRO-06: substituto só no dia da aula, no fuso da unidade")
+    void substituteWindow() {
+        var sp = java.time.ZoneId.of("America/Sao_Paulo");
+        var at = (java.util.function.Function<String, java.time.Instant>) java.time.Instant::parse;
+        assertThat(Agenda.substituteWindow(DAY, sp, at.apply("2026-03-10T02:59:59Z"))).isFalse(); // 23:59:59 da véspera
+        assertThat(Agenda.substituteWindow(DAY, sp, at.apply("2026-03-10T03:00:00Z"))).isTrue(); // 00:00
+        assertThat(Agenda.substituteWindow(DAY, sp, at.apply("2026-03-11T02:59:59Z"))).isTrue(); // 23:59:59
+        assertThat(Agenda.substituteWindow(DAY, sp, at.apply("2026-03-11T03:00:00Z"))).isFalse(); // dia seguinte
+        var tokyo = java.time.ZoneId.of("Asia/Tokyo");
+        assertThat(Agenda.substituteWindow(DAY, tokyo, at.apply("2026-03-09T15:00:00Z"))).isTrue(); // 00:00 em Tóquio
+        assertThat(Agenda.substituteWindow(DAY, sp, at.apply("2026-03-09T15:00:00Z"))).isFalse();
+    }
 }

@@ -494,6 +494,34 @@
       "5": "Sexta-feira",
       "6": "Sábado",
       "7": "Domingo"
+    },
+    "panel": {
+      "back": "Voltar à agenda",
+      "about": "Sobre a aula",
+      "when": "Dia e horário",
+      "whenLine": "{{date}}, das {{from}} às {{to}}",
+      "unit": "Unidade",
+      "head": "Professor titular",
+      "reason": "Motivo:",
+      "numbers": "Alunos e aulas experimentais",
+      "students": "Alunos ativos da turma",
+      "trials": "Aulas experimentais marcadas",
+      "group": "Grupo de WhatsApp",
+      "openGroup": "Abrir grupo",
+      "noGroup": "A turma não tem grupo cadastrado.",
+      "notify": "Avisar turma",
+      "edit": "Editar aula",
+      "cancel": "Cancelar aula",
+      "viewClass": "Ver turma",
+      "comingSoon": "Disponível em breve.",
+      "notFoundTitle": "Aula não encontrada",
+      "notFoundText": "A aula não existe ou não está mais disponível para você.",
+      "statuses": {
+        "SCHEDULED": "Agendada",
+        "IN_PROGRESS": "Em andamento",
+        "COMPLETED": "Concluída",
+        "CANCELLED": "Cancelada"
+      }
     }
   },
   "classes": {
