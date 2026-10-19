@@ -104,6 +104,12 @@ describe("ClassesPage", () => {
     expect(calls.at(-1)!.get("size")).toBe("25");
   });
 
+  it("CA8: o nome da turma leva ao painel", async () => {
+    setup();
+    const link = await screen.findByRole("link", { name: "Jiu-Jitsu Adulto" });
+    expect(link.getAttribute("href")).toContain("/turmas/");
+  });
+
   it("CA3: acima da capacidade mostra o aviso com os números; sem capacidade mostra só os alunos", async () => {
     setup();
     const full = (await screen.findByText("Judô Lotada")).closest("tr")!;

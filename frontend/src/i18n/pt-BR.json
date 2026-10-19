@@ -492,6 +492,46 @@
       "ACTIVE": "Ativa",
       "INACTIVE": "Desativada"
     },
+    "panel": {
+      "back": "Voltar às turmas",
+      "edit": "Editar",
+      "viewStudents": "Ver alunos",
+      "notify": "Avisar turma",
+      "openGroup": "Abrir grupo",
+      "deactivate": "Desativar",
+      "about": "Dados da turma",
+      "unit": "Unidade",
+      "team": "Professores",
+      "head": "Titular",
+      "assistants": "Auxiliares",
+      "slot": "{{day}}, {{from}}–{{to}}",
+      "noSchedule": "Nenhum horário definido.",
+      "studentsCap": "{{count}} de {{capacity}} alunos ativos",
+      "studentsNoCap": "{{count}} alunos ativos, sem limite de capacidade",
+      "nextClass": "Próxima aula",
+      "nextLine": "{{date}}, {{from}}–{{to}}",
+      "noNext": "Nenhuma aula agendada.",
+      "activeStudents": "Alunos ativos",
+      "noStudents": "Nenhum aluno ativo nesta turma.",
+      "otherSlot": "Outro horário",
+      "group": "Grupo de WhatsApp",
+      "hasGroup": "A turma tem um grupo. Use Abrir grupo.",
+      "noGroup": "A turma ainda não tem grupo.",
+      "notFoundTitle": "Turma não encontrada",
+      "notFoundText": "Ela não existe ou não está ao seu alcance.",
+      "deactivateDialog": {
+        "title": "Desativar {{name}}",
+        "explain": "A turma deixa de aparecer nas escolhas de matrícula e de agenda. Nada é apagado e o histórico continua.",
+        "blocked_one": "Não é possível desativar: {{count}} aluno tem esta turma como principal. Mude a turma principal dele antes.",
+        "blocked_other": "Não é possível desativar: {{count}} alunos têm esta turma como principal. Mude a turma principal deles antes.",
+        "done": "Turma desativada.",
+        "errors": {
+          "FORBIDDEN": "Você não tem permissão para desativar esta turma.",
+          "CONFLICT": "A turma já está desativada.",
+          "generic": "Não foi possível desativar. Nada foi alterado. Tente de novo."
+        }
+      }
+    },
     "filters": {
       "modality": "Modalidade",
       "allModalities": "Todas as modalidades",

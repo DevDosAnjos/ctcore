@@ -1,6 +1,8 @@
 package br.com.ctcore.trainingclass;
 
+import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
+import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
@@ -43,6 +45,16 @@ public class TrainingClasses {
     public record Row(UUID id, String name, Ref unit, Ref modality, AgeRangeRef ageRange, List<Slot> schedule, Ref head,
             List<Ref> assistants, int activeStudents, Integer capacity, boolean overCapacity, String status) {}
 
+    public record NextClass(String date, String startsAt, String endsAt) {}
+
+    public record Student(UUID id, String name, boolean primary) {}
+
+    public record Deactivation(boolean allowed, int blockingStudents) {}
+
+    public record Detail(UUID id, String name, String status, Ref unit, Ref modality, AgeRangeRef ageRange, List<Slot> schedule, Ref head,
+            List<Ref> assistants, Integer capacity, int activeStudents, boolean overCapacity, String groupLink, NextClass nextClass,
+            List<Student> students, Deactivation deactivation) {}
+
     private record Head(UUID id, String name, Ref unit, Ref modality, AgeRangeRef ageRange, Ref head, Integer capacity, String status) {}
 
     private record Loaded(long total, List<Head> heads, Map<UUID, List<Slot>> schedule, Map<UUID, List<Ref>> assistants) {}
@@ -58,9 +70,7 @@ public class TrainingClasses {
     }
 
     public PageResponse<Row> list(AccountPrincipal who, Filter f, PageRequest page) {
-        if (who.role() == null || permissions.effective(who).get(Permission.CLASSES_MANAGE) == Access.NONE) {
-            throw new AccessDeniedException("Permission denied");
-        }
+        requireAccess(who);
         String st = f.status() == null || f.status().isBlank() ? null : f.status().strip().toUpperCase(Locale.ROOT);
         if (st != null && !STATUSES.contains(st)) throw new ApiValidationException("status", "valor inválido");
         if (f.weekday() != null && (f.weekday() < 1 || f.weekday() > 7)) throw new ApiValidationException("weekday", "deve ser de 1 a 7");
@@ -120,17 +130,7 @@ public class TrainingClasses {
             List<UUID> ids = heads.stream().map(Head::id).toList();
             Map<UUID, List<Slot>> schedule = new HashMap<>();
             Map<UUID, List<Ref>> assistants = new HashMap<>();
-            if (!ids.isEmpty()) {
-                jdbc.sql("select class_id, weekday, starts_at, ends_at from training_class_schedule where organization_id = :org and class_id in (:ids) order by weekday")
-                        .param("org", who.organizationId()).param("ids", ids)
-                        .query((rs, n) -> schedule.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
-                                .add(new Slot(rs.getInt(2), rs.getObject(3, LocalTime.class).toString(), rs.getObject(4, LocalTime.class).toString()))).list();
-                jdbc.sql("select a.class_id, t.id, t.name from training_class_assistant a join teacher t on t.id = a.teacher_id "
-                        + "where a.organization_id = :org and a.class_id in (:ids) order by t.name_key, t.id")
-                        .param("org", who.organizationId()).param("ids", ids)
-                        .query((rs, n) -> assistants.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
-                                .add(new Ref(rs.getObject(2, UUID.class), rs.getString(3)))).list();
-            }
+            children(who.organizationId(), ids, schedule, assistants);
             return new Loaded(total, heads, schedule, assistants);
         });
         List<Row> rows = loaded.heads().stream().map(h -> {
@@ -139,6 +139,78 @@ public class TrainingClasses {
                     loaded.assistants().getOrDefault(h.id(), List.of()), students, h.capacity(), overCapacity(students, h.capacity()), h.status());
         }).toList();
         return PageResponse.of(rows, page, loaded.total());
+    }
+
+    /** Horários (por dia) e auxiliares das turmas; roda dentro da transação da organização. */
+    private void children(UUID org, List<UUID> ids, Map<UUID, List<Slot>> schedule, Map<UUID, List<Ref>> assistants) {
+        if (ids.isEmpty()) return;
+        jdbc.sql("select class_id, weekday, starts_at, ends_at from training_class_schedule where organization_id = :org and class_id in (:ids) order by weekday")
+                .param("org", org).param("ids", ids)
+                .query((rs, n) -> schedule.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
+                        .add(new Slot(rs.getInt(2), rs.getObject(3, LocalTime.class).toString(), rs.getObject(4, LocalTime.class).toString()))).list();
+        jdbc.sql("select a.class_id, t.id, t.name from training_class_assistant a join teacher t on t.id = a.teacher_id "
+                + "where a.organization_id = :org and a.class_id in (:ids) order by t.name_key, t.id")
+                .param("org", org).param("ids", ids)
+                .query((rs, n) -> assistants.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
+                        .add(new Ref(rs.getObject(2, UUID.class), rs.getString(3)))).list();
+    }
+
+    private void requireAccess(AccountPrincipal who) {
+        if (who.role() == null || permissions.effective(who).get(Permission.CLASSES_MANAGE) == Access.NONE) {
+            throw new AccessDeniedException("Permission denied");
+        }
+    }
+
+    /** RF-TUR-02: painel da turma. Fora do alcance do Administrador ou de outra organização, 404. */
+    public Detail get(AccountPrincipal who, UUID id) {
+        requireAccess(who);
+        boolean admin = who.role() == Role.ADMINISTRATOR;
+        Set<UUID> reach = who.units() == null ? Set.of() : who.units();
+        if (admin && reach.isEmpty()) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        return transactions.execute(() -> {
+            var query = jdbc.sql("select c.id, c.name, u.id, u.name, m.id, m.name, r.id, r.name, r.min_age, r.max_age, h.id, h.name, c.capacity, c.status "
+                    + "from training_class c join unit u on u.id = c.unit_id join modality m on m.id = c.modality_id "
+                    + "left join age_range r on r.id = c.age_range_id join teacher h on h.id = c.head_teacher_id "
+                    + "where c.organization_id = :org and c.id = :id" + (admin ? " and c.unit_id in (:reach)" : ""))
+                    .param("org", who.organizationId()).param("id", id);
+            if (admin) query = query.param("reach", reach);
+            Head h = query.query((rs, n) -> new Head(rs.getObject(1, UUID.class), rs.getString(2),
+                    new Ref(rs.getObject(3, UUID.class), rs.getString(4)), new Ref(rs.getObject(5, UUID.class), rs.getString(6)),
+                    rs.getObject(7, UUID.class) == null ? null
+                            : new AgeRangeRef(rs.getObject(7, UUID.class), rs.getString(8), rs.getInt(9), (Integer) rs.getObject(10)),
+                    new Ref(rs.getObject(11, UUID.class), rs.getString(12)), (Integer) rs.getObject(13), rs.getString(14)))
+                    .optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+            String groupLink = jdbc.sql("select group_link from training_class where id = :id and organization_id = :org")
+                    .param("id", id).param("org", who.organizationId()).query(String.class).optional().orElse(null);
+            Map<UUID, List<Slot>> schedule = new HashMap<>();
+            Map<UUID, List<Ref>> assistants = new HashMap<>();
+            children(who.organizationId(), List.of(id), schedule, assistants);
+            int students = activeStudents(id);
+            int blocking = primaryStudents(id);
+            return new Detail(h.id(), h.name(), h.status(), h.unit(), h.modality(), h.ageRange(), schedule.getOrDefault(id, List.of()), h.head(),
+                    assistants.getOrDefault(id, List.of()), h.capacity(), students, overCapacity(students, h.capacity()), groupLink, nextClass(id),
+                    students(id), new Deactivation(h.status().equals("ACTIVE") && blocking == 0, blocking));
+        });
+    }
+
+    /** Aulas só existem a partir de #49: sem próxima aula. É o ponto a trocar. */
+    NextClass nextClass(UUID classId) {
+        return null;
+    }
+
+    /** Alunos ativos da turma, com a marca de turma principal (RN-TUR-04); vazia até a Sprint 07. É o ponto a trocar. */
+    List<Student> students(UUID classId) {
+        return List.of();
+    }
+
+    /** Alunos que têm esta turma como principal (RN-TUR-03); 0 até a Sprint 07. É o ponto a trocar. */
+    int primaryStudents(UUID classId) {
+        return 0;
+    }
+
+    /** RN-TUR-04: a turma é a principal do aluno na modalidade; nas demais, é outro horário. */
+    static boolean isPrimary(UUID classId, UUID studentPrimaryClassId) {
+        return classId.equals(studentPrimaryClassId);
     }
 
     /** Alunos ativos da turma: 0 até a matrícula existir (Sprint 07, D5); é o único ponto a trocar. */

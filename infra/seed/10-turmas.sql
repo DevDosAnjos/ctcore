@@ -22,3 +22,7 @@ insert into training_class_assistant (organization_id, class_id, teacher_id)
 select md5('ctcore-seed-org-' || o.n)::uuid, md5('ctcore-seed-class-' || o.n || '-1')::uuid, md5('ctcore-seed-teacher-' || o.n || '-2')::uuid
 from generate_series(1, 3) as o(n)
 on conflict do nothing;
+
+-- RF-TUR-02: só a primeira turma de cada organização tem grupo; a segunda fica sem e a terceira está desativada.
+update training_class set group_link = 'https://chat.example.com/ctcore-seed-grupo'
+where id in (select md5('ctcore-seed-class-' || o.n || '-1')::uuid from generate_series(1, 3) as o(n)) and group_link is null;
