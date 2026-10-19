@@ -55,7 +55,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 44 | RF-PRO-03 · Cadastro e edição de professor | issue #44 | Sprint 04 | — | agente | feito |
 | 45 | RF-PRO-04 · Inativar professor | issue #45 | Sprint 04 | — | agente | feito |
 | 46 | RF-TUR-01 · Operação › Turmas (lista) | issue #46 | Sprint 05 | — | agente | feito |
-| 47 | RF-TUR-02 · Painel da turma | issue #47 | Sprint 05 | — | agente | a fazer |
+| 47 | RF-TUR-02 · Painel da turma | issue #47 | Sprint 05 | — | agente | feito |
 | 48 | RF-TUR-03 · Janela de turma | issue #48 | Sprint 05 | — | agente | a fazer |
 | 49 | RF-AGE-01 · Operação › Agenda | issue #49 | Sprint 05 | — | agente | a fazer |
 | 50 | RF-AGE-02 · Painel da aula | issue #50 | Sprint 05 | — | agente | a fazer |

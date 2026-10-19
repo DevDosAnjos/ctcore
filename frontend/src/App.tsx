@@ -20,6 +20,7 @@ import { UnitsPage } from "@/features/units/UnitsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
+import { ClassPanelPage } from "@/features/classes/ClassPanelPage";
 import { UsersPage } from "@/features/users/UsersPage";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
@@ -86,6 +87,7 @@ export function App() {
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/turmas" element={<ClassesPage />} />
+            <Route path="/turmas/:id" element={<ClassPanelPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

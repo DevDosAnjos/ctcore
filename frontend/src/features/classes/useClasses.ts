@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import type { Page, Query } from "@/components/query/QueryPage";
 
 interface Choice {
@@ -58,3 +58,39 @@ export function useClassFilterOptions() {
   }, []);
   return options;
 }
+
+// Espelha ClassDetail do OpenAPI (RF-TUR-02): a linha da lista mais link do grupo, próxima aula, alunos e a regra de desativação.
+export interface ClassDetail extends TrainingClass {
+  groupLink: string | null;
+  nextClass: { date: string; startsAt: string; endsAt: string } | null;
+  students: { id: string; name: string; primary: boolean }[];
+  deactivation: { allowed: boolean; blockingStudents: number };
+}
+
+type Loaded = { tick: number; id: string; klass?: ClassDetail; failure?: "forbidden" | "notFound" | "error" };
+
+// Painel da turma. O servidor decide o alcance: 403 vira "sem permissão" e 404 "não encontrada".
+export function useClass(id: string) {
+  const [tick, setTick] = useState(0);
+  const [done, setDone] = useState<Loaded>();
+  useEffect(() => {
+    let alive = true;
+    api<ClassDetail>(`/classes/${id}`).then(
+      (klass) => alive && setDone({ tick, id, klass }),
+      (e) => alive && setDone({ tick, id, failure: e instanceof ApiError && e.status === 403 ? "forbidden" : e instanceof ApiError && e.status === 404 ? "notFound" : "error" }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [id, tick]);
+  const current = done?.tick === tick && done.id === id ? done : undefined;
+  return {
+    status: !current ? "loading" : (current.failure ?? "ready"),
+    klass: current?.klass,
+    retry: () => setTick((n) => n + 1),
+    // Recarrega sem passar por "carregando" (depois de desativar).
+    refresh: async () => setDone({ tick, id, klass: await api<ClassDetail>(`/classes/${id}`) }),
+  } as const;
+}
+
+export const deactivateClass = (id: string) => api<ClassDetail>(`/classes/${id}/deactivate`, { method: "POST" });

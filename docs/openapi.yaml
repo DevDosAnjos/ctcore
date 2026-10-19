@@ -829,6 +829,44 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /classes/{id}:
+    get:
+      summary: Painel da turma (RF-TUR-02). Coordenador e Administrador.
+      description: |
+        Mesma regra de alcance da lista: o Administrador só abre turma de unidade dele; fora dele, ou de outra organização, 404. Professor,
+        Aluno e Responsável recebem 403. `groupLink` só vem aqui (nunca na lista). `nextClass` é nulo até existirem aulas e `students` vem
+        vazia até existir matrícula; `primary` é falso no aluno que tem a turma como outro horário (RN-TUR-04). `deactivation.allowed` é
+        falso quando a turma já está desativada ou há alunos com ela como turma principal (RN-TUR-03). Sem presença nem frequência (RN-TUR-06).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel da turma.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /classes/{id}/deactivate:
+    post:
+      summary: Desativa a turma (RN-TUR-03). Coordenador e Administrador.
+      description: |
+        Só muda `status` para `INACTIVE`; nada é apagado e a turma continua na lista e no painel. Com aluno que a tem como turma principal,
+        409 `HAS_PRIMARY_STUDENTS` com `primaryStudents` em `fields`; turma já desativada, 409. Sem corpo. Mesmo alcance do painel.
+        Grava `class.deactivated`, sem dado pessoal.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel com `status` igual a `INACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Turma já desativada, ou `HAS_PRIMARY_STUDENTS` (`fields[0]` = `primaryStudents`).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   /teachers:
     get:
       summary: Lista paginada de professores da organização do vínculo ativo (RF-PRO-01). Coordenador e Administrador.
@@ -1389,6 +1427,7 @@ components:
             - AGE_RANGE_NAME_TAKEN
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
+            - HAS_PRIMARY_STUDENTS
             - UNSUPPORTED_MEDIA_TYPE
             - INVALID_CREDENTIALS
             - TOO_MANY_REQUESTS
@@ -1606,6 +1645,36 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
+    ClassDetail:
+      allOf:
+        - $ref: '#/components/schemas/ClassRow'
+        - type: object
+          required: [groupLink, nextClass, students, deactivation]
+          properties:
+            groupLink: { type: string, nullable: true, description: URL do grupo; a tela só a abre se for http ou https. }
+            nextClass:
+              type: object
+              nullable: true
+              description: Nulo até existirem aulas.
+              required: [date, startsAt, endsAt]
+              properties:
+                date: { type: string, format: date }
+                startsAt: { type: string, example: '19:00' }
+                endsAt: { type: string, example: '20:00' }
+            students: { type: array, items: { $ref: '#/components/schemas/ClassStudent' } }
+            deactivation:
+              type: object
+              required: [allowed, blockingStudents]
+              properties:
+                allowed: { type: boolean }
+                blockingStudents: { type: integer, minimum: 0, description: Alunos com esta turma como principal. }
+    ClassStudent:
+      type: object
+      required: [id, name, primary]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        primary: { type: boolean, description: Falso quando a turma é outro horário do aluno (RN-TUR-04). }
     ClassList:
       allOf:
         - $ref: '#/components/schemas/Page'

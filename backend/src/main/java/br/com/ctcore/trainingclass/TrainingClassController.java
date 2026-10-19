@@ -3,9 +3,12 @@ package br.com.ctcore.trainingclass;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,8 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/classes")
 class TrainingClassController {
     private final TrainingClasses classes;
+    private final TrainingClassDeactivation deactivation;
 
-    TrainingClassController(TrainingClasses classes) {
+    TrainingClassController(TrainingClasses classes, TrainingClassDeactivation deactivation) {
+        this.deactivation = deactivation;
         this.classes = classes;
     }
 
@@ -30,5 +35,15 @@ class TrainingClassController {
         String field = "name".equals(sort) ? "name,asc" : sort;
         return classes.list(who, new TrainingClasses.Filter(q, modalityId, teacherId, ageRangeId, weekday, unitId, status),
                 PageRequest.of(page, size, field, TrainingClasses.SORT));
+    }
+
+    @GetMapping("/{id}")
+    TrainingClasses.Detail get(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
+        return classes.get(who, id);
+    }
+
+    @PostMapping("/{id}/deactivate")
+    TrainingClasses.Detail deactivate(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, HttpServletRequest request) {
+        return deactivation.deactivate(who, id, request.getRemoteAddr());
     }
 }

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import type { TFunction } from "i18next";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
@@ -13,7 +14,9 @@ const columns = (t: TFunction): Column<TrainingClass>[] => [
     sortable: true,
     render: (r) => (
       <span className="flex min-w-0 flex-col break-words">
-        <span className="font-medium">{r.name}</span>
+        <Link to={`/turmas/${r.id}`} className="inline-flex min-h-11 items-center font-medium underline">
+          {r.name}
+        </Link>
         <span className="text-sm text-muted-foreground">{t("classes.unit", { name: r.unit.name })}</span>
       </span>
     ),

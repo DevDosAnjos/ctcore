@@ -32,3 +32,22 @@ test("@critical Coordenador filtra a lista de turmas", async ({ page }) => {
   await expect(page.getByText("Judô Infantil")).toBeVisible();
   await expect(page.getByText("Boxe Noturno")).toHaveCount(0);
 });
+
+// RF-TUR-02: o Coordenador entra no painel de uma turma da lista, desativa e vê o selo "Desativada".
+test("@critical Coordenador abre e desativa uma turma", async ({ page }) => {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill("ana@exemplo.com");
+  await page.getByLabel("Senha").fill("segredo123");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+  await open(page, "/turmas");
+  await page.getByRole("link", { name: "Jiu-Jitsu Adulto" }).click();
+  await expect(page.getByRole("heading", { name: "Jiu-Jitsu Adulto", level: 1 })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Abrir grupo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Desativar" })).toBeEnabled();
+  await page.getByRole("button", { name: "Desativar" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Desativar" }).click();
+  await expect(page.getByText("Turma desativada.")).toBeVisible();
+  await expect(page.getByText("Desativada", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Desativar" })).toBeDisabled();
+});

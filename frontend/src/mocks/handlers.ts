@@ -73,6 +73,7 @@ export const resetMockSession = () => {
   unitDetails = {};
   staff = initialStaff();
   mockTeachers = initialTeachers();
+  mockClasses = initialClasses();
   teacherContacts = initialTeacherContacts();
   teacherResends = 0;
   sessions = initialSessions();
@@ -294,12 +295,14 @@ const teacherKey = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLo
 const TEACHER_ANA = "00000000-0000-0000-0000-000000000501";
 const TEACHER_JOAO = "00000000-0000-0000-0000-000000000502";
 const TEACHER_MARCOS = "00000000-0000-0000-0000-000000000503";
-type MockClass = { id: string; name: string; unitId: string; modalityId: string; ageRange: string | null; schedule: [number, string, string][]; head: string; assistants: string[]; capacity: number | null; status: string };
-const mockClasses: MockClass[] = [
-  { id: "00000000-0000-0000-0000-000000000601", name: "Jiu-Jitsu Adulto", unitId: ADMIN_UNIT, modalityId: modalityCatalog[3].id, ageRange: "Adulto", schedule: [[1, "19:00", "20:00"], [3, "19:00", "20:00"]], head: TEACHER_ANA, assistants: [TEACHER_JOAO], capacity: 30, status: "ACTIVE" },
-  { id: "00000000-0000-0000-0000-000000000602", name: "Judô Infantil", unitId: ADMIN_UNIT, modalityId: modalityCatalog[4].id, ageRange: "Infantil", schedule: [[2, "18:00", "19:00"], [4, "18:00", "19:00"]], head: TEACHER_JOAO, assistants: [], capacity: 20, status: "ACTIVE" },
+type MockClass = { id: string; name: string; unitId: string; modalityId: string; ageRange: string | null; schedule: [number, string, string][]; head: string; assistants: string[]; capacity: number | null; status: string; groupLink?: string; blocking?: number };
+// groupLink só no detalhe; `blocking` (alunos com a turma como principal) é só do simulado: o servidor só o traz com a matrícula (Sprint 07).
+const initialClasses = (): MockClass[] => [
+  { id: "00000000-0000-0000-0000-000000000601", name: "Jiu-Jitsu Adulto", unitId: ADMIN_UNIT, modalityId: modalityCatalog[3].id, ageRange: "Adulto", schedule: [[1, "19:00", "20:00"], [3, "19:00", "20:00"]], head: TEACHER_ANA, assistants: [TEACHER_JOAO], capacity: 30, status: "ACTIVE", groupLink: "https://chat.example.com/jiu-jitsu-adulto" },
+  { id: "00000000-0000-0000-0000-000000000602", name: "Judô Infantil", unitId: ADMIN_UNIT, modalityId: modalityCatalog[4].id, ageRange: "Infantil", schedule: [[2, "18:00", "19:00"], [4, "18:00", "19:00"]], head: TEACHER_JOAO, assistants: [], capacity: 20, status: "ACTIVE", blocking: 2 },
   { id: "00000000-0000-0000-0000-000000000603", name: "Boxe Noturno", unitId: UNIT_NORTE, modalityId: modalityCatalog[0].id, ageRange: null, schedule: [[5, "20:00", "21:30"]], head: TEACHER_MARCOS, assistants: [], capacity: null, status: "INACTIVE" },
 ];
+let mockClasses = initialClasses();
 const classRow = (c: MockClass) => {
   const unit = units.find((u) => u.id === c.unitId)!;
   const range = ageRanges.find((r) => r.name === c.ageRange);
@@ -318,6 +321,21 @@ const classRow = (c: MockClass) => {
     overCapacity: false,
     status: c.status,
   };
+};
+// RF-TUR-02: painel; alunos e próxima aula vazios até a matrícula e a agenda (D1).
+const classDetail = (c: MockClass) => ({
+  ...classRow(c),
+  groupLink: c.groupLink ?? null,
+  nextClass: null,
+  students: [],
+  deactivation: { allowed: c.status === "ACTIVE" && !c.blocking, blockingStudents: c.blocking ?? 0 },
+});
+// Quem chama: 401 sem sessão, 403 sem CLASSES_MANAGE, 404 fora do alcance (Administrador) ou inexistente.
+const classFor = (id: string) => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+  return mockClasses.find((c) => c.id === id && (role === "COORDINATOR" || c.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
 };
 // RF-PRO-03: opções do formulário (modalidades ativas; as dos professores fixos contam como ativas) e validação como no servidor.
 const SEEDED_MODALITIES = [3, 4, 0].map((i) => modalityCatalog[i].id);
@@ -1110,6 +1128,31 @@ export const routes: Route[] = [
         .filter((c) => !unitId || c.unit.id === unitId)
         .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    method: "get",
+    path: "/classes/{id}",
+    resolver: ({ params }) => {
+      const found = classFor(params.id as string);
+      return found instanceof HttpResponse ? found : HttpResponse.json(classDetail(found));
+    },
+  },
+  {
+    // RN-TUR-03: com aluno principal 409 HAS_PRIMARY_STUDENTS (contagem em fields); desativada 409; nada é apagado.
+    method: "post",
+    path: "/classes/{id}/deactivate",
+    resolver: ({ params }) => {
+      const found = classFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      if (found.status === "INACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      if (found.blocking) {
+        return error(409, "HAS_PRIMARY_STUDENTS", "A turma não pode ser desativada enquanto houver alunos com ela como turma principal.", [
+          { field: "primaryStudents", message: String(found.blocking) },
+        ]);
+      }
+      found.status = "INACTIVE";
+      return HttpResponse.json(classDetail(found));
     },
   },
   {
