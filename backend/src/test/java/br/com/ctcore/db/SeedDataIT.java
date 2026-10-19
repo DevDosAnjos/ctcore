@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -158,6 +158,8 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from organization_modality where active", Integer.class)).isEqualTo(9);
         assertThat(jdbc.queryForObject("select count(*) from graduation_level", Integer.class)).isEqualTo(57);
         assertThat(jdbc.queryForObject("select count(*) from organization_modality where graduation_enabled", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from unit_modality where offered", Integer.class))
+                .isEqualTo(2 * jdbc.queryForObject("select count(*) from unit", Integer.class));
     }
 
     @Test

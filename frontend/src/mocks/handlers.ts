@@ -74,6 +74,7 @@ export const resetMockSession = () => {
   staff = initialStaff();
   sessions = initialSessions();
   activeModalities.clear();
+  unitModalities.clear();
   graduations.clear();
   modalityRequests = [];
 };
@@ -122,6 +123,7 @@ const unitsAccess = () => {
 const MODALITY_NAMES = ["Boxe", "Capoeira", "Defesa pessoal", "Jiu-Jitsu", "Judô", "Karatê", "Kickboxing", "Krav Magá", "Kung Fu", "Luta Livre", "MMA", "Muay Thai", "Taekwondo", "Wrestling"];
 const modalityCatalog = MODALITY_NAMES.map((name, i) => ({ id: `00000000-0000-0000-0000-0000000001${String(i).padStart(2, "0")}`, name }));
 const activeModalities = new Set<string>();
+const unitModalities = new Map<string, Set<string>>();
 type MockLevel = { id: string; name: string; color: string; secondaryColor: string | null; maxDegree: number; minAge: number | null; maxAge: number | null; kids: boolean };
 type MockGraduation = { enabled: boolean; requireOriginProof: boolean; levels: MockLevel[] };
 const graduations = new Map<string, MockGraduation>();
@@ -580,6 +582,36 @@ export const routes: Route[] = [
         if (!graduations.has(found.id)) graduations.set(found.id, { enabled: false, requireOriginProof: false, levels: found.name === "Jiu-Jitsu" ? jiuJitsuDefault() : [] });
       } else activeModalities.delete(found.id);
       return HttpResponse.json({ ...found, active, canManage: true, graduationEnabled: graduationOf(found.id).enabled });
+    },
+  },
+  {
+    // RF-MOD-03: só as modalidades ativas da organização; a marcação fica guardada se a organização desativar e voltar.
+    method: "get",
+    path: "/units/{unitId}/modalities",
+    resolver: ({ params }) => {
+      const denied = unitSettingsAccess(String(params.unitId));
+      if (denied) return denied;
+      const offered = unitModalities.get(String(params.unitId)) ?? new Set<string>();
+      const items = modalityCatalog.filter((m) => activeModalities.has(m.id)).map((m) => ({ ...m, offered: offered.has(m.id) }));
+      return HttpResponse.json({ canManage: true, items });
+    },
+  },
+  {
+    method: "put",
+    path: "/units/{unitId}/modalities/{modalityId}",
+    resolver: async ({ request, params }) => {
+      const unitId = String(params.unitId);
+      const denied = unitSettingsAccess(unitId);
+      if (denied) return denied;
+      const found = modalityCatalog.find((m) => m.id === params.modalityId && activeModalities.has(m.id));
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      const { offered } = (await request.json()) as { offered?: boolean };
+      if (typeof offered !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "offered", message: "obrigatório" }]);
+      const set = unitModalities.get(unitId) ?? new Set<string>();
+      if (offered) set.add(found.id);
+      else set.delete(found.id);
+      unitModalities.set(unitId, set);
+      return HttpResponse.json({ ...found, offered });
     },
   },
   {

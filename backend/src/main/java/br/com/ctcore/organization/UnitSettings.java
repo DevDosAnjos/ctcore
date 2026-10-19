@@ -91,6 +91,15 @@ public class UnitSettings {
         return all.stream().filter(u -> permissions.grant(who, Permission.UNIT_SETTINGS, u.id()) != Access.NONE).toList();
     }
 
+    /** Acesso do vínculo a UNIT_SETTINGS na unidade; 404 se a unidade não é da organização da sessão (para quem guarda dados por unidade). */
+    public Access access(AccountPrincipal who, UUID unitId) {
+        requireRole(who);
+        int found = transactions.execute(() -> jdbc.sql("select count(*) from unit where id = :id and organization_id = :org")
+                .param("id", unitId).param("org", who.organizationId()).query(Integer.class).single());
+        if (found == 0) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        return permissions.grant(who, Permission.UNIT_SETTINGS, unitId);
+    }
+
     public UnitDetail read(AccountPrincipal who, UUID unitId) {
         UnitDetail detail = locate(who, unitId);
         if (permissions.grant(who, Permission.UNIT_SETTINGS, unitId) == Access.NONE) throw new AccessDeniedException("Permission denied");
