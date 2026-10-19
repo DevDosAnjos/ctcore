@@ -287,6 +287,8 @@ const teacherFor = (id: string) => {
   const found = mockTeachers.find((t) => t.id === id && (role === "COORDINATOR" || t.units.some((u) => u.id === ADMIN_UNIT)));
   return found ?? error(404, "NOT_FOUND", "Não encontrado.");
 };
+// D3: o Coordenador inativa qualquer um; o Administrador só quem não tem unidade fora do alcance dele.
+const teacherInReach = (t: MockTeacher) => activeRole() === "COORDINATOR" || t.units.every((u) => u.id === ADMIN_UNIT);
 const teacherKey = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 // RF-PRO-03: opções do formulário (modalidades ativas; as dos professores fixos contam como ativas) e validação como no servidor.
 const SEEDED_MODALITIES = [3, 4, 0].map((i) => modalityCatalog[i].id);
@@ -1152,6 +1154,30 @@ export const routes: Route[] = [
       if (teacherResends >= 3) return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
       teacherResends += 1;
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RF-PRO-04: pré-visualização (turmas sem titular: vazia até a Sprint 05). Administrador só inativa quem tem só a unidade dele (D3).
+    method: "get",
+    path: "/teachers/{id}/deactivation",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      return HttpResponse.json({ headClasses: [], canDeactivate: found.status === "ACTIVE" && teacherInReach(found) });
+    },
+  },
+  {
+    // RN-PRO-05: inativa e encerra o vínculo (access ENDED se havia conta); já inativo 409; fora do alcance 403.
+    method: "post",
+    path: "/teachers/{id}/deactivate",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      if (!teacherInReach(found)) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (found.status === "INACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      found.status = "INACTIVE";
+      if (found.access === "PENDING" || found.access === "ACTIVE") found.access = "ENDED";
+      return HttpResponse.json(teacherDetail(found));
     },
   },
   {

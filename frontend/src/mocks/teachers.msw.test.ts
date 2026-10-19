@@ -187,3 +187,33 @@ describe("cadastro e edição do professor x OpenAPI (RF-PRO-03, CA13)", () => {
     expect((await gone.json()).photoUrl).toBeNull();
   });
 });
+
+describe("inativar professor x OpenAPI (RF-PRO-04, CA10)", () => {
+  it("o contrato declara as duas rotas; pré-visualização não altera e inativar dá 200 INACTIVE, 409 ao repetir", async () => {
+    expect(Object.keys(openapi.paths["/teachers/{id}/deactivation"].get.responses)).toEqual(expect.arrayContaining(["200", "401", "403", "404"]));
+    expect(Object.keys(openapi.paths["/teachers/{id}/deactivate"].post.responses)).toEqual(expect.arrayContaining(["200", "401", "403", "404", "409"]));
+    expect((await fetch(`/api/v1/teachers/${JOAO}/deactivation`)).status).toBe(401);
+    await login("ana@exemplo.com");
+    const preview = await (await fetch(`/api/v1/teachers/${JOAO}/deactivation`)).json();
+    expect(Object.keys(preview).sort()).toEqual([...openapi.components.schemas.TeacherDeactivationPreview.required].sort());
+    expect(preview).toEqual({ headClasses: [], canDeactivate: true });
+    expect((await (await fetch(`/api/v1/teachers/${JOAO}`)).json()).status).toBe("ACTIVE");
+    await post(`${JOAO}/access`);
+    const done = await post(`${JOAO}/deactivate`);
+    expect(done.status).toBe(200);
+    expect(await done.json()).toMatchObject({ status: "INACTIVE", access: "ENDED" });
+    expect((await post(`${JOAO}/deactivate`)).status).toBe(409);
+    expect((await (await fetch(`/api/v1/teachers/${JOAO}/deactivation`)).json()).canDeactivate).toBe(false);
+    expect((await post("00000000-0000-0000-0000-0000000009ff/deactivate")).status).toBe(404);
+  });
+
+  it("Administrador só inativa quem tem só a unidade dele (403 e canDeactivate falso senão); Professor 403", async () => {
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await (await fetch(`/api/v1/teachers/${JOAO}/deactivation`)).json()).canDeactivate).toBe(false);
+    expect((await post(`${JOAO}/deactivate`)).status).toBe(403);
+    expect((await post(`${ANA}/deactivate`)).status).toBe(200);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await post(`${JOAO}/deactivate`)).status).toBe(403);
+    expect((await fetch(`/api/v1/teachers/${JOAO}/deactivation`)).status).toBe(403);
+  });
+});

@@ -8,6 +8,7 @@ import { WhatsAppButton } from "@/components/whatsapp";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { usePermissions } from "@/features/permissions/usePermissions";
 import { formatDateTime } from "@/lib/format";
+import { DeactivateTeacherDialog } from "./DeactivateTeacherDialog";
 import { GrantAccessDialog } from "./GrantAccessDialog";
 import { TeacherFormDialog } from "./TeacherFormDialog";
 import { resendTeacherInvite, useTeacher, type TeacherDetail } from "./useTeachers";
@@ -32,6 +33,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () => Promise<void> }) {
   const { t } = useTranslation();
   const [granting, setGranting] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
   const [editing, setEditing] = useState(false);
   const { permissions } = usePermissions();
   const canWrite = !!permissions && permissions.TEACHERS !== "NONE";
@@ -75,7 +77,7 @@ function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () =
             {t("teachers.panel.edit")}
           </Button>
         )}
-        <Button variant="outline" className="min-h-11" disabled>
+        <Button variant="outline" className="min-h-11" disabled={!canWrite || teacher.status !== "ACTIVE"} onClick={() => setDeactivating(true)}>
           {t("teachers.panel.deactivate")}
         </Button>
         {(teacher.access === "NONE" || teacher.access === "ENDED") && (
@@ -147,6 +149,14 @@ function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () =
         onClose={() => setEditing(false)}
         onSaved={() => {
           setNotice(t("teachers.form.saved"));
+          void onRefresh();
+        }}
+      />
+      <DeactivateTeacherDialog
+        teacher={deactivating ? teacher : null}
+        onClose={() => setDeactivating(false)}
+        onDone={() => {
+          setNotice(t("teachers.panel.deactivateDialog.done"));
           void onRefresh();
         }}
       />
