@@ -60,6 +60,11 @@ public class Organizations {
                     .param("org", organization.id()).param("unit", organization.unitId()).update();
             jdbc.sql("insert into organization_limits (organization_id) values (:org)")
                     .param("org", organization.id()).update();
+            // RF-MOD-04: default age ranges (Infantil 4-12, Juvenil 13-17, Adulto 18+).
+            jdbc.sql("insert into age_range (id, organization_id, name, name_key, min_age, max_age) "
+                    + "select gen_random_uuid(), :org, d.name, d.name_key, d.min_age, d.max_age "
+                    + "from (values ('Infantil', 'infantil', 4, 12), ('Juvenil', 'juvenil', 13, 17), ('Adulto', 'adulto', 18, null)) "
+                    + "as d(name, name_key, min_age, max_age)").param("org", organization.id()).update();
             return null;
         });
     }

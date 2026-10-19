@@ -328,6 +328,41 @@
       "appoint": "Nomear a mim mesmo"
     }
   },
+  "ageRanges": {
+    "title": "Faixas etárias",
+    "intro": "As faixas organizam turmas, aulas experimentais e o diretório. A idade de cada aluno continua calculada pelo nascimento.",
+    "listTitle": "Faixas da organização",
+    "range": "{{min}} a {{max}} anos",
+    "openEnded_one": "{{count}} ano ou mais",
+    "openEnded_other": "{{count}} anos ou mais",
+    "create": "Nova faixa",
+    "edit": "Editar",
+    "delete": "Apagar",
+    "saved": "Faixa etária salva",
+    "deleted": "Faixa {{name}} apagada",
+    "deleteError": "Não foi possível apagar {{name}}. Nada foi alterado. Tente de novo.",
+    "emptyTitle": "Nenhuma faixa etária",
+    "emptyText": "Crie uma faixa para organizar turmas e aulas por idade.",
+    "confirm": {
+      "title": "Apagar faixa etária",
+      "summary": "Apagar a faixa {{name}}? Esta ação não pode ser desfeita."
+    },
+    "dialog": {
+      "createTitle": "Nova faixa etária",
+      "editTitle": "Editar faixa etária",
+      "name": "Nome da faixa",
+      "minAge": "Idade mínima",
+      "maxAge": "Idade máxima (opcional)",
+      "hint": "Deixe a idade máxima em branco para \"ou mais\". Faixas podem se sobrepor.",
+      "nameInvalid": "Informe o nome com 2 a 40 caracteres.",
+      "minInvalid": "Informe a idade mínima, de 0 a 120.",
+      "maxInvalid": "A idade máxima vai da mínima até 120.",
+      "taken": "Já existe uma faixa com este nome.",
+      "error": "Não foi possível salvar a faixa. Nada foi alterado. Tente de novo.",
+      "save": "Salvar",
+      "saving": "Salvando..."
+    }
+  },
   "modalities": {
     "title": "Modalidades",
     "mine": "Suas modalidades",
@@ -600,6 +635,7 @@
       "unitSettings": "Configurações da unidade",
       "organizationSettings": "Configurações da organização",
       "modalities": "Modalidades",
+      "ageRanges": "Faixas etárias",
       "staffUsers": "Usuários da gestão",
       "units": "Unidades",
       "subscription": "Assinatura e faturas",

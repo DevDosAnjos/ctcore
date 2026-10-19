@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -160,6 +160,15 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from organization_modality where graduation_enabled", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from unit_modality where offered", Integer.class))
                 .isEqualTo(2 * jdbc.queryForObject("select count(*) from unit", Integer.class));
+    }
+
+    @Test
+    @DisplayName("RF-MOD-04: seed cria 5 faixas etárias em cada uma das 3 organizações, sem duplicar")
+    void ageRangesSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from age_range", Integer.class)).isEqualTo(15);
+        assertThat(jdbc.queryForObject("select count(*) from age_range where name = 'Master' and max_age is null", Integer.class)).isEqualTo(3);
     }
 
     @Test
