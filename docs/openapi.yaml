@@ -574,6 +574,52 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /units/{unitId}/modalities:
+    parameters:
+      - { name: unitId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Modalidades ativas da organização com a marcação da unidade (RF-MOD-03, RN-MOD-02). Coordenador e Administrador da unidade.
+      description: |
+        Devolve só as modalidades ativas da organização, em ordem de nome, com `offered` (a unidade oferece) e `canManage`. A marcação
+        feita antes de a organização desativar a modalidade fica guardada, não aparece e volta se ela for reativada. Professor, portal e
+        Administrador de outra unidade recebem 403. Unidade de outra organização ou inexistente responde 404.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: As modalidades da unidade.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitModalities' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /units/{unitId}/modalities/{modalityId}:
+    put:
+      summary: Marca ou desmarca a modalidade na unidade (RF-MOD-03, RN-MOD-02, RN-MOD-03). Coordenador e Administrador da unidade.
+      description: |
+        Só modalidade ativa na organização pode ser marcada; inativa ou fora do catálogo responde 404. Repetir o valor responde 200 sem
+        nova auditoria. Sem `If-Match`: cada marcação é independente e idempotente. Grava `unit.modality.offered` ou
+        `unit.modality.withdrawn` na auditoria. Corpo sem `offered`, 400. Unidade de outra organização ou inexistente, 404; Professor,
+        portal e Administrador de outra unidade, 403.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: unitId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offered]
+              properties:
+                offered: { type: boolean }
+      responses:
+        '200':
+          description: A modalidade com a nova marcação.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitModality' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /modalities:
     get:
       summary: Catálogo de modalidades com a situação na organização do vínculo ativo (RF-MOD-01, RN-MOD-01).
@@ -1098,6 +1144,19 @@ components:
         active: { type: boolean }
         canManage: { type: boolean }
         graduationEnabled: { type: boolean }
+    UnitModality:
+      type: object
+      required: [id, name, offered]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        offered: { type: boolean }
+    UnitModalities:
+      type: object
+      required: [canManage, items]
+      properties:
+        canManage: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/UnitModality' } }
     GraduationLevel:
       type: object
       required: [id, name, color, secondaryColor, maxDegree, minAge, maxAge, kids]

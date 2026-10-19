@@ -53,3 +53,27 @@ test("@critical Coordenador liga a graduação do Jiu-Jitsu e edita um nível", 
   await expect(reopened.getByLabel("Nome do nível 2")).toHaveValue("Azul royal");
   await expect(reopened.getByRole("switch", { name: "Graduação ligada" })).toBeChecked();
 });
+
+// RF-MOD-03: o Coordenador ativa o Jiu-Jitsu na organização, marca-o na unidade e o vê marcado ao voltar à tela.
+test("@critical Coordenador marca uma modalidade na unidade", async ({ page }) => {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill("ana@exemplo.com");
+  await page.getByLabel("Senha").fill("segredo123");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+  await open(page, "/configuracoes/modalidades");
+  const available = page.locator("section", { has: page.getByRole("heading", { name: "Disponíveis para ativar" }) });
+  await available.getByRole("button", { name: /Ativar\s*Jiu-Jitsu/ }).click();
+
+  await open(page, "/configuracoes/unidade");
+  await expect(page.getByRole("heading", { name: "Configurações da unidade", level: 1 })).toBeVisible();
+  const offered = page.getByRole("switch", { name: "Jiu-Jitsu" });
+  await expect(offered).not.toBeChecked();
+  await offered.check();
+  await expect(offered).toBeChecked();
+
+  await open(page, "/");
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+  await open(page, "/configuracoes/unidade");
+  await expect(page.getByRole("switch", { name: "Jiu-Jitsu" })).toBeChecked();
+});

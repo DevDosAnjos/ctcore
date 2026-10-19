@@ -482,6 +482,15 @@
       "saving": "Ajustando..."
     }
   },
+  "unitModalities": {
+    "title": "Modalidades oferecidas",
+    "help": "Marque as modalidades que esta unidade oferece, entre as que a organização ativou. A mudança vale na hora.",
+    "emptyTitle": "Nenhuma modalidade ativa",
+    "emptyText": "Ative modalidades na organização para escolher quais esta unidade oferece.",
+    "emptyLink": "Ir para Configurações › Modalidades",
+    "readOnly": "Você pode ver as modalidades, mas não alterá-las.",
+    "changeError": "Não foi possível alterar {{name}}. Nada foi alterado. Tente de novo."
+  },
   "unitSettings": {
     "title": "Configurações da unidade",
     "emptyTitle": "Nenhuma unidade para configurar",
