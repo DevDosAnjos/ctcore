@@ -826,6 +826,73 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /teachers/{id}:
+    get:
+      summary: Painel do professor (RF-PRO-02). Coordenador e Administrador.
+      description: |
+        Traz foto, apresentação, contato (e-mail e telefone, só nesta rota autenticada; RN-PRO-04), graduação por modalidade, unidades,
+        `classes` e `upcomingClasses` (vazias até a Sprint 05) e a situação do acesso. O Administrador só abre professor com ao menos uma
+        unidade dele (e vê todas as unidades); fora disso, ou de outra organização, 404. Professor, Aluno e Responsável recebem 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel do professor.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /teachers/{id}/access:
+    post:
+      summary: Dá acesso ao sistema ao professor (RN-PRO-02). Coordenador e Administrador.
+      description: |
+        Envia o convite ao e-mail do cadastro, cria o vínculo `TEACHER` pendente nas unidades escolhidas e liga o cadastro à conta. Sem
+        `unitIds`, usa as unidades ativas do professor que quem chama alcança. Administrador com unidade fora do alcance: 403; unidade fora
+        das unidades do professor ou inativa: 400; sem e-mail: 400. Professor inativo, acesso já pendente ou ativo, conta já ligada a outro
+        cadastro (`ALREADY_LINKED`) e limite de usuários de gestão (`STAFF_LIMIT_REACHED`): 409. Grava `teacher.access_granted`, sem código.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                unitIds: { type: array, items: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel com `access` igual a `PENDING`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Recusa (inativo, acesso já existente, conta ligada, limite).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /teachers/{id}/access/resend:
+    post:
+      summary: Reenvia o convite pendente do professor (RN-PRO-02). Coordenador e Administrador.
+      description: |
+        Só com `access` igual a `PENDING`; nos demais casos 409. Invalida o convite anterior (mesmo limite de 3 reenvios por dia de
+        RN-ACE-13). Grava `teacher.invite_resent`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Convite reenviado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Acesso que não está pendente.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '429':
+          description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   /users:
     get:
       summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
@@ -1352,6 +1419,41 @@ components:
         - type: object
           properties:
             items: { type: array, items: { $ref: '#/components/schemas/TeacherRow' } }
+    TeacherDetail:
+      type: object
+      required: [id, name, photoUrl, bio, email, phone, directoryConsent, status, modalities, units, classes, upcomingClasses, access]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        bio: { type: string, nullable: true, maxLength: 300 }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        directoryConsent: { type: boolean }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        modalities: { $ref: '#/components/schemas/TeacherRow/properties/modalities' }
+        units: { $ref: '#/components/schemas/TeacherRow/properties/units' }
+        classes:
+          type: array
+          description: Turmas como titular ou auxiliar; vazia até a Sprint 05.
+          items:
+            type: object
+            required: [id, name, role]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              role: { type: string, enum: [HEAD, ASSISTANT] }
+        upcomingClasses:
+          type: array
+          description: Próximas aulas; vazia até a Sprint 05.
+          items:
+            type: object
+            required: [classId, name, startsAt]
+            properties:
+              classId: { type: string, format: uuid }
+              name: { type: string }
+              startsAt: { type: string, format: date-time }
+        access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED] }
     UnitSummary:
       type: object
       required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]

@@ -18,6 +18,7 @@ import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
+import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { UsersPage } from "@/features/users/UsersPage";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
@@ -84,6 +85,7 @@ export function App() {
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/professores" element={<TeachersPage />} />
+            <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />
             <Route path="/configuracoes/unidade" element={<UnitSettingsPage />} />
             <Route path="/configuracoes/modalidades" element={<ModalitiesPage />} />

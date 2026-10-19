@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import type { TFunction } from "i18next";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
@@ -32,7 +33,9 @@ const columns = (t: TFunction): Column<Teacher>[] => [
     render: (r) => (
       <span className="flex items-center gap-2">
         <Avatar teacher={r} />
-        <span className="min-w-0 break-words font-medium">{r.name}</span>
+        <Link to={`/professores/${r.id}`} className="inline-flex min-h-11 min-w-0 items-center break-words font-medium underline">
+          {r.name}
+        </Link>
       </span>
     ),
   },

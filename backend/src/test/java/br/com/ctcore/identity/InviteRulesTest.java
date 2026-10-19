@@ -27,6 +27,13 @@ class InviteRulesTest {
         assertThat(InviteRules.allowed(admin, Role.TEACHER, Set.of())).isFalse();
         assertThat(InviteRules.allowed(admin, Role.ADMINISTRATOR, Set.of(mine))).isFalse();
         assertThat(InviteRules.allowed(teacher, Role.TEACHER, Set.of(mine))).isFalse();
+        // RN-PRO-02: dar acesso a professor pelo painel; o Coordenador também, mas só com unidade
+        assertThat(InviteRules.teacherAccess(coordinator, Set.of(other))).isTrue();
+        assertThat(InviteRules.teacherAccess(coordinator, Set.of())).isFalse();
+        assertThat(InviteRules.teacherAccess(admin, Set.of(mine))).isTrue();
+        assertThat(InviteRules.teacherAccess(admin, Set.of(mine, other))).isFalse();
+        assertThat(InviteRules.teacherAccess(teacher, Set.of(mine))).isFalse();
+        assertThat(InviteRules.teacherAccess(Inviter.system(), Set.of(mine))).isFalse();
         assertThat(InviteRules.allowed(Inviter.system(), Role.STUDENT, Set.of())).isTrue();
         assertThat(InviteRules.allowed(Inviter.system(), Role.GUARDIAN, Set.of())).isTrue();
         assertThat(InviteRules.allowed(Inviter.system(), Role.TEACHER, Set.of(mine))).isFalse();

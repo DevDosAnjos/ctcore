@@ -72,6 +72,8 @@ export const resetMockSession = () => {
   units = initialUnits();
   unitDetails = {};
   staff = initialStaff();
+  mockTeachers = initialTeachers();
+  teacherResends = 0;
   sessions = initialSessions();
   activeModalities.clear();
   unitModalities.clear();
@@ -255,11 +257,32 @@ const gone = (code: string) =>
 // Cada item que declarar rota acrescenta aqui o handler dela; o teste msw.test.ts confere contra o OpenAPI.
 // Professores (RF-PRO-01), fixos: o Administrador (ADMIN_UNIT) só vê os que têm a unidade dele; telefone e e-mail nunca saem (RN-PRO-04).
 const UNIT_NORTE = "00000000-0000-0000-0000-000000000022";
-const mockTeachers = [
+const initialTeachers = () => [
   { id: "00000000-0000-0000-0000-000000000501", name: "Ana Souza", photoUrl: null as string | null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", level: "Roxa", degree: 2 }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }], classCount: 0, status: "ACTIVE", directoryConsent: true, access: "ACTIVE" },
   { id: "00000000-0000-0000-0000-000000000502", name: "João Pereira", photoUrl: null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", level: "Azul", degree: 0 }, { id: modalityCatalog[4].id, name: "Judô", level: null, degree: null }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }, { id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "ACTIVE", directoryConsent: false, access: "NONE" },
   { id: "00000000-0000-0000-0000-000000000503", name: "Marcos Lima", photoUrl: null, modalities: [{ id: modalityCatalog[0].id, name: "Boxe", level: null, degree: null }], units: [{ id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "INACTIVE", directoryConsent: false, access: "ENDED" },
 ];
+let mockTeachers = initialTeachers();
+// Contato e apresentação só saem no painel (RF-PRO-02, D2); a lista nunca os traz. João tem e-mail e ainda sem acesso; Marcos não tem e-mail.
+const teacherContacts: Record<string, { bio: string | null; email: string | null; phone: string | null }> = {
+  "00000000-0000-0000-0000-000000000501": { bio: "Faixa preta, 15 anos de tatame.", email: "ana.souza@alfa.test", phone: "+55 11 98888-0001" },
+  "00000000-0000-0000-0000-000000000502": { bio: null, email: "joao.pereira@alfa.test", phone: "+55 11 98888-0002" },
+  "00000000-0000-0000-0000-000000000503": { bio: null, email: null, phone: null },
+};
+let teacherResends = 0;
+type MockTeacher = ReturnType<typeof initialTeachers>[number];
+const teacherDetail = (t: MockTeacher) => {
+  const { id, name, photoUrl, directoryConsent, status, modalities, units, access } = t;
+  return { id, name, photoUrl, directoryConsent, status, modalities, units, access, ...teacherContacts[id], classes: [], upcomingClasses: [] };
+};
+// Quem chama: 401 sem sessão, 403 sem TEACHERS, 404 fora do alcance (Administrador sem a unidade dele) ou inexistente.
+const teacherFor = (id: string) => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+  const found = mockTeachers.find((t) => t.id === id && (role === "COORDINATOR" || t.units.some((u) => u.id === ADMIN_UNIT)));
+  return found ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
 const teacherKey = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 
 export const routes: Route[] = [
@@ -962,6 +985,50 @@ export const routes: Route[] = [
         .filter((t) => !unitId || (role === "COORDINATOR" || unitId === ADMIN_UNIT) && t.units.some((u) => u.id === unitId))
         .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-PRO-02: painel; Administrador só abre professor com a unidade dele (senão 404); contato só aqui.
+    method: "get",
+    path: "/teachers/{id}",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    // RN-PRO-02: dá acesso (convite + vínculo pendente). Sem unitIds, usa as unidades do professor ao alcance de quem chama.
+    method: "post",
+    path: "/teachers/{id}/access",
+    resolver: async ({ request, params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      const body = (await request.json().catch(() => ({}))) as { unitIds?: string[] };
+      const mine = found.units.map((u) => u.id).filter((id) => activeRole() === "COORDINATOR" || id === ADMIN_UNIT);
+      const asked = body.unitIds ?? [];
+      if (activeRole() === "ADMINISTRATOR" && asked.some((id) => id !== ADMIN_UNIT)) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (asked.some((id) => !found.units.some((u) => u.id === id))) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "unitIds", message: "escolha unidades ativas do professor" }]);
+      }
+      if (!teacherContacts[found.id].email) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "email", message: "o professor não tem e-mail cadastrado" }]);
+      if (found.status === "INACTIVE" || found.access === "PENDING" || found.access === "ACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      if ((asked.length ? asked : mine).length === 0) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "unitIds", message: "escolha ao menos uma unidade" }]);
+      found.access = "PENDING";
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    // RN-PRO-02: só com acesso PENDING (senão 409); no máximo 3 reenvios por dia (429).
+    method: "post",
+    path: "/teachers/{id}/access/resend",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      if (found.access !== "PENDING") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      if (teacherResends >= 3) return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      teacherResends += 1;
+      return new HttpResponse(null, { status: 204 });
     },
   },
   {
