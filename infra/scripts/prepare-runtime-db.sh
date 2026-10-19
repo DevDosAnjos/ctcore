@@ -30,5 +30,6 @@ select format('grant connect on database %I to %I', current_database(), :'runtim
 grant usage on schema public to :"runtime_user";
 grant select, insert, update, delete on all tables in schema public to :"runtime_user";
 select format('revoke insert, update, delete on modality from %I', :'runtime_user') where to_regclass('public.modality') is not null \gexec
+select format('revoke insert, update, delete on modality_default_level from %I', :'runtime_user') where to_regclass('public.modality_default_level') is not null \gexec
 alter default privileges in schema public grant select, insert, update, delete on tables to :"runtime_user";
 SQL

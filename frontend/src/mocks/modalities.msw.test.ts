@@ -110,4 +110,52 @@ describe("modalidades x OpenAPI (RF-MOD-01, CA14)", () => {
     expect((await fetch("/api/v1/modalities/requests")).status).toBe(403);
     expect(declared("/modalities", "get")).toContain("403");
   });
+
+  it("graduação x OpenAPI (RF-MOD-02): Coordenador lê e grava no formato do servidor; Administrador só lê; 404, 409 e 400 do contrato", async () => {
+    const grad = (id: string) => fetch(`/api/v1/modalities/${id}/graduation`);
+    const save = (id: string, body: unknown) =>
+      fetch(`/api/v1/modalities/${id}/graduation`, { method: "PUT", headers: json, body: JSON.stringify(body) });
+    expect((await grad("x")).status).toBe(401);
+    await login("ana@exemplo.com");
+    const items = await (await list()).json();
+    const bjj = items.find((m: { name: string }) => m.name === "Jiu-Jitsu").id;
+    expect((await grad(bjj)).status).toBe(409);
+    expect((await save(bjj, { enabled: false, levels: [] })).status).toBe(409);
+    expect((await grad("00000000-0000-0000-0000-0000000009ff")).status).toBe(404);
+    await activate(bjj, { active: true });
+    const view = await (await grad(bjj)).json();
+    expect(Object.keys(view).sort()).toEqual([...openapi.components.schemas.Graduation.required].sort());
+    expect(view.canManage).toBe(true);
+    const levelKeys: string[] = openapi.components.schemas.GraduationLevel.required;
+    expect(view.levels.length).toBeGreaterThan(0);
+    for (const l of view.levels) expect(Object.keys(l).sort()).toEqual([...levelKeys].sort());
+
+    expect((await save(bjj, { levels: [] })).status).toBe(400);
+    expect((await save(bjj, { enabled: true, levels: [] })).status).toBe(400);
+    const bad = await save(bjj, { enabled: false, levels: [{ name: "", color: "#000000", maxDegree: 1, kids: false }] });
+    expect(bad.status).toBe(400);
+    expect((await bad.json()).fields[0].field).toBe("levels[0].name");
+    const levels = [view.levels[1], { name: "Nova", color: "#112233", maxDegree: 2, kids: true }];
+    const saved = await (await save(bjj, { enabled: true, requireOriginProof: true, levels })).json();
+    expect(saved.levels.map((l: { name: string }) => l.name)).toEqual([view.levels[1].name, "Nova"]);
+    expect(saved.levels[0].id).toBe(view.levels[1].id);
+    expect(saved.enabled && saved.requireOriginProof).toBe(true);
+    const listed = await (await list()).json();
+    expect(listed.find((m: { id: string }) => m.id === bjj).graduationEnabled).toBe(true);
+    for (const status of ["200", "400", "401", "403", "404", "409"]) {
+      expect(declared("/modalities/{id}/graduation", "put")).toContain(status);
+    }
+    expect(declared("/modalities/{id}/graduation", "get")).toContain("409");
+  });
+
+  it("graduação: Administrador lê com canManage falso e recebe 403 ao gravar", async () => {
+    await login("ana@exemplo.com");
+    const bjj = (await (await list()).json()).find((m: { name: string }) => m.name === "Jiu-Jitsu").id;
+    await activate(bjj, { active: true });
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    const view = await (await fetch(`/api/v1/modalities/${bjj}/graduation`)).json();
+    expect(view.canManage).toBe(false);
+    const put = await fetch(`/api/v1/modalities/${bjj}/graduation`, { method: "PUT", headers: json, body: JSON.stringify({ enabled: false, levels: [] }) });
+    expect(put.status).toBe(403);
+  });
 });

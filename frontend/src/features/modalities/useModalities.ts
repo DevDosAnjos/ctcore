@@ -7,6 +7,7 @@ export interface Modality {
   name: string;
   active: boolean;
   canManage: boolean;
+  graduationEnabled: boolean;
 }
 export interface ModalityRequest {
   id: string;
@@ -70,6 +71,18 @@ export function useModalities() {
           : d,
       );
     },
+    // Depois de salvar a graduação, a linha passa a refletir o interruptor sem recarregar a lista.
+    setGraduationEnabled: (id: string, graduationEnabled: boolean) =>
+      setDone((d) =>
+        d?.items
+          ? {
+              ...d,
+              items: d.items.map((m) =>
+                m.id === id ? { ...m, graduationEnabled } : m,
+              ),
+            }
+          : d,
+      ),
     sendRequest: async (name: string, note: string) => {
       const created = await api<ModalityRequest>("/modalities/requests", {
         method: "POST",

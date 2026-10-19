@@ -33,7 +33,7 @@ const modality = (
   name: string,
   active: boolean,
   canManage = true,
-): Modality => ({ id, name, active, canManage });
+): Modality => ({ id, name, active, canManage, graduationEnabled: false });
 
 let items: Modality[];
 let requests: ModalityRequest[];

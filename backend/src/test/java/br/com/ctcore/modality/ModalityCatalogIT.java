@@ -29,6 +29,7 @@ class ModalityCatalogIT extends PostgresIT {
     @AfterEach
     void cleanModalityTables() {
         adminJdbc().update("delete from modality_request");
+        adminJdbc().update("delete from graduation_level");
         adminJdbc().update("delete from organization_modality");
     }
 

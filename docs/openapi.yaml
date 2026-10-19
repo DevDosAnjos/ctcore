@@ -615,6 +615,47 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /modalities/{id}/graduation:
+    get:
+      summary: Sistema de graduação da organização para uma modalidade ativa (RF-MOD-02, RN-GRA-01). Coordenador e Administrador.
+      description: |
+        Devolve `enabled`, `requireOriginProof`, `canManage` (verdadeiro só para o Coordenador) e os níveis na ordem. Id fora do catálogo
+        responde 404; modalidade que a organização não tem ativa, 409 `MODALITY_NOT_ACTIVE`. Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Sistema de graduação da organização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Graduation' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    put:
+      summary: Grava o sistema de graduação inteiro (RF-MOD-02, RN-GRA-01). Só o Coordenador.
+      description: |
+        Grava de uma vez `enabled`, `requireOriginProof` e a lista completa de níveis na ordem enviada: nível com `id` é atualizado, sem
+        `id` é criado e o que ficou de fora é removido; tudo ou nada. Nome de 1 a 40 caracteres e único na modalidade (sem diferenciar
+        maiúsculas nem acentos), cores `#RRGGBB`, grau de 0 a 10, idades de 0 a 120 com mínima menor ou igual à máxima, até 30 níveis; ligar
+        exige ao menos um nível. Erro de campo responde 400 com o campo (ex.: `levels[2].name`); `id` de nível que não é desta modalidade
+        e organização, 400. Modalidade fora do catálogo, 404; não ativa na organização, 409 `MODALITY_NOT_ACTIVE`. Grava
+        `modality.graduation_updated` na auditoria; repetir a mesma gravação responde 200 sem nova auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/GraduationUpdate' } } }
+      responses:
+        '200':
+          description: O sistema de graduação gravado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Graduation' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /modalities/requests:
     get:
       summary: Pedidos de modalidade nova da organização (RN-MOD-04). Coordenador e Administrador.
@@ -988,6 +1029,7 @@ components:
             - UNIT_HAS_BLOCKERS
             - LAST_UNIT_ADMINISTRATOR
             - MODALITY_IN_USE
+            - MODALITY_NOT_ACTIVE
             - REQUEST_ALREADY_OPEN
             - ALREADY_IN_CATALOG
             - STAFF_LIMIT_REACHED
@@ -1049,12 +1091,54 @@ components:
         canDeactivate: { type: boolean }
     Modality:
       type: object
-      required: [id, name, active, canManage]
+      required: [id, name, active, canManage, graduationEnabled]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         active: { type: boolean }
         canManage: { type: boolean }
+        graduationEnabled: { type: boolean }
+    GraduationLevel:
+      type: object
+      required: [id, name, color, secondaryColor, maxDegree, minAge, maxAge, kids]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 40 }
+        color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+        secondaryColor: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', nullable: true }
+        maxDegree: { type: integer, minimum: 0, maximum: 10 }
+        minAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+        maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+        kids: { type: boolean }
+    Graduation:
+      type: object
+      required: [enabled, requireOriginProof, canManage, levels]
+      properties:
+        enabled: { type: boolean }
+        requireOriginProof: { type: boolean }
+        canManage: { type: boolean }
+        levels: { type: array, items: { $ref: '#/components/schemas/GraduationLevel' } }
+    GraduationUpdate:
+      type: object
+      required: [enabled, levels]
+      properties:
+        enabled: { type: boolean }
+        requireOriginProof: { type: boolean, default: false }
+        levels:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            required: [name, color, maxDegree, kids]
+            properties:
+              id: { type: string, format: uuid, description: 'Presente para atualizar um nível existente; ausente cria.' }
+              name: { type: string, minLength: 1, maxLength: 40 }
+              color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+              secondaryColor: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', nullable: true }
+              maxDegree: { type: integer, minimum: 0, maximum: 10 }
+              minAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+              maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+              kids: { type: boolean }
     ModalityRequest:
       type: object
       required: [id, name, note, status, createdAt]
