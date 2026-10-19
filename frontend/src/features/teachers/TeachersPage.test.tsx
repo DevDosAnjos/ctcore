@@ -21,7 +21,7 @@ const teacher = (over: Partial<Teacher>): Teacher => ({
   id: "t1",
   name: "Ana Souza",
   photoUrl: null,
-  modalities: [{ id: "m1", name: "Jiu-Jitsu", level: "Roxa", degree: 2 }],
+  modalities: [{ id: "m1", name: "Jiu-Jitsu", levelId: "l1", level: "Roxa", degree: 2 }],
   units: [{ id: "u1", name: "Centro" }],
   classCount: 0,
   status: "ACTIVE",
@@ -31,7 +31,7 @@ const teacher = (over: Partial<Teacher>): Teacher => ({
 });
 const all = [
   teacher({}),
-  teacher({ id: "t2", name: "João Pereira", modalities: [{ id: "m2", name: "Judô", level: null, degree: null }], units: [{ id: "u1", name: "Centro" }, { id: "u2", name: "Norte" }], status: "INACTIVE" }),
+  teacher({ id: "t2", name: "João Pereira", modalities: [{ id: "m2", name: "Judô", levelId: null, level: null, degree: null }], units: [{ id: "u1", name: "Centro" }, { id: "u2", name: "Norte" }], status: "INACTIVE" }),
 ];
 
 let calls: URLSearchParams[];

@@ -25,8 +25,9 @@ const detail = (over: Partial<TeacherDetail> = {}): TeacherDetail => ({
   email: "ana@alfa.test",
   phone: "(11) 91234-5678",
   directoryConsent: true,
+  consentDeclaredByManagement: true,
   status: "ACTIVE",
-  modalities: [{ id: "m1", name: "Jiu-Jitsu", level: "Roxa", degree: 2 }],
+  modalities: [{ id: "m1", name: "Jiu-Jitsu", levelId: "l1", level: "Roxa", degree: 2 }],
   units: [{ id: "u1", name: "Centro" }, { id: "u2", name: "Norte" }],
   classes: [],
   upcomingClasses: [],
@@ -83,10 +84,10 @@ describe("TeacherPanelPage (RF-PRO-02)", () => {
     expect(screen.getByText("Sem acesso")).toBeInTheDocument();
   });
 
-  it("CA9: Editar e Inativar desativados; foto aparece quando há URL; WhatsApp só com telefone", async () => {
+  it("CA9: Editar ativo e Inativar desativado; foto aparece quando há URL; WhatsApp só com telefone", async () => {
     setup(() => HttpResponse.json(detail({ photoUrl: "https://files.example/f.png" })));
     await ready();
-    expect(screen.getByRole("button", { name: "Editar" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Editar" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Inativar" })).toBeDisabled();
     expect(document.querySelector("img[src='https://files.example/f.png']")).not.toBeNull();
     expect(screen.queryByText("AS")).toBeNull();

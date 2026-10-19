@@ -42,3 +42,27 @@ test("@critical Coordenador dá acesso a um professor", async ({ page }) => {
   await expect(page.getByText("Convite enviado", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reenviar convite" })).toBeVisible();
 });
+
+// RF-PRO-03: o Coordenador abre Pessoas › Professores, cadastra um professor com unidade e modalidade e vê o painel do professor novo.
+test("@critical Coordenador cadastra um professor", async ({ page }) => {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill("ana@exemplo.com");
+  await page.getByLabel("Senha").fill("segredo123");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Menu principal" });
+  await nav.getByText("Pessoas", { exact: true }).click();
+  await expect(nav.getByRole("link", { name: "Professores" })).toBeVisible();
+  await open(page, "/professores");
+  await expect(page.getByRole("heading", { name: "Professores", level: 1 })).toBeVisible();
+
+  await page.getByRole("button", { name: "Novo professor" }).click();
+  const dialog = page.getByRole("dialog", { name: "Novo professor" });
+  await dialog.getByLabel("Nome").fill("Paula Nogueira");
+  await dialog.getByRole("checkbox", { name: "Unidade Centro" }).check();
+  await dialog.getByRole("checkbox", { name: "Judô" }).check();
+  await dialog.getByRole("button", { name: "Salvar" }).click();
+
+  await expect(page.getByRole("heading", { name: "Paula Nogueira", level: 1 })).toBeVisible();
+  await expect(page.getByText("Judô", { exact: true })).toBeVisible();
+});

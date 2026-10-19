@@ -12,10 +12,13 @@ export function LogoCropDialog({
   file,
   onCancel,
   onConfirm,
+  labels,
 }: {
   file: File;
   onCancel: () => void;
   onConfirm: (logo: Blob) => Promise<void>;
+  /** Textos próprios quando o corte serve a outra imagem (ex.: foto do professor); o padrão é o da logo. */
+  labels?: { title: string; hint: string; preview: string; error: string };
 }) {
   const { t } = useTranslation();
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -84,18 +87,18 @@ export function LogoCropDialog({
   );
 
   return (
-    <Modal open onOpenChange={(open) => !open && onCancel()} title={t("organization.crop.title")}>
+    <Modal open onOpenChange={(open) => !open && onCancel()} title={labels?.title ?? t("organization.crop.title")}>
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">{t("organization.crop.hint")}</p>
+        <p className="text-sm text-muted-foreground">{labels?.hint ?? t("organization.crop.hint")}</p>
         {failed && (
           <p role="alert" className="text-destructive">
-            {image ? t("organization.logoError") : t("organization.crop.loadError")}
+            {image ? (labels?.error ?? t("organization.logoError")) : t("organization.crop.loadError")}
           </p>
         )}
         <canvas
           ref={canvas}
           role="img"
-          aria-label={t("organization.crop.preview")}
+          aria-label={labels?.preview ?? t("organization.crop.preview")}
           width={PREVIEW}
           height={PREVIEW}
           className="mx-auto size-64 max-w-full touch-none rounded-md border"

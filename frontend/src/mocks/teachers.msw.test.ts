@@ -94,3 +94,96 @@ describe("painel do professor x OpenAPI (RF-PRO-02, CA10)", () => {
     expect((await post(`${ANA}/access`, { unitIds: ["00000000-0000-0000-0000-000000000022"] })).status).toBe(403);
   });
 });
+
+const send = (method: string, path: string, body?: unknown) => fetch(`/api/v1/teachers${path}`, { method, headers: json, body: body === undefined ? undefined : JSON.stringify(body) });
+const CENTRO = "00000000-0000-0000-0000-000000000021";
+const JIU = "00000000-0000-0000-0000-000000000103";
+const JUDO = "00000000-0000-0000-0000-000000000104";
+const valid = (extra: Record<string, unknown> = {}) => ({ name: "Nova Professora", unitIds: [CENTRO], modalities: [{ modalityId: JUDO, levelId: null, degree: null }], ...extra });
+
+describe("cadastro e edição do professor x OpenAPI (RF-PRO-03, CA13)", () => {
+  it("o contrato declara as rotas novas e o formato de TeacherInput e TeacherOptions", () => {
+    expect(Object.keys(openapi.paths["/teachers"].post.responses)).toEqual(expect.arrayContaining(["201", "400", "401", "403"]));
+    expect(Object.keys(openapi.paths["/teachers/{id}"].put.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404"]));
+    expect(Object.keys(openapi.paths["/teachers/{id}/photo"].put.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404"]));
+    expect(Object.keys(openapi.paths["/teachers/{id}/photo"].delete.responses)).toEqual(expect.arrayContaining(["200", "401", "403", "404"]));
+    expect(Object.keys(openapi.paths["/teachers/options"].get.responses)).toEqual(expect.arrayContaining(["200", "401", "403"]));
+    expect(openapi.components.schemas.TeacherInput.required).toEqual(["name", "unitIds"]);
+  });
+
+  it("sem sessão 401; Professor 403 em todas; opções só com modalidades ativas e no formato do contrato", async () => {
+    expect((await send("POST", "", valid())).status).toBe(401);
+    expect((await fetch("/api/v1/teachers/options")).status).toBe(401);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await send("POST", "", valid())).status).toBe(403);
+    expect((await send("PUT", `/${JOAO}`, valid())).status).toBe(403);
+    expect((await fetch("/api/v1/teachers/options")).status).toBe(403);
+    await login("ana@exemplo.com");
+    const data = await (await fetch("/api/v1/teachers/options")).json();
+    expect(Object.keys(data)).toEqual(["modalities"]);
+    expect(Object.keys(data.modalities[0]).sort()).toEqual(["graduationEnabled", "id", "levels", "name"]);
+    expect(data.modalities.map((m: { name: string }) => m.name)).toEqual(["Boxe", "Jiu-Jitsu", "Judô"]);
+  });
+
+  it("POST: cria com 201 no formato de TeacherDetail, telefone só com dígitos, aparece na lista", async () => {
+    await login("ana@exemplo.com");
+    const res = await send("POST", "", valid({ phone: "(11) 98888-7777", email: "nova@exemplo.com", directoryConsent: true, consentDeclaredByManagement: true }));
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(Object.keys(data).sort()).toEqual([...openapi.components.schemas.TeacherDetail.required].sort());
+    expect(data).toMatchObject({ status: "ACTIVE", access: "NONE", phone: "11988887777", consentDeclaredByManagement: true, modalities: [{ name: "Judô", levelId: null, level: null, degree: null }] });
+    expect(names(await (await list()).json())).toContain("Nova Professora");
+  });
+
+  it("POST: nome, e-mail, telefone, apresentação, unidades, consentimento e modalidades inválidos dão 400 com o campo", async () => {
+    await login("ana@exemplo.com");
+    const cases: [string, Record<string, unknown>][] = [
+      ["name", { name: "A" }],
+      ["email", { email: "sem-arroba" }],
+      ["phone", { phone: "123" }],
+      ["bio", { bio: "x".repeat(301) }],
+      ["unitIds", { unitIds: [] }],
+      ["unitIds", { unitIds: ["00000000-0000-0000-0000-0000000009aa"] }],
+      ["consentDeclaredByManagement", { directoryConsent: true }],
+      ["modalities", { modalities: [{ modalityId: JUDO }, { modalityId: JUDO }] }],
+      ["modalities", { modalities: [{ modalityId: "00000000-0000-0000-0000-0000000009aa" }] }],
+      ["modalities", { modalities: [{ modalityId: JUDO, levelId: "00000000-0000-0000-0000-0000000009aa", degree: 1 }] }],
+    ];
+    for (const [field, extra] of cases) {
+      const res = await send("POST", "", valid(extra));
+      expect(res.status, field).toBe(400);
+      expect(JSON.stringify(await res.json())).toContain(field);
+    }
+  });
+
+  it("Administrador só cria com a unidade dele (403 fora) e PUT mantém as unidades de fora do alcance", async () => {
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await send("POST", "", valid({ unitIds: ["00000000-0000-0000-0000-000000000022"] }))).status).toBe(403);
+    const res = await send("PUT", `/${JOAO}`, valid({ name: "João P." }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).units.map((u: { id: string }) => u.id).sort()).toEqual([CENTRO, "00000000-0000-0000-0000-000000000022"]);
+    expect((await send("PUT", `/${MARCOS}`, valid())).status).toBe(404);
+  });
+
+  it("PUT: substitui o cadastro, mantém situação e acesso, funciona em inativo; 404 inexistente", async () => {
+    await login("ana@exemplo.com");
+    const res = await send("PUT", `/${MARCOS}`, valid({ name: "Marcos L." }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ name: "Marcos L.", status: "INACTIVE", access: "ENDED", units: [{ id: CENTRO }] });
+    expect((await send("PUT", "/00000000-0000-0000-0000-0000000009ff", valid())).status).toBe(404);
+    void JIU;
+  });
+
+  it("foto: PUT multipart troca, sem arquivo 400, DELETE remove", async () => {
+    await login("ana@exemplo.com");
+    // FormData e File do jsdom não passam pelo fetch do Node; o corpo multipart vai montado à mão.
+    const multipart = (content: string) => ({ method: "PUT", headers: { "Content-Type": "multipart/form-data; boundary=x" }, body: `--x\r\nContent-Disposition: form-data; name="file"; filename="f.png"\r\nContent-Type: image/png\r\n\r\n${content}\r\n--x--\r\n` });
+    const sent = await fetch(`/api/v1/teachers/${JOAO}/photo`, multipart("a".repeat(64)));
+    expect(sent.status).toBe(200);
+    expect((await sent.json()).photoUrl).not.toBeNull();
+    expect((await fetch(`/api/v1/teachers/${JOAO}/photo`, { method: "PUT", headers: { "Content-Type": "multipart/form-data; boundary=x" }, body: "--x--\r\n" })).status).toBe(400);
+    const gone = await fetch(`/api/v1/teachers/${JOAO}/photo`, { method: "DELETE" });
+    expect(gone.status).toBe(200);
+    expect((await gone.json()).photoUrl).toBeNull();
+  });
+});
