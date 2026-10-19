@@ -72,7 +72,15 @@ export const resetMockSession = () => {
   units = initialUnits();
   unitDetails = {};
   staff = initialStaff();
+  mockTeachers = initialTeachers();
+  teacherContacts = initialTeacherContacts();
+  teacherResends = 0;
   sessions = initialSessions();
+  activeModalities.clear();
+  unitModalities.clear();
+  graduations.clear();
+  modalityRequests = [];
+  ageRanges = initialAgeRanges();
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -114,6 +122,43 @@ let units = initialUnits();
 const unitsAccess = () => {
   if (!loggedIn) return unauthenticated();
   return activeRole() === "COORDINATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+// Modalidades (RF-MOD-01), em memória: catálogo fixo de 14, ativas por organização e pedidos enviados.
+const MODALITY_NAMES = ["Boxe", "Capoeira", "Defesa pessoal", "Jiu-Jitsu", "Judô", "Karatê", "Kickboxing", "Krav Magá", "Kung Fu", "Luta Livre", "MMA", "Muay Thai", "Taekwondo", "Wrestling"];
+const modalityCatalog = MODALITY_NAMES.map((name, i) => ({ id: `00000000-0000-0000-0000-0000000001${String(i).padStart(2, "0")}`, name }));
+const activeModalities = new Set<string>();
+const unitModalities = new Map<string, Set<string>>();
+type MockLevel = { id: string; name: string; color: string; secondaryColor: string | null; maxDegree: number; minAge: number | null; maxAge: number | null; kids: boolean };
+type MockGraduation = { enabled: boolean; requireOriginProof: boolean; levels: MockLevel[] };
+const graduations = new Map<string, MockGraduation>();
+const jiuJitsuDefault = (): MockLevel[] =>
+  [["Branca", "#FFFFFF", 4, 16], ["Azul", "#0000CD", 4, 16], ["Roxa", "#800080", 4, 16], ["Marrom", "#8B4513", 4, 18], ["Preta", "#000000", 6, 19]].map(
+    ([name, color, maxDegree, minAge]) => ({ id: crypto.randomUUID(), name: name as string, color: color as string, secondaryColor: null, maxDegree: maxDegree as number, minAge: minAge as number, maxAge: null, kids: false }),
+  );
+const graduationOf = (id: string) => graduations.get(id) ?? { enabled: false, requireOriginProof: false, levels: [] };
+let modalityRequests: { id: string; name: string; note: string | null; status: string; createdAt: string }[] = [];
+// Faixas etárias (RF-MOD-04), em memória: as três padrão; nome único sem acento nem maiúsculas.
+type MockAgeRange = { id: string; name: string; minAge: number; maxAge: number | null };
+type AgeRangeInput = { name?: string; minAge?: number | null; maxAge?: number | null };
+const initialAgeRanges = (): MockAgeRange[] => [
+  { id: crypto.randomUUID(), name: "Infantil", minAge: 4, maxAge: 12 },
+  { id: crypto.randomUUID(), name: "Juvenil", minAge: 13, maxAge: 17 },
+  { id: crypto.randomUUID(), name: "Adulto", minAge: 18, maxAge: null },
+];
+let ageRanges = initialAgeRanges();
+const sortedAgeRanges = () => [...ageRanges].sort((a, b) => a.minAge - b.minAge || a.name.localeCompare(b.name));
+const checkAgeRange = (body: AgeRangeInput, id: string | null): MockAgeRange | Response => {
+  const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+  const name = body.name?.trim() ?? "";
+  if (name.length < 2 || name.length > 40) return bad("name", "de 2 a 40 caracteres");
+  const { minAge } = body;
+  const maxAge = body.maxAge ?? null;
+  if (minAge === undefined || minAge === null) return bad("minAge", "obrigatório");
+  if (!Number.isInteger(minAge) || minAge < 0 || minAge > 120) return bad("minAge", "de 0 a 120");
+  if (maxAge !== null && (!Number.isInteger(maxAge) || maxAge < minAge || maxAge > 120)) return bad("maxAge", "da idade mínima a 120");
+  const key = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  if (ageRanges.some((r) => r.id !== id && key(r.name) === key(name))) return error(409, "AGE_RANGE_NAME_TAKEN", "Já existe uma faixa etária com este nome.");
+  return { id: id ?? crypto.randomUUID(), name, minAge, maxAge };
 };
 export const TRANSFER_TARGET = "admin@alfa.test";
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
@@ -211,6 +256,94 @@ const gone = (code: string) =>
   error(410, "INVITE_INVALID", "Convite inválido.", reasons[code] ? [{ field: "reason", message: reasons[code] }] : []);
 
 // Cada item que declarar rota acrescenta aqui o handler dela; o teste msw.test.ts confere contra o OpenAPI.
+// Professores (RF-PRO-01), fixos: o Administrador (ADMIN_UNIT) só vê os que têm a unidade dele; telefone e e-mail nunca saem (RN-PRO-04).
+const UNIT_NORTE = "00000000-0000-0000-0000-000000000022";
+type MockModality = { id: string; name: string; levelId: string | null; level: string | null; degree: number | null };
+type MockTeacher = { id: string; name: string; photoUrl: string | null; modalities: MockModality[]; units: { id: string; name: string }[]; classCount: number; status: string; directoryConsent: boolean; access: string };
+const initialTeachers = (): MockTeacher[] => [
+  { id: "00000000-0000-0000-0000-000000000501", name: "Ana Souza", photoUrl: null as string | null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", levelId: null as string | null, level: "Roxa", degree: 2 }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }], classCount: 0, status: "ACTIVE", directoryConsent: true, access: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000502", name: "João Pereira", photoUrl: null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", levelId: null as string | null, level: "Azul", degree: 0 }, { id: modalityCatalog[4].id, name: "Judô", levelId: null as string | null, level: null, degree: null }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }, { id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "ACTIVE", directoryConsent: false, access: "NONE" },
+  { id: "00000000-0000-0000-0000-000000000503", name: "Marcos Lima", photoUrl: null, modalities: [{ id: modalityCatalog[0].id, name: "Boxe", levelId: null as string | null, level: null, degree: null }], units: [{ id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "INACTIVE", directoryConsent: false, access: "ENDED" },
+];
+let mockTeachers = initialTeachers();
+// Contato e apresentação só saem no painel (RF-PRO-02, D2); a lista nunca os traz. João tem e-mail e ainda sem acesso; Marcos não tem e-mail.
+type TeacherContact = { bio: string | null; email: string | null; phone: string | null; consentDeclaredByManagement: boolean };
+const initialTeacherContacts = (): Record<string, TeacherContact> => ({
+  "00000000-0000-0000-0000-000000000501": { bio: "Faixa preta, 15 anos de tatame.", email: "ana.souza@alfa.test", phone: "+55 11 98888-0001", consentDeclaredByManagement: true },
+  "00000000-0000-0000-0000-000000000502": { bio: null, email: "joao.pereira@alfa.test", phone: "+55 11 98888-0002", consentDeclaredByManagement: false },
+  "00000000-0000-0000-0000-000000000503": { bio: null, email: null, phone: null, consentDeclaredByManagement: false },
+});
+let teacherContacts = initialTeacherContacts();
+let teacherResends = 0;
+const teacherDetail = (t: MockTeacher) => {
+  const { id, name, photoUrl, directoryConsent, status, modalities, units, access } = t;
+  return { id, name, photoUrl, directoryConsent, status, modalities, units, access, ...teacherContacts[id], classes: [], upcomingClasses: [] };
+};
+// Quem chama: 401 sem sessão, 403 sem TEACHERS, 404 fora do alcance (Administrador sem a unidade dele) ou inexistente.
+const teacherFor = (id: string) => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+  const found = mockTeachers.find((t) => t.id === id && (role === "COORDINATOR" || t.units.some((u) => u.id === ADMIN_UNIT)));
+  return found ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// D3: o Coordenador inativa qualquer um; o Administrador só quem não tem unidade fora do alcance dele.
+const teacherInReach = (t: MockTeacher) => activeRole() === "COORDINATOR" || t.units.every((u) => u.id === ADMIN_UNIT);
+const teacherKey = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+// RF-PRO-03: opções do formulário (modalidades ativas; as dos professores fixos contam como ativas) e validação como no servidor.
+const SEEDED_MODALITIES = [3, 4, 0].map((i) => modalityCatalog[i].id);
+const teacherOptions = () =>
+  modalityCatalog
+    .filter((m) => activeModalities.has(m.id) || SEEDED_MODALITIES.includes(m.id))
+    .map((m) => {
+      const g = graduationOf(m.id);
+      return { id: m.id, name: m.name, graduationEnabled: g.enabled, levels: g.enabled ? g.levels.map(({ id, name, maxDegree }) => ({ id, name, maxDegree })) : [] };
+    });
+type TeacherInput = { name?: string; email?: string | null; phone?: string | null; bio?: string | null; directoryConsent?: boolean; consentDeclaredByManagement?: boolean; unitIds?: string[]; modalities?: { modalityId?: string; levelId?: string | null; degree?: number | null }[] };
+const teacherBad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+// Devolve o cadastro validado ou a resposta de erro. `current` é o professor editado (null na criação): o Administrador mantém as unidades de fora do alcance dele.
+const teacherFromInput = (b: TeacherInput, current: MockTeacher | null) => {
+  const name = (b.name ?? "").trim();
+  if (name.length < 2 || name.length > 80) return teacherBad("name", "de 2 a 80 caracteres");
+  const email = b.email?.trim() || null;
+  if (email && (email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))) return teacherBad("email", "e-mail inválido");
+  let phone: string | null = null;
+  if (b.phone?.trim()) {
+    phone = b.phone.replace(/\D/g, "");
+    if (phone.length > 11 && phone.startsWith("55")) phone = phone.slice(2);
+    if (!/^[1-9][1-9](9\d{8}|\d{8})$/.test(phone)) return teacherBad("phone", "telefone inválido");
+  }
+  const bio = b.bio?.trim() || null;
+  if (bio && bio.length > 300) return teacherBad("bio", "no máximo 300 caracteres");
+  const consent = b.directoryConsent === true;
+  const declared = b.consentDeclaredByManagement === true;
+  if (consent && !declared) return teacherBad("consentDeclaredByManagement", "declare que o professor autorizou");
+  const asked = [...new Set(b.unitIds ?? [])];
+  if (asked.length === 0) return teacherBad("unitIds", "escolha ao menos uma unidade");
+  if (activeRole() === "ADMINISTRATOR" && asked.some((id) => id !== ADMIN_UNIT)) return error(403, "FORBIDDEN", "Sem permissão.");
+  if (asked.some((id) => !units.some((u) => u.id === id && u.active))) return teacherBad("unitIds", "escolha unidades ativas da organização");
+  const options = teacherOptions();
+  const seen = new Set<string>();
+  const modalities: MockModality[] = [];
+  for (const m of b.modalities ?? []) {
+    const option = options.find((o) => o.id === m.modalityId);
+    if (!option || seen.has(option.id)) return teacherBad("modalities", option ? "modalidade repetida" : "modalidade inativa ou inexistente");
+    seen.add(option.id);
+    if (!option.graduationEnabled) {
+      if (m.levelId || (m.degree ?? 0) !== 0) return teacherBad("modalities", "a modalidade não tem graduação");
+      modalities.push({ id: option.id, name: option.name, levelId: null, level: null, degree: null });
+      continue;
+    }
+    const level = option.levels.find((l) => l.id === m.levelId);
+    if (!level) return teacherBad("modalities", m.levelId ? "nível inválido para a modalidade" : "escolha o nível");
+    if (!Number.isInteger(m.degree) || m.degree! < 0 || m.degree! > level.maxDegree) return teacherBad("modalities", `grau de 0 a ${level.maxDegree}`);
+    modalities.push({ id: option.id, name: option.name, levelId: level.id, level: level.name, degree: m.degree! });
+  }
+  const kept = activeRole() === "ADMINISTRATOR" ? (current?.units ?? []).filter((u) => u.id !== ADMIN_UNIT) : [];
+  const chosen = [...kept, ...asked.map((id) => ({ id, name: units.find((u) => u.id === id)!.name }))].sort((a, c) => a.name.localeCompare(c.name));
+  return { name, directoryConsent: consent, modalities: modalities.sort((a, c) => a.name.localeCompare(c.name)), units: chosen, contact: { bio, email, phone, consentDeclaredByManagement: declared } };
+};
+
 export const routes: Route[] = [
   {
     method: "post",
@@ -534,6 +667,180 @@ export const routes: Route[] = [
   },
   {
     method: "get",
+    path: "/modalities",
+    resolver: () => {
+      const denied = organizationAccess(false);
+      if (denied) return denied;
+      const canManage = activeRole() === "COORDINATOR";
+      return HttpResponse.json(modalityCatalog.map((m) => ({ ...m, active: activeModalities.has(m.id), canManage, graduationEnabled: graduationOf(m.id).enabled })));
+    },
+  },
+  {
+    // "Boxe" simula modalidade em uso (2 turmas, 3 alunos): desativar responde 409 MODALITY_IN_USE.
+    method: "put",
+    path: "/modalities/{id}/activation",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const found = modalityCatalog.find((m) => m.id === params.id);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      const { active } = (await request.json()) as { active?: boolean };
+      if (typeof active !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "active", message: "obrigatório" }]);
+      if (!active && found.name === "Boxe" && activeModalities.has(found.id)) {
+        return error(409, "MODALITY_IN_USE", "Em uso.", [
+          { field: "activeClasses", message: "2" },
+          { field: "activeStudents", message: "3" },
+        ]);
+      }
+      if (active) {
+        activeModalities.add(found.id);
+        if (!graduations.has(found.id)) graduations.set(found.id, { enabled: false, requireOriginProof: false, levels: found.name === "Jiu-Jitsu" ? jiuJitsuDefault() : [] });
+      } else activeModalities.delete(found.id);
+      return HttpResponse.json({ ...found, active, canManage: true, graduationEnabled: graduationOf(found.id).enabled });
+    },
+  },
+  {
+    // RF-MOD-03: só as modalidades ativas da organização; a marcação fica guardada se a organização desativar e voltar.
+    method: "get",
+    path: "/units/{unitId}/modalities",
+    resolver: ({ params }) => {
+      const denied = unitSettingsAccess(String(params.unitId));
+      if (denied) return denied;
+      const offered = unitModalities.get(String(params.unitId)) ?? new Set<string>();
+      const items = modalityCatalog.filter((m) => activeModalities.has(m.id)).map((m) => ({ ...m, offered: offered.has(m.id) }));
+      return HttpResponse.json({ canManage: true, items });
+    },
+  },
+  {
+    method: "put",
+    path: "/units/{unitId}/modalities/{modalityId}",
+    resolver: async ({ request, params }) => {
+      const unitId = String(params.unitId);
+      const denied = unitSettingsAccess(unitId);
+      if (denied) return denied;
+      const found = modalityCatalog.find((m) => m.id === params.modalityId && activeModalities.has(m.id));
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      const { offered } = (await request.json()) as { offered?: boolean };
+      if (typeof offered !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "offered", message: "obrigatório" }]);
+      const set = unitModalities.get(unitId) ?? new Set<string>();
+      if (offered) set.add(found.id);
+      else set.delete(found.id);
+      unitModalities.set(unitId, set);
+      return HttpResponse.json({ ...found, offered });
+    },
+  },
+  {
+    method: "get",
+    path: "/modalities/{id}/graduation",
+    resolver: ({ params }) => {
+      const denied = organizationAccess(false);
+      if (denied) return denied;
+      if (!modalityCatalog.some((m) => m.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (!activeModalities.has(params.id as string)) return error(409, "MODALITY_NOT_ACTIVE", "A modalidade não está ativa.");
+      return HttpResponse.json({ ...graduationOf(params.id as string), canManage: activeRole() === "COORDINATOR" });
+    },
+  },
+  {
+    method: "put",
+    path: "/modalities/{id}/graduation",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const id = params.id as string;
+      if (!modalityCatalog.some((m) => m.id === id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (!activeModalities.has(id)) return error(409, "MODALITY_NOT_ACTIVE", "A modalidade não está ativa.");
+      const body = (await request.json()) as { enabled?: boolean; requireOriginProof?: boolean; levels?: Partial<MockLevel>[] };
+      const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+      if (typeof body.enabled !== "boolean") return bad("enabled", "obrigatório");
+      if (!Array.isArray(body.levels) || body.levels.length > 30) return bad("levels", "no máximo 30 níveis");
+      if (body.enabled && body.levels.length === 0) return bad("levels", "inclua ao menos um nível para ligar a graduação");
+      const key = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+      const seen = new Set<string>();
+      for (const [i, l] of body.levels.entries()) {
+        const name = l.name?.trim() ?? "";
+        if (name.length < 1 || name.length > 40) return bad(`levels[${i}].name`, "de 1 a 40 caracteres");
+        if (seen.has(key(name))) return bad(`levels[${i}].name`, "nome repetido");
+        seen.add(key(name));
+        if (!/^#[0-9A-Fa-f]{6}$/.test(l.color ?? "")) return bad(`levels[${i}].color`, "use o formato #RRGGBB");
+      }
+      const saved: MockGraduation = {
+        enabled: body.enabled,
+        requireOriginProof: body.requireOriginProof === true,
+        levels: body.levels.map((l) => ({ id: l.id ?? crypto.randomUUID(), name: l.name!.trim(), color: l.color!, secondaryColor: l.secondaryColor ?? null, maxDegree: l.maxDegree ?? 0, minAge: l.minAge ?? null, maxAge: l.maxAge ?? null, kids: l.kids === true })),
+      };
+      graduations.set(id, saved);
+      return HttpResponse.json({ ...saved, canManage: true });
+    },
+  },
+  {
+    method: "get",
+    path: "/modalities/requests",
+    resolver: () => organizationAccess(false) ?? HttpResponse.json(modalityRequests),
+  },
+  {
+    method: "post",
+    path: "/modalities/requests",
+    resolver: async ({ request }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const body = (await request.json()) as { name?: string; note?: string | null };
+      const name = body.name?.trim() ?? "";
+      const note = body.note?.trim() || null;
+      if (name.length < 2 || name.length > 60) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "name", message: "de 2 a 60 caracteres" }]);
+      if (note && note.length > 300) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "note", message: "no máximo 300 caracteres" }]);
+      const key = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+      if (modalityCatalog.some((m) => key(m.name) === key(name))) return error(409, "ALREADY_IN_CATALOG", "Esta modalidade já existe no catálogo. Ative-a na lista.");
+      if (modalityRequests.some((r) => r.status === "OPEN" && key(r.name) === key(name))) {
+        return error(409, "REQUEST_ALREADY_OPEN", "Você já pediu esta modalidade e o pedido ainda está aberto.");
+      }
+      const created = { id: crypto.randomUUID(), name, note, status: "OPEN", createdAt: new Date().toISOString() };
+      modalityRequests = [created, ...modalityRequests];
+      return HttpResponse.json(created, { status: 201 });
+    },
+  },
+  {
+    method: "get",
+    path: "/age-ranges",
+    resolver: () => organizationAccess(false) ?? HttpResponse.json({ canManage: activeRole() === "COORDINATOR", items: sortedAgeRanges() }),
+  },
+  {
+    method: "post",
+    path: "/age-ranges",
+    resolver: async ({ request }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const checked = checkAgeRange((await request.json()) as AgeRangeInput, null);
+      if (checked instanceof Response) return checked;
+      ageRanges = [...ageRanges, checked];
+      return HttpResponse.json(checked, { status: 201 });
+    },
+  },
+  {
+    method: "put",
+    path: "/age-ranges/{id}",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      if (!ageRanges.some((r) => r.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const checked = checkAgeRange((await request.json()) as AgeRangeInput, params.id as string);
+      if (checked instanceof Response) return checked;
+      ageRanges = ageRanges.map((r) => (r.id === params.id ? checked : r));
+      return HttpResponse.json(checked);
+    },
+  },
+  {
+    method: "delete",
+    path: "/age-ranges/{id}",
+    resolver: ({ params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      if (!ageRanges.some((r) => r.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      ageRanges = ageRanges.filter((r) => r.id !== params.id);
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    method: "get",
     path: "/units",
     resolver: () => unitsAccess() ?? HttpResponse.json(units),
   },
@@ -708,6 +1015,169 @@ export const routes: Route[] = [
       unitDetails[id] = saved;
       Object.assign(units.find((u) => u.id === id)!, { name, city: saved.city });
       return HttpResponse.json(saved);
+    },
+  },
+  {
+    // RF-PRO-01: Coordenador e Administrador; Professor e portal 403. Sem `status`, Ativos e Inativos; filtros combinam; size 25/50/100.
+    method: "get",
+    path: "/teachers",
+    resolver: ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const p = new URL(request.url).searchParams;
+      const bad: { field: string; message: string }[] = [];
+      const status = p.get("status");
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      if (status !== null && !["ACTIVE", "INACTIVE"].includes(status)) bad.push({ field: "status", message: "valor inválido" });
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const modalityId = p.get("modalityId");
+      const unitId = p.get("unitId");
+      const found = mockTeachers
+        .filter((t) => role === "COORDINATOR" || t.units.some((u) => u.id === ADMIN_UNIT))
+        .filter((t) => teacherKey(t.name).includes(q) && (!status || t.status === status))
+        .filter((t) => !modalityId || t.modalities.some((m) => m.id === modalityId))
+        .filter((t) => !unitId || (role === "COORDINATOR" || unitId === ADMIN_UNIT) && t.units.some((u) => u.id === unitId))
+        .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-PRO-03 (D7): opções do formulário; só Coordenador e Administrador.
+    method: "get",
+    path: "/teachers/options",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      return HttpResponse.json({ modalities: teacherOptions() });
+    },
+  },
+  {
+    // RF-PRO-03: cadastro; nasce ACTIVE, sem conta.
+    method: "post",
+    path: "/teachers",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const made = teacherFromInput((await request.json().catch(() => ({}))) as TeacherInput, null);
+      if (made instanceof Response) return made;
+      const { contact, ...fields } = made;
+      const created: MockTeacher = { id: crypto.randomUUID(), photoUrl: null, classCount: 0, status: "ACTIVE", access: "NONE", ...fields };
+      mockTeachers = [...mockTeachers, created];
+      teacherContacts[created.id] = contact;
+      return HttpResponse.json(teacherDetail(created), { status: 201 });
+    },
+  },
+  {
+    // RF-PRO-03: troca o cadastro inteiro; situação e acesso não mudam.
+    method: "put",
+    path: "/teachers/{id}",
+    resolver: async ({ request, params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      const made = teacherFromInput((await request.json().catch(() => ({}))) as TeacherInput, found);
+      if (made instanceof Response) return made;
+      const { contact, ...fields } = made;
+      Object.assign(found, fields);
+      teacherContacts[found.id] = contact;
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    // O corpo multipart é lido como texto (como na logo); o mock só guarda que existe uma foto.
+    method: "put",
+    path: "/teachers/{id}/photo",
+    resolver: async ({ request, params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      const raw = await request.text();
+      if (!raw.includes('name="file"') || raw.length < 20 || raw.length > 5 * 1024 * 1024) return teacherBad("file", "arquivo inválido");
+      found.photoUrl = MOCK_LOGO;
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    method: "delete",
+    path: "/teachers/{id}/photo",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      found.photoUrl = null;
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    // RF-PRO-02: painel; Administrador só abre professor com a unidade dele (senão 404); contato só aqui.
+    method: "get",
+    path: "/teachers/{id}",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    // RN-PRO-02: dá acesso (convite + vínculo pendente). Sem unitIds, usa as unidades do professor ao alcance de quem chama.
+    method: "post",
+    path: "/teachers/{id}/access",
+    resolver: async ({ request, params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      const body = (await request.json().catch(() => ({}))) as { unitIds?: string[] };
+      const mine = found.units.map((u) => u.id).filter((id) => activeRole() === "COORDINATOR" || id === ADMIN_UNIT);
+      const asked = body.unitIds ?? [];
+      if (activeRole() === "ADMINISTRATOR" && asked.some((id) => id !== ADMIN_UNIT)) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (asked.some((id) => !found.units.some((u) => u.id === id))) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "unitIds", message: "escolha unidades ativas do professor" }]);
+      }
+      if (!teacherContacts[found.id].email) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "email", message: "o professor não tem e-mail cadastrado" }]);
+      if (found.status === "INACTIVE" || found.access === "PENDING" || found.access === "ACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      if ((asked.length ? asked : mine).length === 0) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "unitIds", message: "escolha ao menos uma unidade" }]);
+      found.access = "PENDING";
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    // RN-PRO-02: só com acesso PENDING (senão 409); no máximo 3 reenvios por dia (429).
+    method: "post",
+    path: "/teachers/{id}/access/resend",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      if (found.access !== "PENDING") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      if (teacherResends >= 3) return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      teacherResends += 1;
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RF-PRO-04: pré-visualização (turmas sem titular: vazia até a Sprint 05). Administrador só inativa quem tem só a unidade dele (D3).
+    method: "get",
+    path: "/teachers/{id}/deactivation",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      return HttpResponse.json({ headClasses: [], canDeactivate: found.status === "ACTIVE" && teacherInReach(found) });
+    },
+  },
+  {
+    // RN-PRO-05: inativa e encerra o vínculo (access ENDED se havia conta); já inativo 409; fora do alcance 403.
+    method: "post",
+    path: "/teachers/{id}/deactivate",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      if (!teacherInReach(found)) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (found.status === "INACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      found.status = "INACTIVE";
+      if (found.access === "PENDING" || found.access === "ACTIVE") found.access = "ENDED";
+      return HttpResponse.json(teacherDetail(found));
     },
   },
   {

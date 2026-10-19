@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -43,6 +43,14 @@ class SeedDataIT extends PostgresIT {
         jdbc.update("delete from organization_settings");
         jdbc.update("delete from organization_limits");
         jdbc.update("delete from organization");
+    }
+
+    // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
+    @org.junit.jupiter.api.AfterEach
+    void cleanTeachers() {
+        for (String table : new String[]{"teacher_modality", "teacher_unit", "teacher"}) {
+            jdbc.update("delete from " + table);
+        }
     }
 
     /** Aplica os .sql do diretório em ordem do nome, como o seed.sh. */
@@ -148,6 +156,38 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from account where password_hash is null", Integer.class)).isEqualTo(1);
         String hash = jdbc.queryForObject("select password_hash from account where email = 'coordenador@ficticia-1.example'", String.class);
         assertThat(new br.com.ctcore.config.SecurityConfig().passwordEncoder().matches("SenhaFicticia1", hash)).isTrue();
+    }
+
+    @Test
+    @DisplayName("RF-MOD-01, RF-MOD-02: seed ativa 3 modalidades nas 3 organizações e copia o padrão do Jiu-Jitsu, sem duplicar")
+    void modalitiesSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from organization_modality where active", Integer.class)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("select count(*) from graduation_level", Integer.class)).isEqualTo(57);
+        assertThat(jdbc.queryForObject("select count(*) from organization_modality where graduation_enabled", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from unit_modality where offered", Integer.class))
+                .isEqualTo(2 * jdbc.queryForObject("select count(*) from unit", Integer.class));
+    }
+
+    @Test
+    @DisplayName("RF-MOD-04: seed cria 5 faixas etárias em cada uma das 3 organizações, sem duplicar")
+    void ageRangesSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from age_range", Integer.class)).isEqualTo(15);
+        assertThat(jdbc.queryForObject("select count(*) from age_range where name = 'Master' and max_age is null", Integer.class)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("RF-PRO-01: seed cria 3 professores em cada uma das 3 organizações, sem duplicar, com unidade e modalidade")
+    void teachersSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from teacher", Integer.class)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("select count(*) from teacher where status = 'INACTIVE'", Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from teacher_unit", Integer.class)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("select count(*) from teacher_modality", Integer.class)).isEqualTo(12);
     }
 
     @Test

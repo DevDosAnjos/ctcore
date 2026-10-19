@@ -13,6 +13,7 @@ import { ApiError } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { useEditConflict } from "@/lib/useEditConflict";
 import { Text } from "./Text";
+import { UnitModalitiesSection } from "./UnitModalitiesSection";
 import { ALL, useUnitScope } from "./UnitScopeProvider";
 import {
   FEE_KEYS,
@@ -381,7 +382,12 @@ function Detail({ id }: { id: string }) {
   if (api.status === "loading") return <LoadingState />;
   if (api.status === "forbidden") return <ForbiddenState />;
   if (!api.detail) return <ErrorState onRetry={api.retry} />;
-  return <Form key={api.detail.id} detail={api.detail} api={api} />;
+  return (
+    <>
+      <Form key={api.detail.id} detail={api.detail} api={api} />
+      <UnitModalitiesSection unitId={api.detail.id} />
+    </>
+  );
 }
 
 function Content() {

@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 03 · Duas etapas, usuários, permissões e configurações. O dono liberou a Sprint 03 em 18/10/2026, com a mensagem "confirmo D1 a D3 e a liberação da Sprint 03 (18/10/2026)" (D4 da revisão da Sprint 03, `specs/revisoes/sprint-03.md`, R03-1). Só o dono libera a seguinte.
+Sprint liberada: Sprint 04 · Modalidades, faixas etárias, graduação e professores. O dono confirmou em 18/10/2026 que revisou a Sprint 03 e fez o PR dev→main (#260). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -46,14 +46,14 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 35 | RF-ORG-08 · "Última alteração" e auditoria das configurações | issue #35 | Sprint 03 | — | agente | feito |
 | 36 | RF-ACE-04 · Minha conta: senha, e-mail, duas etapas e sessões | issue #36 | Sprint 03 | — | agente | feito |
 | 37 | RF-ACE-06 · Configurações › Usuários | issue #37 | Sprint 03 | — | agente | feito |
-| 38 | RF-MOD-01 · Configurações › Modalidades | issue #38 | Sprint 04 | — | agente | a fazer |
-| 39 | RF-MOD-02 · Graduação por modalidade e editor do sistema de graduação | issue #39 | Sprint 04 | — | agente | a fazer |
-| 40 | RF-MOD-03 · Modalidades oferecidas pela unidade | issue #40 | Sprint 04 | — | agente | a fazer |
-| 41 | RF-MOD-04 · Configurações › Faixas etárias | issue #41 | Sprint 04 | — | agente | a fazer |
-| 42 | RF-PRO-01 · Pessoas › Professores (lista) | issue #42 | Sprint 04 | — | agente | a fazer |
-| 43 | RF-PRO-02 · Painel do professor | issue #43 | Sprint 04 | — | agente | a fazer |
-| 44 | RF-PRO-03 · Cadastro e edição de professor | issue #44 | Sprint 04 | — | agente | a fazer |
-| 45 | RF-PRO-04 · Inativar professor | issue #45 | Sprint 04 | — | agente | a fazer |
+| 38 | RF-MOD-01 · Configurações › Modalidades | issue #38 | Sprint 04 | — | agente | feito |
+| 39 | RF-MOD-02 · Graduação por modalidade e editor do sistema de graduação | issue #39 | Sprint 04 | — | agente | feito |
+| 40 | RF-MOD-03 · Modalidades oferecidas pela unidade | issue #40 | Sprint 04 | — | agente | feito |
+| 41 | RF-MOD-04 · Configurações › Faixas etárias | issue #41 | Sprint 04 | — | agente | feito |
+| 42 | RF-PRO-01 · Pessoas › Professores (lista) | issue #42 | Sprint 04 | — | agente | feito |
+| 43 | RF-PRO-02 · Painel do professor | issue #43 | Sprint 04 | — | agente | feito |
+| 44 | RF-PRO-03 · Cadastro e edição de professor | issue #44 | Sprint 04 | — | agente | feito |
+| 45 | RF-PRO-04 · Inativar professor | issue #45 | Sprint 04 | — | agente | feito |
 | 46 | RF-TUR-01 · Operação › Turmas (lista) | issue #46 | Sprint 05 | — | agente | a fazer |
 | 47 | RF-TUR-02 · Painel da turma | issue #47 | Sprint 05 | — | agente | a fazer |
 | 48 | RF-TUR-03 · Janela de turma | issue #48 | Sprint 05 | — | agente | a fazer |
@@ -213,4 +213,4 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
-| P1 | Quando o Administrador inativa um Professor (RF-PRO-04, RN-PRO-05) que também dá aula em unidade de outro Administrador, o que acontece? A especificação só diz que "Professores" é do Administrador nas suas unidades. | O Administrador só inativa se todas as unidades do Professor forem suas; senão, só tira as próprias unidades do cadastro (#44). O Coordenador inativa em qualquer caso (mesma regra do D5 do #37). | #45 (parte do Administrador) | O agente segue a opção recomendada na #45 e registra a decisão no arquivo do item. |
+| — | nenhuma (P1 respondida pelo dono em 19/10/2026: opção recomendada, já implementada na #45) | — | — | — |

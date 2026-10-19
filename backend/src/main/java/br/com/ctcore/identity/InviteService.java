@@ -65,8 +65,18 @@ public class InviteService {
 
     /** Creates the pending link (and the account, if the e-mail is new) and sends the invite. */
     public Issued invite(Inviter by, UUID organizationId, String email, String name, Role role, Set<UUID> units, LocalDate birthDate) {
+        return invite(by, organizationId, email, name, role, units, birthDate, false);
+    }
+
+    /** RN-PRO-02: dar acesso a um professor cadastrado; o Coordenador também pode (fora da cascata de RN-ACE-05). */
+    public Issued inviteTeacher(Inviter by, UUID organizationId, String email, String name, Set<UUID> units) {
+        return invite(by, organizationId, email, name, Role.TEACHER, units, null, true);
+    }
+
+    private Issued invite(Inviter by, UUID organizationId, String email, String name, Role role, Set<UUID> units, LocalDate birthDate,
+            boolean teacherAccess) {
         Set<UUID> unitIds = units == null ? Set.of() : units;
-        if (!InviteRules.allowed(by, role, unitIds)) {
+        if (teacherAccess ? !InviteRules.teacherAccess(by, unitIds) : !InviteRules.allowed(by, role, unitIds)) {
             throw new AccessDeniedException("Invite not allowed for this role");
         }
         if (role == Role.STUDENT && !InviteRules.adult(birthDate, now().toLocalDate())) {
@@ -129,14 +139,14 @@ public class InviteService {
     }
 
     /** Loads a pending link of the organization, checking that the inviter may manage its role and units. */
-    private Target authorize(Inviter by, UUID organizationId, UUID linkId) {
+    private Target authorize(Inviter by, UUID organizationId, UUID linkId, boolean teacherAccess) {
         var row = jdbc.sql("select l.account_id, l.role, l.status, a.email from account_link l join account a on a.id = l.account_id "
                 + "where l.id = :l and l.organization_id = :o").param("l", linkId).param("o", organizationId)
                 .query((rs, n) -> new String[]{rs.getString("account_id"), rs.getString("role"), rs.getString("status"), rs.getString("email")})
                 .optional().orElseThrow(() -> new AccessDeniedException("Link not found"));
         Set<UUID> units = new HashSet<>(jdbc.sql("select unit_id from account_link_unit where link_id = :l").param("l", linkId).query(UUID.class).list());
         Role role = Role.valueOf(row[1]);
-        if (!row[2].equals("PENDING") || !InviteRules.allowed(by, role, units)) {
+        if (!row[2].equals("PENDING") || !(teacherAccess ? role == Role.TEACHER && InviteRules.teacherAccess(by, units) : InviteRules.allowed(by, role, units))) {
             throw new AccessDeniedException("Link is not a pending invite you may manage");
         }
         return new Target(UUID.fromString(row[0]), row[3], role, units);
@@ -144,9 +154,18 @@ public class InviteService {
 
     /** RN-ACE-13: cancels the previous invite and sends a new one; at most 3 resends a day per person. */
     public Issued resend(Inviter by, UUID organizationId, UUID linkId) {
+        return resend(by, organizationId, linkId, false);
+    }
+
+    /** RN-PRO-02: reenvio do convite de acesso de professor, também pelo Coordenador. */
+    public Issued resendTeacher(Inviter by, UUID organizationId, UUID linkId) {
+        return resend(by, organizationId, linkId, true);
+    }
+
+    private Issued resend(Inviter by, UUID organizationId, UUID linkId, boolean teacherAccess) {
         Object[] sent = new Object[1];
         Issued issued = orgTx.provision(organizationId, () -> {
-            Target t = authorize(by, organizationId, linkId);
+            Target t = authorize(by, organizationId, linkId, teacherAccess);
             checkResendLimit(t.accountId());
             sent[0] = t.email();
             return issue(by, organizationId, t.accountId(), linkId, true, "invite.resent");
@@ -164,8 +183,17 @@ public class InviteService {
     }
 
     public void cancel(Inviter by, UUID organizationId, UUID linkId) {
+        cancel(by, organizationId, linkId, false);
+    }
+
+    /** RN-PRO-05: inativar o professor cancela o convite pendente de acesso, também pelo Coordenador. */
+    public void cancelTeacher(Inviter by, UUID organizationId, UUID linkId) {
+        cancel(by, organizationId, linkId, true);
+    }
+
+    private void cancel(Inviter by, UUID organizationId, UUID linkId, boolean teacherAccess) {
         orgTx.provision(organizationId, () -> {
-            Target t = authorize(by, organizationId, linkId);
+            Target t = authorize(by, organizationId, linkId, teacherAccess);
             jdbc.sql("update account_invite set canceled_at = :now where link_id = :l and used_at is null and canceled_at is null")
                     .param("now", now()).param("l", linkId).update();
             jdbc.sql("update account_link set status = 'ENDED', ends_on = :d where id = :l").param("d", now().toLocalDate()).param("l", linkId).update();

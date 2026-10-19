@@ -30,6 +30,12 @@ public final class InviteRules {
         };
     }
 
+    /** RN-PRO-02: dar acesso a um Professor pelo painel do professor; o Coordenador alcança qualquer unidade, o Administrador só as dele. */
+    public static boolean teacherAccess(Inviter by, Set<UUID> units) {
+        if (units.isEmpty()) return false;
+        return by.role() == Role.COORDINATOR || allowed(by, Role.TEACHER, units);
+    }
+
     public static boolean adult(LocalDate birth, LocalDate today) {
         return birth != null && !birth.plusYears(18).isAfter(today);
     }

@@ -66,6 +66,7 @@ function setup(
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(role))),
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
     http.get("/api/v1/units/reachable", opts.reachable ?? (() => HttpResponse.json({ allUnits: role === "COORDINATOR", units: units.map(reach) }))),
+    http.get("/api/v1/units/:id/modalities", () => HttpResponse.json({ canManage: true, items: [{ id: "m1", name: "Judô", offered: true }] })),
     http.get("/api/v1/units/:id", opts.read ?? (({ params }) => HttpResponse.json(stored[String(params.id)]))),
     http.put("/api/v1/units/:id", async ({ request, params }) => {
       const body = (await request.json()) as Sent;

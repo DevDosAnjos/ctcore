@@ -11,10 +11,14 @@ import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/Requ
 import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
+import { AgeRangesPage } from "@/features/age-ranges/AgeRangesPage";
+import { ModalitiesPage } from "@/features/modalities/ModalitiesPage";
 import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
+import { TeachersPage } from "@/features/teachers/TeachersPage";
+import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { UsersPage } from "@/features/users/UsersPage";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
@@ -80,8 +84,12 @@ export function App() {
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
+            <Route path="/professores" element={<TeachersPage />} />
+            <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />
             <Route path="/configuracoes/unidade" element={<UnitSettingsPage />} />
+            <Route path="/configuracoes/modalidades" element={<ModalitiesPage />} />
+            <Route path="/configuracoes/faixas-etarias" element={<AgeRangesPage />} />
             <Route path="/configuracoes/usuarios" element={<UsersPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR"]} />}>

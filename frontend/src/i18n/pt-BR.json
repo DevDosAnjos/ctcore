@@ -328,6 +328,235 @@
       "appoint": "Nomear a mim mesmo"
     }
   },
+  "teachers": {
+    "title": "Professores",
+    "intro": "Professores da organização, com as modalidades, as unidades e a situação de cada um.",
+    "columns": {
+      "name": "Nome",
+      "modalities": "Modalidades",
+      "units": "Unidades",
+      "classes": "Turmas",
+      "status": "Situação"
+    },
+    "modality": "{{name}} · {{level}}, grau {{degree}}",
+    "statuses": {
+      "ACTIVE": "Ativo",
+      "INACTIVE": "Inativo"
+    },
+    "form": {
+      "newButton": "Novo professor",
+      "newTitle": "Novo professor",
+      "editTitle": "Editar professor",
+      "saved": "Dados salvos.",
+      "name": "Nome",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "bio": "Apresentação",
+      "modalities": "Modalidades que ensina",
+      "noModalities": "Nenhuma modalidade ativa na organização.",
+      "level": "Nível em {{name}}",
+      "levelChoose": "Escolha o nível",
+      "degree": "Grau em {{name}}",
+      "directory": "Diretório",
+      "directoryConsent": "Aparecer no diretório",
+      "declared": "O professor autorizou",
+      "photo": "Foto",
+      "photoHint": "Imagem quadrada de 512 x 512 pixels, recortada aqui.",
+      "photoChosen": "Foto escolhida. Ela é enviada ao salvar.",
+      "photoFile": "Arquivo da foto",
+      "photoChoose": "Escolher foto",
+      "photoReplace": "Trocar foto",
+      "photoRemove": "Remover foto",
+      "photoTypeError": "Use uma imagem PNG, JPG ou WebP.",
+      "photoSizeError": "A foto precisa ter até 5 MB.",
+      "photoUploadError": "O cadastro foi salvo, mas a foto não foi enviada.",
+      "photoRetry": "Tentar enviar a foto de novo",
+      "closeWithoutPhoto": "Fechar sem a foto",
+      "cropTitle": "Cortar a foto",
+      "cropHint": "Arraste a imagem ou use os controles para escolher o quadrado.",
+      "cropPreview": "Prévia do corte da foto",
+      "nameInvalid": "Informe o nome, de 2 a 80 caracteres.",
+      "emailInvalid": "Informe um e-mail válido.",
+      "declaredRequired": "Marque que o professor autorizou para aparecer no diretório.",
+      "levelRequired": "Escolha o nível de cada modalidade marcada.",
+      "save": "Salvar",
+      "error": "Não foi possível salvar. Tente de novo."
+    },
+    "filters": {
+      "modality": "Modalidade",
+      "unit": "Unidade",
+      "status": "Situação",
+      "allModalities": "Todas as modalidades",
+      "allUnits": "Todas as unidades",
+      "allStatuses": "Todas"
+    },
+    "panel": {
+      "back": "Voltar aos professores",
+      "edit": "Editar",
+      "deactivate": "Inativar",
+      "deactivateDialog": {
+        "title": "Inativar {{name}}",
+        "withoutHead": "Estas turmas ficarão sem titular:",
+        "noClasses": "Nenhuma turma ficará sem titular.",
+        "accessEnds": "O acesso ao sistema será encerrado e as sessões abertas terminam.",
+        "outOfReach": "Só o Coordenador inativa este professor; tire as suas unidades em Editar.",
+        "done": "Professor inativado.",
+        "errors": {
+          "FORBIDDEN": "Você não tem permissão para inativar este professor.",
+          "CONFLICT": "Este professor já está inativo.",
+          "generic": "Não foi possível inativar o professor. Tente de novo."
+        }
+      },
+      "resend": "Reenviar convite",
+      "resendDone": "Convite reenviado.",
+      "resendError": "Não foi possível reenviar o convite. Tente de novo mais tarde.",
+      "about": "Apresentação",
+      "noBio": "Sem apresentação.",
+      "contact": "Contato",
+      "email": "E-mail",
+      "phone": "Telefone",
+      "none": "Não informado",
+      "graduations": "Graduação por modalidade",
+      "units": "Unidades",
+      "classes": "Turmas",
+      "noClasses": "Nenhuma turma ainda.",
+      "classLine": "{{name}} · {{role}}",
+      "classRoles": {
+        "HEAD": "Titular",
+        "ASSISTANT": "Auxiliar"
+      },
+      "upcoming": "Próximas aulas",
+      "noUpcoming": "Nenhuma aula agendada.",
+      "access": "Acesso ao sistema",
+      "accessStates": {
+        "NONE": "Sem acesso",
+        "PENDING": "Convite enviado",
+        "ACTIVE": "Acesso ativo",
+        "ENDED": "Acesso encerrado"
+      },
+      "notFoundTitle": "Professor não encontrado",
+      "notFoundText": "Ele não existe ou não está ao seu alcance.",
+      "grant": {
+        "button": "Dar acesso",
+        "title": "Dar acesso a {{name}}",
+        "explain": "O convite será enviado para {{email}}. Escolha as unidades do vínculo de Professor.",
+        "send": "Enviar convite",
+        "done": "Convite enviado.",
+        "errors": {
+          "ALREADY_LINKED": "O e-mail deste professor já está ligado a outro cadastro desta organização.",
+          "STAFF_LIMIT_REACHED": "A organização atingiu o limite de 200 usuários da gestão.",
+          "FORBIDDEN": "Você não tem permissão para dar acesso nestas unidades.",
+          "CONFLICT": "Este professor não pode receber acesso agora: ele está inativo ou já tem acesso.",
+          "generic": "Não foi possível enviar o convite. Tente de novo."
+        }
+      }
+    }
+  },
+  "ageRanges": {
+    "title": "Faixas etárias",
+    "intro": "As faixas organizam turmas, aulas experimentais e o diretório. A idade de cada aluno continua calculada pelo nascimento.",
+    "listTitle": "Faixas da organização",
+    "range": "{{min}} a {{max}} anos",
+    "openEnded_one": "{{count}} ano ou mais",
+    "openEnded_other": "{{count}} anos ou mais",
+    "create": "Nova faixa",
+    "edit": "Editar",
+    "delete": "Apagar",
+    "saved": "Faixa etária salva",
+    "deleted": "Faixa {{name}} apagada",
+    "deleteError": "Não foi possível apagar {{name}}. Nada foi alterado. Tente de novo.",
+    "emptyTitle": "Nenhuma faixa etária",
+    "emptyText": "Crie uma faixa para organizar turmas e aulas por idade.",
+    "confirm": {
+      "title": "Apagar faixa etária",
+      "summary": "Apagar a faixa {{name}}? Esta ação não pode ser desfeita."
+    },
+    "dialog": {
+      "createTitle": "Nova faixa etária",
+      "editTitle": "Editar faixa etária",
+      "name": "Nome da faixa",
+      "minAge": "Idade mínima",
+      "maxAge": "Idade máxima (opcional)",
+      "hint": "Deixe a idade máxima em branco para \"ou mais\". Faixas podem se sobrepor.",
+      "nameInvalid": "Informe o nome com 2 a 40 caracteres.",
+      "minInvalid": "Informe a idade mínima, de 0 a 120.",
+      "maxInvalid": "A idade máxima vai da mínima até 120.",
+      "taken": "Já existe uma faixa com este nome.",
+      "error": "Não foi possível salvar a faixa. Nada foi alterado. Tente de novo.",
+      "save": "Salvar",
+      "saving": "Salvando..."
+    }
+  },
+  "modalities": {
+    "title": "Modalidades",
+    "mine": "Suas modalidades",
+    "mineEmpty": "Nenhuma modalidade ativa ainda. Ative uma da lista abaixo para começar.",
+    "available": "Disponíveis para ativar",
+    "availableEmpty": "Todas as modalidades do catálogo já estão ativas.",
+    "emptyTitle": "Nenhuma modalidade no catálogo",
+    "emptyText": "O catálogo da plataforma está vazio no momento.",
+    "activate": "Ativar",
+    "deactivate": "Desativar",
+    "notFound": "Não achei minha modalidade",
+    "inUse": "Não é possível desativar {{name}}: há {{classes}} turma(s) ativa(s) e {{students}} aluno(s) ativo(s) nela.",
+    "changeError": "Não foi possível alterar {{name}}. Nada foi alterado. Tente de novo.",
+    "graduation": {
+      "button": "Graduação",
+      "view": "Ver graduação",
+      "title": "Sistema de graduação",
+      "saved": "Sistema de graduação salvo",
+      "enabled": "Graduação ligada",
+      "requireProof": "Exigir comprovante da graduação de origem",
+      "statusOn": "A graduação está ligada.",
+      "statusOff": "A graduação está desligada.",
+      "proofOn": "Exige comprovante da graduação de origem.",
+      "proofOff": "Não exige comprovante da graduação de origem.",
+      "summary": "{{kind}} · até {{degrees}} grau(s)",
+      "kidsShort": "Infantil",
+      "adultShort": "Adulto",
+      "empty": "Nenhum nível ainda",
+      "levelName": "Nome do nível {{n}}",
+      "color": "Cor do nível {{n}}",
+      "maxDegree": "Grau máximo do nível {{n}}",
+      "minAge": "Idade mínima do nível {{n}}",
+      "maxAge": "Idade máxima do nível {{n}}",
+      "kids": "Nível {{n}} é infantil",
+      "up": "Subir nível {{n}}",
+      "down": "Descer nível {{n}}",
+      "remove": "Remover nível {{n}}",
+      "add": "Adicionar nível",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "nameInvalid": "Informe o nome com 1 a 40 caracteres.",
+      "needLevel": "Inclua ao menos um nível para ligar a graduação.",
+      "saveError": "Não foi possível salvar o sistema de graduação. Nada foi alterado. Tente de novo."
+    },
+    "requests": {
+      "title": "Pedidos enviados",
+      "empty": "Você ainda não enviou pedidos.",
+      "status": {
+        "OPEN": "Em análise",
+        "ADDED": "Incluída no catálogo",
+        "DISMISSED": "Não aceito"
+      }
+    },
+    "dialog": {
+      "title": "Não achei minha modalidade",
+      "intro": "Conte qual modalidade falta. A equipe da plataforma analisa o pedido.",
+      "name": "Nome da modalidade",
+      "note": "Observação (opcional)",
+      "nameInvalid": "Informe o nome com 2 a 60 caracteres.",
+      "noteInvalid": "A observação pode ter até 300 caracteres.",
+      "send": "Enviar pedido",
+      "sending": "Enviando...",
+      "error": "Não foi possível enviar o pedido. Tente de novo.",
+      "sent": "Pedido enviado",
+      "conflict": {
+        "REQUEST_ALREADY_OPEN": "Você já pediu esta modalidade e o pedido ainda está aberto.",
+        "ALREADY_IN_CATALOG": "Esta modalidade já existe no catálogo. Ative-a na lista."
+      }
+    }
+  },
   "units": {
     "title": "Unidades",
     "city": "Cidade",
@@ -411,6 +640,15 @@
       "confirm": "Ajustar",
       "saving": "Ajustando..."
     }
+  },
+  "unitModalities": {
+    "title": "Modalidades oferecidas",
+    "help": "Marque as modalidades que esta unidade oferece, entre as que a organização ativou. A mudança vale na hora.",
+    "emptyTitle": "Nenhuma modalidade ativa",
+    "emptyText": "Ative modalidades na organização para escolher quais esta unidade oferece.",
+    "emptyLink": "Ir para Configurações › Modalidades",
+    "readOnly": "Você pode ver as modalidades, mas não alterá-las.",
+    "changeError": "Não foi possível alterar {{name}}. Nada foi alterado. Tente de novo."
   },
   "unitSettings": {
     "title": "Configurações da unidade",
@@ -520,6 +758,8 @@
       "allUnits": "Todas as unidades",
       "unitSettings": "Configurações da unidade",
       "organizationSettings": "Configurações da organização",
+      "modalities": "Modalidades",
+      "ageRanges": "Faixas etárias",
       "staffUsers": "Usuários da gestão",
       "units": "Unidades",
       "subscription": "Assinatura e faturas",

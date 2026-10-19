@@ -574,6 +574,451 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /units/{unitId}/modalities:
+    parameters:
+      - { name: unitId, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Modalidades ativas da organização com a marcação da unidade (RF-MOD-03, RN-MOD-02). Coordenador e Administrador da unidade.
+      description: |
+        Devolve só as modalidades ativas da organização, em ordem de nome, com `offered` (a unidade oferece) e `canManage`. A marcação
+        feita antes de a organização desativar a modalidade fica guardada, não aparece e volta se ela for reativada. Professor, portal e
+        Administrador de outra unidade recebem 403. Unidade de outra organização ou inexistente responde 404.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: As modalidades da unidade.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitModalities' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /units/{unitId}/modalities/{modalityId}:
+    put:
+      summary: Marca ou desmarca a modalidade na unidade (RF-MOD-03, RN-MOD-02, RN-MOD-03). Coordenador e Administrador da unidade.
+      description: |
+        Só modalidade ativa na organização pode ser marcada; inativa ou fora do catálogo responde 404. Repetir o valor responde 200 sem
+        nova auditoria. Sem `If-Match`: cada marcação é independente e idempotente. Grava `unit.modality.offered` ou
+        `unit.modality.withdrawn` na auditoria. Corpo sem `offered`, 400. Unidade de outra organização ou inexistente, 404; Professor,
+        portal e Administrador de outra unidade, 403.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: unitId, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offered]
+              properties:
+                offered: { type: boolean }
+      responses:
+        '200':
+          description: A modalidade com a nova marcação.
+          content: { application/json: { schema: { $ref: '#/components/schemas/UnitModality' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /modalities:
+    get:
+      summary: Catálogo de modalidades com a situação na organização do vínculo ativo (RF-MOD-01, RN-MOD-01).
+      description: |
+        Devolve as 14 modalidades iniciais (iguais para todas as organizações) em ordem de nome, com `active` da organização e
+        `canManage` (verdadeiro só para o Coordenador). Coordenador e Administrador leem; Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Catálogo com a situação da organização.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Modality' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /modalities/{id}/activation:
+    put:
+      summary: Ativa ou desativa a modalidade para a organização (RN-MOD-02, RN-MOD-06). Só o Coordenador.
+      description: |
+        Repetir o mesmo valor responde 200 sem nova auditoria. Desativar com turma ativa ou aluno com a modalidade ativa responde
+        409 `MODALITY_IN_USE` e `fields` traz `activeClasses` e `activeStudents` (valores em texto); nada muda. Grava
+        `modality.activated` ou `modality.deactivated` na auditoria. Id fora do catálogo responde 404; corpo sem `active`, 400.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [active]
+              properties:
+                active: { type: boolean }
+      responses:
+        '200':
+          description: A modalidade com a nova situação.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Modality' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /modalities/{id}/graduation:
+    get:
+      summary: Sistema de graduação da organização para uma modalidade ativa (RF-MOD-02, RN-GRA-01). Coordenador e Administrador.
+      description: |
+        Devolve `enabled`, `requireOriginProof`, `canManage` (verdadeiro só para o Coordenador) e os níveis na ordem. Id fora do catálogo
+        responde 404; modalidade que a organização não tem ativa, 409 `MODALITY_NOT_ACTIVE`. Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Sistema de graduação da organização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Graduation' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    put:
+      summary: Grava o sistema de graduação inteiro (RF-MOD-02, RN-GRA-01). Só o Coordenador.
+      description: |
+        Grava de uma vez `enabled`, `requireOriginProof` e a lista completa de níveis na ordem enviada: nível com `id` é atualizado, sem
+        `id` é criado e o que ficou de fora é removido; tudo ou nada. Nome de 1 a 40 caracteres e único na modalidade (sem diferenciar
+        maiúsculas nem acentos), cores `#RRGGBB`, grau de 0 a 10, idades de 0 a 120 com mínima menor ou igual à máxima, até 30 níveis; ligar
+        exige ao menos um nível. Erro de campo responde 400 com o campo (ex.: `levels[2].name`); `id` de nível que não é desta modalidade
+        e organização, 400. Modalidade fora do catálogo, 404; não ativa na organização, 409 `MODALITY_NOT_ACTIVE`. Grava
+        `modality.graduation_updated` na auditoria; repetir a mesma gravação responde 200 sem nova auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/GraduationUpdate' } } }
+      responses:
+        '200':
+          description: O sistema de graduação gravado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Graduation' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /modalities/requests:
+    get:
+      summary: Pedidos de modalidade nova da organização (RN-MOD-04). Coordenador e Administrador.
+      description: Do pedido mais novo para o mais antigo. Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Pedidos da organização.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ModalityRequest' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Pede à plataforma uma modalidade que não está no catálogo (RN-MOD-04). Só o Coordenador.
+      description: |
+        `name` de 2 a 60 caracteres e `note` opcional até 300 (senão 400 no campo). Nome já pedido pela organização e ainda aberto
+        (sem diferenciar maiúsculas) responde 409 `REQUEST_ALREADY_OPEN`; nome que já existe no catálogo (sem diferenciar acento
+        nem maiúsculas), 409 `ALREADY_IN_CATALOG`. Grava `modality.requested` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 60 }
+                note: { type: string, nullable: true, maxLength: 300 }
+      responses:
+        '201':
+          description: Pedido gravado com situação OPEN.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ModalityRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /age-ranges:
+    get:
+      summary: Faixas etárias da organização do vínculo ativo (RF-MOD-04, RN-MOD-07). Coordenador e Administrador.
+      description: |
+        Ordenadas por idade mínima e depois por nome. `maxAge` nulo significa sem limite ("18 anos ou mais"); `canManage` é verdadeiro só
+        para o Coordenador. Professor e portal recebem 403. Toda organização nasce com Infantil 4–12, Juvenil 13–17 e Adulto 18+.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Faixas etárias da organização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AgeRangeList' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria uma faixa etária (RN-ORG-17). Só o Coordenador.
+      description: |
+        `name` de 2 a 40 caracteres, `minAge` de 0 a 120 e `maxAge` opcional da mínima a 120 (senão 400 no campo). O nome é único na
+        organização sem diferenciar acento nem maiúsculas (409 `AGE_RANGE_NAME_TAKEN`); faixas podem se sobrepor em idade. Grava
+        `age_range.created` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AgeRangeBody' } } }
+      responses:
+        '201':
+          description: Faixa criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AgeRange' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /age-ranges/{id}:
+    put:
+      summary: Renomeia e muda as idades de uma faixa etária (RN-ORG-17). Só o Coordenador.
+      description: |
+        Mesmas validações da criação; reenviar os mesmos valores responde 200 sem nova auditoria; nome de outra faixa, 409
+        `AGE_RANGE_NAME_TAKEN`. Sem `If-Match`: vale a última gravação. Faixa de outra organização ou inexistente, 404. Grava
+        `age_range.updated` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AgeRangeBody' } } }
+      responses:
+        '200':
+          description: A faixa com os novos valores.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AgeRange' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      summary: Apaga uma faixa etária (RN-ORG-17). Só o Coordenador.
+      description: Faixa de outra organização, inexistente ou já apagada, 404. Grava `age_range.deleted` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Faixa apagada. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /teachers:
+    get:
+      summary: Lista paginada de professores da organização do vínculo ativo (RF-PRO-01). Coordenador e Administrador.
+      description: |
+        Ordenada por nome e depois id (`sort=name`). O Coordenador vê todos; o Administrador vê os professores com ao menos uma das suas
+        unidades (e todas as unidades deles); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e Responsável recebem 403.
+        Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros combinam (E). `classCount` é 0 até existirem turmas.
+        `photoUrl` é uma URL temporária assinada. A resposta nunca traz telefone nem e-mail (RN-PRO-04).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
+      responses:
+        '200':
+          description: Página de professores.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cadastra um professor (RF-PRO-03). Coordenador e Administrador.
+      description: |
+        Nasce `ACTIVE`, sem conta. `name` de 2 a 80, `phone` brasileiro (guardado só com dígitos), `bio` até 300, ao menos uma unidade ativa da
+        organização. O Administrador só escolhe unidades dele (outra: 403). `directoryConsent` exige `consentDeclaredByManagement` (RN-PRO-04).
+        Modalidade ativa na organização, uma entrada por modalidade; com graduação ligada, `levelId` e `degree` (0 ao máximo do nível) são
+        obrigatórios, sem graduação ficam nulos (RN-PRO-03). Grava `teacher.created`, sem e-mail nem telefone. Foto pela rota própria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TeacherInput' } } }
+      responses:
+        '201':
+          description: Professor criado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /teachers/options:
+    get:
+      summary: Opções do formulário de professor (RF-PRO-03). Coordenador e Administrador.
+      description: Modalidades ativas da organização com `graduationEnabled` e, se ligada, os níveis. Professor, Aluno e Responsável recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Opções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherOptions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /teachers/{id}:
+    put:
+      summary: Edita o professor (RF-PRO-03). Coordenador e Administrador.
+      description: |
+        Substitui os campos do cadastro (unidades e modalidades como conjunto completo); não altera situação nem conta e vale também para
+        professor inativo. O Administrador troca só as unidades dele e as de fora do alcance dele permanecem; sem alcance sobre o professor,
+        404. Mesmas validações de `POST /teachers`. Grava `teacher.updated`, sem e-mail nem telefone.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TeacherInput' } } }
+      responses:
+        '200':
+          description: Professor atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      summary: Painel do professor (RF-PRO-02). Coordenador e Administrador.
+      description: |
+        Traz foto, apresentação, contato (e-mail e telefone, só nesta rota autenticada; RN-PRO-04), graduação por modalidade, unidades,
+        `classes` e `upcomingClasses` (vazias até a Sprint 05) e a situação do acesso. O Administrador só abre professor com ao menos uma
+        unidade dele (e vê todas as unidades); fora disso, ou de outra organização, 404. Professor, Aluno e Responsável recebem 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel do professor.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /teachers/{id}/photo:
+    put:
+      summary: Troca a foto do professor (RF-PRO-03). Coordenador e Administrador.
+      description: |
+        Campo `file` com PNG, JPEG ou WebP, exatamente 512 x 512 px e até 5 MB, conferido pelo conteúdo. Erro: 400 (campo `file`) e a foto
+        anterior permanece. O arquivo antigo é apagado. Sem alcance sobre o professor, 404. Grava `teacher.photo_updated`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Foto trocada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+    delete:
+      summary: Remove a foto do professor (RF-PRO-03). Coordenador e Administrador.
+      description: Apaga o arquivo e grava `teacher.photo_removed`; sem foto, repete sem erro e sem auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Foto removida.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /teachers/{id}/access:
+    post:
+      summary: Dá acesso ao sistema ao professor (RN-PRO-02). Coordenador e Administrador.
+      description: |
+        Envia o convite ao e-mail do cadastro, cria o vínculo `TEACHER` pendente nas unidades escolhidas e liga o cadastro à conta. Sem
+        `unitIds`, usa as unidades ativas do professor que quem chama alcança. Administrador com unidade fora do alcance: 403; unidade fora
+        das unidades do professor ou inativa: 400; sem e-mail: 400. Professor inativo, acesso já pendente ou ativo, conta já ligada a outro
+        cadastro (`ALREADY_LINKED`) e limite de usuários de gestão (`STAFF_LIMIT_REACHED`): 409. Grava `teacher.access_granted`, sem código.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                unitIds: { type: array, items: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel com `access` igual a `PENDING`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Recusa (inativo, acesso já existente, conta ligada, limite).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /teachers/{id}/access/resend:
+    post:
+      summary: Reenvia o convite pendente do professor (RN-PRO-02). Coordenador e Administrador.
+      description: |
+        Só com `access` igual a `PENDING`; nos demais casos 409. Invalida o convite anterior (mesmo limite de 3 reenvios por dia de
+        RN-ACE-13). Grava `teacher.invite_resent`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Convite reenviado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Acesso que não está pendente.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '429':
+          description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /teachers/{id}/deactivation:
+    get:
+      summary: Pré-visualiza a inativação do professor (RF-PRO-04). Coordenador e Administrador.
+      description: |
+        Não altera nada. `headClasses` lista as turmas em que o professor é titular e que ficarão sem titular (vazia até a Sprint 05).
+        `canDeactivate` é falso se o professor já está inativo ou, para o Administrador, se alguma unidade do professor (ativa ou não)
+        está fora do alcance dele. Administrador sem alcance sobre o professor: 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Pré-visualização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDeactivationPreview' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /teachers/{id}/deactivate:
+    post:
+      summary: Inativa o professor (RF-PRO-04, RN-PRO-05). Coordenador e Administrador.
+      description: |
+        Muda a situação para `INACTIVE`, encerra o vínculo de Professor na organização (convite pendente é cancelado) e as sessões que
+        dependiam dele; a conta e o cadastro continuam. Sem corpo. O Coordenador inativa qualquer professor; o Administrador só quem tem
+        todas as unidades entre as dele (senão 403). Professor já inativo: 409. Grava `teacher.deactivated`, sem e-mail nem telefone.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel com `status` igual a `INACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Professor já inativo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   /users:
     get:
       summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
@@ -910,6 +1355,11 @@ components:
             - UNIT_LIMIT_REACHED
             - UNIT_HAS_BLOCKERS
             - LAST_UNIT_ADMINISTRATOR
+            - MODALITY_IN_USE
+            - MODALITY_NOT_ACTIVE
+            - REQUEST_ALREADY_OPEN
+            - ALREADY_IN_CATALOG
+            - AGE_RANGE_NAME_TAKEN
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
             - UNSUPPORTED_MEDIA_TYPE
@@ -967,6 +1417,228 @@ components:
         activeClasses: { type: integer, minimum: 0 }
         lastActiveUnit: { type: boolean }
         canDeactivate: { type: boolean }
+    Modality:
+      type: object
+      required: [id, name, active, canManage, graduationEnabled]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        active: { type: boolean }
+        canManage: { type: boolean }
+        graduationEnabled: { type: boolean }
+    UnitModality:
+      type: object
+      required: [id, name, offered]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        offered: { type: boolean }
+    UnitModalities:
+      type: object
+      required: [canManage, items]
+      properties:
+        canManage: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/UnitModality' } }
+    GraduationLevel:
+      type: object
+      required: [id, name, color, secondaryColor, maxDegree, minAge, maxAge, kids]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 40 }
+        color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+        secondaryColor: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', nullable: true }
+        maxDegree: { type: integer, minimum: 0, maximum: 10 }
+        minAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+        maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+        kids: { type: boolean }
+    Graduation:
+      type: object
+      required: [enabled, requireOriginProof, canManage, levels]
+      properties:
+        enabled: { type: boolean }
+        requireOriginProof: { type: boolean }
+        canManage: { type: boolean }
+        levels: { type: array, items: { $ref: '#/components/schemas/GraduationLevel' } }
+    GraduationUpdate:
+      type: object
+      required: [enabled, levels]
+      properties:
+        enabled: { type: boolean }
+        requireOriginProof: { type: boolean, default: false }
+        levels:
+          type: array
+          maxItems: 30
+          items:
+            type: object
+            required: [name, color, maxDegree, kids]
+            properties:
+              id: { type: string, format: uuid, description: 'Presente para atualizar um nível existente; ausente cria.' }
+              name: { type: string, minLength: 1, maxLength: 40 }
+              color: { type: string, pattern: '^#[0-9A-Fa-f]{6}$' }
+              secondaryColor: { type: string, pattern: '^#[0-9A-Fa-f]{6}$', nullable: true }
+              maxDegree: { type: integer, minimum: 0, maximum: 10 }
+              minAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+              maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+              kids: { type: boolean }
+    ModalityRequest:
+      type: object
+      required: [id, name, note, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        note: { type: string, nullable: true }
+        status: { type: string, enum: [OPEN, ADDED, DISMISSED] }
+        createdAt: { type: string, format: date-time }
+    AgeRange:
+      type: object
+      required: [id, name, minAge, maxAge]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 40 }
+        minAge: { type: integer, minimum: 0, maximum: 120 }
+        maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true, description: Nulo = sem limite. }
+    AgeRangeBody:
+      type: object
+      required: [name, minAge]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 40 }
+        minAge: { type: integer, minimum: 0, maximum: 120 }
+        maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+    AgeRangeList:
+      type: object
+      required: [canManage, items]
+      properties:
+        canManage: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/AgeRange' } }
+    TeacherRow:
+      type: object
+      required: [id, name, photoUrl, modalities, units, classCount, status, directoryConsent, access]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true, description: URL temporária assinada; nulo sem foto. }
+        modalities:
+          type: array
+          items:
+            type: object
+            required: [id, name, levelId, level, degree]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              levelId: { type: string, format: uuid, nullable: true }
+              level: { type: string, nullable: true, description: Nível de graduação no sistema da organização. }
+              degree: { type: integer, nullable: true, minimum: 0, maximum: 10 }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+        classCount: { type: integer, minimum: 0 }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        directoryConsent: { type: boolean }
+        access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED], description: Estado do vínculo TEACHER da conta; NONE sem conta ou sem vínculo. }
+    TeacherList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/TeacherRow' } }
+    TeacherDetail:
+      type: object
+      required: [id, name, photoUrl, bio, email, phone, directoryConsent, consentDeclaredByManagement, status, modalities, units, classes, upcomingClasses, access]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        bio: { type: string, nullable: true, maxLength: 300 }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        directoryConsent: { type: boolean }
+        consentDeclaredByManagement: { type: boolean }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        modalities: { $ref: '#/components/schemas/TeacherRow/properties/modalities' }
+        units: { $ref: '#/components/schemas/TeacherRow/properties/units' }
+        classes:
+          type: array
+          description: Turmas como titular ou auxiliar; vazia até a Sprint 05.
+          items:
+            type: object
+            required: [id, name, role]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              role: { type: string, enum: [HEAD, ASSISTANT] }
+        upcomingClasses:
+          type: array
+          description: Próximas aulas; vazia até a Sprint 05.
+          items:
+            type: object
+            required: [classId, name, startsAt]
+            properties:
+              classId: { type: string, format: uuid }
+              name: { type: string }
+              startsAt: { type: string, format: date-time }
+        access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED] }
+    TeacherDeactivationPreview:
+      type: object
+      required: [headClasses, canDeactivate]
+      properties:
+        headClasses:
+          type: array
+          description: Turmas que ficarão sem titular; vazia até a Sprint 05.
+          items:
+            type: object
+            required: [id, name, role]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              role: { type: string, enum: [HEAD, ASSISTANT] }
+        canDeactivate: { type: boolean }
+    TeacherInput:
+      type: object
+      required: [name, unitIds]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        email: { type: string, nullable: true, maxLength: 254 }
+        phone: { type: string, nullable: true }
+        bio: { type: string, nullable: true, maxLength: 300 }
+        directoryConsent: { type: boolean }
+        consentDeclaredByManagement: { type: boolean }
+        unitIds: { type: array, minItems: 1, items: { type: string, format: uuid } }
+        modalities:
+          type: array
+          items:
+            type: object
+            required: [modalityId]
+            properties:
+              modalityId: { type: string, format: uuid }
+              levelId: { type: string, format: uuid, nullable: true }
+              degree: { type: integer, nullable: true, minimum: 0, maximum: 10 }
+    TeacherOptions:
+      type: object
+      required: [modalities]
+      properties:
+        modalities:
+          type: array
+          items:
+            type: object
+            required: [id, name, graduationEnabled, levels]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              graduationEnabled: { type: boolean }
+              levels:
+                type: array
+                items:
+                  type: object
+                  required: [id, name, maxDegree]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    maxDegree: { type: integer, minimum: 0, maximum: 10 }
     UnitSummary:
       type: object
       required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]
