@@ -41,7 +41,7 @@ public class Teachers {
 
     public record UnitRef(UUID id, String name) {}
 
-    public record ModalityRef(UUID id, String name, String level, Integer degree) {}
+    public record ModalityRef(UUID id, String name, UUID levelId, String level, Integer degree) {}
 
     public record Row(UUID id, String name, String photoUrl, List<ModalityRef> modalities, List<UnitRef> units, int classCount,
             String status, boolean directoryConsent, String access) {}
@@ -51,11 +51,11 @@ public class Teachers {
 
     public record UpcomingClass(UUID classId, String name, java.time.OffsetDateTime startsAt) {}
 
-    public record Detail(UUID id, String name, String photoUrl, String bio, String email, String phone, boolean directoryConsent,
+    public record Detail(UUID id, String name, String photoUrl, String bio, String email, String phone, boolean directoryConsent, boolean consentDeclaredByManagement,
             String status, List<ModalityRef> modalities, List<UnitRef> units, List<ClassRef> classes,
             List<UpcomingClass> upcomingClasses, String access) {}
 
-    record Basic(UUID id, String name, String photo, String bio, String email, String phone, boolean consent, String status,
+    record Basic(UUID id, String name, String photo, String bio, String email, String phone, boolean consent, boolean declared, String status,
             UUID accountId, String access) {}
 
     private record Head(UUID id, String name, String photo, String status, boolean consent, String access) {}
@@ -134,13 +134,13 @@ public class Teachers {
                 .param("org", org).param("ids", ids)
                 .query((rs, n) -> units.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
                         .add(new UnitRef(rs.getObject(2, UUID.class), rs.getString(3)))).list();
-        jdbc.sql("select tm.teacher_id, m.id, m.name, g.name, tm.degree from teacher_modality tm join modality m on m.id = tm.modality_id "
+        jdbc.sql("select tm.teacher_id, m.id, m.name, g.name, tm.degree, tm.level_id from teacher_modality tm join modality m on m.id = tm.modality_id "
                 + "left join graduation_level g on g.id = tm.level_id where tm.organization_id = :org and tm.teacher_id in (:ids) order by m.name, m.id")
                 .param("org", org).param("ids", ids)
                 .query((rs, n) -> {
                     String level = rs.getString(4);
                     return modalities.computeIfAbsent(rs.getObject(1, UUID.class), k -> new ArrayList<>())
-                            .add(new ModalityRef(rs.getObject(2, UUID.class), rs.getString(3), level, level == null ? null : rs.getInt(5)));
+                            .add(new ModalityRef(rs.getObject(2, UUID.class), rs.getString(3), rs.getObject(6, UUID.class), level, level == null ? null : rs.getInt(5)));
                 }).list();
     }
 
@@ -162,13 +162,13 @@ public class Teachers {
         Set<UUID> reach = who.units() == null ? Set.of() : who.units();
         if (admin && reach.isEmpty()) throw new ApiStatusException(ErrorCode.NOT_FOUND);
         String scope = admin ? " and exists (select 1 from teacher_unit tr where tr.teacher_id = t.id and tr.unit_id in (:reach))" : "";
-        var query = jdbc.sql("select t.id, t.name, t.photo, t.bio, t.email, t.phone, t.directory_consent, t.status, t.account_id, "
+        var query = jdbc.sql("select t.id, t.name, t.photo, t.bio, t.email, t.phone, t.directory_consent, t.consent_declared_by_management, t.status, t.account_id, "
                 + "coalesce(l.status, 'NONE') from teacher t left join account_link l on l.organization_id = t.organization_id "
                 + "and l.account_id = t.account_id and l.role = 'TEACHER' where t.organization_id = :org and t.id = :id" + scope)
                 .param("org", who.organizationId()).param("id", id);
         if (admin) query = query.param("reach", reach);
         return query.query((rs, n) -> new Basic(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
-                rs.getString(5), rs.getString(6), rs.getBoolean(7), rs.getString(8), rs.getObject(9, UUID.class), rs.getString(10)))
+                rs.getString(5), rs.getString(6), rs.getBoolean(7), rs.getBoolean(8), rs.getString(9), rs.getObject(10, UUID.class), rs.getString(11)))
                 .optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
     }
 
@@ -177,11 +177,11 @@ public class Teachers {
         Map<UUID, List<UnitRef>> units = new HashMap<>();
         Map<UUID, List<ModalityRef>> modalities = new HashMap<>();
         refs(who.organizationId(), List.of(id), units, modalities);
-        return new Detail(b.id(), b.name(), photoUrl(b.photo()), b.bio(), b.email(), b.phone(), b.consent(), b.status(),
+        return new Detail(b.id(), b.name(), photoUrl(b.photo()), b.bio(), b.email(), b.phone(), b.consent(), b.declared(), b.status(),
                 modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), List.of(), List.of(), b.access());
     }
 
-    private String photoUrl(String photo) {
+    String photoUrl(String photo) {
         if (photo == null) return null;
         try {
             return storage.readUrl(photo);

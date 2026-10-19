@@ -7,7 +7,7 @@ export interface Teacher {
   id: string;
   name: string;
   photoUrl: string | null;
-  modalities: { id: string; name: string; level: string | null; degree: number | null }[];
+  modalities: { id: string; name: string; levelId: string | null; level: string | null; degree: number | null }[];
   units: { id: string; name: string }[];
   classCount: number;
   status: "ACTIVE" | "INACTIVE";
@@ -57,6 +57,7 @@ export interface TeacherDetail {
   email: string | null;
   phone: string | null;
   directoryConsent: boolean;
+  consentDeclaredByManagement: boolean;
   status: "ACTIVE" | "INACTIVE";
   modalities: Teacher["modalities"];
   units: Teacher["units"];
@@ -92,4 +93,47 @@ export function useTeacher(id: string) {
     // Recarrega sem passar por "carregando" (depois de dar acesso ou reenviar).
     refresh: async () => setDone({ tick, id, teacher: await api<TeacherDetail>(`/teachers/${id}`) }),
   } as const;
+}
+
+// Espelham TeacherInput e TeacherOptions do OpenAPI (RF-PRO-03).
+export interface TeacherInput {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  bio: string | null;
+  directoryConsent: boolean;
+  consentDeclaredByManagement: boolean;
+  unitIds: string[];
+  modalities: { modalityId: string; levelId: string | null; degree: number | null }[];
+}
+export interface TeacherOptions {
+  modalities: { id: string; name: string; graduationEnabled: boolean; levels: { id: string; name: string; maxDegree: number }[] }[];
+}
+
+export const createTeacher = (input: TeacherInput) => api<TeacherDetail>("/teachers", { method: "POST", body: input });
+export const updateTeacher = (id: string, input: TeacherInput) => api<TeacherDetail>(`/teachers/${id}`, { method: "PUT", body: input });
+export const uploadTeacherPhoto = (id: string, photo: Blob) => {
+  const form = new FormData();
+  form.append("file", photo, "foto.png");
+  return api<TeacherDetail>(`/teachers/${id}/photo`, { method: "PUT", body: form });
+};
+export const removeTeacherPhoto = (id: string) => api<TeacherDetail>(`/teachers/${id}/photo`, { method: "DELETE" });
+
+// Opções do formulário (modalidades ativas e níveis). Só carrega com o formulário aberto.
+export function useTeacherOptions(enabled: boolean) {
+  const [tick, setTick] = useState(0);
+  const [done, setDone] = useState<{ tick: number; options?: TeacherOptions }>();
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    api<TeacherOptions>("/teachers/options").then(
+      (options) => alive && setDone({ tick, options }),
+      () => alive && setDone({ tick }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [enabled, tick]);
+  const current = done?.tick === tick ? done : undefined;
+  return { status: !current ? "loading" : current.options ? "ready" : "error", options: current?.options, retry: () => setTick((n) => n + 1) } as const;
 }

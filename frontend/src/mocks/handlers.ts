@@ -73,6 +73,7 @@ export const resetMockSession = () => {
   unitDetails = {};
   staff = initialStaff();
   mockTeachers = initialTeachers();
+  teacherContacts = initialTeacherContacts();
   teacherResends = 0;
   sessions = initialSessions();
   activeModalities.clear();
@@ -257,20 +258,23 @@ const gone = (code: string) =>
 // Cada item que declarar rota acrescenta aqui o handler dela; o teste msw.test.ts confere contra o OpenAPI.
 // Professores (RF-PRO-01), fixos: o Administrador (ADMIN_UNIT) só vê os que têm a unidade dele; telefone e e-mail nunca saem (RN-PRO-04).
 const UNIT_NORTE = "00000000-0000-0000-0000-000000000022";
-const initialTeachers = () => [
-  { id: "00000000-0000-0000-0000-000000000501", name: "Ana Souza", photoUrl: null as string | null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", level: "Roxa", degree: 2 }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }], classCount: 0, status: "ACTIVE", directoryConsent: true, access: "ACTIVE" },
-  { id: "00000000-0000-0000-0000-000000000502", name: "João Pereira", photoUrl: null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", level: "Azul", degree: 0 }, { id: modalityCatalog[4].id, name: "Judô", level: null, degree: null }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }, { id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "ACTIVE", directoryConsent: false, access: "NONE" },
-  { id: "00000000-0000-0000-0000-000000000503", name: "Marcos Lima", photoUrl: null, modalities: [{ id: modalityCatalog[0].id, name: "Boxe", level: null, degree: null }], units: [{ id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "INACTIVE", directoryConsent: false, access: "ENDED" },
+type MockModality = { id: string; name: string; levelId: string | null; level: string | null; degree: number | null };
+type MockTeacher = { id: string; name: string; photoUrl: string | null; modalities: MockModality[]; units: { id: string; name: string }[]; classCount: number; status: string; directoryConsent: boolean; access: string };
+const initialTeachers = (): MockTeacher[] => [
+  { id: "00000000-0000-0000-0000-000000000501", name: "Ana Souza", photoUrl: null as string | null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", levelId: null as string | null, level: "Roxa", degree: 2 }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }], classCount: 0, status: "ACTIVE", directoryConsent: true, access: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000502", name: "João Pereira", photoUrl: null, modalities: [{ id: modalityCatalog[3].id, name: "Jiu-Jitsu", levelId: null as string | null, level: "Azul", degree: 0 }, { id: modalityCatalog[4].id, name: "Judô", levelId: null as string | null, level: null, degree: null }], units: [{ id: ADMIN_UNIT, name: "Unidade Centro" }, { id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "ACTIVE", directoryConsent: false, access: "NONE" },
+  { id: "00000000-0000-0000-0000-000000000503", name: "Marcos Lima", photoUrl: null, modalities: [{ id: modalityCatalog[0].id, name: "Boxe", levelId: null as string | null, level: null, degree: null }], units: [{ id: UNIT_NORTE, name: "Unidade Norte" }], classCount: 0, status: "INACTIVE", directoryConsent: false, access: "ENDED" },
 ];
 let mockTeachers = initialTeachers();
 // Contato e apresentação só saem no painel (RF-PRO-02, D2); a lista nunca os traz. João tem e-mail e ainda sem acesso; Marcos não tem e-mail.
-const teacherContacts: Record<string, { bio: string | null; email: string | null; phone: string | null }> = {
-  "00000000-0000-0000-0000-000000000501": { bio: "Faixa preta, 15 anos de tatame.", email: "ana.souza@alfa.test", phone: "+55 11 98888-0001" },
-  "00000000-0000-0000-0000-000000000502": { bio: null, email: "joao.pereira@alfa.test", phone: "+55 11 98888-0002" },
-  "00000000-0000-0000-0000-000000000503": { bio: null, email: null, phone: null },
-};
+type TeacherContact = { bio: string | null; email: string | null; phone: string | null; consentDeclaredByManagement: boolean };
+const initialTeacherContacts = (): Record<string, TeacherContact> => ({
+  "00000000-0000-0000-0000-000000000501": { bio: "Faixa preta, 15 anos de tatame.", email: "ana.souza@alfa.test", phone: "+55 11 98888-0001", consentDeclaredByManagement: true },
+  "00000000-0000-0000-0000-000000000502": { bio: null, email: "joao.pereira@alfa.test", phone: "+55 11 98888-0002", consentDeclaredByManagement: false },
+  "00000000-0000-0000-0000-000000000503": { bio: null, email: null, phone: null, consentDeclaredByManagement: false },
+});
+let teacherContacts = initialTeacherContacts();
 let teacherResends = 0;
-type MockTeacher = ReturnType<typeof initialTeachers>[number];
 const teacherDetail = (t: MockTeacher) => {
   const { id, name, photoUrl, directoryConsent, status, modalities, units, access } = t;
   return { id, name, photoUrl, directoryConsent, status, modalities, units, access, ...teacherContacts[id], classes: [], upcomingClasses: [] };
@@ -284,6 +288,59 @@ const teacherFor = (id: string) => {
   return found ?? error(404, "NOT_FOUND", "Não encontrado.");
 };
 const teacherKey = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+// RF-PRO-03: opções do formulário (modalidades ativas; as dos professores fixos contam como ativas) e validação como no servidor.
+const SEEDED_MODALITIES = [3, 4, 0].map((i) => modalityCatalog[i].id);
+const teacherOptions = () =>
+  modalityCatalog
+    .filter((m) => activeModalities.has(m.id) || SEEDED_MODALITIES.includes(m.id))
+    .map((m) => {
+      const g = graduationOf(m.id);
+      return { id: m.id, name: m.name, graduationEnabled: g.enabled, levels: g.enabled ? g.levels.map(({ id, name, maxDegree }) => ({ id, name, maxDegree })) : [] };
+    });
+type TeacherInput = { name?: string; email?: string | null; phone?: string | null; bio?: string | null; directoryConsent?: boolean; consentDeclaredByManagement?: boolean; unitIds?: string[]; modalities?: { modalityId?: string; levelId?: string | null; degree?: number | null }[] };
+const teacherBad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+// Devolve o cadastro validado ou a resposta de erro. `current` é o professor editado (null na criação): o Administrador mantém as unidades de fora do alcance dele.
+const teacherFromInput = (b: TeacherInput, current: MockTeacher | null) => {
+  const name = (b.name ?? "").trim();
+  if (name.length < 2 || name.length > 80) return teacherBad("name", "de 2 a 80 caracteres");
+  const email = b.email?.trim() || null;
+  if (email && (email.length > 254 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))) return teacherBad("email", "e-mail inválido");
+  let phone: string | null = null;
+  if (b.phone?.trim()) {
+    phone = b.phone.replace(/\D/g, "");
+    if (phone.length > 11 && phone.startsWith("55")) phone = phone.slice(2);
+    if (!/^[1-9][1-9](9\d{8}|\d{8})$/.test(phone)) return teacherBad("phone", "telefone inválido");
+  }
+  const bio = b.bio?.trim() || null;
+  if (bio && bio.length > 300) return teacherBad("bio", "no máximo 300 caracteres");
+  const consent = b.directoryConsent === true;
+  const declared = b.consentDeclaredByManagement === true;
+  if (consent && !declared) return teacherBad("consentDeclaredByManagement", "declare que o professor autorizou");
+  const asked = [...new Set(b.unitIds ?? [])];
+  if (asked.length === 0) return teacherBad("unitIds", "escolha ao menos uma unidade");
+  if (activeRole() === "ADMINISTRATOR" && asked.some((id) => id !== ADMIN_UNIT)) return error(403, "FORBIDDEN", "Sem permissão.");
+  if (asked.some((id) => !units.some((u) => u.id === id && u.active))) return teacherBad("unitIds", "escolha unidades ativas da organização");
+  const options = teacherOptions();
+  const seen = new Set<string>();
+  const modalities: MockModality[] = [];
+  for (const m of b.modalities ?? []) {
+    const option = options.find((o) => o.id === m.modalityId);
+    if (!option || seen.has(option.id)) return teacherBad("modalities", option ? "modalidade repetida" : "modalidade inativa ou inexistente");
+    seen.add(option.id);
+    if (!option.graduationEnabled) {
+      if (m.levelId || (m.degree ?? 0) !== 0) return teacherBad("modalities", "a modalidade não tem graduação");
+      modalities.push({ id: option.id, name: option.name, levelId: null, level: null, degree: null });
+      continue;
+    }
+    const level = option.levels.find((l) => l.id === m.levelId);
+    if (!level) return teacherBad("modalities", m.levelId ? "nível inválido para a modalidade" : "escolha o nível");
+    if (!Number.isInteger(m.degree) || m.degree! < 0 || m.degree! > level.maxDegree) return teacherBad("modalities", `grau de 0 a ${level.maxDegree}`);
+    modalities.push({ id: option.id, name: option.name, levelId: level.id, level: level.name, degree: m.degree! });
+  }
+  const kept = activeRole() === "ADMINISTRATOR" ? (current?.units ?? []).filter((u) => u.id !== ADMIN_UNIT) : [];
+  const chosen = [...kept, ...asked.map((id) => ({ id, name: units.find((u) => u.id === id)!.name }))].sort((a, c) => a.name.localeCompare(c.name));
+  return { name, directoryConsent: consent, modalities: modalities.sort((a, c) => a.name.localeCompare(c.name)), units: chosen, contact: { bio, email, phone, consentDeclaredByManagement: declared } };
+};
 
 export const routes: Route[] = [
   {
@@ -985,6 +1042,72 @@ export const routes: Route[] = [
         .filter((t) => !unitId || (role === "COORDINATOR" || unitId === ADMIN_UNIT) && t.units.some((u) => u.id === unitId))
         .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-PRO-03 (D7): opções do formulário; só Coordenador e Administrador.
+    method: "get",
+    path: "/teachers/options",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      return HttpResponse.json({ modalities: teacherOptions() });
+    },
+  },
+  {
+    // RF-PRO-03: cadastro; nasce ACTIVE, sem conta.
+    method: "post",
+    path: "/teachers",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const made = teacherFromInput((await request.json().catch(() => ({}))) as TeacherInput, null);
+      if (made instanceof Response) return made;
+      const { contact, ...fields } = made;
+      const created: MockTeacher = { id: crypto.randomUUID(), photoUrl: null, classCount: 0, status: "ACTIVE", access: "NONE", ...fields };
+      mockTeachers = [...mockTeachers, created];
+      teacherContacts[created.id] = contact;
+      return HttpResponse.json(teacherDetail(created), { status: 201 });
+    },
+  },
+  {
+    // RF-PRO-03: troca o cadastro inteiro; situação e acesso não mudam.
+    method: "put",
+    path: "/teachers/{id}",
+    resolver: async ({ request, params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      const made = teacherFromInput((await request.json().catch(() => ({}))) as TeacherInput, found);
+      if (made instanceof Response) return made;
+      const { contact, ...fields } = made;
+      Object.assign(found, fields);
+      teacherContacts[found.id] = contact;
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    // O corpo multipart é lido como texto (como na logo); o mock só guarda que existe uma foto.
+    method: "put",
+    path: "/teachers/{id}/photo",
+    resolver: async ({ request, params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      const raw = await request.text();
+      if (!raw.includes('name="file"') || raw.length < 20 || raw.length > 5 * 1024 * 1024) return teacherBad("file", "arquivo inválido");
+      found.photoUrl = MOCK_LOGO;
+      return HttpResponse.json(teacherDetail(found));
+    },
+  },
+  {
+    method: "delete",
+    path: "/teachers/{id}/photo",
+    resolver: ({ params }) => {
+      const found = teacherFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      found.photoUrl = null;
+      return HttpResponse.json(teacherDetail(found));
     },
   },
   {

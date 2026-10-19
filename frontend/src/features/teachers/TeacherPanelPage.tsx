@@ -6,8 +6,10 @@ import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/componen
 import { Button } from "@/components/ui/button";
 import { WhatsAppButton } from "@/components/whatsapp";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { usePermissions } from "@/features/permissions/usePermissions";
 import { formatDateTime } from "@/lib/format";
 import { GrantAccessDialog } from "./GrantAccessDialog";
+import { TeacherFormDialog } from "./TeacherFormDialog";
 import { resendTeacherInvite, useTeacher, type TeacherDetail } from "./useTeachers";
 
 const initials = (name: string) =>
@@ -30,6 +32,9 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () => Promise<void> }) {
   const { t } = useTranslation();
   const [granting, setGranting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const { permissions } = usePermissions();
+  const canWrite = !!permissions && permissions.TEACHERS !== "NONE";
   const [notice, setNotice] = useState<string>();
 
   async function resend() {
@@ -65,9 +70,11 @@ function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () =
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" className="min-h-11" disabled>
-          {t("teachers.panel.edit")}
-        </Button>
+        {canWrite && (
+          <Button variant="outline" className="min-h-11" onClick={() => setEditing(true)}>
+            {t("teachers.panel.edit")}
+          </Button>
+        )}
         <Button variant="outline" className="min-h-11" disabled>
           {t("teachers.panel.deactivate")}
         </Button>
@@ -134,6 +141,15 @@ function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () =
       <Card heading="h2" title={t("teachers.panel.access")}>
         <p>{t(`teachers.panel.accessStates.${teacher.access}`)}</p>
       </Card>
+      <TeacherFormDialog
+        open={editing}
+        teacher={teacher}
+        onClose={() => setEditing(false)}
+        onSaved={() => {
+          setNotice(t("teachers.form.saved"));
+          void onRefresh();
+        }}
+      />
       <GrantAccessDialog
         teacher={granting ? teacher : null}
         onClose={() => setGranting(false)}

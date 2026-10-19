@@ -52,13 +52,13 @@ public record NewUnit(String name, String postalCode, String address, String cit
         return v;
     }
 
-    private static String email(String field, String value) {
+    public static String email(String field, String value) {
         if (value != null && (value.length() > 254 || !EMAIL.matcher(value).matches())) throw new ApiValidationException(field, "e-mail inválido");
         return value;
     }
 
     // Mesma regra do front (masks.ts): DDD de 2 dígitos, fixo com 10 ou celular com 11 começando em 9; "55" na frente é descartado.
-    private static String phone(String field, String value) {
+    public static String phone(String field, String value) {
         String v = blank(value);
         if (v == null) return null;
         String d = v.replaceAll("\\D", "");
