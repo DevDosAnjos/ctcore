@@ -74,6 +74,7 @@ export const resetMockSession = () => {
   staff = initialStaff();
   sessions = initialSessions();
   activeModalities.clear();
+  graduations.clear();
   modalityRequests = [];
 };
 
@@ -121,6 +122,14 @@ const unitsAccess = () => {
 const MODALITY_NAMES = ["Boxe", "Capoeira", "Defesa pessoal", "Jiu-Jitsu", "Judô", "Karatê", "Kickboxing", "Krav Magá", "Kung Fu", "Luta Livre", "MMA", "Muay Thai", "Taekwondo", "Wrestling"];
 const modalityCatalog = MODALITY_NAMES.map((name, i) => ({ id: `00000000-0000-0000-0000-0000000001${String(i).padStart(2, "0")}`, name }));
 const activeModalities = new Set<string>();
+type MockLevel = { id: string; name: string; color: string; secondaryColor: string | null; maxDegree: number; minAge: number | null; maxAge: number | null; kids: boolean };
+type MockGraduation = { enabled: boolean; requireOriginProof: boolean; levels: MockLevel[] };
+const graduations = new Map<string, MockGraduation>();
+const jiuJitsuDefault = (): MockLevel[] =>
+  [["Branca", "#FFFFFF", 4, 16], ["Azul", "#0000CD", 4, 16], ["Roxa", "#800080", 4, 16], ["Marrom", "#8B4513", 4, 18], ["Preta", "#000000", 6, 19]].map(
+    ([name, color, maxDegree, minAge]) => ({ id: crypto.randomUUID(), name: name as string, color: color as string, secondaryColor: null, maxDegree: maxDegree as number, minAge: minAge as number, maxAge: null, kids: false }),
+  );
+const graduationOf = (id: string) => graduations.get(id) ?? { enabled: false, requireOriginProof: false, levels: [] };
 let modalityRequests: { id: string; name: string; note: string | null; status: string; createdAt: string }[] = [];
 export const TRANSFER_TARGET = "admin@alfa.test";
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
@@ -546,7 +555,7 @@ export const routes: Route[] = [
       const denied = organizationAccess(false);
       if (denied) return denied;
       const canManage = activeRole() === "COORDINATOR";
-      return HttpResponse.json(modalityCatalog.map((m) => ({ ...m, active: activeModalities.has(m.id), canManage })));
+      return HttpResponse.json(modalityCatalog.map((m) => ({ ...m, active: activeModalities.has(m.id), canManage, graduationEnabled: graduationOf(m.id).enabled })));
     },
   },
   {
@@ -566,9 +575,54 @@ export const routes: Route[] = [
           { field: "activeStudents", message: "3" },
         ]);
       }
-      if (active) activeModalities.add(found.id);
-      else activeModalities.delete(found.id);
-      return HttpResponse.json({ ...found, active, canManage: true });
+      if (active) {
+        activeModalities.add(found.id);
+        if (!graduations.has(found.id)) graduations.set(found.id, { enabled: false, requireOriginProof: false, levels: found.name === "Jiu-Jitsu" ? jiuJitsuDefault() : [] });
+      } else activeModalities.delete(found.id);
+      return HttpResponse.json({ ...found, active, canManage: true, graduationEnabled: graduationOf(found.id).enabled });
+    },
+  },
+  {
+    method: "get",
+    path: "/modalities/{id}/graduation",
+    resolver: ({ params }) => {
+      const denied = organizationAccess(false);
+      if (denied) return denied;
+      if (!modalityCatalog.some((m) => m.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (!activeModalities.has(params.id as string)) return error(409, "MODALITY_NOT_ACTIVE", "A modalidade não está ativa.");
+      return HttpResponse.json({ ...graduationOf(params.id as string), canManage: activeRole() === "COORDINATOR" });
+    },
+  },
+  {
+    method: "put",
+    path: "/modalities/{id}/graduation",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const id = params.id as string;
+      if (!modalityCatalog.some((m) => m.id === id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (!activeModalities.has(id)) return error(409, "MODALITY_NOT_ACTIVE", "A modalidade não está ativa.");
+      const body = (await request.json()) as { enabled?: boolean; requireOriginProof?: boolean; levels?: Partial<MockLevel>[] };
+      const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+      if (typeof body.enabled !== "boolean") return bad("enabled", "obrigatório");
+      if (!Array.isArray(body.levels) || body.levels.length > 30) return bad("levels", "no máximo 30 níveis");
+      if (body.enabled && body.levels.length === 0) return bad("levels", "inclua ao menos um nível para ligar a graduação");
+      const key = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+      const seen = new Set<string>();
+      for (const [i, l] of body.levels.entries()) {
+        const name = l.name?.trim() ?? "";
+        if (name.length < 1 || name.length > 40) return bad(`levels[${i}].name`, "de 1 a 40 caracteres");
+        if (seen.has(key(name))) return bad(`levels[${i}].name`, "nome repetido");
+        seen.add(key(name));
+        if (!/^#[0-9A-Fa-f]{6}$/.test(l.color ?? "")) return bad(`levels[${i}].color`, "use o formato #RRGGBB");
+      }
+      const saved: MockGraduation = {
+        enabled: body.enabled,
+        requireOriginProof: body.requireOriginProof === true,
+        levels: body.levels.map((l) => ({ id: l.id ?? crypto.randomUUID(), name: l.name!.trim(), color: l.color!, secondaryColor: l.secondaryColor ?? null, maxDegree: l.maxDegree ?? 0, minAge: l.minAge ?? null, maxAge: l.maxAge ?? null, kids: l.kids === true })),
+      };
+      graduations.set(id, saved);
+      return HttpResponse.json({ ...saved, canManage: true });
     },
   },
   {

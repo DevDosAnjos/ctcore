@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/format";
+import { GraduationDialog } from "./GraduationDialog";
 import { RequestModalityDialog } from "./RequestModalityDialog";
 import { useModalities, type Modality } from "./useModalities";
 
@@ -19,11 +20,13 @@ function Block({
   empty,
   items,
   onToggle,
+  onGraduation,
 }: {
   title: string;
   empty: string;
   items: Modality[];
   onToggle: (m: Modality) => void;
+  onGraduation?: (m: Modality) => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -38,14 +41,32 @@ function Block({
               className="flex flex-wrap items-center justify-between gap-2 py-2"
             >
               <span className="min-w-0 break-words">{m.name}</span>
-              {m.canManage && (
-                <Button variant="outline" size="sm" onClick={() => onToggle(m)}>
-                  {m.active
-                    ? t("modalities.deactivate")
-                    : t("modalities.activate")}
-                  <span className="sr-only"> {m.name}</span>
-                </Button>
-              )}
+              <span className="flex flex-wrap gap-2">
+                {m.active && onGraduation && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onGraduation(m)}
+                  >
+                    {m.canManage
+                      ? t("modalities.graduation.button")
+                      : t("modalities.graduation.view")}
+                    <span className="sr-only"> {m.name}</span>
+                  </Button>
+                )}
+                {m.canManage && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onToggle(m)}
+                  >
+                    {m.active
+                      ? t("modalities.deactivate")
+                      : t("modalities.activate")}
+                    <span className="sr-only"> {m.name}</span>
+                  </Button>
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -58,6 +79,7 @@ function Content() {
   const { t } = useTranslation();
   const api = useModalities();
   const [asking, setAsking] = useState(false);
+  const [grading, setGrading] = useState<Modality | null>(null);
   const [message, setMessage] = useState<{
     kind: "status" | "alert";
     text: string;
@@ -115,6 +137,10 @@ function Content() {
             empty={t("modalities.mineEmpty")}
             items={items.filter((m) => m.active)}
             onToggle={toggle}
+            onGraduation={(m) => {
+              setMessage(undefined);
+              setGrading(m);
+            }}
           />
           <Block
             title={t("modalities.available")}
@@ -155,6 +181,18 @@ function Content() {
           </ul>
         )}
       </Card>
+      <GraduationDialog
+        modality={grading}
+        onClose={() => setGrading(null)}
+        onSaved={(id, saved) => {
+          api.setGraduationEnabled(id, saved.enabled);
+          setGrading(null);
+          setMessage({
+            kind: "status",
+            text: t("modalities.graduation.saved"),
+          });
+        }}
+      />
       <RequestModalityDialog
         open={asking}
         onClose={() => setAsking(false)}

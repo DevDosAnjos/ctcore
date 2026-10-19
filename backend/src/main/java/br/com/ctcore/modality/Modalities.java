@@ -31,7 +31,7 @@ public class Modalities {
     static final int MAX_NAME = 60;
     static final int MAX_NOTE = 300;
 
-    public record Item(UUID id, String name, boolean active, boolean canManage) {}
+    public record Item(UUID id, String name, boolean active, boolean canManage, boolean graduationEnabled) {}
 
     public record Request(UUID id, String name, String note, String status, OffsetDateTime createdAt) {}
 
@@ -51,16 +51,16 @@ public class Modalities {
     }
 
     /** Sem acento e sem diferença de maiúsculas, para comparar nomes. */
-    static String normalize(String name) {
+    public static String normalize(String name) {
         return Normalizer.normalize(name.strip(), Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
     }
 
     public List<Item> list(AccountPrincipal who) {
         boolean manage = access(who) == Access.FULL;
-        return transactions.execute(() -> jdbc.sql("select m.id, m.name, coalesce(o.active, false) from modality m "
+        return transactions.execute(() -> jdbc.sql("select m.id, m.name, coalesce(o.active, false), coalesce(o.graduation_enabled, false) from modality m "
                 + "left join organization_modality o on o.modality_id = m.id and o.organization_id = :org order by m.name")
                 .param("org", who.organizationId())
-                .query((rs, i) -> new Item(rs.getObject(1, UUID.class), rs.getString(2), rs.getBoolean(3), manage)).list());
+                .query((rs, i) -> new Item(rs.getObject(1, UUID.class), rs.getString(2), rs.getBoolean(3), manage, rs.getBoolean(4))).list());
     }
 
     public Item setActive(AccountPrincipal who, UUID id, Boolean active, String ip) {
@@ -76,10 +76,13 @@ public class Modalities {
                 jdbc.sql("insert into organization_modality (organization_id, modality_id, active) values (:org, :id, :active) "
                         + "on conflict (organization_id, modality_id) do update set active = :active, updated_at = now()")
                         .param("org", who.organizationId()).param("id", id).param("active", active).update();
+                if (active) copyDefaultLevels(who.organizationId(), id);
                 audit.record(new AuditEntry(actor(who), active ? "modality.activated" : "modality.deactivated", "modality", id.toString(), null,
                         Map.of("active", current), Map.of("active", active), null, ip));
             }
-            return new Item(id, name, active, true);
+            boolean graduation = jdbc.sql("select graduation_enabled from organization_modality where organization_id = :org and modality_id = :id")
+                    .param("org", who.organizationId()).param("id", id).query(Boolean.class).optional().orElse(false);
+            return new Item(id, name, active, true, graduation);
         });
     }
 
@@ -116,6 +119,15 @@ public class Modalities {
                     .query((rs, i) -> new Request(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
                             rs.getObject(5, OffsetDateTime.class))).single();
         });
+    }
+
+    /** RN-GRA-01: a organização ganha uma cópia do padrão uma única vez; desativar e reativar não recopia. */
+    private void copyDefaultLevels(UUID organizationId, UUID modalityId) {
+        jdbc.sql("insert into graduation_level (id, organization_id, modality_id, position, name, color, secondary_color, max_degree, min_age, max_age, kids) "
+                + "select gen_random_uuid(), :org, d.modality_id, d.position, d.name, d.color, d.secondary_color, d.max_degree, d.min_age, d.max_age, d.kids "
+                + "from modality_default_level d where d.modality_id = :id "
+                + "and not exists (select 1 from graduation_level g where g.organization_id = :org and g.modality_id = :id)")
+                .param("org", organizationId).param("id", modalityId).update();
     }
 
     private void refuseIfInUse(UUID id) {
