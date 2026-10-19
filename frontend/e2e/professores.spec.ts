@@ -66,3 +66,22 @@ test("@critical Coordenador cadastra um professor", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Paula Nogueira", level: 1 })).toBeVisible();
   await expect(page.getByText("Judô", { exact: true })).toBeVisible();
 });
+
+// RF-PRO-04 / RN-PRO-05: o Coordenador abre o painel de um professor ativo, inativa e vê a situação "Inativo".
+test("@critical Coordenador inativa um professor", async ({ page }) => {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill("ana@exemplo.com");
+  await page.getByLabel("Senha").fill("segredo123");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+  await open(page, "/professores");
+  await page.getByRole("link", { name: "João Pereira" }).click();
+  await expect(page.getByRole("heading", { name: "João Pereira", level: 1 })).toBeVisible();
+
+  await page.getByRole("button", { name: "Inativar" }).click();
+  const dialog = page.getByRole("dialog", { name: "Inativar João Pereira" });
+  await expect(dialog.getByText("Nenhuma turma ficará sem titular.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Inativar" }).click();
+  await expect(page.getByText("Inativo", { exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+});

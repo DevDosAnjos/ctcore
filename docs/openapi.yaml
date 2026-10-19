@@ -982,6 +982,43 @@ paths:
         '429':
           description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /teachers/{id}/deactivation:
+    get:
+      summary: Pré-visualiza a inativação do professor (RF-PRO-04). Coordenador e Administrador.
+      description: |
+        Não altera nada. `headClasses` lista as turmas em que o professor é titular e que ficarão sem titular (vazia até a Sprint 05).
+        `canDeactivate` é falso se o professor já está inativo ou, para o Administrador, se alguma unidade do professor (ativa ou não)
+        está fora do alcance dele. Administrador sem alcance sobre o professor: 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Pré-visualização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDeactivationPreview' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /teachers/{id}/deactivate:
+    post:
+      summary: Inativa o professor (RF-PRO-04, RN-PRO-05). Coordenador e Administrador.
+      description: |
+        Muda a situação para `INACTIVE`, encerra o vínculo de Professor na organização (convite pendente é cancelado) e as sessões que
+        dependiam dele; a conta e o cadastro continuam. Sem corpo. O Coordenador inativa qualquer professor; o Administrador só quem tem
+        todas as unidades entre as dele (senão 403). Professor já inativo: 409. Grava `teacher.deactivated`, sem e-mail nem telefone.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel com `status` igual a `INACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TeacherDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Professor já inativo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   /users:
     get:
       summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
@@ -1545,6 +1582,21 @@ components:
               name: { type: string }
               startsAt: { type: string, format: date-time }
         access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED] }
+    TeacherDeactivationPreview:
+      type: object
+      required: [headClasses, canDeactivate]
+      properties:
+        headClasses:
+          type: array
+          description: Turmas que ficarão sem titular; vazia até a Sprint 05.
+          items:
+            type: object
+            required: [id, name, role]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              role: { type: string, enum: [HEAD, ASSISTANT] }
+        canDeactivate: { type: boolean }
     TeacherInput:
       type: object
       required: [name, unitIds]

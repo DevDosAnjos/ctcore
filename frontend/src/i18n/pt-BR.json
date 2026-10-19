@@ -394,6 +394,19 @@
       "back": "Voltar aos professores",
       "edit": "Editar",
       "deactivate": "Inativar",
+      "deactivateDialog": {
+        "title": "Inativar {{name}}",
+        "withoutHead": "Estas turmas ficarão sem titular:",
+        "noClasses": "Nenhuma turma ficará sem titular.",
+        "accessEnds": "O acesso ao sistema será encerrado e as sessões abertas terminam.",
+        "outOfReach": "Só o Coordenador inativa este professor; tire as suas unidades em Editar.",
+        "done": "Professor inativado.",
+        "errors": {
+          "FORBIDDEN": "Você não tem permissão para inativar este professor.",
+          "CONFLICT": "Este professor já está inativo.",
+          "generic": "Não foi possível inativar o professor. Tente de novo."
+        }
+      },
       "resend": "Reenviar convite",
       "resendDone": "Convite reenviado.",
       "resendError": "Não foi possível reenviar o convite. Tente de novo mais tarde.",

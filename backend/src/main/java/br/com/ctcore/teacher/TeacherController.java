@@ -33,8 +33,10 @@ class TeacherController {
     private final Teachers teachers;
     private final TeacherAccess access;
     private final TeacherWrite write;
+    private final TeacherDeactivation deactivation;
 
-    TeacherController(Teachers teachers, TeacherAccess access, TeacherWrite write) {
+    TeacherController(Teachers teachers, TeacherAccess access, TeacherWrite write, TeacherDeactivation deactivation) {
+        this.deactivation = deactivation;
         this.write = write;
         this.teachers = teachers;
         this.access = access;
@@ -93,5 +95,15 @@ class TeacherController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void resend(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, HttpServletRequest request) {
         access.resend(who, id, request.getRemoteAddr());
+    }
+
+    @GetMapping("/{id}/deactivation")
+    TeacherDeactivation.Preview deactivationPreview(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
+        return deactivation.preview(who, id);
+    }
+
+    @PostMapping("/{id}/deactivate")
+    Teachers.Detail deactivate(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, HttpServletRequest request) {
+        return deactivation.deactivate(who, id, request.getRemoteAddr());
     }
 }

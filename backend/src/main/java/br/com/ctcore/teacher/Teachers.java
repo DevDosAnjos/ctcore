@@ -178,7 +178,12 @@ public class Teachers {
         Map<UUID, List<ModalityRef>> modalities = new HashMap<>();
         refs(who.organizationId(), List.of(id), units, modalities);
         return new Detail(b.id(), b.name(), photoUrl(b.photo()), b.bio(), b.email(), b.phone(), b.consent(), b.declared(), b.status(),
-                modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), List.of(), List.of(), b.access());
+                modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), headClasses(id), List.of(), b.access());
+    }
+
+    /** RN-PRO-05: turmas em que o professor é titular. Turmas só nascem na Sprint 05 (D1): ponto único a trocar. */
+    List<ClassRef> headClasses(UUID teacherId) {
+        return List.of();
     }
 
     String photoUrl(String photo) {

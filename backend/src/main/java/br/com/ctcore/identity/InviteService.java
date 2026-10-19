@@ -183,8 +183,17 @@ public class InviteService {
     }
 
     public void cancel(Inviter by, UUID organizationId, UUID linkId) {
+        cancel(by, organizationId, linkId, false);
+    }
+
+    /** RN-PRO-05: inativar o professor cancela o convite pendente de acesso, também pelo Coordenador. */
+    public void cancelTeacher(Inviter by, UUID organizationId, UUID linkId) {
+        cancel(by, organizationId, linkId, true);
+    }
+
+    private void cancel(Inviter by, UUID organizationId, UUID linkId, boolean teacherAccess) {
         orgTx.provision(organizationId, () -> {
-            Target t = authorize(by, organizationId, linkId, false);
+            Target t = authorize(by, organizationId, linkId, teacherAccess);
             jdbc.sql("update account_invite set canceled_at = :now where link_id = :l and used_at is null and canceled_at is null")
                     .param("now", now()).param("l", linkId).update();
             jdbc.sql("update account_link set status = 'ENDED', ends_on = :d where id = :l").param("d", now().toLocalDate()).param("l", linkId).update();

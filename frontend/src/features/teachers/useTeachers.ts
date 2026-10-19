@@ -137,3 +137,11 @@ export function useTeacherOptions(enabled: boolean) {
   const current = done?.tick === tick ? done : undefined;
   return { status: !current ? "loading" : current.options ? "ready" : "error", options: current?.options, retry: () => setTick((n) => n + 1) } as const;
 }
+
+// Espelha TeacherDeactivationPreview do OpenAPI (RF-PRO-04): turmas que ficarão sem titular e se quem chama pode inativar.
+export interface DeactivationPreview {
+  headClasses: { id: string; name: string; role: "HEAD" | "ASSISTANT" }[];
+  canDeactivate: boolean;
+}
+export const fetchDeactivationPreview = (id: string) => api<DeactivationPreview>(`/teachers/${id}/deactivation`);
+export const deactivateTeacher = (id: string) => api<TeacherDetail>(`/teachers/${id}/deactivate`, { method: "POST" });
