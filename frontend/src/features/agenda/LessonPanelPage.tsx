@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 import { Card } from "@/components/Card";
@@ -11,7 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { br } from "./agendaDates";
-import { modalityHue } from "./LessonCard";
+import { CancelLessonDialog } from "./CancelLessonDialog";
+import { EditLessonDialog } from "./EditLessonDialog";
+import { cancelReasonText, modalityHue } from "./LessonCard";
 import { useLesson, type LessonDetail } from "./useLesson";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -46,8 +48,9 @@ function BackLink() {
   );
 }
 
-function Panel({ lesson }: { lesson: LessonDetail }) {
+function Panel({ lesson, onChanged }: { lesson: LessonDetail; onChanged: () => void }) {
   const { t } = useTranslation();
+  const [dialog, setDialog] = useState<"edit" | "cancel">();
   const group = safeLink(lesson.groupLink);
   const cancelled = lesson.status === "CANCELLED";
   const color = `hsl(${modalityHue(lesson.modality.id)} 60% 45%)`;
@@ -67,10 +70,10 @@ function Panel({ lesson }: { lesson: LessonDetail }) {
           </span>
         )}
       </header>
-      {cancelled && lesson.cancelReason && (
+      {cancelled && cancelReasonText(lesson, t) && (
         <p role="status" className="text-sm">
           <span className="font-medium">{t("agenda.panel.reason")}</span>{" "}
-          {lesson.cancelReason}
+          {cancelReasonText(lesson, t)}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -81,8 +84,7 @@ function Panel({ lesson }: { lesson: LessonDetail }) {
           <Button
             variant="outline"
             className="min-h-11"
-            disabled
-            title={t("agenda.panel.comingSoon")}
+            onClick={() => setDialog("edit")}
           >
             {t("agenda.panel.edit")}
           </Button>
@@ -91,8 +93,7 @@ function Panel({ lesson }: { lesson: LessonDetail }) {
           <Button
             variant="outline"
             className="min-h-11"
-            disabled
-            title={t("agenda.panel.comingSoon")}
+            onClick={() => setDialog("cancel")}
           >
             {t("agenda.panel.cancel")}
           </Button>
@@ -105,6 +106,19 @@ function Panel({ lesson }: { lesson: LessonDetail }) {
           </Button>
         )}
       </div>
+      {cancelled && (
+        <Card heading="h2" title={t("agenda.panel.noticeTitle")}>
+          <p className="break-words">
+            {t("agenda.panel.noticeText", {
+              name: lesson.class.name,
+              date: br(lesson.date),
+              from: lesson.startsAt,
+              to: lesson.endsAt,
+              reason: cancelReasonText(lesson, t) ?? "",
+            })}
+          </p>
+        </Card>
+      )}
       <Card heading="h2" title={t("agenda.panel.about")}>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label={t("agenda.panel.when")}>
@@ -152,6 +166,16 @@ function Panel({ lesson }: { lesson: LessonDetail }) {
           <p>{t("agenda.panel.noGroup")}</p>
         )}
       </Card>
+      <EditLessonDialog
+        lesson={dialog === "edit" ? lesson : null}
+        onClose={() => setDialog(undefined)}
+        onSaved={onChanged}
+      />
+      <CancelLessonDialog
+        lesson={dialog === "cancel" ? lesson : null}
+        onClose={() => setDialog(undefined)}
+        onSaved={onChanged}
+      />
     </div>
   );
 }
@@ -172,7 +196,7 @@ function Content() {
     );
   }
   if (!api.lesson) return <ErrorState onRetry={api.retry} />;
-  return <Panel lesson={api.lesson} />;
+  return <Panel lesson={api.lesson} onChanged={api.retry} />;
 }
 
 // RF-AGE-02: painel da aula; a barreira de dados é o servidor.

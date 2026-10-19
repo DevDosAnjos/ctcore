@@ -468,6 +468,69 @@
     "noClass": "Sem aula",
     "cancelled": "Cancelada",
     "substitute": "Substituição",
+    "cancelReasons": {
+      "TEACHER_UNAVAILABLE": "Professor indisponível",
+      "HOLIDAY": "Feriado",
+      "ACADEMY_EVENT": "Evento da academia",
+      "OTHER": "Outro"
+    },
+    "edit": {
+      "title": "Editar aula",
+      "date": "Data",
+      "startsAt": "Início",
+      "endsAt": "Término",
+      "teacher": "Professor da aula",
+      "teacherHelp": "Trocar o professor marca a aula como substituição; o titular da turma não muda.",
+      "scope": "Vale para",
+      "scopes": {
+        "THIS": "Só esta aula",
+        "FOLLOWING": "Esta e as seguintes (as datas das seguintes mudam pelo mesmo número de dias)"
+      },
+      "reason": "Motivo da correção",
+      "completedNote": "Aula concluída: só o professor pode ser corrigido, com motivo.",
+      "dateRequired": "Informe a data.",
+      "timeOrder": "Informe início e término, com o término depois do início.",
+      "reasonRequired": "Informe o motivo da correção.",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "errors": {
+        "403": "Você não tem permissão para editar esta aula. Nada foi alterado.",
+        "404": "A aula não existe ou não está mais disponível para você. Nada foi alterado.",
+        "409": "A aula não pode mais ser editada ou já existe aula da turma neste dia e horário. Nada foi alterado.",
+        "422": "O professor escolhido não pode dar esta aula. Nada foi alterado.",
+        "generic": "Não foi possível salvar. Tente de novo. Nada foi alterado."
+      }
+    },
+    "cancel": {
+      "title": "Cancelar aula",
+      "intro": "A aula de {{name}} será cancelada. Esta ação não pode ser desfeita aqui.",
+      "reason": "Motivo",
+      "text": "Qual o motivo?",
+      "channels": "Canais do comunicado",
+      "portal": "Portal (sempre)",
+      "email": "E-mail",
+      "whatsapp": "WhatsApp (grupo da turma)",
+      "channelsHelp": "O envio do comunicado chega em breve; o texto pronto aparece na aula depois de cancelar.",
+      "trials_one": "Há {{count}} aula experimental marcada. O que fazer?",
+      "trials_other": "Há {{count}} aulas experimentais marcadas. O que fazer?",
+      "trialDecisions": {
+        "REBOOK": "Remarcar",
+        "CANCEL_TRIALS": "Cancelar as experimentais"
+      },
+      "reasonRequired": "Escolha o motivo.",
+      "textRequired": "Informe o motivo, em até 200 caracteres.",
+      "trialRequired": "Escolha o que fazer com as aulas experimentais.",
+      "keep": "Manter aula",
+      "confirm": "Cancelar aula",
+      "sending": "Cancelando...",
+      "errors": {
+        "403": "Você não tem permissão para cancelar esta aula. Nada foi alterado.",
+        "404": "A aula não existe ou não está mais disponível para você. Nada foi alterado.",
+        "409": "A aula não pode mais ser cancelada (já concluída ou cancelada). Nada foi alterado.",
+        "422": "Escolha o que fazer com as aulas experimentais. Nada foi alterado.",
+        "generic": "Não foi possível cancelar. Tente de novo. Nada foi alterado."
+      }
+    },
     "emptyTitle": "Nenhuma aula neste período",
     "emptyText": "Quando houver aulas nos dias e filtros escolhidos, elas aparecem aqui.",
     "filters": {
@@ -514,6 +577,8 @@
       "cancel": "Cancelar aula",
       "viewClass": "Ver turma",
       "comingSoon": "Disponível em breve.",
+      "noticeTitle": "Aviso pronto",
+      "noticeText": "A aula de {{name}} de {{date}}, das {{from}} às {{to}}, foi cancelada. Motivo: {{reason}}.",
       "notFoundTitle": "Aula não encontrada",
       "notFoundText": "A aula não existe ou não está mais disponível para você.",
       "statuses": {

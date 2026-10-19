@@ -846,6 +846,55 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Edita a aula (RF-AGE-03). Coordenador, Administrador e Professor com `AGENDA_EDIT`.
+      description: |
+        `scope` `THIS` muda só a aula; `FOLLOWING` aplica horário e professor a ela e às seguintes da turma ainda não iniciadas (nem canceladas
+        nem concluídas) e desloca a data de cada uma pelo mesmo número de dias da mudança desta; tudo ou nada. O professor é ativo, da organização
+        e ensina a modalidade da turma (outro: 422 em `teacherId`); se não for o titular, `substitute` fica verdadeiro, e o titular da turma não muda.
+        A aula editada fica com `manually_edited`. Início no passado ou `endsAt` antes de `startsAt`: 400; mesmo dia e início de outra aula da turma:
+        409. Cancelada: 409. Concluída: só Coordenador e Administrador, em até 30 dias do término, só o professor (data e horário iguais), com
+        `reason` obrigatório; fora disso 409. Grava `lesson.updated`. Sem `AGENDA_EDIT`, 403; fora do alcance ou da visibilidade, 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LessonEditInput' } } }
+      responses:
+        '200':
+          description: Painel da aula atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /agenda/lessons/{id}/cancel:
+    post:
+      summary: Cancela a aula (RF-AGE-03). Coordenador, Administrador e Professor com `AGENDA_EDIT`.
+      description: |
+        Só aula agendada ou em andamento (concluída ou já cancelada: 409). `reason` é um dos quatro códigos; `reasonText` (até 200) é obrigatório
+        só em `OTHER` e ignorado nos demais. `channels` escolhe os canais do comunicado (o portal é sempre incluído); o envio é da Sprint 09, aqui
+        só vão para a auditoria. Com aula experimental marcada e sem `trialDecision`, 422 em `trialDecision`. Grava `lesson.cancelled`.
+        Cancela só a aula do id.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LessonCancelInput' } } }
+      responses:
+        '200':
+          description: Painel da aula cancelada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /classes:
     get:
       summary: Lista paginada de turmas da organização do vínculo ativo (RF-TUR-01). Coordenador e Administrador.
@@ -1518,6 +1567,7 @@ components:
             - NOT_FOUND
             - METHOD_NOT_ALLOWED
             - CONFLICT
+            - UNPROCESSABLE
             - EDIT_CONFLICT
             - PRECONDITION_REQUIRED
             - UNIT_LIMIT_REACHED
@@ -1754,7 +1804,7 @@ components:
         noClassDays: { type: array, items: { $ref: '#/components/schemas/NoClassDay' } }
     AgendaLesson:
       type: object
-      required: [id, date, startsAt, endsAt, status, cancelReason, class, unit, modality, teacher, substitute, canEdit, canCancel]
+      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, unit, modality, teacher, substitute, canEdit, canCancel]
       properties:
         id: { type: string, format: uuid }
         date: { type: string, format: date }
@@ -1762,6 +1812,7 @@ components:
         endsAt: { type: string, example: '20:00' }
         status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
         cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
+        cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER], description: 'Só quando `CANCELLED`; nulo na aula cancelada por dia sem aula (o texto vem em `cancelReason`).' }
         class: { $ref: '#/components/schemas/ClassRef' }
         unit: { $ref: '#/components/schemas/ClassRef' }
         modality: { $ref: '#/components/schemas/ClassRef' }
@@ -1771,7 +1822,7 @@ components:
         canCancel: { type: boolean }
     LessonDetail:
       type: object
-      required: [id, date, startsAt, endsAt, status, cancelReason, class, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass]
+      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass]
       properties:
         id: { type: string, format: uuid }
         date: { type: string, format: date }
@@ -1779,6 +1830,7 @@ components:
         endsAt: { type: string, example: '20:00' }
         status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
         cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
+        cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER], description: 'Só quando `CANCELLED`; nulo na aula cancelada por dia sem aula (o texto vem em `cancelReason`).' }
         class: { $ref: '#/components/schemas/ClassRef' }
         unit: { $ref: '#/components/schemas/ClassRef' }
         modality: { $ref: '#/components/schemas/ClassRef' }
@@ -1791,6 +1843,24 @@ components:
         canEdit: { type: boolean }
         canCancel: { type: boolean }
         canViewClass: { type: boolean, description: Verdadeiro só para quem gerencia turmas (`CLASSES_MANAGE`). }
+    LessonEditInput:
+      type: object
+      required: [scope, date, startsAt, endsAt, teacherId]
+      properties:
+        scope: { type: string, enum: [THIS, FOLLOWING] }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        teacherId: { type: string, format: uuid }
+        reason: { type: string, maxLength: 200, description: Obrigatório para aula concluída. }
+    LessonCancelInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER] }
+        reasonText: { type: string, maxLength: 200, description: Obrigatório em `OTHER`; ignorado nos demais. }
+        channels: { type: array, items: { type: string, enum: [EMAIL, WHATSAPP] } }
+        trialDecision: { type: string, enum: [REBOOK, CANCEL_TRIALS], description: Obrigatório se a aula tem experimental marcada. }
     NoClassDay:
       type: object
       required: [startsOn, endsOn, reason]
