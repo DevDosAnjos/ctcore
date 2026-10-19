@@ -328,6 +328,45 @@
       "appoint": "Nomear a mim mesmo"
     }
   },
+  "modalities": {
+    "title": "Modalidades",
+    "mine": "Suas modalidades",
+    "mineEmpty": "Nenhuma modalidade ativa ainda. Ative uma da lista abaixo para começar.",
+    "available": "Disponíveis para ativar",
+    "availableEmpty": "Todas as modalidades do catálogo já estão ativas.",
+    "emptyTitle": "Nenhuma modalidade no catálogo",
+    "emptyText": "O catálogo da plataforma está vazio no momento.",
+    "activate": "Ativar",
+    "deactivate": "Desativar",
+    "notFound": "Não achei minha modalidade",
+    "inUse": "Não é possível desativar {{name}}: há {{classes}} turma(s) ativa(s) e {{students}} aluno(s) ativo(s) nela.",
+    "changeError": "Não foi possível alterar {{name}}. Nada foi alterado. Tente de novo.",
+    "requests": {
+      "title": "Pedidos enviados",
+      "empty": "Você ainda não enviou pedidos.",
+      "status": {
+        "OPEN": "Em análise",
+        "ADDED": "Incluída no catálogo",
+        "DISMISSED": "Não aceito"
+      }
+    },
+    "dialog": {
+      "title": "Não achei minha modalidade",
+      "intro": "Conte qual modalidade falta. A equipe da plataforma analisa o pedido.",
+      "name": "Nome da modalidade",
+      "note": "Observação (opcional)",
+      "nameInvalid": "Informe o nome com 2 a 60 caracteres.",
+      "noteInvalid": "A observação pode ter até 300 caracteres.",
+      "send": "Enviar pedido",
+      "sending": "Enviando...",
+      "error": "Não foi possível enviar o pedido. Tente de novo.",
+      "sent": "Pedido enviado",
+      "conflict": {
+        "REQUEST_ALREADY_OPEN": "Você já pediu esta modalidade e o pedido ainda está aberto.",
+        "ALREADY_IN_CATALOG": "Esta modalidade já existe no catálogo. Ative-a na lista."
+      }
+    }
+  },
   "units": {
     "title": "Unidades",
     "city": "Cidade",
@@ -520,6 +559,7 @@
       "allUnits": "Todas as unidades",
       "unitSettings": "Configurações da unidade",
       "organizationSettings": "Configurações da organização",
+      "modalities": "Modalidades",
       "staffUsers": "Usuários da gestão",
       "units": "Unidades",
       "subscription": "Assinatura e faturas",

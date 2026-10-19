@@ -28,7 +28,7 @@ import org.testcontainers.utility.MountableFile;
 
 /** Banco e armazenamento reais (mesma imagem do docker-compose) para as rotas de /organization. */
 @AutoConfigureMockMvc
-abstract class OrganizationBase extends PostgresIT {
+public abstract class OrganizationBase extends PostgresIT {
     static final GenericContainer<?> STORAGE = new GenericContainer<>(DockerImageName.parse("chrislusf/seaweedfs:3.80"))
             .withCommand("server", "-dir=/data", "-s3", "-s3.port=8333", "-s3.config=/etc/seaweedfs/s3.json", "-ip.bind=0.0.0.0")
             .withCopyFileToContainer(MountableFile.forHostPath(Path.of("../infra/storage/s3.json")), "/etc/seaweedfs/s3.json")
@@ -48,7 +48,7 @@ abstract class OrganizationBase extends PostgresIT {
     @Autowired protected MockMvc mvc;
     @Autowired protected Organizations organizations;
 
-    record Tenant(UUID orgId, UUID unitId) {}
+    public record Tenant(UUID orgId, UUID unitId) {}
 
     protected Tenant tenant() {
         UUID id = UUID.randomUUID();

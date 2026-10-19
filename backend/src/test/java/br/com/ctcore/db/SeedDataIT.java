@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -148,6 +148,14 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from account where password_hash is null", Integer.class)).isEqualTo(1);
         String hash = jdbc.queryForObject("select password_hash from account where email = 'coordenador@ficticia-1.example'", String.class);
         assertThat(new br.com.ctcore.config.SecurityConfig().passwordEncoder().matches("SenhaFicticia1", hash)).isTrue();
+    }
+
+    @Test
+    @DisplayName("RF-MOD-01: seed ativa 3 modalidades nas 3 organizações, sem duplicar")
+    void modalitiesSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from organization_modality where active", Integer.class)).isEqualTo(9);
     }
 
     @Test

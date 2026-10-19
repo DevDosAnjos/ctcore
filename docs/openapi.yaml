@@ -574,6 +574,83 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /modalities:
+    get:
+      summary: Catálogo de modalidades com a situação na organização do vínculo ativo (RF-MOD-01, RN-MOD-01).
+      description: |
+        Devolve as 14 modalidades iniciais (iguais para todas as organizações) em ordem de nome, com `active` da organização e
+        `canManage` (verdadeiro só para o Coordenador). Coordenador e Administrador leem; Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Catálogo com a situação da organização.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Modality' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /modalities/{id}/activation:
+    put:
+      summary: Ativa ou desativa a modalidade para a organização (RN-MOD-02, RN-MOD-06). Só o Coordenador.
+      description: |
+        Repetir o mesmo valor responde 200 sem nova auditoria. Desativar com turma ativa ou aluno com a modalidade ativa responde
+        409 `MODALITY_IN_USE` e `fields` traz `activeClasses` e `activeStudents` (valores em texto); nada muda. Grava
+        `modality.activated` ou `modality.deactivated` na auditoria. Id fora do catálogo responde 404; corpo sem `active`, 400.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [active]
+              properties:
+                active: { type: boolean }
+      responses:
+        '200':
+          description: A modalidade com a nova situação.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Modality' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /modalities/requests:
+    get:
+      summary: Pedidos de modalidade nova da organização (RN-MOD-04). Coordenador e Administrador.
+      description: Do pedido mais novo para o mais antigo. Professor e portal recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Pedidos da organização.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ModalityRequest' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Pede à plataforma uma modalidade que não está no catálogo (RN-MOD-04). Só o Coordenador.
+      description: |
+        `name` de 2 a 60 caracteres e `note` opcional até 300 (senão 400 no campo). Nome já pedido pela organização e ainda aberto
+        (sem diferenciar maiúsculas) responde 409 `REQUEST_ALREADY_OPEN`; nome que já existe no catálogo (sem diferenciar acento
+        nem maiúsculas), 409 `ALREADY_IN_CATALOG`. Grava `modality.requested` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 60 }
+                note: { type: string, nullable: true, maxLength: 300 }
+      responses:
+        '201':
+          description: Pedido gravado com situação OPEN.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ModalityRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /users:
     get:
       summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
@@ -910,6 +987,9 @@ components:
             - UNIT_LIMIT_REACHED
             - UNIT_HAS_BLOCKERS
             - LAST_UNIT_ADMINISTRATOR
+            - MODALITY_IN_USE
+            - REQUEST_ALREADY_OPEN
+            - ALREADY_IN_CATALOG
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
             - UNSUPPORTED_MEDIA_TYPE
@@ -967,6 +1047,23 @@ components:
         activeClasses: { type: integer, minimum: 0 }
         lastActiveUnit: { type: boolean }
         canDeactivate: { type: boolean }
+    Modality:
+      type: object
+      required: [id, name, active, canManage]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        active: { type: boolean }
+        canManage: { type: boolean }
+    ModalityRequest:
+      type: object
+      required: [id, name, note, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        note: { type: string, nullable: true }
+        status: { type: string, enum: [OPEN, ADDED, DISMISSED] }
+        createdAt: { type: string, format: date-time }
     UnitSummary:
       type: object
       required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]

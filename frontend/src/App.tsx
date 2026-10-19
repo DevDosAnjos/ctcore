@@ -11,6 +11,7 @@ import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/Requ
 import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
+import { ModalitiesPage } from "@/features/modalities/ModalitiesPage";
 import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
@@ -82,6 +83,7 @@ export function App() {
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />
             <Route path="/configuracoes/unidade" element={<UnitSettingsPage />} />
+            <Route path="/configuracoes/modalidades" element={<ModalitiesPage />} />
             <Route path="/configuracoes/usuarios" element={<UsersPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR"]} />}>
