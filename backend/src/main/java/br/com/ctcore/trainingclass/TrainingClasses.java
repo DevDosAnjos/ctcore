@@ -13,6 +13,8 @@ import br.com.ctcore.permission.Access;
 import br.com.ctcore.permission.Permission;
 import br.com.ctcore.permission.Permissions;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -69,8 +71,10 @@ public class TrainingClasses {
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
     private final Permissions permissions;
+    private final Clock clock;
 
-    public TrainingClasses(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions) {
+    public TrainingClasses(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, Clock clock) {
+        this.clock = clock;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.permissions = permissions;
@@ -200,9 +204,15 @@ public class TrainingClasses {
         });
     }
 
-    /** Aulas só existem a partir de #49: sem próxima aula. É o ponto a trocar. */
+    /** RF-TUR-02: primeira aula não cancelada que ainda não terminou, pelo relógio no fuso da unidade; nula se não houver. */
     NextClass nextClass(UUID classId) {
-        return null;
+        return jdbc.sql("select l.lesson_date, l.starts_at, l.ends_at from lesson l join unit u on u.id = l.unit_id and u.organization_id = l.organization_id "
+                + "where l.class_id = :id and not l.cancelled and (l.lesson_date + l.ends_at) > (cast(:now as timestamptz) at time zone u.timezone) "
+                + "order by l.lesson_date, l.starts_at limit 1")
+                .param("id", classId).param("now", java.time.OffsetDateTime.ofInstant(clock.instant(), java.time.ZoneOffset.UTC))
+                .query((rs, n) -> new NextClass(rs.getObject(1, LocalDate.class).toString(), rs.getObject(2, LocalTime.class).toString(),
+                        rs.getObject(3, LocalTime.class).toString()))
+                .optional().orElse(null);
     }
 
     /** Alunos ativos da turma, com a marca de turma principal (RN-TUR-04); vazia até a Sprint 07. É o ponto a trocar. */

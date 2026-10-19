@@ -21,6 +21,7 @@ import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
 import { ClassPanelPage } from "@/features/classes/ClassPanelPage";
+import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { UsersPage } from "@/features/users/UsersPage";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
@@ -85,6 +86,9 @@ export function App() {
           <Route path="/conta" element={<AccountPage />} />
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
+          <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR", "TEACHER"]} />}>
+            <Route path="/agenda" element={<AgendaPage />} />
+          </Route>
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/turmas" element={<ClassesPage />} />
             <Route path="/turmas/:id" element={<ClassPanelPage />} />

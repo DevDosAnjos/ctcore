@@ -42,6 +42,7 @@ class TrainingClassWriteIT extends OrganizationBase {
         reset(scheduleChange, classes);
         adminJdbc().update("delete from training_class_assistant");
         adminJdbc().update("delete from training_class_schedule");
+        adminJdbc().update("delete from lesson");
         adminJdbc().update("delete from training_class");
         adminJdbc().update("delete from teacher_unit");
         adminJdbc().update("delete from teacher");
@@ -336,7 +337,7 @@ class TrainingClassWriteIT extends OrganizationBase {
         same.put("groupLink", "https://segredo.example.com/z");
         var r = put(id, same, who);
         assertThat(body(r).get("scheduleChanged").asBoolean()).isFalse();
-        verify(scheduleChange, never()).changed(any(), any(), any());
+        verify(scheduleChange, never()).changed(any(), any(), any(), any(), any());
 
         var changed = valid(t, "Turma");
         changed.put("schedule", List.of(slot(3, "19:00", "20:00"), slot(5, "19:00", "20:00")));
@@ -345,7 +346,7 @@ class TrainingClassWriteIT extends OrganizationBase {
         assertThat(body(r).get("scheduleChanged").asBoolean()).isTrue();
         verify(scheduleChange, times(1)).changed(eq(id),
                 eq(List.of(new TrainingClasses.Slot(3, "19:00", "20:00"))),
-                eq(List.of(new TrainingClasses.Slot(3, "19:00", "20:00"), new TrainingClasses.Slot(5, "19:00", "20:00"))));
+                eq(List.of(new TrainingClasses.Slot(3, "19:00", "20:00"), new TrainingClasses.Slot(5, "19:00", "20:00"))), any(), any());
         List<String> audits = adminJdbc().queryForList("select after_data::text from audit_log where organization_id = ? and action = 'class.updated' order by occurred_at",
                 String.class, t.orgId());
         assertThat(audits).hasSize(2);

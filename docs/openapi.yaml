@@ -802,6 +802,31 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /agenda:
+    get:
+      summary: Aulas do período e dias sem aula de uma unidade (RF-AGE-01). Coordenador, Administrador e Professor.
+      description: |
+        `from` e `to` (`yyyy-MM-dd`, `to` >= `from`, no máximo 31 dias) são obrigatórios. Ordenada por data e início. O Coordenador vê todas as
+        unidades; o Administrador, as dele (`unitId` fora do alcance ou desconhecido: 404); sem `unitId`, a primeira unidade do alcance por nome.
+        O Professor só vê aulas das turmas dele (titular ou auxiliar) ou em que é o professor da aula. Aluno e Responsável recebem 403.
+        `teacherId` filtra o professor da aula e `modalityId` a modalidade; combinam (E); id de outra organização devolve lista vazia.
+        A situação é calculada na leitura pelo relógio no fuso da unidade (início inclusive, término exclusive); `CANCELLED` vale sobre qualquer
+        horário e traz `cancelReason`. `canEdit` e `canCancel` são dicas (RN-AGE-08): quem grava confere de novo. Sem lista de espera nem presença.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: teacherId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Agenda do período.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Agenda' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /classes:
     get:
       summary: Lista paginada de turmas da organização do vínculo ativo (RF-TUR-01). Coordenador e Administrador.
@@ -1698,6 +1723,40 @@ components:
         capacity: { type: integer, minimum: 1, maximum: 200, nullable: true }
         overCapacity: { type: boolean, description: Verdadeiro quando `activeStudents` passa de `capacity`; só avisa. }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
+    Agenda:
+      type: object
+      required: [units, unit, teachers, modalities, lessons, noClassDays]
+      properties:
+        units: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Unidades ativas do alcance. }
+        unit: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: A unidade escolhida; nula se o alcance não tem unidade. }
+        teachers: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Professores ativos da unidade (opções de filtro). }
+        modalities: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Modalidades oferecidas pela unidade (opções de filtro). }
+        lessons: { type: array, items: { $ref: '#/components/schemas/AgendaLesson' } }
+        noClassDays: { type: array, items: { $ref: '#/components/schemas/NoClassDay' } }
+    AgendaLesson:
+      type: object
+      required: [id, date, startsAt, endsAt, status, cancelReason, class, unit, modality, teacher, substitute, canEdit, canCancel]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
+        cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
+        class: { $ref: '#/components/schemas/ClassRef' }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        teacher: { $ref: '#/components/schemas/ClassRef', description: Professor da aula. }
+        substitute: { type: boolean }
+        canEdit: { type: boolean }
+        canCancel: { type: boolean }
+    NoClassDay:
+      type: object
+      required: [startsOn, endsOn, reason]
+      properties:
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        reason: { type: string }
     ClassRef:
       type: object
       required: [id, name]
@@ -1714,7 +1773,7 @@ components:
             nextClass:
               type: object
               nullable: true
-              description: Nulo até existirem aulas.
+              description: Primeira aula não cancelada que ainda não terminou (fuso da unidade); nulo se não houver.
               required: [date, startsAt, endsAt]
               properties:
                 date: { type: string, format: date }
