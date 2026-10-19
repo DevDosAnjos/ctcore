@@ -50,7 +50,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 39 | RF-MOD-02 · Graduação por modalidade e editor do sistema de graduação | issue #39 | Sprint 04 | — | agente | feito |
 | 40 | RF-MOD-03 · Modalidades oferecidas pela unidade | issue #40 | Sprint 04 | — | agente | feito |
 | 41 | RF-MOD-04 · Configurações › Faixas etárias | issue #41 | Sprint 04 | — | agente | feito |
-| 42 | RF-PRO-01 · Pessoas › Professores (lista) | issue #42 | Sprint 04 | — | agente | a fazer |
+| 42 | RF-PRO-01 · Pessoas › Professores (lista) | issue #42 | Sprint 04 | — | agente | feito |
 | 43 | RF-PRO-02 · Painel do professor | issue #43 | Sprint 04 | — | agente | a fazer |
 | 44 | RF-PRO-03 · Cadastro e edição de professor | issue #44 | Sprint 04 | — | agente | a fazer |
 | 45 | RF-PRO-04 · Inativar professor | issue #45 | Sprint 04 | — | agente | a fazer |

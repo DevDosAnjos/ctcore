@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -43,6 +43,14 @@ class SeedDataIT extends PostgresIT {
         jdbc.update("delete from organization_settings");
         jdbc.update("delete from organization_limits");
         jdbc.update("delete from organization");
+    }
+
+    // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
+    @org.junit.jupiter.api.AfterEach
+    void cleanTeachers() {
+        for (String table : new String[]{"teacher_modality", "teacher_unit", "teacher"}) {
+            jdbc.update("delete from " + table);
+        }
     }
 
     /** Aplica os .sql do diretório em ordem do nome, como o seed.sh. */
@@ -169,6 +177,17 @@ class SeedDataIT extends PostgresIT {
         apply(jdbc, SEED_DIR);
         assertThat(jdbc.queryForObject("select count(*) from age_range", Integer.class)).isEqualTo(15);
         assertThat(jdbc.queryForObject("select count(*) from age_range where name = 'Master' and max_age is null", Integer.class)).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("RF-PRO-01: seed cria 3 professores em cada uma das 3 organizações, sem duplicar, com unidade e modalidade")
+    void teachersSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from teacher", Integer.class)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("select count(*) from teacher where status = 'INACTIVE'", Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from teacher_unit", Integer.class)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("select count(*) from teacher_modality", Integer.class)).isEqualTo(12);
     }
 
     @Test

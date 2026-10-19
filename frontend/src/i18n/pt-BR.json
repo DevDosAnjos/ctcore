@@ -328,6 +328,30 @@
       "appoint": "Nomear a mim mesmo"
     }
   },
+  "teachers": {
+    "title": "Professores",
+    "intro": "Professores da organização, com as modalidades, as unidades e a situação de cada um.",
+    "columns": {
+      "name": "Nome",
+      "modalities": "Modalidades",
+      "units": "Unidades",
+      "classes": "Turmas",
+      "status": "Situação"
+    },
+    "modality": "{{name}} · {{level}}, grau {{degree}}",
+    "statuses": {
+      "ACTIVE": "Ativo",
+      "INACTIVE": "Inativo"
+    },
+    "filters": {
+      "modality": "Modalidade",
+      "unit": "Unidade",
+      "status": "Situação",
+      "allModalities": "Todas as modalidades",
+      "allUnits": "Todas as unidades",
+      "allStatuses": "Todas"
+    }
+  },
   "ageRanges": {
     "title": "Faixas etárias",
     "intro": "As faixas organizam turmas, aulas experimentais e o diretório. A idade de cada aluno continua calculada pelo nascimento.",
