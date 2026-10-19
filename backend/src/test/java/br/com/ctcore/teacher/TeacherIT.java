@@ -28,6 +28,7 @@ class TeacherIT extends OrganizationBase {
     @org.junit.jupiter.api.AfterEach
     void clean() {
         adminJdbc().update("delete from teacher_modality");
+        adminJdbc().update("delete from organization_modality");
         adminJdbc().update("delete from teacher_unit");
         adminJdbc().update("delete from teacher");
         for (UUID id : accounts) {
@@ -59,6 +60,11 @@ class TeacherIT extends OrganizationBase {
                 + "values (?, ?, ?, (select count(*) from graduation_level where organization_id = ? and modality_id = ?), ?, '#112233', ?, false)",
                 id, t.orgId(), modality, t.orgId(), modality, name, maxDegree);
         return id;
+    }
+
+    private void offer(Tenant t, UUID modality, boolean graduation) {
+        adminJdbc().update("insert into organization_modality (organization_id, modality_id, active, graduation_enabled) values (?, ?, true, ?) "
+                + "on conflict (organization_id, modality_id) do update set graduation_enabled = excluded.graduation_enabled", t.orgId(), modality, graduation);
     }
 
     private UUID unit(Tenant t, String name) {
@@ -102,6 +108,7 @@ class TeacherIT extends OrganizationBase {
         UUID jj = modality("Jiu-Jitsu");
         UUID judo = modality("Judô");
         UUID blue = level(t, jj, "Azul", 4);
+        offer(t, jj, true);
         UUID zeca = teacher(t, "Zeca", "ACTIVE", null, t.unitId());
         UUID ana = teacher(t, "Ana", "ACTIVE", null, t.unitId(), second);
         teaches(t, ana, jj, blue, 2);
@@ -230,12 +237,36 @@ class TeacherIT extends OrganizationBase {
     }
 
     @Test
+    @DisplayName("RF-MOD-02: com a graduação desligada, lista e painel devolvem nível e grau nulos; o dado fica e volta ao religar")
+    void graduationOff() throws Exception {
+        var t = tenant();
+        UUID jj = modality("Jiu-Jitsu");
+        UUID blue = level(t, jj, "Azul", 4);
+        UUID ana = teacher(t, "Ana", "ACTIVE", null, t.unitId());
+        teaches(t, ana, jj, blue, 2);
+        var c = who(t, Role.COORDINATOR);
+        for (boolean on : new boolean[] {true, false, true}) {
+            offer(t, jj, on);
+            var fromList = body(get("", c)).get("items").get(0).get("modalities").get(0);
+            var fromPanel = body(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + ana), c).getResponse()).get("modalities").get(0);
+            for (var m : new JsonNode[] {fromList, fromPanel}) {
+                assertThat(m.get("name").asText()).isEqualTo("Jiu-Jitsu");
+                assertThat(m.get("level").isNull()).isEqualTo(!on);
+                assertThat(m.get("degree").isNull()).isEqualTo(!on);
+                assertThat(m.get("levelId").isNull()).isEqualTo(!on);
+            }
+        }
+        assertThat(adminJdbc().queryForObject("select count(*) from teacher_modality where level_id is not null", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("RF-PRO-02 CA1, CA3: painel traz todos os campos com contato; a lista continua sem e-mail e telefone")
     void detail() throws Exception {
         var t = tenant();
         UUID second = unit(t, "Zona Sul");
         UUID jj = modality("Jiu-Jitsu");
         UUID blue = level(t, jj, "Azul", 4);
+        offer(t, jj, true);
         UUID ana = teacher(t, "Ana", "ACTIVE", null, t.unitId(), second);
         adminJdbc().update("update teacher set bio = 'Faixa azul' where id = ?", ana);
         teaches(t, ana, jj, blue, 2);

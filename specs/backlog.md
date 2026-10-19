@@ -213,4 +213,4 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
-| P1 | Quando o Administrador inativa um Professor (RF-PRO-04, RN-PRO-05) que também dá aula em unidade de outro Administrador, o que acontece? A especificação só diz que "Professores" é do Administrador nas suas unidades. | O Administrador só inativa se todas as unidades do Professor forem suas; senão, só tira as próprias unidades do cadastro (#44). O Coordenador inativa em qualquer caso (mesma regra do D5 do #37). | #45 (parte do Administrador) | O agente segue a opção recomendada na #45 e registra a decisão no arquivo do item. |
+| — | nenhuma (P1 respondida pelo dono em 19/10/2026: opção recomendada, já implementada na #45) | — | — | — |

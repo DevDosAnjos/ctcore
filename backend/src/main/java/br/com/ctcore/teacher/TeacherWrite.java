@@ -131,8 +131,9 @@ public class TeacherWrite {
             Teachers.Basic old = teachers.find(who, id);
             Set<UUID> current = unitIds(who, id);
             checkUnits(who, c.unitIds());
-            List<ModalityInput> modalities = checkModalities(who, c.modalities());
-            Map<String, Object> before = fields(old.name(), old.bio(), old.consent(), old.declared(), current, currentModalities(who, id));
+            List<ModalityInput> previous = currentModalities(who, id);
+            List<ModalityInput> modalities = keepHiddenLevels(checkModalities(who, c.modalities()), previous);
+            Map<String, Object> before = fields(old.name(), old.bio(), old.consent(), old.declared(), current, previous);
             jdbc.sql("update teacher set name = :name, name_key = :key, email = :email, phone = :phone, bio = :bio, "
                     + "directory_consent = :consent, consent_declared_by_management = :declared where organization_id = :org and id = :id")
                     .param("name", c.name()).param("key", Modalities.normalize(c.name())).param("email", c.email()).param("phone", c.phone())
@@ -265,6 +266,12 @@ public class TeacherWrite {
             out.add(m);
         }
         return out;
+    }
+
+    /** Modalidade sem graduação não recebe nível do pedido, mas o gravado antes fica (some só da tela; volta ao religar). */
+    private static List<ModalityInput> keepHiddenLevels(List<ModalityInput> asked, List<ModalityInput> previous) {
+        return asked.stream().map(m -> m.levelId() != null ? m : previous.stream()
+                .filter(p -> p.modalityId().equals(m.modalityId()) && p.levelId() != null).findFirst().orElse(m)).toList();
     }
 
     private void replaceModalities(AccountPrincipal who, UUID id, List<ModalityInput> modalities) {
