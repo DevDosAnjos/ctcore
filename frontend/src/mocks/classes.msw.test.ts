@@ -105,3 +105,72 @@ describe("painel da turma x OpenAPI (RF-TUR-02, CA10)", () => {
     expect((await deactivate(JJ)).status).toBe(403);
   });
 });
+
+const UNIT_CENTRO = "00000000-0000-0000-0000-000000000021";
+const JOAO = "00000000-0000-0000-0000-000000000502";
+const send = (method: string, url: string, body: unknown) => fetch(`/api/v1${url}`, { method, headers: json, body: JSON.stringify(body) });
+const ok = (over: Record<string, unknown> = {}) => ({
+  unitId: UNIT_CENTRO,
+  name: "Muay Thai Noite",
+  modalityId: "",
+  schedule: [{ weekday: 5, startsAt: "20:00", endsAt: "21:00" }],
+  headTeacherId: JOAO,
+  ...over,
+});
+
+describe("janela de turma x OpenAPI (RF-TUR-03, CA14)", () => {
+  it("contrato declara as três rotas e o esquema de entrada", () => {
+    expect(Object.keys(openapi.paths["/classes"].post.responses)).toEqual(expect.arrayContaining(["201", "400", "401", "403", "409"]));
+    expect(Object.keys(openapi.paths["/classes/{id}"].put.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404", "409"]));
+    expect(Object.keys(openapi.paths["/classes/options"].get.responses)).toEqual(expect.arrayContaining(["200", "401", "403"]));
+    expect(openapi.components.schemas.ClassInput.required).toEqual(["name", "modalityId", "schedule", "headTeacherId"]);
+  });
+
+  it("opções: formato do contrato; Administrador só vê a unidade dele; Professor 403", async () => {
+    await login("ana@exemplo.com");
+    const all = await (await fetch("/api/v1/classes/options")).json();
+    expect(Object.keys(all).sort()).toEqual([...openapi.components.schemas.ClassOptions.required].sort());
+    expect(Object.keys(all.units[0]).sort()).toEqual([...openapi.components.schemas.ClassOptions.properties.units.items.required].sort());
+    expect(all.units.map((u: { id: string }) => u.id)).toEqual([UNIT_CENTRO]);
+    expect(all.units[0].teachers.map((t: { id: string }) => t.id)).not.toContain("00000000-0000-0000-0000-000000000503");
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await (await fetch("/api/v1/classes/options")).json()).units).toHaveLength(1);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await fetch("/api/v1/classes/options")).status).toBe(403);
+  });
+
+  it("cria: 201 no formato do detalhe e aparece na lista; erro de campo 400; nome repetido 409 no campo name", async () => {
+    await login("ana@exemplo.com");
+    const options = await (await fetch("/api/v1/classes/options")).json();
+    const modalityId = options.units[0].modalities[0].id;
+    const created = await send("POST", "/classes", ok({ modalityId, capacity: 10, groupLink: "https://x.example.com/g" }));
+    expect(created.status).toBe(201);
+    expect(await created.json()).toMatchObject({ name: "Muay Thai Noite", status: "ACTIVE", capacity: 10, groupLink: "https://x.example.com/g" });
+    expect(names(await (await list()).json())).toContain("Muay Thai Noite");
+    const dup = await send("POST", "/classes", ok({ modalityId, name: "muay thai NOITE" }));
+    expect(dup.status).toBe(409);
+    expect((await dup.json()).fields[0].field).toBe("name");
+    for (const [over, field] of [[{ name: "A" }, "name"], [{ schedule: [] }, "schedule"], [{ capacity: 0 }, "capacity"], [{ groupLink: "javascript:x" }, "groupLink"], [{ headTeacherId: undefined }, "headTeacherId"], [{ headTeacherId: "00000000-0000-0000-0000-000000000503" }, "headTeacherId"]] as const) {
+      const bad = await send("POST", "/classes", ok({ modalityId, name: "Outra", ...over }));
+      expect(bad.status).toBe(400);
+      expect((await bad.json()).fields[0].field).toBe(field);
+    }
+  });
+
+  it("edita: troca campos, scheduleChanged só quando os horários mudam, desativada 409, Administrador fora do alcance 404/403", async () => {
+    await login("ana@exemplo.com");
+    const modalityId = (await (await fetch("/api/v1/classes/options")).json()).units[0].modalities[0].id;
+    const same = await send("PUT", `/classes/${JJ}`, ok({ modalityId, name: "Jiu-Jitsu Adulto", schedule: [{ weekday: 1, startsAt: "19:00", endsAt: "20:00" }, { weekday: 3, startsAt: "19:00", endsAt: "20:00" }] }));
+    expect(same.status).toBe(200);
+    expect(await same.json()).toMatchObject({ scheduleChanged: false, head: { id: JOAO }, unit: { id: UNIT_CENTRO } });
+    const moved = await send("PUT", `/classes/${JJ}`, ok({ modalityId, name: "Jiu-Jitsu Adulto" }));
+    expect(await moved.json()).toMatchObject({ scheduleChanged: true, schedule: [{ weekday: 5 }] });
+    expect((await send("PUT", `/classes/${BOXE}`, ok({ modalityId }))).status).toBe(409);
+    expect((await send("PUT", "/classes/00000000-0000-0000-0000-0000000009ff", ok({ modalityId }))).status).toBe(404);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await send("PUT", `/classes/${BOXE}`, ok({ modalityId }))).status).toBe(404);
+    expect((await send("POST", "/classes", ok({ modalityId, unitId: "00000000-0000-0000-0000-000000000022" }))).status).toBe(403);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await send("POST", "/classes", ok({ modalityId }))).status).toBe(403);
+  });
+});

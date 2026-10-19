@@ -94,3 +94,46 @@ export function useClass(id: string) {
 }
 
 export const deactivateClass = (id: string) => api<ClassDetail>(`/classes/${id}/deactivate`, { method: "POST" });
+
+// Espelha ClassInput e ClassOptions do OpenAPI (RF-TUR-03).
+export interface ClassInput {
+  unitId?: string;
+  name: string;
+  modalityId: string;
+  ageRangeId: string | null;
+  schedule: { weekday: number; startsAt: string; endsAt: string }[];
+  capacity: number | null;
+  headTeacherId: string;
+  assistantIds: string[];
+  groupLink: string | null;
+  notifyClass?: boolean;
+}
+export interface ClassOptions {
+  units: { id: string; name: string; modalities: Choice[]; teachers: Choice[] }[];
+  ageRanges: { id: string; name: string; minAge: number; maxAge: number | null }[];
+}
+export const createClass = (input: ClassInput) => api<ClassDetail>("/classes", { method: "POST", body: input });
+export const updateClass = (id: string, input: ClassInput) => api<ClassDetail & { scheduleChanged: boolean }>(`/classes/${id}`, { method: "PUT", body: input });
+
+// Opções do formulário; só carregam com a janela aberta. 403 vira "sem permissão".
+export function useClassOptions(enabled: boolean) {
+  const [tick, setTick] = useState(0);
+  const [done, setDone] = useState<{ tick: number; options?: ClassOptions; forbidden?: boolean }>();
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    api<ClassOptions>("/classes/options").then(
+      (options) => alive && setDone({ tick, options }),
+      (e) => alive && setDone({ tick, forbidden: e instanceof ApiError && e.status === 403 }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [enabled, tick]);
+  const current = done?.tick === tick ? done : undefined;
+  return {
+    status: !current ? "loading" : current.options ? "ready" : current.forbidden ? "forbidden" : "error",
+    options: current?.options,
+    retry: () => setTick((n) => n + 1),
+  } as const;
+}

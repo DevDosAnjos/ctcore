@@ -829,7 +829,66 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria uma turma (RF-TUR-03). Coordenador e Administrador.
+      description: |
+        Nasce `ACTIVE` na `unitId` informada. `name` de 2 a 80 (único entre turmas ativas da unidade, sem caixa nem acento; repetido dá 409 com
+        o campo `name`); `modalityId` ativa e oferecida pela unidade; `schedule` com ao menos um horário (um por dia de 1 a 7, `HH:mm`,
+        término depois do início); `capacity` opcional de 1 a 200 e nunca bloqueia; `headTeacherId` obrigatório; titular e auxiliares são
+        professores ativos da unidade; `groupLink` opcional, `http` ou `https`, até 300. O Administrador só cria em unidade dele (outra: 403).
+        Grava `class.created`, sem o link do grupo. Sem presença nem frequência (RN-TUR-06).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ClassInput' } } }
+      responses:
+        '201':
+          description: Turma criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Já existe turma ativa com este nome na unidade (`fields[0]` = `name`).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /classes/options:
+    get:
+      summary: Opções do formulário de turma (RF-TUR-03). Coordenador e Administrador.
+      description: |
+        Unidades ativas do alcance do usuário (todas para o Coordenador; as dele para o Administrador), cada uma com as modalidades ativas
+        que oferece e os professores ativos dela (só id e nome), e as faixas etárias da organização. Professor, Aluno e Responsável recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Opções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassOptions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /classes/{id}:
+    put:
+      summary: Edita a turma (RF-TUR-03). Coordenador e Administrador.
+      description: |
+        Substitui os campos de `ClassInput`, menos `unitId` (ignorado: a unidade não muda); horários e auxiliares são o conjunto completo.
+        Turma desativada dá 409; fora do alcance do Administrador ou de outra organização, 404. Capacidade abaixo dos alunos ativos salva
+        (só avisa). Quando o conjunto de horários muda, `scheduleChanged` é verdadeiro e `notifyClass` (padrão verdadeiro) vai para a
+        auditoria; as aulas futuras e o comunicado são de outros itens. Grava `class.updated`, sem o link do grupo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ClassInput' } } }
+      responses:
+        '200':
+          description: Painel da turma com `scheduleChanged`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Turma desativada, ou nome já usado por turma ativa da unidade (`fields[0]` = `name`).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
     get:
       summary: Painel da turma (RF-TUR-02). Coordenador e Administrador.
       description: |
@@ -1668,6 +1727,54 @@ components:
               properties:
                 allowed: { type: boolean }
                 blockingStudents: { type: integer, minimum: 0, description: Alunos com esta turma como principal. }
+            scheduleChanged: { type: boolean, description: 'Só nas respostas de PUT /classes/{id}; verdadeiro quando o conjunto de horários mudou.' }
+    ClassInput:
+      type: object
+      required: [name, modalityId, schedule, headTeacherId]
+      properties:
+        unitId: { type: string, format: uuid, description: Obrigatório na criação; ignorado na edição. }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        modalityId: { type: string, format: uuid }
+        ageRangeId: { type: string, format: uuid, nullable: true }
+        schedule:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [weekday, startsAt, endsAt]
+            properties:
+              weekday: { type: integer, minimum: 1, maximum: 7 }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+        capacity: { type: integer, minimum: 1, maximum: 200, nullable: true }
+        headTeacherId: { type: string, format: uuid }
+        assistantIds: { type: array, items: { type: string, format: uuid } }
+        groupLink: { type: string, nullable: true, maxLength: 300, description: '`http` ou `https`; vazio vira nulo.' }
+        notifyClass: { type: boolean, description: Só na edição; padrão verdadeiro quando os horários mudam; ignorado quando não mudam. }
+    ClassOptions:
+      type: object
+      required: [units, ageRanges]
+      properties:
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name, modalities, teachers]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              modalities: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+              teachers: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+        ageRanges:
+          type: array
+          items:
+            type: object
+            required: [id, name, minAge, maxAge]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              minAge: { type: integer }
+              maxAge: { type: integer, nullable: true }
     ClassStudent:
       type: object
       required: [id, name, primary]

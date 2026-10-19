@@ -87,10 +87,10 @@ describe("ClassPanelPage (RF-TUR-02)", () => {
     expect(screen.getByRole("link", { name: "Abrir grupo" })).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("CA8: Editar, Ver alunos e Avisar turma ficam desativados; Desativar está ativo", async () => {
+  it("CA8: Ver alunos e Avisar turma ficam desativados; Editar e Desativar estão ativos (CA13)", async () => {
     setup();
     await ready();
-    for (const name of ["Editar", "Ver alunos", "Avisar turma"]) expect(screen.getByRole("button", { name })).toBeDisabled();
+    for (const name of ["Ver alunos", "Avisar turma"]) expect(screen.getByRole("button", { name })).toBeDisabled();
     await enabled();
   });
 

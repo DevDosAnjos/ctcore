@@ -337,6 +337,31 @@ const classFor = (id: string) => {
   if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
   return mockClasses.find((c) => c.id === id && (role === "COORDINATOR" || c.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
 };
+// RF-TUR-03: validação como no servidor; devolve o erro 400/409 ou a turma já no formato interno.
+type ClassInput = { unitId?: string; name?: string; modalityId?: string; ageRangeId?: string | null; schedule?: { weekday?: number; startsAt?: string; endsAt?: string }[]; capacity?: number | null; headTeacherId?: string; assistantIds?: string[]; groupLink?: string | null; notifyClass?: boolean };
+const classBad = (field: string, message = "inválido") => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+const classFromInput = (b: ClassInput, unitId: string, self: MockClass | null): Omit<MockClass, "id" | "status"> | Response => {
+  const name = (b.name ?? "").trim();
+  if (name.length < 2 || name.length > 80) return classBad("name", "de 2 a 80 caracteres");
+  if (!b.modalityId || !teacherOptions().some((m) => m.id === b.modalityId)) return classBad("modalityId");
+  const range = b.ageRangeId ? ageRanges.find((r) => r.id === b.ageRangeId) : null;
+  if (b.ageRangeId && !range) return classBad("ageRangeId");
+  const time = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const slots = b.schedule ?? [];
+  if (slots.length === 0 || new Set(slots.map((s) => s.weekday)).size !== slots.length || slots.some((s) => !Number.isInteger(s.weekday) || s.weekday! < 1 || s.weekday! > 7 || !time.test(s.startsAt ?? "") || !time.test(s.endsAt ?? "") || s.endsAt! <= s.startsAt!)) return classBad("schedule");
+  if (b.capacity != null && (!Number.isInteger(b.capacity) || b.capacity < 1 || b.capacity > 200)) return classBad("capacity", "de 1 a 200");
+  const link = (b.groupLink ?? "").trim() === "" ? undefined : b.groupLink!;
+  if (link !== undefined && (link.length > 300 || link !== link.trim() || !/^https?:\/\/\S+$/.test(link))) return classBad("groupLink", "http ou https");
+  const usable = (id: string) => mockTeachers.some((t) => t.id === id && t.status === "ACTIVE" && t.units.some((u) => u.id === unitId));
+  if (!b.headTeacherId || !usable(b.headTeacherId)) return classBad("headTeacherId");
+  const assistants = b.assistantIds ?? [];
+  if (new Set(assistants).size !== assistants.length || assistants.includes(b.headTeacherId) || !assistants.every(usable)) return classBad("assistantIds");
+  if (mockClasses.some((c) => c !== self && c.unitId === unitId && c.status === "ACTIVE" && teacherKey(c.name) === teacherKey(name))) {
+    return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "name", message: "já existe uma turma ativa com este nome na unidade" }]);
+  }
+  const sorted = [...slots].sort((a, c) => a.weekday! - c.weekday!);
+  return { name, unitId, modalityId: b.modalityId, ageRange: range?.name ?? null, schedule: sorted.map((s) => [s.weekday!, s.startsAt!, s.endsAt!]), head: b.headTeacherId, assistants, capacity: b.capacity ?? null, groupLink: link };
+};
 // RF-PRO-03: opções do formulário (modalidades ativas; as dos professores fixos contam como ativas) e validação como no servidor.
 const SEEDED_MODALITIES = [3, 4, 0].map((i) => modalityCatalog[i].id);
 const teacherOptions = () =>
@@ -1128,6 +1153,62 @@ export const routes: Route[] = [
         .filter((c) => !unitId || c.unit.id === unitId)
         .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-TUR-03 (D8): opções do formulário; unidades ativas do alcance, com modalidades e professores ativos de cada uma.
+    method: "get",
+    path: "/classes/options",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      return HttpResponse.json({
+        units: units
+          .filter((u) => u.active && (role === "COORDINATOR" || u.id === ADMIN_UNIT))
+          .map((u) => ({
+            id: u.id,
+            name: u.name,
+            modalities: teacherOptions().map(({ id, name }) => ({ id, name })),
+            teachers: mockTeachers.filter((t) => t.status === "ACTIVE" && t.units.some((x) => x.id === u.id)).map(({ id, name }) => ({ id, name })),
+          })),
+        ageRanges: ageRanges.map(({ id, name, minAge, maxAge }) => ({ id, name, minAge, maxAge })),
+      });
+    },
+  },
+  {
+    // RF-TUR-03: cria turma ACTIVE; o Administrador só na unidade dele (403).
+    method: "post",
+    path: "/classes",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const body = (await request.json().catch(() => ({}))) as ClassInput;
+      if (!body.unitId) return classBad("unitId", "obrigatório");
+      if (role === "ADMINISTRATOR" && body.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (!units.some((u) => u.id === body.unitId && u.active)) return classBad("unitId");
+      const made = classFromInput(body, body.unitId, null);
+      if (made instanceof Response) return made;
+      const created: MockClass = { id: crypto.randomUUID(), status: "ACTIVE", ...made };
+      mockClasses = [...mockClasses, created];
+      return HttpResponse.json(classDetail(created), { status: 201 });
+    },
+  },
+  {
+    // RF-TUR-03: troca os campos; a unidade não muda; desativada 409; scheduleChanged quando o conjunto de horários muda.
+    method: "put",
+    path: "/classes/{id}",
+    resolver: async ({ request, params }) => {
+      const found = classFor(params.id as string);
+      if (found instanceof HttpResponse) return found;
+      const body = (await request.json().catch(() => ({}))) as ClassInput;
+      if (found.status === "INACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      const made = classFromInput(body, found.unitId, found);
+      if (made instanceof Response) return made;
+      const changed = JSON.stringify(found.schedule) !== JSON.stringify(made.schedule);
+      Object.assign(found, made);
+      return HttpResponse.json({ ...classDetail(found), scheduleChanged: changed });
     },
   },
   {

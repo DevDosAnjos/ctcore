@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/componen
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { usePermissions } from "@/features/permissions/usePermissions";
+import { ClassFormDialog } from "./ClassFormDialog";
 import { DeactivateClassDialog } from "./DeactivateClassDialog";
 import { useClass, type ClassDetail } from "./useClasses";
 
@@ -32,6 +33,7 @@ function safeLink(link: string | null) {
 function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Promise<void> }) {
   const { t } = useTranslation();
   const [deactivating, setDeactivating] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [notice, setNotice] = useState<string>();
   const { permissions } = usePermissions();
   const canManage = !!permissions && permissions.CLASSES_MANAGE !== "NONE";
@@ -52,7 +54,7 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" className="min-h-11" disabled>
+        <Button variant="outline" className="min-h-11" disabled={!canManage || klass.status !== "ACTIVE"} onClick={() => setEditing(true)}>
           {t("classes.panel.edit")}
         </Button>
         <Button variant="outline" className="min-h-11" disabled>
@@ -135,6 +137,7 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
       <Card heading="h2" title={t("classes.panel.group")}>
         <p>{group ? t("classes.panel.hasGroup") : t("classes.panel.noGroup")}</p>
       </Card>
+      <ClassFormDialog open={editing} klass={klass} onClose={() => setEditing(false)} onSaved={() => void onRefresh()} />
       <DeactivateClassDialog
         klass={deactivating ? klass : null}
         onClose={() => setDeactivating(false)}

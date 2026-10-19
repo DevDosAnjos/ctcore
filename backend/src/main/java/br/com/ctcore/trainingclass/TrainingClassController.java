@@ -5,6 +5,10 @@ import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,8 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 class TrainingClassController {
     private final TrainingClasses classes;
     private final TrainingClassDeactivation deactivation;
+    private final TrainingClassWrite write;
 
-    TrainingClassController(TrainingClasses classes, TrainingClassDeactivation deactivation) {
+    TrainingClassController(TrainingClasses classes, TrainingClassDeactivation deactivation, TrainingClassWrite write) {
+        this.write = write;
         this.deactivation = deactivation;
         this.classes = classes;
     }
@@ -35,6 +41,23 @@ class TrainingClassController {
         String field = "name".equals(sort) ? "name,asc" : sort;
         return classes.list(who, new TrainingClasses.Filter(q, modalityId, teacherId, ageRangeId, weekday, unitId, status),
                 PageRequest.of(page, size, field, TrainingClasses.SORT));
+    }
+
+    @GetMapping("/options")
+    TrainingClassWrite.Options options(@AuthenticationPrincipal AccountPrincipal who) {
+        return write.options(who);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    TrainingClasses.Detail create(@AuthenticationPrincipal AccountPrincipal who, @RequestBody TrainingClassWrite.Input body, HttpServletRequest request) {
+        return write.create(who, body, request.getRemoteAddr());
+    }
+
+    @PutMapping("/{id}")
+    TrainingClasses.Detail update(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody TrainingClassWrite.Input body,
+            HttpServletRequest request) {
+        return write.update(who, id, body, request.getRemoteAddr());
     }
 
     @GetMapping("/{id}")
