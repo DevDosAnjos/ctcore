@@ -738,6 +738,70 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /age-ranges:
+    get:
+      summary: Faixas etárias da organização do vínculo ativo (RF-MOD-04, RN-MOD-07). Coordenador e Administrador.
+      description: |
+        Ordenadas por idade mínima e depois por nome. `maxAge` nulo significa sem limite ("18 anos ou mais"); `canManage` é verdadeiro só
+        para o Coordenador. Professor e portal recebem 403. Toda organização nasce com Infantil 4–12, Juvenil 13–17 e Adulto 18+.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Faixas etárias da organização.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AgeRangeList' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria uma faixa etária (RN-ORG-17). Só o Coordenador.
+      description: |
+        `name` de 2 a 40 caracteres, `minAge` de 0 a 120 e `maxAge` opcional da mínima a 120 (senão 400 no campo). O nome é único na
+        organização sem diferenciar acento nem maiúsculas (409 `AGE_RANGE_NAME_TAKEN`); faixas podem se sobrepor em idade. Grava
+        `age_range.created` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AgeRangeBody' } } }
+      responses:
+        '201':
+          description: Faixa criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AgeRange' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /age-ranges/{id}:
+    put:
+      summary: Renomeia e muda as idades de uma faixa etária (RN-ORG-17). Só o Coordenador.
+      description: |
+        Mesmas validações da criação; reenviar os mesmos valores responde 200 sem nova auditoria; nome de outra faixa, 409
+        `AGE_RANGE_NAME_TAKEN`. Sem `If-Match`: vale a última gravação. Faixa de outra organização ou inexistente, 404. Grava
+        `age_range.updated` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AgeRangeBody' } } }
+      responses:
+        '200':
+          description: A faixa com os novos valores.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AgeRange' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      summary: Apaga uma faixa etária (RN-ORG-17). Só o Coordenador.
+      description: Faixa de outra organização, inexistente ou já apagada, 404. Grava `age_range.deleted` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Faixa apagada. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /users:
     get:
       summary: Lista a equipe da gestão que o vínculo ativo gere (RF-ACE-06). Coordenador e Administrador.
@@ -1078,6 +1142,7 @@ components:
             - MODALITY_NOT_ACTIVE
             - REQUEST_ALREADY_OPEN
             - ALREADY_IN_CATALOG
+            - AGE_RANGE_NAME_TAKEN
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
             - UNSUPPORTED_MEDIA_TYPE
@@ -1207,6 +1272,27 @@ components:
         note: { type: string, nullable: true }
         status: { type: string, enum: [OPEN, ADDED, DISMISSED] }
         createdAt: { type: string, format: date-time }
+    AgeRange:
+      type: object
+      required: [id, name, minAge, maxAge]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 40 }
+        minAge: { type: integer, minimum: 0, maximum: 120 }
+        maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true, description: Nulo = sem limite. }
+    AgeRangeBody:
+      type: object
+      required: [name, minAge]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 40 }
+        minAge: { type: integer, minimum: 0, maximum: 120 }
+        maxAge: { type: integer, minimum: 0, maximum: 120, nullable: true }
+    AgeRangeList:
+      type: object
+      required: [canManage, items]
+      properties:
+        canManage: { type: boolean }
+        items: { type: array, items: { $ref: '#/components/schemas/AgeRange' } }
     UnitSummary:
       type: object
       required: [id, name, shortName, shortNameAdjusted, city, activeStudents, administrators, active]

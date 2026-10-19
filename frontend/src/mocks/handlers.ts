@@ -77,6 +77,7 @@ export const resetMockSession = () => {
   unitModalities.clear();
   graduations.clear();
   modalityRequests = [];
+  ageRanges = initialAgeRanges();
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -133,6 +134,29 @@ const jiuJitsuDefault = (): MockLevel[] =>
   );
 const graduationOf = (id: string) => graduations.get(id) ?? { enabled: false, requireOriginProof: false, levels: [] };
 let modalityRequests: { id: string; name: string; note: string | null; status: string; createdAt: string }[] = [];
+// Faixas etárias (RF-MOD-04), em memória: as três padrão; nome único sem acento nem maiúsculas.
+type MockAgeRange = { id: string; name: string; minAge: number; maxAge: number | null };
+type AgeRangeInput = { name?: string; minAge?: number | null; maxAge?: number | null };
+const initialAgeRanges = (): MockAgeRange[] => [
+  { id: crypto.randomUUID(), name: "Infantil", minAge: 4, maxAge: 12 },
+  { id: crypto.randomUUID(), name: "Juvenil", minAge: 13, maxAge: 17 },
+  { id: crypto.randomUUID(), name: "Adulto", minAge: 18, maxAge: null },
+];
+let ageRanges = initialAgeRanges();
+const sortedAgeRanges = () => [...ageRanges].sort((a, b) => a.minAge - b.minAge || a.name.localeCompare(b.name));
+const checkAgeRange = (body: AgeRangeInput, id: string | null): MockAgeRange | Response => {
+  const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+  const name = body.name?.trim() ?? "";
+  if (name.length < 2 || name.length > 40) return bad("name", "de 2 a 40 caracteres");
+  const { minAge } = body;
+  const maxAge = body.maxAge ?? null;
+  if (minAge === undefined || minAge === null) return bad("minAge", "obrigatório");
+  if (!Number.isInteger(minAge) || minAge < 0 || minAge > 120) return bad("minAge", "de 0 a 120");
+  if (maxAge !== null && (!Number.isInteger(maxAge) || maxAge < minAge || maxAge > 120)) return bad("maxAge", "da idade mínima a 120");
+  const key = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  if (ageRanges.some((r) => r.id !== id && key(r.name) === key(name))) return error(409, "AGE_RANGE_NAME_TAKEN", "Já existe uma faixa etária com este nome.");
+  return { id: id ?? crypto.randomUUID(), name, minAge, maxAge };
+};
 export const TRANSFER_TARGET = "admin@alfa.test";
 const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 
@@ -681,6 +705,47 @@ export const routes: Route[] = [
       const created = { id: crypto.randomUUID(), name, note, status: "OPEN", createdAt: new Date().toISOString() };
       modalityRequests = [created, ...modalityRequests];
       return HttpResponse.json(created, { status: 201 });
+    },
+  },
+  {
+    method: "get",
+    path: "/age-ranges",
+    resolver: () => organizationAccess(false) ?? HttpResponse.json({ canManage: activeRole() === "COORDINATOR", items: sortedAgeRanges() }),
+  },
+  {
+    method: "post",
+    path: "/age-ranges",
+    resolver: async ({ request }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const checked = checkAgeRange((await request.json()) as AgeRangeInput, null);
+      if (checked instanceof Response) return checked;
+      ageRanges = [...ageRanges, checked];
+      return HttpResponse.json(checked, { status: 201 });
+    },
+  },
+  {
+    method: "put",
+    path: "/age-ranges/{id}",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      if (!ageRanges.some((r) => r.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const checked = checkAgeRange((await request.json()) as AgeRangeInput, params.id as string);
+      if (checked instanceof Response) return checked;
+      ageRanges = ageRanges.map((r) => (r.id === params.id ? checked : r));
+      return HttpResponse.json(checked);
+    },
+  },
+  {
+    method: "delete",
+    path: "/age-ranges/{id}",
+    resolver: ({ params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      if (!ageRanges.some((r) => r.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      ageRanges = ageRanges.filter((r) => r.id !== params.id);
+      return new HttpResponse(null, { status: 204 });
     },
   },
   {
