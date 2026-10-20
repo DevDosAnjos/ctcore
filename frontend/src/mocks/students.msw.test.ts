@@ -133,7 +133,7 @@ describe("lista de alunos x OpenAPI (RF-ALU-01, CA11)", () => {
   it("o contrato declara a rota e o esquema StudentRow", () => {
     expect(Object.keys(openapi.paths["/students"].get.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404"]));
     expect(openapi.components.schemas.StudentRow.required).toEqual(
-      expect.arrayContaining(["id", "name", "photoUrl", "birthDate", "age", "minor", "ageRange", "registeredUnit", "createdAt"]),
+      expect.arrayContaining(["id", "name", "photoUrl", "birthDate", "age", "minor", "ageRange", "registeredUnit", "createdAt", "seals"]),
     );
   });
 
@@ -164,6 +164,21 @@ describe("lista de alunos x OpenAPI (RF-ALU-01, CA11)", () => {
     const ranges = await (await send("GET", "/age-ranges")).json();
     const adulto = ranges.items.find((r: { name: string }) => r.name === "Adulto").id;
     expect(await names(`?ageRangeId=${adulto}`)).toEqual(["Aluno Adulto Fictício"]);
+  });
+
+  it("selos (RF-ALU-02): adulto sem e-mail é incompleto, menor com financeiro completo não tem selo, aniversariante de hoje, filtro e 400", async () => {
+    await login("ana@exemplo.com");
+    const rows = async (qs = "") => (await (await send("GET", `/students${qs}`)).json()).items as { name: string; seals: string[] }[];
+    expect(openapi.paths["/students"].get.parameters.some((p: { name: string }) => p.name === "seal")).toBe(true);
+    expect(openapi.components.schemas.StudentSeal.enum).toEqual(["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY"]);
+    expect((await rows()).map((r) => r.seals)).toEqual([["INCOMPLETE_REGISTRATION"], []]);
+    expect((await rows("?seal=INCOMPLETE_REGISTRATION")).map((r) => r.name)).toEqual(["Aluno Adulto Fictício"]);
+    expect(await rows("?seal=EMAIL_PROBLEM")).toEqual([]);
+    expect((await send("GET", "/students?seal=BOLSISTA")).status).toBe(400);
+    const now = new Date();
+    const today = `1990-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    await send("POST", "/students", adultBody({ cpf: "11144477735", email: "novo@alfa.test", name: "Aniversariante Hoje", birthDate: today }));
+    expect((await rows("?seal=BIRTHDAY_TODAY")).map((r) => [r.name, r.seals])).toEqual([["Aniversariante Hoje", ["BIRTHDAY_TODAY"]]]);
   });
 
   it("Administrador vê a unidade de cadastro dele; unitId fora do alcance devolve vazio", async () => {

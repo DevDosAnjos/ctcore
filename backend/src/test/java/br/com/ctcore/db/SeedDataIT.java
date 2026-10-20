@@ -164,7 +164,7 @@ class SeedDataIT extends PostgresIT {
     void studentsSeed() throws IOException {
         apply(jdbc, SEED_DIR);
         apply(jdbc, SEED_DIR);
-        assertThat(jdbc.queryForObject("select count(*) from student", Integer.class)).isEqualTo(4);
+        assertThat(jdbc.queryForObject("select count(*) from student", Integer.class)).isEqualTo(6);
         assertThat(jdbc.queryForObject("select count(*) from guardian", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from student_guardian", Integer.class)).isEqualTo(3);
         assertThat(jdbc.queryForObject("select count(*) from student_guardian where financial", Integer.class)).isEqualTo(2);

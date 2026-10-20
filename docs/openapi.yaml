@@ -1631,12 +1631,14 @@ paths:
         dentro das suas unidades (RN-ALU-07, até a matrícula; D2); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e
         Responsável recebem 403. `q` ignora acento e maiúsculas; `ageRangeId` devolve quem tem hoje idade dentro da faixa (`minAge` até `maxAge`,
         sem teto quando nulo); faixa de outra organização, 404. Os filtros combinam (E). `ageRange` da linha é a faixa de maior `minAge` que cobre a
-        idade, ou nulo. `photoUrl` é uma URL temporária assinada. A resposta nunca traz CPF, e-mail, telefone, endereço nem contato de emergência.
+        idade, ou nulo. `photoUrl` é uma URL temporária assinada. `seals` são os selos calculados na leitura (RF-ALU-02), em ordem fixa; `seal` filtra por
+        um deles (E com os demais; valor desconhecido, 400). A resposta nunca traz CPF, e-mail, telefone, endereço nem contato de emergência.
       security: [{ sessionCookie: [] }]
       parameters:
         - { name: q, in: query, required: false, schema: { type: string } }
         - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: ageRangeId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: seal, in: query, required: false, schema: { $ref: '#/components/schemas/StudentSeal' } }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/Size' }
         - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
@@ -2945,13 +2947,18 @@ components:
           type: array
           maxItems: 2
           items: { $ref: '#/components/schemas/StudentGuardianInput' }
+    StudentSeal:
+      type: string
+      description: Selo calculado (RF-ALU-02). Termo pendente, Bolsista e Novo entram com termo, benefício e matrícula (Sprint 07 em diante).
+      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY]
     StudentRow:
       type: object
-      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt]
+      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         photoUrl: { type: string, nullable: true, description: URL temporária assinada; nulo sem foto. }
+        seals: { type: array, items: { $ref: '#/components/schemas/StudentSeal' } }
         birthDate: { type: string, format: date }
         age: { type: integer, minimum: 0 }
         minor: { type: boolean }

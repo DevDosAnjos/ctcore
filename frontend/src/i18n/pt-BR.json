@@ -345,7 +345,14 @@
       "unit": "Unidade",
       "allUnits": "Todas as unidades",
       "ageRange": "Faixa etária",
-      "allAgeRanges": "Todas as faixas"
+      "allAgeRanges": "Todas as faixas",
+      "seal": "Selo",
+      "allSeals": "Todos os selos"
+    },
+    "seals": {
+      "INCOMPLETE_REGISTRATION": "Cadastro incompleto",
+      "EMAIL_PROBLEM": "E-mail com problema",
+      "BIRTHDAY_TODAY": "Aniversário hoje"
     }
   },
   "teachers": {

@@ -32,3 +32,12 @@ insert into student_guardian (organization_id, student_id, guardian_id, financia
 select md5('ctcore-seed-org-1')::uuid, md5('ctcore-seed-student-' || l.s)::uuid, md5('ctcore-seed-guardian-' || l.g)::uuid, l.financial
 from (values (3, 1, true), (4, 1, true), (3, 2, false)) as l(s, g, financial)
 on conflict do nothing;
+
+-- RF-ALU-02: um adulto sem CPF (selo "Cadastro incompleto") e um com e-mail marcado com problema (selo "E-mail com problema").
+insert into student (id, organization_id, registered_unit_id, name, name_key, birth_date, cpf, email, phone,
+                     postal_code, street, number, district, city, state, email_problem_at)
+select md5('ctcore-seed-student-' || s.n)::uuid, md5('ctcore-seed-org-1')::uuid, md5('ctcore-seed-unit-1')::uuid, s.name, s.name_key, s.birth_date::date, s.cpf, s.email, s.phone,
+       '01001000', 'Rua Fictícia', s.n::text, 'Bairro Fictício', 'Cidade Fictícia 1', 'SP', s.problem::timestamptz
+from (values (5, 'Aluno Sem Cpf Cinco Fictício', 'aluno sem cpf cinco ficticio', '1992-08-05', null, 'aluno5@ficticia-1.example', '11900000005', null),
+             (6, 'Aluna Email Problema Seis Fictícia', 'aluna email problema seis ficticia', '1988-12-01', '39053344705', 'aluno6@ficticia-1.example', '11900000006', '2026-01-05T12:00:00Z')) as s(n, name, name_key, birth_date, cpf, email, phone, problem)
+on conflict do nothing;

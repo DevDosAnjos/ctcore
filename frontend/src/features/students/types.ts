@@ -80,6 +80,7 @@ export interface StudentInput {
 }
 
 // Espelha StudentRow e StudentList do OpenAPI (RF-ALU-01). CPF, e-mail, telefone, endereço e emergência nunca vêm na lista.
+export type StudentSeal = "INCOMPLETE_REGISTRATION" | "EMAIL_PROBLEM" | "BIRTHDAY_TODAY";
 export interface StudentRow {
   id: string;
   name: string;
@@ -90,6 +91,7 @@ export interface StudentRow {
   ageRange: { id: string; name: string } | null;
   registeredUnit: { id: string; name: string };
   createdAt: string;
+  seals: StudentSeal[];
 }
 export interface StudentList {
   items: StudentRow[];

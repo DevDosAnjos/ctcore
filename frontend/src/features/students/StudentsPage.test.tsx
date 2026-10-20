@@ -27,9 +27,10 @@ const student = (over: Partial<StudentRow>): StudentRow => ({
   ageRange: { id: "r1", name: "Infantil" },
   registeredUnit: { id: "u1", name: "Centro" },
   createdAt: "2026-01-10T12:00:00Z",
+  seals: [],
   ...over,
 });
-const all = [student({}), student({ id: "s2", name: "João Pereira", birthDate: "1990-03-10", age: 36, minor: false, ageRange: null, registeredUnit: { id: "u2", name: "Norte" } })];
+const all = [student({ seals: ["INCOMPLETE_REGISTRATION", "BIRTHDAY_TODAY"] }), student({ id: "s2", name: "João Pereira", birthDate: "1990-03-10", age: 36, minor: false, ageRange: null, registeredUnit: { id: "u2", name: "Norte" } })];
 
 let calls: URLSearchParams[];
 
@@ -104,6 +105,24 @@ describe("StudentsPage", () => {
     await user.type(screen.getByRole("searchbox", { name: "Buscar" }), "joao");
     await waitFor(() => expect(calls.at(-1)!.get("q")).toBe("joao"));
     expect(calls.at(-1)!.get("unitId")).toBe("u2");
+  });
+
+  it("CA9: selos aparecem como texto junto ao nome e o filtro Selo refaz a consulta e some em Limpar filtros", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR", () =>
+      HttpResponse.json({ items: calls.at(-1)!.get("seal") ? [] : all, page: 1, size: 25, total: calls.at(-1)!.get("seal") ? 0 : all.length }),
+    );
+    await screen.findByText("Ana Souza");
+    const badges = (text: string) => screen.queryAllByText(text).filter((e) => e.tagName !== "OPTION");
+    expect(badges("Cadastro incompleto")).toHaveLength(1);
+    expect(badges("Aniversário hoje")).toHaveLength(1);
+    expect(badges("E-mail com problema")).toHaveLength(0);
+    const seal = screen.getByRole("combobox", { name: "Selo" });
+    expect(within(seal).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todos os selos", "Cadastro incompleto", "E-mail com problema", "Aniversário hoje"]);
+    await user.selectOptions(seal, "EMAIL_PROBLEM");
+    await waitFor(() => expect(calls.at(-1)!.get("seal")).toBe("EMAIL_PROBLEM"));
+    await user.click(await screen.findByRole("button", { name: "Limpar filtros" }));
+    await waitFor(() => expect(calls.at(-1)!.get("seal")).toBeNull());
   });
 
   it("CA9: vazio sem alunos; outro texto com Limpar filtros quando o filtro não acha ninguém", async () => {
