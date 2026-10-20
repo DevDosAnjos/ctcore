@@ -54,7 +54,7 @@ public class Students {
 
     /** RF-ALU-01: linha da lista, sem CPF, e-mail, telefone, endereço nem emergência (minimização). */
     public record Row(UUID id, String name, String photoUrl, LocalDate birthDate, int age, boolean minor, RangeRef ageRange, UnitRef registeredUnit,
-            OffsetDateTime createdAt) {}
+            OffsetDateTime createdAt, List<StudentSeal> seals) {}
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
@@ -80,8 +80,9 @@ public class Students {
      * RF-ALU-01: lista paginada por nome. O alcance do Administrador (RN-ALU-07) fica em {@link #reachPredicate}, o único ponto que a
      * matrícula (#63) troca. Faixa de outra organização dá 404; unidade fora do alcance, lista vazia.
      */
-    public PageResponse<Row> list(AccountPrincipal who, String q, UUID unitId, UUID ageRangeId, PageRequest page) {
+    public PageResponse<Row> list(AccountPrincipal who, String q, UUID unitId, UUID ageRangeId, String seal, PageRequest page) {
         requireAccess(who);
+        StudentSeal wanted = seal == null ? null : StudentSeal.parse(seal).orElseThrow(() -> new ApiValidationException("seal", "inválido"));
         return transactions.execute(() -> {
             Integer min = null, max = null;
             if (ageRangeId != null) {
@@ -119,11 +120,16 @@ public class Students {
             }
             where.append(reachPredicate(admin));
             if (admin) params.put("reach", reach);
+            if (wanted != null) where.append(" and ").append(sealPredicate(wanted, age));
+            // 29/02 comemora em 28/02 nos anos não bissextos (D4).
+            params.put("md", "%02d%02d".formatted(today.getMonthValue(), today.getDayOfMonth()));
+            params.put("feb28", today.getMonthValue() == 2 && today.getDayOfMonth() == 28 && !today.isLeapYear());
 
-            long total = jdbc.sql("select count(*) from student s where " + where).params(params).query(Long.class).single();
+            long total = jdbc.sql("select count(*) from student s " + PAYER + " where " + where).params(params).query(Long.class).single();
             // Faixas podem se sobrepor: vale a de maior idade mínima (D6).
-            List<Row> rows = jdbc.sql("select s.id, s.name, s.photo, s.birth_date, " + age + ", r.id, r.name, u.id, u.name, s.created_at "
-                    + "from student s join unit u on u.id = s.registered_unit_id "
+            List<Row> rows = jdbc.sql("select s.id, s.name, s.photo, s.birth_date, " + age + ", r.id, r.name, u.id, u.name, s.created_at, "
+                    + sealPredicate(StudentSeal.INCOMPLETE_REGISTRATION, age) + ", " + sealPredicate(StudentSeal.EMAIL_PROBLEM, age) + ", "
+                    + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
                     + "left join lateral (select a.id, a.name from age_range a where a.organization_id = s.organization_id and a.min_age <= " + age
                     + " and (a.max_age is null or a.max_age >= " + age + ") order by a.min_age desc, a.name_key limit 1) r on true "
                     + "where " + where + " order by s.name_key, s.name, s.id limit :limit offset :offset")
@@ -133,10 +139,32 @@ public class Students {
                         UUID rangeId = rs.getObject(6, UUID.class);
                         return new Row(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)), birth, rs.getInt(5),
                                 !InviteRules.adult(birth, today), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
-                                new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class));
+                                new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs));
                     }).list();
             return PageResponse.of(rows, page, total);
         });
+    }
+
+    /** Quem paga (RN-ALU-09): o aluno adulto, ou o responsável financeiro do menor (sem ele, tudo nulo). */
+    private static final String PAYER = "left join lateral (select g.cpf, a.email, g.email_problem_at from student_guardian sg "
+            + "join guardian g on g.organization_id = sg.organization_id and g.id = sg.guardian_id join account a on a.id = g.account_id "
+            + "where sg.organization_id = s.organization_id and sg.student_id = s.id and sg.financial limit 1) p on true";
+
+    /** Um ponto só para o select e o filtro, para as duas leituras nunca divergirem. */
+    private static String sealPredicate(StudentSeal seal, String age) {
+        String adult = "(" + age + " >= 18)";
+        return switch (seal) {
+            case INCOMPLETE_REGISTRATION -> "(case when " + adult + " then s.cpf is null or coalesce(trim(s.email), '') = '' "
+                    + "else p.cpf is null or coalesce(trim(p.email), '') = '' end)";
+            case EMAIL_PROBLEM -> "(case when " + adult + " then s.email_problem_at is not null else coalesce(p.email_problem_at is not null, false) end)";
+            case BIRTHDAY_TODAY -> "(to_char(s.birth_date, 'MMDD') = :md or (:feb28 and to_char(s.birth_date, 'MMDD') = '0229'))";
+        };
+    }
+
+    private static List<StudentSeal> seals(java.sql.ResultSet rs) throws java.sql.SQLException {
+        List<StudentSeal> out = new java.util.ArrayList<>();
+        for (StudentSeal seal : StudentSeal.values()) if (rs.getBoolean(11 + seal.ordinal())) out.add(seal);
+        return out;
     }
 
     /** Alcance do Administrador: hoje a unidade de cadastro; com a matrícula (#63) passa a ser a modalidade na unidade (RN-ALU-07). */

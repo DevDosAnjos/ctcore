@@ -34,9 +34,14 @@ const allColumns = (t: TFunction): Record<"name" | OptionalColumn, Column<Studen
     key: "name",
     label: t("students.columns.name"),
     render: (r) => (
-      <span className="flex items-center gap-2">
+      <span className="flex flex-wrap items-center gap-2">
         <Avatar student={r} />
         <span className="min-w-0 break-words font-medium">{r.name}</span>
+        {r.seals.map((seal) => (
+          <span key={seal} className="rounded-md border px-2 py-0.5 text-sm">
+            {t(`students.seals.${seal}`)}
+          </span>
+        ))}
       </span>
     ),
   },
@@ -70,7 +75,7 @@ function Content({ accountId }: { accountId: string }) {
         columns={columns}
         fetchPage={fetchStudents}
         rowKey={(r) => r.id}
-        filterKeys={["unitId", "ageRangeId"]}
+        filterKeys={["unitId", "ageRangeId", "seal"]}
         filters={(p) => <StudentFilters {...p} />}
       />
     </div>

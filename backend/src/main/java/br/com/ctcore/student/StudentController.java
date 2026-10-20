@@ -38,10 +38,11 @@ class StudentController {
 
     @GetMapping
     PageResponse<Students.Row> list(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q,
-            @RequestParam(required = false) UUID unitId, @RequestParam(required = false) UUID ageRangeId, @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) UUID unitId, @RequestParam(required = false) UUID ageRangeId, @RequestParam(required = false) String seal,
+            @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size, @RequestParam(required = false) String sort) {
         String field = "name".equals(sort) ? "name,asc" : sort;
-        return students.list(who, q, unitId, ageRangeId, PageRequest.of(page, size, field, Set.of("name")));
+        return students.list(who, q, unitId, ageRangeId, seal, PageRequest.of(page, size, field, Set.of("name")));
     }
 
     @PostMapping

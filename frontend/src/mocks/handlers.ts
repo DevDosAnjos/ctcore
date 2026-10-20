@@ -4,7 +4,7 @@ import { isValidCpf, isValidCpfOrCnpj, onlyDigits } from "@/components/fields/ma
 import { isHexColor, passesContrast } from "@/features/organization/contrastRatio";
 import { nextHolidays, validateDay, type DayBody } from "./noClassDays";
 import { mockPermissions } from "./permissions";
-import type { StudentDetail, StudentGuardianInput, StudentGuardianRow, StudentInput, StudentRow } from "@/features/students/types";
+import type { StudentSeal, StudentDetail, StudentGuardianInput, StudentGuardianRow, StudentInput, StudentRow } from "@/features/students/types";
 
 export type Method = "get" | "post" | "put" | "patch" | "delete";
 
@@ -669,7 +669,7 @@ const teacherFromInput = (b: TeacherInput, current: MockTeacher | null) => {
 const STUDENT_ADULT = "00000000-0000-0000-0000-000000000701";
 const STUDENT_MINOR = "00000000-0000-0000-0000-000000000702";
 const initialStudents = (): StudentDetail[] => [
-  { id: STUDENT_ADULT, registeredUnitId: ADMIN_UNIT, name: "Aluno Adulto Fictício", birthDate: "1990-03-10", minor: false, postalCode: "01001000", street: "Rua Fictícia", number: "1", complement: null, district: "Centro", city: "Rio de Janeiro", state: "RJ", cpf: "52998224725", email: "aluno1@alfa.test", phone: "21900000001", gender: null, referral: null, emergencyName: null, emergencyRelationship: null, emergencyPhone: null, photoUrl: null, emailProblem: false, guardians: [] },
+  { id: STUDENT_ADULT, registeredUnitId: ADMIN_UNIT, name: "Aluno Adulto Fictício", birthDate: "1990-03-10", minor: false, postalCode: "01001000", street: "Rua Fictícia", number: "1", complement: null, district: "Centro", city: "Rio de Janeiro", state: "RJ", cpf: "52998224725", email: null, phone: "21900000001", gender: null, referral: null, emergencyName: null, emergencyRelationship: null, emergencyPhone: null, photoUrl: null, emailProblem: false, guardians: [] },
   { id: STUDENT_MINOR, registeredUnitId: ADMIN_UNIT, name: "Aluno Menor Fictício", birthDate: "2014-05-02", minor: true, postalCode: "01001000", street: "Rua Fictícia", number: "2", complement: null, district: "Centro", city: "Rio de Janeiro", state: "RJ", cpf: null, email: null, phone: null, gender: null, referral: null, emergencyName: null, emergencyRelationship: null, emergencyPhone: null, photoUrl: null, emailProblem: false, guardians: [{ guardianId: "00000000-0000-0000-0000-000000000801", name: "Responsável Um Fictício", email: "responsavel1@alfa.test", phone: "21900000011", financial: true, access: "PENDING", emailProblem: false }] },
 ];
 let mockStudents = initialStudents();
@@ -689,6 +689,19 @@ const studentFor = (id: string) => {
   if (denied) return denied;
   const found = mockStudents.find((s) => s.id === id && (activeRole() === "COORDINATOR" || s.registeredUnitId === ADMIN_UNIT));
   return found ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// RF-ALU-02: selos pelos mesmos critérios do servidor; paga o próprio adulto ou o responsável financeiro do menor (RN-ALU-09, RN-ALU-10).
+const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY"];
+const sealsOf = (s: StudentDetail): StudentSeal[] => {
+  const guardian = s.minor ? s.guardians.find((g) => g.financial) : undefined;
+  const hasCpf = s.minor ? Boolean(guardian && guardianCpfs[guardian.guardianId]) : Boolean(s.cpf);
+  const email = s.minor ? guardian?.email : s.email;
+  const problem = s.minor ? Boolean(guardian?.emailProblem) : s.emailProblem;
+  const now = new Date();
+  const birth = new Date(s.birthDate);
+  const leapDay = birth.getUTCMonth() === 1 && birth.getUTCDate() === 29 && now.getMonth() === 1 && now.getDate() === 28 && now.getFullYear() % 4 !== 0;
+  const birthday = (birth.getUTCMonth() === now.getMonth() && birth.getUTCDate() === now.getDate()) || leapDay;
+  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : birthday));
 };
 const isMinor = (birthDate: string) => {
   const limit = new Date(birthDate);
@@ -2216,6 +2229,8 @@ export const routes: Route[] = [
       if (p.get("sort") !== null && p.get("sort") !== "name") bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
       for (const k of ["unitId", "ageRangeId"]) if (p.get(k) !== null && !uuid.test(p.get(k)!)) bad.push({ field: k, message: "id inválido" });
       if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const seal = p.get("seal");
+      if (seal !== null && !SEALS.includes(seal as StudentSeal)) return studentBad("seal", "selo inválido");
       const rangeId = p.get("ageRangeId");
       const range = rangeId ? ageRanges.find((r) => r.id === rangeId) : null;
       if (rangeId && !range) return error(404, "NOT_FOUND", "Não encontrado.");
@@ -2231,6 +2246,7 @@ export const routes: Route[] = [
         .filter((s) => role === "COORDINATOR" || s.registeredUnitId === ADMIN_UNIT)
         .filter((s) => teacherKey(s.name).includes(q) && (!unitId || s.registeredUnitId === unitId))
         .filter((s) => !range || covers(range, ageOf(s.birthDate)))
+        .filter((s) => !seal || sealsOf(s).includes(seal as StudentSeal))
         .sort((a, b) => teacherKey(a.name).localeCompare(teacherKey(b.name)) || a.id.localeCompare(b.id));
       const items: StudentRow[] = found.slice((page - 1) * size, page * size).map((s) => {
         const age = ageOf(s.birthDate);
@@ -2239,7 +2255,7 @@ export const routes: Route[] = [
           id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age, minor: s.minor,
           ageRange: own ? { id: own.id, name: own.name } : null,
           registeredUnit: { id: s.registeredUnitId, name: units.find((u) => u.id === s.registeredUnitId)?.name ?? "" },
-          createdAt: "2026-01-10T12:00:00Z",
+          createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s),
         };
       });
       return HttpResponse.json({ items, page, size, total: found.length });
