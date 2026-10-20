@@ -50,6 +50,9 @@ abstract class AgendaBase extends OrganizationBase {
         UUID id = UUID.randomUUID();
         adminJdbc().update("insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, head_teacher_id, status) values (?, ?, ?, ?, ?, ?, ?, ?)",
                 id, t.orgId(), t.unitId(), name, Modalities.normalize(name), modality, head, status);
+        // RN-TUR-05, RN-PRO-09: o titular ensina a modalidade da turma.
+        adminJdbc().update("insert into teacher_modality (organization_id, teacher_id, modality_id, level_id, degree) values (?, ?, ?, null, 0) on conflict do nothing",
+                t.orgId(), head, modality);
         return id;
     }
 

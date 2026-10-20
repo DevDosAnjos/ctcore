@@ -379,6 +379,7 @@
       "emailInvalid": "Informe um e-mail válido.",
       "declaredRequired": "Marque que o professor autorizou para aparecer no diretório.",
       "levelRequired": "Escolha o nível de cada modalidade marcada.",
+      "modalityInUse": "O professor não pode deixar de ensinar uma modalidade enquanto for titular ou auxiliar de turmas ativas dela. Nada foi alterado. Troque o professor nestas turmas antes:",
       "save": "Salvar",
       "error": "Não foi possível salvar. Tente de novo."
     },
@@ -514,6 +515,8 @@
         "THIS": "Só esta aula",
         "FOLLOWING": "Esta e as seguintes (as datas das seguintes mudam pelo mesmo número de dias)"
       },
+      "followingEdited_one": "{{count}} aula seguinte já foi alterada à mão e será substituída por esta edição.",
+      "followingEdited_other": "{{count}} aulas seguintes já foram alteradas à mão e serão substituídas por esta edição.",
       "reason": "Motivo da correção",
       "completedNote": "Aula concluída: só o professor pode ser corrigido, com motivo.",
       "dateRequired": "Informe a data.",
@@ -840,6 +843,8 @@
       "assistants": "Professores auxiliares",
       "link": "Link do grupo",
       "headGone": "{{name}} não é mais um professor ativo desta unidade. Escolha um novo titular.",
+      "headCannotTeach": "{{name}} não ensina a modalidade desta turma. Escolha um novo titular que a ensine.",
+      "teachersHelp": "Só aparecem professores ativos da unidade que ensinam a modalidade escolhida.",
       "unitRequired": "Escolha a unidade.",
       "nameInvalid": "Informe o nome, de 2 a 80 caracteres.",
       "modalityRequired": "Escolha a modalidade.",

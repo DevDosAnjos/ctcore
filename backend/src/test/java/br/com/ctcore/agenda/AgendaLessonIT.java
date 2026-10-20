@@ -48,6 +48,26 @@ class AgendaLessonIT extends AgendaBase {
     }
 
     @Test
+    @DisplayName("RN-AGE-04: followingEdited conta as aulas seguintes ainda agendadas e alteradas à mão que \"esta e as seguintes\" substituiria; avulsa e outra organização")
+    void followingEdited() throws Exception {
+        var t = tenant();
+        UUID ana = teacher(t, "Ana", null);
+        UUID c = klass(t, "Turma", modality(t, "Judô"), ana, "ACTIVE");
+        UUID other = klass(t, "Outra", modality(t, "Judô"), ana, "ACTIVE");
+        UUID current = lesson(t, c, ana, TODAY.plusDays(7), "19:00", "20:00", false, true);
+        lesson(t, c, ana, TODAY.plusDays(14), "19:00", "20:00", false, true);
+        lesson(t, c, ana, TODAY.plusDays(21), "19:00", "20:00", false, true);
+        lesson(t, c, ana, TODAY.plusDays(28), "19:00", "20:00", false, false);
+        lesson(t, c, ana, TODAY.plusDays(35), "19:00", "20:00", true, true);
+        lesson(t, c, ana, TODAY.minusDays(7), "19:00", "20:00", false, true);
+        lesson(t, other, ana, TODAY.plusDays(14), "19:00", "20:00", false, true);
+        var coord = who(t, Role.COORDINATOR);
+        assertThat(ok(current, coord).get("followingEdited").asInt()).isEqualTo(2);
+        assertThat(ok(lesson(t, c, ana, TODAY.plusDays(40), "19:00", "20:00", false, false), coord).get("followingEdited").asInt()).isZero();
+        assertThat(get(current, who(tenant(), Role.COORDINATOR)).getStatus()).isEqualTo(404);
+    }
+
+    @Test
     @DisplayName("RN-AGE-13: CA1, CA2, CA6, CA8: campos, substituição com titular, cancelada, grupo e canViewClass; sem lista de espera nem auditoria")
     void fields() throws Exception {
         var t = tenant();

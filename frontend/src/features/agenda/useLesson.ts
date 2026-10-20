@@ -10,6 +10,7 @@ export interface LessonDetail extends AgendaLesson {
   trialClasses: number;
   groupLink: string | null;
   canViewClass: boolean;
+  followingEdited: number;
 }
 
 type Done = {

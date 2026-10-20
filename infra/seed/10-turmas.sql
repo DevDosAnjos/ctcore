@@ -1,4 +1,4 @@
--- Synthetic classes (RF-TUR-01): three per seeded organization, one inactive. No students are created (enrollment comes in Sprint 07).
+-- Synthetic classes (RF-TUR-01): three per seeded organization, one inactive. No students are created (enrollment comes in Sprint 07). Head and assistant teachers teach the class modality (RN-TUR-05): every seeded teacher teaches Jiu-Jitsu and the second one also Judô (09-professores.sql).
 insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, age_range_id, capacity, head_teacher_id, status)
 select md5('ctcore-seed-class-' || o.n || '-' || c.k)::uuid, md5('ctcore-seed-org-' || o.n)::uuid, md5('ctcore-seed-unit-' || o.n)::uuid,
        c.name, c.name_key, m.id, a.id, c.capacity, md5('ctcore-seed-teacher-' || o.n || '-' || c.head)::uuid, c.status

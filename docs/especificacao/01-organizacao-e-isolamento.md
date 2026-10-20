@@ -39,7 +39,7 @@ Coordenador (tudo), Administrador (vê as configurações da organização e alt
 | Chave Pix | Não cadastrada |
 | Conta do Mercado Pago | Não conectada |
 | Lembretes de cobrança | 3 dias antes, no dia, 3 e 10 dias depois |
-| Permissões do Professor | As quatro ligadas |
+| Permissões do Professor | As quatro primeiras ligadas (comunicado, editar e cancelar aulas, ver contatos, aulas experimentais); "ver ficha do aluno" desligada |
 | Aparecer no diretório | Desligado |
 | Link de aula experimental e de autocadastro | Ligados |
 

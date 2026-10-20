@@ -161,6 +161,7 @@ class LessonGenerationIT extends AgendaBase {
         var t = tenant();
         UUID head = teacher(t, "Ana", null);
         UUID judo = modality(t, "Judô");
+        adminJdbc().update("insert into teacher_modality (organization_id, teacher_id, modality_id, level_id, degree) values (?, ?, ?, null, 0)", t.orgId(), head, judo);
         int weekday = LocalDate.now(ZoneId.of("UTC")).plusDays(3).getDayOfWeek().getValue(); // nunca é hoje, em nenhum fuso
         UUID id = UUID.fromString(create(t, head, judo, weekday).get("id").asText());
         assertThat(lessons(id)).isEqualTo(8);

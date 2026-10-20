@@ -132,3 +132,7 @@ Achados:
 - Verificação (rodada 1, OK): `verify` do back-end com 346 testes e 0 falhas; no front lint, typecheck, build, `test:cov` (637 testes) e `e2e` (27) verdes.
 - Decisões: colunas `original_date`/`original_starts_at` para o gerador diário não recriar a aula editada; "esta e as seguintes" atualiza linha a linha na mesma transação; no mock MSW, o escopo "seguintes" edita só a aula do id.
 - Limitação: o teste de `update` sem escopo com `ctcore_app` (CA9) não foi acrescentado; a RLS de `lesson` é a da V25 e não mudou.
+
+## Revisão pelo dono (20/10/2026)
+
+- D1 mantida e acrescida: antes de confirmar "esta e as seguintes", a janela mostra quantas aulas já alteradas à mão serão substituídas (`followingEdited` em `GET /agenda/lessons/{id}`). O professor da aula (troca e correção) ensina a modalidade da aula, inclusive o titular (RN-PRO-09).

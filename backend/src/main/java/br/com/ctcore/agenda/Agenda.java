@@ -47,7 +47,8 @@ public class Agenda {
     /** RF-AGE-02: painel da aula. {@code head} só vem na substituição (D6). */
     public record LessonDetail(UUID id, String date, String startsAt, String endsAt, Status status, String cancelReason, String cancelReasonCode,
             @JsonProperty("class") Ref trainingClass, String title, Ref visibilityClass, Ref unit, Ref modality, Ref teacher, Ref head,
-            boolean substitute, int activeStudents, int trialClasses, String groupLink, boolean canEdit, boolean canCancel, boolean canViewClass) {}
+            boolean substitute, int activeStudents, int trialClasses, String groupLink, boolean canEdit, boolean canCancel, boolean canViewClass,
+            int followingEdited) {}
 
     public record NoClassDay(String startsOn, String endsOn, String reason) {}
 
@@ -239,7 +240,7 @@ public class Agenda {
                             rs.getString(6), rs.getString(22), ref(rs, 7, 8), rs.getString(23), ref(rs, 24, 25),
                             new Ref(rs.getObject(14, UUID.class), rs.getString(15)), new Ref(rs.getObject(9, UUID.class), rs.getString(10)),
                             new Ref(rs.getObject(11, UUID.class), rs.getString(12)),
-                            sub && rs.getObject(18, UUID.class) != null ? new Ref(rs.getObject(18, UUID.class), rs.getString(19)) : null, sub, 0, 0, rs.getString(17), false, false, false);
+                            sub && rs.getObject(18, UUID.class) != null ? new Ref(rs.getObject(18, UUID.class), rs.getString(19)) : null, sub, 0, 0, rs.getString(17), false, false, false, 0);
                     return new LessonRow(d, rs.getBoolean(20), rs.getBoolean(21), ZoneId.of(rs.getString(16)), day.atTime(s), day.atTime(e),
                             rs.getBoolean(5), rs.getObject(18, UUID.class));
                 }).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
@@ -260,8 +261,15 @@ public class Agenda {
         boolean cancelled = st == Status.CANCELLED;
         LessonDetail out = new LessonDetail(d.id(), d.date(), d.startsAt(), d.endsAt(), st, cancelled ? d.cancelReason() : null,
                 cancelled ? d.cancelReasonCode() : null, d.trainingClass(), d.title(), d.visibilityClass(), d.unit(), d.modality(), d.teacher(), d.head(), d.substitute(),
-                adhoc ? 0 : classes.activeStudentsOf(d.trainingClass().id()), trialClasses(d.id()), d.groupLink(), can.edit(), can.cancel(), viewClass);
+                adhoc ? 0 : classes.activeStudentsOf(d.trainingClass().id()), trialClasses(d.id()), d.groupLink(), can.edit(), can.cancel(), viewClass, adhoc ? 0 : followingEdited(d.trainingClass().id(), LocalDate.parse(d.date()), local));
         return new Loaded(out, can, editPermission, mine, r.zone(), r.start(), r.end(), r.headId());
+    }
+
+    /** RN-AGE-04: aulas seguintes da turma, ainda agendadas e alteradas à mão, que "esta e as seguintes" substituiria (mesmo corte de LessonWrite). */
+    private int followingEdited(UUID classId, LocalDate date, LocalDateTime now) {
+        return (int) jdbc.sql("select lesson_date, starts_at, ends_at, cancelled from lesson where class_id = :class and lesson_date > :date and manually_edited")
+                .param("class", classId).param("date", date).query((rs, n) -> status(rs.getBoolean(4), rs.getObject(1, LocalDate.class).atTime(rs.getObject(2, LocalTime.class)),
+                        rs.getObject(1, LocalDate.class).atTime(rs.getObject(3, LocalTime.class)), now)).list().stream().filter(s -> s == Status.SCHEDULED).count();
     }
 
     /** Ponto único das aulas experimentais ao cancelar (RN-AGE-06): sem efeito até a Sprint 18. */

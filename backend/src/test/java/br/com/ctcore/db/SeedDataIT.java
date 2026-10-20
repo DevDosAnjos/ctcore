@@ -199,6 +199,9 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from training_class where status = 'INACTIVE'", Integer.class)).isEqualTo(3);
         assertThat(jdbc.queryForObject("select count(*) from training_class_schedule", Integer.class)).isEqualTo(15);
         assertThat(jdbc.queryForObject("select count(*) from training_class_assistant", Integer.class)).isEqualTo(3);
+        // RN-TUR-05, RN-PRO-09: titular e auxiliares do seed ensinam a modalidade da turma.
+        assertThat(jdbc.queryForObject("select count(*) from training_class c where not exists (select 1 from teacher_modality tm where tm.teacher_id = c.head_teacher_id and tm.modality_id = c.modality_id) "
+                + "or exists (select 1 from training_class_assistant a where a.class_id = c.id and not exists (select 1 from teacher_modality tm where tm.teacher_id = a.teacher_id and tm.modality_id = c.modality_id))", Integer.class)).isZero();
     }
 
     @Test

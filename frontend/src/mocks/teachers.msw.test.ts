@@ -159,7 +159,7 @@ describe("cadastro e edição do professor x OpenAPI (RF-PRO-03, CA13)", () => {
   it("Administrador só cria com a unidade dele (403 fora) e PUT mantém as unidades de fora do alcance", async () => {
     await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
     expect((await send("POST", "", valid({ unitIds: ["00000000-0000-0000-0000-000000000022"] }))).status).toBe(403);
-    const res = await send("PUT", `/${JOAO}`, valid({ name: "João P." }));
+    const res = await send("PUT", `/${JOAO}`, valid({ name: "João P.", modalities: [{ modalityId: JUDO, levelId: null, degree: null }, { modalityId: JIU, levelId: null, degree: null }] }));
     expect(res.status).toBe(200);
     expect((await res.json()).units.map((u: { id: string }) => u.id).sort()).toEqual([CENTRO, "00000000-0000-0000-0000-000000000022"]);
     expect((await send("PUT", `/${MARCOS}`, valid())).status).toBe(404);

@@ -44,6 +44,7 @@ class TrainingClassWriteIT extends OrganizationBase {
         adminJdbc().update("delete from training_class_schedule");
         adminJdbc().update("delete from lesson");
         adminJdbc().update("delete from training_class");
+        adminJdbc().update("delete from teacher_modality");
         adminJdbc().update("delete from teacher_unit");
         adminJdbc().update("delete from teacher");
         adminJdbc().update("delete from unit_modality");
@@ -111,7 +112,10 @@ class TrainingClassWriteIT extends OrganizationBase {
     }
 
     private UUID teacherOf(Tenant t, String name, UUID unit) {
-        return teacher(t, name, unit, "ACTIVE");
+        UUID id = teacher(t, name, unit, "ACTIVE");
+        adminJdbc().update("insert into teacher_modality (organization_id, teacher_id, modality_id, level_id, degree) values (?, ?, ?, null, 0)",
+                t.orgId(), id, adminJdbc().queryForObject("select id from modality where name = 'Judô'", UUID.class));
+        return id;
     }
 
     private UUID created(Tenant t, String name) throws Exception {
@@ -127,6 +131,48 @@ class TrainingClassWriteIT extends OrganizationBase {
 
     private int classCount(Tenant t) {
         return adminJdbc().queryForObject("select count(*) from training_class where organization_id = ?", Integer.class, t.orgId());
+    }
+
+    @Test
+    @DisplayName("RN-TUR-05, RN-PRO-09: titular e auxiliares têm de ensinar a modalidade (400 no campo); turma antiga com titular que não ensina exige troca ao editar; opções trazem as modalidades de cada professor")
+    void teachersMustTeachTheModality() throws Exception {
+        var t = tenant();
+        var coordinator = who(t, Role.COORDINATOR);
+        UUID outsider = teacher(t, "Fora", t.unitId(), "ACTIVE");
+        var asHead = valid(t, "Turma A");
+        asHead.put("headTeacherId", outsider);
+        assertField(post(asHead, coordinator), 400, "headTeacherId");
+        var asAssistant = valid(t, "Turma B");
+        asAssistant.put("assistantIds", List.of(outsider));
+        assertField(post(asAssistant, coordinator), 400, "assistantIds");
+        assertThat(classCount(t)).isZero();
+
+        var ok = valid(t, "Turma C");
+        ok.put("assistantIds", List.of(teacherOf(t, "Aux", t.unitId())));
+        var r = post(ok, coordinator);
+        assertThat(r.getStatus()).as(r.getContentAsString()).isEqualTo(201);
+        UUID id = UUID.fromString(body(r).get("id").asText());
+
+        UUID head = UUID.fromString(ok.get("headTeacherId").toString());
+        adminJdbc().update("delete from teacher_modality where teacher_id = ?", head);
+        assertField(put(id, ok, coordinator), 400, "headTeacherId");
+        ok.put("headTeacherId", teacherOf(t, "Novo titular", t.unitId()));
+        assertThat(put(id, ok, coordinator).getStatus()).isEqualTo(200);
+        ok.put("assistantIds", List.of(outsider));
+        assertField(put(id, ok, coordinator), 400, "assistantIds");
+
+        var teachers = body(options(coordinator)).get("units").get(0).get("teachers");
+        UUID judo = adminJdbc().queryForObject("select id from modality where name = 'Judô'", UUID.class);
+        for (var n : teachers) {
+            boolean teaches = toList(n.get("modalityIds")).contains(judo.toString());
+            assertThat(teaches).as(n.get("name").asText()).isEqualTo(!List.of("Fora", "Titular Turma C").contains(n.get("name").asText()));
+        }
+    }
+
+    private static List<String> toList(JsonNode ids) {
+        List<String> out = new ArrayList<>();
+        ids.forEach(i -> out.add(i.asText()));
+        return out;
     }
 
     @Test

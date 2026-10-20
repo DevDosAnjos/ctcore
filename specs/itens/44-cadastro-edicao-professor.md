@@ -120,3 +120,7 @@ Achados:
 - Limitações: nenhuma conhecida.
 
 Refs #44
+
+## Revisão pelo dono (20/10/2026)
+
+- RN-PRO-09: tirar de um professor (`PUT /teachers/{id}`) uma modalidade em que ele é titular ou auxiliar de turma ativa é recusado com 409 `TEACHER_MODALITY_IN_USE`, listando as turmas; turma desativada não impede. A tela de editar mostra as turmas que impedem.

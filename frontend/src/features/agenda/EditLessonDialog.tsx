@@ -106,6 +106,11 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
                 </label>
               ))}
               <Err text={errors.scope} />
+              {scope === "FOLLOWING" && lesson.followingEdited > 0 && (
+                <p role="status" className="text-sm">
+                  {t("agenda.edit.followingEdited", { count: lesson.followingEdited })}
+                </p>
+              )}
             </fieldset>
           )}
           <Err text={errors.form} />

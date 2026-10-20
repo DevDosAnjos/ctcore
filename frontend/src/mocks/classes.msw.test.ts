@@ -142,7 +142,7 @@ describe("janela de turma x OpenAPI (RF-TUR-03, CA14)", () => {
   it("cria: 201 no formato do detalhe e aparece na lista; erro de campo 400; nome repetido 409 no campo name", async () => {
     await login("ana@exemplo.com");
     const options = await (await fetch("/api/v1/classes/options")).json();
-    const modalityId = options.units[0].modalities[0].id;
+    const modalityId = options.units[0].modalities.find((m: { name: string }) => m.name === "Judô").id;
     const created = await send("POST", "/classes", ok({ modalityId, capacity: 10, groupLink: "https://x.example.com/g" }));
     expect(created.status).toBe(201);
     expect(await created.json()).toMatchObject({ name: "Muay Thai Noite", status: "ACTIVE", capacity: 10, groupLink: "https://x.example.com/g" });
@@ -157,9 +157,30 @@ describe("janela de turma x OpenAPI (RF-TUR-03, CA14)", () => {
     }
   });
 
+  it("RN-TUR-05, RN-PRO-09: titular e auxiliar têm de ensinar a modalidade, as opções trazem modalityIds e tirar a modalidade com turma ativa dá 409", async () => {
+    await login("ana@exemplo.com");
+    const options = await (await fetch("/api/v1/classes/options")).json();
+    const judo = options.units[0].modalities.find((m: { name: string }) => m.name === "Judô").id;
+    const boxe = options.units[0].modalities.find((m: { name: string }) => m.name === "Boxe").id;
+    const teachers = options.units[0].teachers;
+    expect(teachers.every((t: { modalityIds: string[] }) => Array.isArray(t.modalityIds))).toBe(true);
+    expect(teachers.find((t: { id: string }) => t.id === JOAO).modalityIds).toContain(judo);
+    const bad = await send("POST", "/classes", ok({ modalityId: boxe, name: "Boxe Noite" }));
+    expect(bad.status).toBe(400);
+    expect((await bad.json()).fields[0].field).toBe("headTeacherId");
+    expect(openapi.components.schemas.ClassOptions.properties.units.items.properties.teachers.items.required).toEqual(["id", "name", "modalityIds"]);
+
+    const refused = await send("PUT", `/teachers/${JOAO}`, { name: "João Pereira", unitIds: [UNIT_CENTRO], modalities: [{ modalityId: boxe, levelId: null, degree: null }] });
+    expect(refused.status).toBe(409);
+    const body = await refused.json();
+    expect(body.code).toBe("TEACHER_MODALITY_IN_USE");
+    expect(body.fields).toEqual([{ field: "class", message: "Jiu-Jitsu Adulto" }, { field: "class", message: "Judô Infantil" }]);
+    expect(Object.keys(openapi.paths["/teachers/{id}"].put.responses)).toContain("409");
+  });
+
   it("edita: troca campos, scheduleChanged só quando os horários mudam, desativada 409, Administrador fora do alcance 404/403", async () => {
     await login("ana@exemplo.com");
-    const modalityId = (await (await fetch("/api/v1/classes/options")).json()).units[0].modalities[0].id;
+    const modalityId = (await (await fetch("/api/v1/classes/options")).json()).units[0].modalities.find((m: { name: string }) => m.name === "Judô").id;
     const same = await send("PUT", `/classes/${JJ}`, ok({ modalityId, name: "Jiu-Jitsu Adulto", schedule: [{ weekday: 1, startsAt: "19:00", endsAt: "20:00" }, { weekday: 3, startsAt: "19:00", endsAt: "20:00" }] }));
     expect(same.status).toBe(200);
     expect(await same.json()).toMatchObject({ scheduleChanged: false, head: { id: JOAO }, unit: { id: UNIT_CENTRO } });
