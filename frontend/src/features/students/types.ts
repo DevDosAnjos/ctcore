@@ -78,3 +78,22 @@ export interface StudentInput {
   confirmDuplicate?: boolean;
   guardians?: StudentGuardianInput[];
 }
+
+// Espelha StudentRow e StudentList do OpenAPI (RF-ALU-01). CPF, e-mail, telefone, endereço e emergência nunca vêm na lista.
+export interface StudentRow {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  birthDate: string;
+  age: number;
+  minor: boolean;
+  ageRange: { id: string; name: string } | null;
+  registeredUnit: { id: string; name: string };
+  createdAt: string;
+}
+export interface StudentList {
+  items: StudentRow[];
+  page: number;
+  size: number;
+  total: number;
+}

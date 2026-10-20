@@ -1,7 +1,10 @@
 package br.com.ctcore.student;
 
+import br.com.ctcore.api.page.PageRequest;
+import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +34,14 @@ class StudentController {
         this.guardians = guardians;
         this.students = students;
         this.registration = registration;
+    }
+
+    @GetMapping
+    PageResponse<Students.Row> list(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q,
+            @RequestParam(required = false) UUID unitId, @RequestParam(required = false) UUID ageRangeId, @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size, @RequestParam(required = false) String sort) {
+        String field = "name".equals(sort) ? "name,asc" : sort;
+        return students.list(who, q, unitId, ageRangeId, PageRequest.of(page, size, field, Set.of("name")));
     }
 
     @PostMapping

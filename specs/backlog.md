@@ -66,7 +66,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 55 | RF-PLA-01 · Financeiro › Planos e benefícios | issue #55 | Sprint 06 | — | agente | feito |
 | 56 | RF-PLA-02 · Tabela de planos | issue #56 | Sprint 06 | — | agente | feito |
 | 57 | RF-PLA-03 · Janela de plano | issue #57 | Sprint 06 | — | agente | feito |
-| 58 | RF-ALU-01 · Pessoas › Alunos (lista e filtros) | issue #58 | Sprint 06 | — | agente | a fazer |
+| 58 | RF-ALU-01 · Pessoas › Alunos (lista e filtros) | issue #58 | Sprint 06 | — | agente | feito |
 | 59 | RF-ALU-02 · Selos do aluno | issue #59 | Sprint 06 | — | agente | a fazer |
 | 60 | RF-ALU-03 · Ficha do aluno em painel lateral | issue #60 | Sprint 06 | — | agente | a fazer |
 | 61 | RF-ALU-04 · Editar dados pessoais do aluno | issue #61 | Sprint 06 | — | agente | a fazer |

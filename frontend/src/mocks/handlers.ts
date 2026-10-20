@@ -4,7 +4,7 @@ import { isValidCpf, isValidCpfOrCnpj, onlyDigits } from "@/components/fields/ma
 import { isHexColor, passesContrast } from "@/features/organization/contrastRatio";
 import { nextHolidays, validateDay, type DayBody } from "./noClassDays";
 import { mockPermissions } from "./permissions";
-import type { StudentDetail, StudentGuardianInput, StudentGuardianRow, StudentInput } from "@/features/students/types";
+import type { StudentDetail, StudentGuardianInput, StudentGuardianRow, StudentInput, StudentRow } from "@/features/students/types";
 
 export type Method = "get" | "post" | "put" | "patch" | "delete";
 
@@ -2196,6 +2196,53 @@ export const routes: Route[] = [
       if (left.length) return lastAdministrator(left);
       row.status = "ENDED";
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RF-ALU-01: lista. Coordenador e Administrador (só a unidade de cadastro dele); Professor e portal 403. Ordem por nome; filtros combinam; size 25/50/100.
+    method: "get",
+    path: "/students",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const role = activeRole();
+      const p = new URL(request.url).searchParams;
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const bad: { field: string; message: string }[] = [];
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (p.get("sort") !== null && p.get("sort") !== "name") bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
+      for (const k of ["unitId", "ageRangeId"]) if (p.get(k) !== null && !uuid.test(p.get(k)!)) bad.push({ field: k, message: "id inválido" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const rangeId = p.get("ageRangeId");
+      const range = rangeId ? ageRanges.find((r) => r.id === rangeId) : null;
+      if (rangeId && !range) return error(404, "NOT_FOUND", "Não encontrado.");
+      const unitId = p.get("unitId");
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const ageOf = (birth: string) => {
+        const b = new Date(birth);
+        const now = new Date();
+        return now.getFullYear() - b.getFullYear() - (now < new Date(now.getFullYear(), b.getMonth(), b.getDate()) ? 1 : 0);
+      };
+      const covers = (r: MockAgeRange, age: number) => age >= r.minAge && (r.maxAge === null || age <= r.maxAge);
+      const found = mockStudents
+        .filter((s) => role === "COORDINATOR" || s.registeredUnitId === ADMIN_UNIT)
+        .filter((s) => teacherKey(s.name).includes(q) && (!unitId || s.registeredUnitId === unitId))
+        .filter((s) => !range || covers(range, ageOf(s.birthDate)))
+        .sort((a, b) => teacherKey(a.name).localeCompare(teacherKey(b.name)) || a.id.localeCompare(b.id));
+      const items: StudentRow[] = found.slice((page - 1) * size, page * size).map((s) => {
+        const age = ageOf(s.birthDate);
+        const own = [...ageRanges].filter((r) => covers(r, age)).sort((a, b) => b.minAge - a.minAge)[0];
+        return {
+          id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age, minor: s.minor,
+          ageRange: own ? { id: own.id, name: own.name } : null,
+          registeredUnit: { id: s.registeredUnitId, name: units.find((u) => u.id === s.registeredUnitId)?.name ?? "" },
+          createdAt: "2026-01-10T12:00:00Z",
+        };
+      });
+      return HttpResponse.json({ items, page, size, total: found.length });
     },
   },
   {
