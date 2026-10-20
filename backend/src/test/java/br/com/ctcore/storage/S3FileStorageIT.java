@@ -43,7 +43,7 @@ class S3FileStorageIT {
         storage.ensureBucket(); // idempotente
         var shortProps = new StorageProperties();
         shortProps.setEndpoint(props.getEndpoint());
-        shortProps.setUrlExpiry(java.time.Duration.ofSeconds(1));
+        shortProps.setUrlExpiry(java.time.Duration.ofSeconds(4)); // folga para o 200 em máquina lenta; o vencimento é esperado a partir da emissão
         shortLived = new S3FileStorage(shortProps);
     }
 
@@ -71,9 +71,11 @@ class S3FileStorageIT {
     void refusesExpiredAndTamperedUrls() throws Exception {
         try (var ignored = Scopes.open(A, null)) {
             storage.put("termo.pdf", bytes("pdf"), "application/pdf");
+            var issued = java.time.Instant.now();
             var url = shortLived.readUrl("termo.pdf");
             assertThat(get(url).statusCode()).isEqualTo(200);
-            Thread.sleep(2500);
+            long wait = java.time.Duration.between(java.time.Instant.now(), issued.plusMillis(5500)).toMillis();
+            if (wait > 0) Thread.sleep(wait);
             assertThat(get(url).statusCode()).isEqualTo(403);
 
             var tampered = storage.readUrl("termo.pdf").replaceFirst("X-Amz-Signature=(.)", "X-Amz-Signature=" + "0".repeat(1) + "$1");
