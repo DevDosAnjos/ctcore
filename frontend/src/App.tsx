@@ -23,6 +23,7 @@ import { ClassesPage } from "@/features/classes/ClassesPage";
 import { ClassPanelPage } from "@/features/classes/ClassPanelPage";
 import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { LessonPanelPage } from "@/features/agenda/LessonPanelPage";
+import { NoClassDaysPage } from "@/features/noClassDays/NoClassDaysPage";
 import { UsersPage } from "@/features/users/UsersPage";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
@@ -92,6 +93,7 @@ export function App() {
             <Route path="/agenda/aulas/:id" element={<LessonPanelPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
+            <Route path="/dias-sem-aula" element={<NoClassDaysPage />} />
             <Route path="/turmas" element={<ClassesPage />} />
             <Route path="/turmas/:id" element={<ClassPanelPage />} />
             <Route path="/professores" element={<TeachersPage />} />

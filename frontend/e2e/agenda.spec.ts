@@ -20,7 +20,7 @@ test("@critical Coordenador abre a Agenda", async ({ page }) => {
   await expect(page.getByText("Jiu-Jitsu Adulto").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Próxima semana" }).click();
-  await expect(page.getByText("Sem aula")).toHaveCount(0);
+  await expect(page.getByText("Sem aula", { exact: true })).toHaveCount(0); // exato: o menu tem "Dias sem aula"
   await expect(page.getByText("Jiu-Jitsu Adulto").first()).toBeVisible();
   await page.getByRole("button", { name: "Hoje" }).click();
   await expect(page.getByText("Sem aula").first()).toBeVisible();

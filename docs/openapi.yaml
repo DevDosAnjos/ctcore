@@ -919,6 +919,107 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /no-class-days:
+    get:
+      summary: Dias sem aula da unidade e feriados sugeridos (RF-AGE-05). Coordenador e Administrador (`NO_CLASS_DAYS`).
+      description: |
+        Traz os dias da unidade cujo fim é hoje ou depois (fuso da unidade), por início, e `suggestions`: feriados nacionais dos próximos 12
+        meses (calculados no servidor) que ainda não viraram dia sem aula na unidade. Nada é gravado até a unidade confirmar. `unitId` ausente
+        escolhe a primeira unidade do alcance. `notice.status` é `NOT_NOTIFIED`, `SCHEDULED` ou `SENT` (o envio é da Sprint 09). Professor, Aluno e
+        Responsável: 403; unidade fora do alcance do Administrador ou de outra organização: 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Dias sem aula da unidade.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Lança dia ou período sem aula, um por unidade (RF-AGE-05). Coordenador (várias unidades) e Administrador (uma).
+      description: |
+        Tudo ou nada. `reason` de 1 a 120 caracteres; `startsOn` hoje ou depois no fuso de cada unidade; `endsOn` não antes de `startsOn`; período de
+        até 90 dias; `holiday` verdadeiro dá origem `HOLIDAY`, senão `COORDINATOR` ou `UNIT`. `classIds` vazio vale para todas as turmas; com
+        turmas, só uma unidade e turmas ativas dela (422 em `classIds`; turma de outra organização: 404). `notice.mode` `SCHEDULED` exige `sendAt`
+        futuro e antes do início do dia (400 em `notice`); nada é enviado nesta entrega. Cancela as aulas da unidade no período que ainda não
+        terminaram e não estão canceladas (`HOLIDAY` para feriado, senão `OTHER`, com o motivo como texto). Período sobreposto a outro dia da unidade:
+        409. Administrador com várias unidades: 400. Grava `no_class_day.created`. A mensalidade não muda (RN-AGE-11).
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayInput' } } }
+      responses:
+        '201':
+          description: Os dias criados, um por unidade.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/NoClassDayItem' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /no-class-days/preview:
+    get:
+      summary: Prévia das aulas que o dia sem aula cancelaria (RF-AGE-05). Coordenador e Administrador.
+      description: |
+        Mesmas validações do lançamento, menos o conflito de período; `unitIds` e `classIds` se repetem na consulta. Devolve, por unidade, as aulas
+        não terminadas e não canceladas do período. Não grava nada.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitIds, in: query, required: true, schema: { type: array, items: { type: string, format: uuid } }, style: form, explode: true }
+        - { name: startsOn, in: query, required: true, schema: { type: string, format: date } }
+        - { name: endsOn, in: query, required: true, schema: { type: string, format: date } }
+        - { name: classIds, in: query, required: false, schema: { type: array, items: { type: string, format: uuid } }, style: form, explode: true }
+      responses:
+        '200':
+          description: Aulas afetadas por unidade.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayPreview' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /no-class-days/{id}:
+    put:
+      summary: Edita um dia sem aula futuro (RF-AGE-05). Coordenador e Administrador.
+      description: |
+        Só dia cujo início é depois de hoje (senão 409). Altera período, motivo, turmas e aviso (a unidade e a origem não mudam; `unitIds` e
+        `holiday` são ignorados). As aulas que deixaram de ser afetadas voltam para Agendada e as recém afetadas são canceladas. Dia com aviso `SENT`
+        não muda o aviso (400 em `notice`). Mesmas validações do lançamento; 409 também para sobreposição. Grava `no_class_day.updated`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayInput' } } }
+      responses:
+        '200':
+          description: O dia atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayItem' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: Desfaz um dia sem aula futuro (RF-AGE-05). Coordenador e Administrador.
+      description: |
+        Só dia cujo início é depois de hoje (senão 409). Apaga o dia e devolve para Agendada só as aulas que ele cancelou; cancelamento manual segue.
+        Cada unidade desfaz o seu. `notify` (padrão falso) só fica na auditoria até a Sprint 09. Grava `no_class_day.deleted`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: notify, in: query, required: false, schema: { type: boolean, default: false } }
+      responses:
+        '204': { description: Dia desfeito. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /classes:
     get:
       summary: Lista paginada de turmas da organização do vínculo ativo (RF-TUR-01). Coordenador e Administrador.
@@ -1907,6 +2008,81 @@ components:
         startsOn: { type: string, format: date }
         endsOn: { type: string, format: date }
         reason: { type: string }
+    NoClassDayNoticeInput:
+      type: object
+      required: [mode]
+      properties:
+        mode: { type: string, enum: [NONE, NOW, SCHEDULED] }
+        sendAt: { type: string, format: date-time, description: Obrigatório em `SCHEDULED`; futuro e antes do início do dia. }
+    NoClassDayInput:
+      type: object
+      required: [unitIds, startsOn, endsOn, reason]
+      properties:
+        unitIds: { type: array, items: { type: string, format: uuid }, description: Uma unidade (Administrador) ou várias (Coordenador). Ignorado na edição. }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        reason: { type: string, minLength: 1, maxLength: 120 }
+        holiday: { type: boolean, description: Verdadeiro ao confirmar feriado sugerido; origem `HOLIDAY`. }
+        classIds: { type: array, items: { type: string, format: uuid }, description: Vazio ou ausente = todas as turmas. }
+        notice: { $ref: '#/components/schemas/NoClassDayNoticeInput' }
+    NoClassDayNotice:
+      type: object
+      required: [mode, sendAt, status]
+      properties:
+        mode: { type: string, enum: [NONE, NOW, SCHEDULED] }
+        sendAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [NOT_NOTIFIED, SCHEDULED, SENT] }
+    NoClassDayItem:
+      type: object
+      required: [id, unit, startsOn, endsOn, reason, origin, allClasses, classes, notice, cancelledLessons, canEdit]
+      properties:
+        id: { type: string, format: uuid }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        reason: { type: string }
+        origin: { type: string, enum: [HOLIDAY, COORDINATOR, UNIT] }
+        allClasses: { type: boolean }
+        classes: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Vazio quando `allClasses`. }
+        notice: { $ref: '#/components/schemas/NoClassDayNotice' }
+        cancelledLessons: { type: integer }
+        canEdit: { type: boolean, description: Dica; verdadeiro só se o início é depois de hoje. }
+    NoClassDaySuggestion:
+      type: object
+      required: [code, date]
+      properties:
+        code: { type: string, enum: [NEW_YEAR, GOOD_FRIDAY, TIRADENTES, LABOUR_DAY, INDEPENDENCE, APARECIDA, ALL_SOULS, REPUBLIC, BLACK_AWARENESS, CHRISTMAS] }
+        date: { type: string, format: date }
+    NoClassDayList:
+      type: object
+      required: [units, unit, days, suggestions]
+      properties:
+        units: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+        unit: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true }
+        days: { type: array, items: { $ref: '#/components/schemas/NoClassDayItem' } }
+        suggestions: { type: array, items: { $ref: '#/components/schemas/NoClassDaySuggestion' } }
+    NoClassDayPreviewLesson:
+      type: object
+      required: [id, date, startsAt, endsAt, class, title]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string }
+        endsAt: { type: string }
+        class: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true }
+        title: { type: string, nullable: true }
+    NoClassDayPreview:
+      type: object
+      required: [units]
+      properties:
+        units:
+          type: array
+          items:
+            type: object
+            required: [unit, lessons]
+            properties:
+              unit: { $ref: '#/components/schemas/ClassRef' }
+              lessons: { type: array, items: { $ref: '#/components/schemas/NoClassDayPreviewLesson' } }
     ClassRef:
       type: object
       required: [id, name]

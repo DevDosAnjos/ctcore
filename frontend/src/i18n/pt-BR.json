@@ -619,6 +619,113 @@
       }
     }
   },
+  "noClassDays": {
+    "title": "Dias sem aula",
+    "intro": "Os dias em que a unidade não tem aula. Ao lançar um dia, as aulas dele são canceladas; ao desfazer, voltam para Agendada.",
+    "unit": "Unidade",
+    "new": "Novo dia sem aula",
+    "suggestions": {
+      "title": "Feriados nacionais sugeridos",
+      "help": "Nada é lançado até você confirmar. Feriado estadual ou municipal, lance à mão.",
+      "confirm": "Confirmar",
+      "confirmLabel": "Confirmar {{name}}, {{date}}"
+    },
+    "holidays": {
+      "NEW_YEAR": "Confraternização Universal",
+      "GOOD_FRIDAY": "Sexta-feira Santa",
+      "TIRADENTES": "Tiradentes",
+      "LABOUR_DAY": "Dia do Trabalho",
+      "INDEPENDENCE": "Independência do Brasil",
+      "APARECIDA": "Nossa Senhora Aparecida",
+      "ALL_SOULS": "Finados",
+      "REPUBLIC": "Proclamação da República",
+      "BLACK_AWARENESS": "Consciência Negra",
+      "CHRISTMAS": "Natal"
+    },
+    "list": {
+      "title": "Próximos dias sem aula",
+      "period": "{{from}} a {{to}}",
+      "single": "{{date}}",
+      "origin": "Origem: {{origin}}",
+      "allClasses": "Todas as turmas",
+      "classes": "Turmas: {{names}}",
+      "notice": "Aviso: {{status}}",
+      "cancelled_one": "{{count}} aula cancelada",
+      "cancelled_other": "{{count}} aulas canceladas",
+      "edit": "Editar",
+      "undo": "Desfazer"
+    },
+    "origins": {
+      "HOLIDAY": "Feriado",
+      "COORDINATOR": "Coordenador",
+      "UNIT": "Unidade"
+    },
+    "noticeStatus": {
+      "NOT_NOTIFIED": "Ainda não avisado",
+      "SCHEDULED": "Agendado",
+      "SENT": "Enviado"
+    },
+    "emptyTitle": "Nenhum dia sem aula",
+    "emptyText": "Quando a unidade tiver um feriado ou recesso, lance o dia aqui.",
+    "dialog": {
+      "titleNew": "Novo dia sem aula",
+      "titleEdit": "Editar dia sem aula",
+      "units": "Unidades",
+      "unitsHelp": "O Coordenador pode lançar para várias unidades de uma vez; cada unidade desfaz o seu.",
+      "unit": "Unidade: {{name}}",
+      "unitsRequired": "Escolha ao menos uma unidade.",
+      "startsOn": "Início",
+      "endsOn": "Fim",
+      "dateRequired": "Informe a data de início.",
+      "endRequired": "Informe o fim, sem ser antes do início.",
+      "reason": "Motivo",
+      "reasonRequired": "Informe o motivo, com até 120 caracteres.",
+      "classes": "Turmas",
+      "classesAll": "Todas as turmas",
+      "classesSome": "Só algumas turmas",
+      "classesOneUnit": "Para limitar a turmas, escolha uma só unidade.",
+      "classesRequired": "Escolha ao menos uma turma.",
+      "preview": "Aulas que serão canceladas",
+      "previewLoading": "Conferindo as aulas…",
+      "previewEmpty": "Nenhuma aula será cancelada neste período.",
+      "previewUnit": "{{name}}: {{count}} aulas",
+      "previewLine": "{{date}}, {{from}} às {{to}}, {{name}}",
+      "previewError": "Não foi possível conferir as aulas. Tente de novo.",
+      "previewRetry": "Tentar de novo",
+      "noticeLegend": "Avisar os alunos",
+      "notices": {
+        "NONE": "Não avisar",
+        "NOW": "Avisar agora",
+        "SCHEDULED": "Agendar o aviso"
+      },
+      "sendAt": "Enviar em",
+      "sendAtRequired": "Informe quando enviar, antes do início do dia.",
+      "noticeHelp": "O envio chega com as comunicações; por enquanto a escolha fica registrada.",
+      "fee": "A mensalidade não muda.",
+      "save": "Salvar",
+      "saving": "Salvando…",
+      "errors": {
+        "400": "Algum dado está errado. Confira os campos. Nada foi gravado.",
+        "403": "Você não tem permissão para isto. Nada foi gravado.",
+        "404": "Unidade ou turma não encontrada. Nada foi gravado.",
+        "409": "Já existe um dia sem aula neste período, ou o dia já começou. Nada foi gravado.",
+        "422": "Alguma turma não pode ser usada. Nada foi gravado.",
+        "generic": "Não foi possível salvar. Tente de novo. Nada foi gravado."
+      }
+    },
+    "undoDialog": {
+      "title": "Desfazer dia sem aula",
+      "summary": "O dia {{period}} ({{reason}}) deixa de existir e as aulas que ele cancelou voltam para Agendada. Aula cancelada à mão continua cancelada. A mensalidade não muda.",
+      "notify": "Avisar as turmas",
+      "confirm": "Desfazer dia",
+      "errors": {
+        "403": "Você não tem permissão para isto. Nada foi alterado.",
+        "404": "Este dia não existe mais. Nada foi alterado.",
+        "409": "O dia já começou e não pode ser desfeito. Nada foi alterado.",
+        "generic": "Não foi possível desfazer. Tente de novo. Nada foi alterado."
+      }
+    }
+  },
   "classes": {
     "title": "Turmas",
     "intro": "Turmas das suas unidades, com os dias, os horários, o professor e a situação de cada uma.",

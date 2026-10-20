@@ -152,7 +152,8 @@ public class Agenda {
                                 rs.getBoolean(13), can.edit(), can.cancel());
                     }).list();
             List<NoClassDay> days = jdbc.sql("select starts_on, ends_on, reason from no_class_day where organization_id = :org and unit_id = :unit "
-                    + "and starts_on <= :to and ends_on >= :from order by starts_on, id")
+                    + "and starts_on <= :to and ends_on >= :from "
+                    + "and not exists (select 1 from no_class_day_class k where k.no_class_day_id = no_class_day.id) order by starts_on, id")
                     .param("org", org).param("unit", unit.id()).param("from", from).param("to", to)
                     .query((rs, n) -> new NoClassDay(rs.getObject(1, LocalDate.class).toString(), rs.getObject(2, LocalDate.class).toString(),
                             rs.getString(3))).list();
