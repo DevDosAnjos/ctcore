@@ -1624,6 +1624,30 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
   /students:
+    get:
+      summary: Lista paginada de alunos da organização do vínculo ativo (RF-ALU-01). Coordenador e Administrador.
+      description: |
+        Ordenada por nome (sem acento nem caixa) e depois id (`sort=name`). O Coordenador vê todos; o Administrador só os de `registeredUnitId`
+        dentro das suas unidades (RN-ALU-07, até a matrícula; D2); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e
+        Responsável recebem 403. `q` ignora acento e maiúsculas; `ageRangeId` devolve quem tem hoje idade dentro da faixa (`minAge` até `maxAge`,
+        sem teto quando nulo); faixa de outra organização, 404. Os filtros combinam (E). `ageRange` da linha é a faixa de maior `minAge` que cobre a
+        idade, ou nulo. `photoUrl` é uma URL temporária assinada. A resposta nunca traz CPF, e-mail, telefone, endereço nem contato de emergência.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: ageRangeId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
+      responses:
+        '200':
+          description: Página de alunos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       summary: Cadastra o aluno (RF-ALU-01). Coordenador e Administrador.
       description: |
@@ -2921,6 +2945,36 @@ components:
           type: array
           maxItems: 2
           items: { $ref: '#/components/schemas/StudentGuardianInput' }
+    StudentRow:
+      type: object
+      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true, description: URL temporária assinada; nulo sem foto. }
+        birthDate: { type: string, format: date }
+        age: { type: integer, minimum: 0 }
+        minor: { type: boolean }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        registeredUnit:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        createdAt: { type: string, format: date-time }
+    StudentList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/StudentRow' } }
     StudentRef:
       type: object
       required: [id, name, photoUrl]

@@ -3,17 +3,23 @@ package br.com.ctcore.student;
 import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
 import br.com.ctcore.api.error.ErrorCode;
+import br.com.ctcore.api.page.PageRequest;
+import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.InviteRules;
 import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
+import br.com.ctcore.modality.Modalities;
 import br.com.ctcore.permission.Access;
 import br.com.ctcore.permission.Permission;
 import br.com.ctcore.permission.Permissions;
 import br.com.ctcore.storage.FileStorage;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -42,6 +48,14 @@ public class Students {
             String gender, String referral, String emergencyName, String emergencyRelationship, String emergencyPhone, String photoUrl,
             boolean emailProblem, List<GuardianRow> guardians) {}
 
+    public record UnitRef(UUID id, String name) {}
+
+    public record RangeRef(UUID id, String name) {}
+
+    /** RF-ALU-01: linha da lista, sem CPF, e-mail, telefone, endereço nem emergência (minimização). */
+    public record Row(UUID id, String name, String photoUrl, LocalDate birthDate, int age, boolean minor, RangeRef ageRange, UnitRef registeredUnit,
+            OffsetDateTime createdAt) {}
+
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
     private final Permissions permissions;
@@ -60,6 +74,74 @@ public class Students {
         if (who == null || who.role() == null || permissions.effective(who).get(Permission.STUDENT_MANAGE) == Access.NONE) {
             throw new AccessDeniedException("Permission denied");
         }
+    }
+
+    /**
+     * RF-ALU-01: lista paginada por nome. O alcance do Administrador (RN-ALU-07) fica em {@link #reachPredicate}, o único ponto que a
+     * matrícula (#63) troca. Faixa de outra organização dá 404; unidade fora do alcance, lista vazia.
+     */
+    public PageResponse<Row> list(AccountPrincipal who, String q, UUID unitId, UUID ageRangeId, PageRequest page) {
+        requireAccess(who);
+        return transactions.execute(() -> {
+            Integer min = null, max = null;
+            if (ageRangeId != null) {
+                var limits = jdbc.sql("select min_age, max_age from age_range where organization_id = :org and id = :id").param("org", who.organizationId())
+                        .param("id", ageRangeId).query((rs, n) -> new Integer[] {rs.getInt(1), (Integer) rs.getObject(2)}).optional()
+                        .orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+                min = limits[0];
+                max = limits[1];
+            }
+            boolean admin = who.role() == Role.ADMINISTRATOR;
+            Set<UUID> reach = who.units() == null ? Set.of() : who.units();
+            if (admin && (reach.isEmpty() || unitId != null && !reach.contains(unitId))) return PageResponse.of(List.<Row>of(), page, 0);
+
+            LocalDate today = LocalDate.now(clock);
+            String age = "extract(year from age(cast(:today as date), s.birth_date))";
+            StringBuilder where = new StringBuilder("s.organization_id = :org");
+            Map<String, Object> params = new HashMap<>();
+            params.put("org", who.organizationId());
+            params.put("today", today);
+            if (q != null && !q.isBlank()) {
+                where.append(" and s.name_key like :q escape '\\'");
+                params.put("q", "%" + Modalities.normalize(q).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+            }
+            if (unitId != null) {
+                where.append(" and s.registered_unit_id = :unit");
+                params.put("unit", unitId);
+            }
+            if (min != null) {
+                where.append(" and ").append(age).append(" >= :min");
+                params.put("min", min);
+                if (max != null) {
+                    where.append(" and ").append(age).append(" <= :max");
+                    params.put("max", max);
+                }
+            }
+            where.append(reachPredicate(admin));
+            if (admin) params.put("reach", reach);
+
+            long total = jdbc.sql("select count(*) from student s where " + where).params(params).query(Long.class).single();
+            // Faixas podem se sobrepor: vale a de maior idade mínima (D6).
+            List<Row> rows = jdbc.sql("select s.id, s.name, s.photo, s.birth_date, " + age + ", r.id, r.name, u.id, u.name, s.created_at "
+                    + "from student s join unit u on u.id = s.registered_unit_id "
+                    + "left join lateral (select a.id, a.name from age_range a where a.organization_id = s.organization_id and a.min_age <= " + age
+                    + " and (a.max_age is null or a.max_age >= " + age + ") order by a.min_age desc, a.name_key limit 1) r on true "
+                    + "where " + where + " order by s.name_key, s.name, s.id limit :limit offset :offset")
+                    .params(params).param("limit", page.size()).param("offset", page.offset())
+                    .query((rs, n) -> {
+                        LocalDate birth = rs.getObject(4, LocalDate.class);
+                        UUID rangeId = rs.getObject(6, UUID.class);
+                        return new Row(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)), birth, rs.getInt(5),
+                                !InviteRules.adult(birth, today), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
+                                new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class));
+                    }).list();
+            return PageResponse.of(rows, page, total);
+        });
+    }
+
+    /** Alcance do Administrador: hoje a unidade de cadastro; com a matrícula (#63) passa a ser a modalidade na unidade (RN-ALU-07). */
+    private static String reachPredicate(boolean admin) {
+        return admin ? " and s.registered_unit_id in (:reach)" : "";
     }
 
     public Detail get(AccountPrincipal who, UUID id) {

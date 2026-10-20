@@ -328,6 +328,26 @@
       "appoint": "Nomear a mim mesmo"
     }
   },
+  "students": {
+    "title": "Alunos",
+    "intro": "Alunos da organização, com a unidade de cadastro, a idade e a faixa etária de cada um.",
+    "columnsChoose": "Escolher colunas",
+    "columns": {
+      "name": "Nome",
+      "unit": "Unidade",
+      "age": "Idade",
+      "ageRange": "Faixa etária",
+      "createdAt": "Cadastrado em"
+    },
+    "age_one": "{{count}} ano",
+    "age_other": "{{count}} anos",
+    "filters": {
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "ageRange": "Faixa etária",
+      "allAgeRanges": "Todas as faixas"
+    }
+  },
   "teachers": {
     "title": "Professores",
     "intro": "Professores da organização, com as modalidades, as unidades e a situação de cada um.",

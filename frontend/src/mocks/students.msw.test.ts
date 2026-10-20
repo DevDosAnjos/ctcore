@@ -128,3 +128,47 @@ describe("alunos e responsáveis x OpenAPI (RF-ALU-01, CA23)", () => {
     for (const c of cards) expect(Object.keys(c).sort()).toEqual([...openapi.components.schemas.PortalStudentCard.required].sort());
   });
 });
+
+describe("lista de alunos x OpenAPI (RF-ALU-01, CA11)", () => {
+  it("o contrato declara a rota e o esquema StudentRow", () => {
+    expect(Object.keys(openapi.paths["/students"].get.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404"]));
+    expect(openapi.components.schemas.StudentRow.required).toEqual(
+      expect.arrayContaining(["id", "name", "photoUrl", "birthDate", "age", "minor", "ageRange", "registeredUnit", "createdAt"]),
+    );
+  });
+
+  it("sem sessão 401; Professor 403; parâmetros inválidos 400; faixa inexistente 404", async () => {
+    expect((await send("GET", "/students")).status).toBe(401);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await send("GET", "/students")).status).toBe(403);
+    await login("ana@exemplo.com");
+    for (const bad of ["?size=10", "?page=0", "?sort=age", "?unitId=x", "?ageRangeId=x"]) expect((await send("GET", `/students${bad}`)).status).toBe(400);
+    expect((await send("GET", "/students?ageRangeId=00000000-0000-0000-0000-0000000009ff")).status).toBe(404);
+  });
+
+  it("lista no formato do servidor, ordenada por nome, sem dado pessoal, e filtra por nome, unidade e faixa", async () => {
+    await login("ana@exemplo.com");
+    const all = await (await send("GET", "/students")).json();
+    expect(all).toMatchObject({ page: 1, size: 25, total: 2 });
+    expect(all.items.map((s: { name: string }) => s.name)).toEqual(["Aluno Adulto Fictício", "Aluno Menor Fictício"]);
+    for (const row of all.items) {
+      expect(Object.keys(row).sort()).toEqual([...openapi.components.schemas.StudentRow.required].sort());
+      expect(Object.keys(row.registeredUnit).sort()).toEqual(["id", "name"]);
+    }
+    expect(all.items[0]).toMatchObject({ minor: false, ageRange: { name: "Adulto" } });
+    expect(all.items[1]).toMatchObject({ minor: true, ageRange: { name: "Infantil" } });
+    const names = async (qs: string) => (await (await send("GET", `/students${qs}`)).json()).items.map((s: { name: string }) => s.name);
+    expect(await names("?q=MENOR")).toEqual(["Aluno Menor Fictício"]);
+    expect(await names(`?unitId=${NORTE}`)).toEqual([]);
+    expect(await names(`?unitId=${CENTRO}&q=adulto`)).toEqual(["Aluno Adulto Fictício"]);
+    const ranges = await (await send("GET", "/age-ranges")).json();
+    const adulto = ranges.items.find((r: { name: string }) => r.name === "Adulto").id;
+    expect(await names(`?ageRangeId=${adulto}`)).toEqual(["Aluno Adulto Fictício"]);
+  });
+
+  it("Administrador vê a unidade de cadastro dele; unitId fora do alcance devolve vazio", async () => {
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await (await send("GET", "/students")).json()).total).toBe(2);
+    expect(await (await send("GET", `/students?unitId=${NORTE}`)).json()).toMatchObject({ items: [], total: 0 });
+  });
+});
