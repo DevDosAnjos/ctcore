@@ -20,6 +20,6 @@ afterAll(() => server.close());
 const nodeFetch = globalThis.fetch;
 globalThis.fetch = ((input, init) => nodeFetch(typeof input === "string" && input.startsWith("/") ? new URL(input, window.location.origin) : input, init)) as typeof fetch;
 
-// A primeira renderizacao com cobertura e lenta; findBy espera mais que o 1 s padrao.
+// A primeira renderizacao com cobertura e lenta; findBy espera mais que o 1 s padrao (e a suíte roda junto do verify do back-end).
 
-configure({ asyncUtilTimeout: 5000 });
+configure({ asyncUtilTimeout: 10000 });

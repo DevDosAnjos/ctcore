@@ -47,7 +47,7 @@ class AgendaLessonCancelIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA6, CA8, CA10: cada motivo cancela; texto só em OTHER; canais na auditoria com o portal; lista traz o código")
+    @DisplayName("RN-AGE-05: CA6, CA8, CA10: cada motivo cancela; texto só em OTHER; canais na auditoria com o portal; lista traz o código")
     void reasons() throws Exception {
         var t = tenant();
         UUID ana = teacher(t, "Ana", null);

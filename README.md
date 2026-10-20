@@ -33,6 +33,8 @@ Antes de iniciar o back-end, execute `bash infra/scripts/prepare-runtime-db.sh` 
 
 Com o ambiente de pé e o back-end rodado ao menos uma vez (ele aplica as migrações): `bash infra/scripts/seed.sh`. Aplica `infra/seed/*.sql` em ordem do nome, só no PostgreSQL local, sem duplicar nem sobrescrever (pode rodar de novo). Item que cria tabela acrescenta `infra/seed/NN-nome.sql` com `on conflict do nothing`. Para zerar tudo: `docker compose down -v`.
 
+**Aulas na Agenda (RN-AGE-01).** O seed cria turmas, mas nenhuma aula: as aulas nascem pela tarefa diária do back-end, que roda às 03:00 UTC e mantém 8 semanas à frente, e também na hora quando uma turma é criada ou tem os horários alterados pela tela (só as aulas dessa turma). Para ver a Agenda com aulas logo depois do seed, com o back-end rodando: em Operação › Turmas, crie uma turma (ou edite os horários de uma turma do seed e salve). A Agenda mostra as 8 semanas a partir de hoje. Dia sem aula do seed (daqui a 10 dias) cancela as aulas do dia quando elas são geradas.
+
 | Serviço | Para que serve | Endereço (só em 127.0.0.1) |
 | --- | --- | --- |
 | `postgres` | PostgreSQL 16 | `localhost:5432` · banco, usuário `ctcore`, senha `ctcore_dev` |

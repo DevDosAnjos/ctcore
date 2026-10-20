@@ -114,7 +114,7 @@ describe("NoClassDaysPage", () => {
     expect(screen.getByText(new RegExp(`${br(addDays(todayIso(), 30))} · Tiradentes`))).toBeInTheDocument();
   });
 
-  it("CA17: confirmar uma sugestão abre a janela com a data e o motivo, o aviso é escolhido e a lista é refeita ao salvar", async () => {
+  it("RN-AGE-11, CA17: confirmar uma sugestão abre a janela com a data e o motivo, o aviso é escolhido e a lista é refeita ao salvar", async () => {
     const user = userEvent.setup();
     setup();
     await ready();

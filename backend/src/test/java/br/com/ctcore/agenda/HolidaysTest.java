@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class HolidaysTest {
     @Test
-    @DisplayName("CA1: Páscoa e Sexta-feira Santa de 2026 e 2027")
+    @DisplayName("RN-AGE-09: CA1: Páscoa e Sexta-feira Santa de 2026 e 2027")
     void easterAndGoodFriday() {
         assertThat(Holidays.easter(2026)).isEqualTo(LocalDate.of(2026, 4, 5));
         assertThat(Holidays.easter(2027)).isEqualTo(LocalDate.of(2027, 3, 28));

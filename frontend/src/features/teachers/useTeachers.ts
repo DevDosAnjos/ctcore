@@ -48,7 +48,7 @@ export function useTeacherFilterOptions() {
   return options;
 }
 
-// Espelha TeacherDetail do OpenAPI (RF-PRO-02). Contato só vem aqui; classes e upcomingClasses vêm vazias até a Sprint 05.
+// Espelha TeacherDetail do OpenAPI (RF-PRO-02). Contato só vem aqui; classes (titular e auxiliar) e upcomingClasses (aula avulsa com classId nulo) vêm da agenda.
 export interface TeacherDetail {
   id: string;
   name: string;
@@ -62,7 +62,7 @@ export interface TeacherDetail {
   modalities: Teacher["modalities"];
   units: Teacher["units"];
   classes: { id: string; name: string; role: "HEAD" | "ASSISTANT" }[];
-  upcomingClasses: { classId: string; name: string; startsAt: string }[];
+  upcomingClasses: { classId: string | null; name: string; startsAt: string }[];
   access: Teacher["access"];
 }
 

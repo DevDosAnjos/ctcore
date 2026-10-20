@@ -28,6 +28,11 @@ class UnitModalityIT extends OrganizationBase {
     @org.junit.jupiter.api.BeforeEach
     @AfterEach
     void clean() {
+        adminJdbc().update("delete from training_class_assistant");
+        adminJdbc().update("delete from training_class_schedule");
+        adminJdbc().update("delete from training_class");
+        adminJdbc().update("delete from teacher_unit");
+        adminJdbc().update("delete from teacher");
         adminJdbc().update("delete from unit_modality");
         adminJdbc().update("delete from graduation_level");
         adminJdbc().update("delete from organization_modality");
@@ -69,6 +74,57 @@ class UnitModalityIT extends OrganizationBase {
         adminJdbc().update("insert into unit (id, organization_id, name, short_name) values (?, ?, 'Second', ?)", second, t.orgId(), "second-" + second);
         adminJdbc().update("insert into unit_settings (unit_id, organization_id) values (?, ?)", second, t.orgId());
         return second;
+    }
+
+    private UUID classOf(Tenant t, UUID unit, String name, UUID modality, String status) {
+        UUID head = UUID.randomUUID();
+        adminJdbc().update("insert into teacher (id, organization_id, name, name_key) values (?, ?, ?, ?)", head, t.orgId(), "Prof " + name, "prof " + name + head);
+        adminJdbc().update("insert into teacher_unit (organization_id, teacher_id, unit_id) values (?, ?, ?)", t.orgId(), head, unit);
+        UUID id = UUID.randomUUID();
+        adminJdbc().update("insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, head_teacher_id, status) values (?, ?, ?, ?, ?, ?, ?, ?)",
+                id, t.orgId(), unit, name, Modalities.normalize(name), modality, head, status);
+        return id;
+    }
+
+    @Test
+    @DisplayName("RN-MOD-06, RF-MOD-03: desmarcar com turma ativa da modalidade na unidade dá 409 e lista as turmas; só estas impedem; isolamento e perfis")
+    void withdrawRefusedWithActiveClasses() throws Exception {
+        var t = tenant();
+        var other = tenant();
+        activate(t, "Judô", "Boxe");
+        activate(other, "Judô");
+        UUID judo = id("Judô");
+        UUID second = secondUnit(t);
+        var coordinator = who(t, Role.COORDINATOR);
+        for (UUID unit : new UUID[] {t.unitId(), second}) {
+            assertThat(send(offer(unit, judo, "{\"offered\":true}"), coordinator).getStatus()).isEqualTo(200);
+        }
+        assertThat(send(offer(t.unitId(), id("Boxe"), "{\"offered\":true}"), coordinator).getStatus()).isEqualTo(200);
+        classOf(t, t.unitId(), "Judô Kids", judo, "ACTIVE");
+        classOf(t, t.unitId(), "Judô Adulto", judo, "ACTIVE");
+        classOf(t, t.unitId(), "Judô Antiga", judo, "INACTIVE");
+        classOf(t, t.unitId(), "Boxe Noite", id("Boxe"), "ACTIVE");
+        classOf(t, second, "Judô Outra Unidade", judo, "ACTIVE");
+        classOf(other, other.unitId(), "Judô Alheia", judo, "ACTIVE");
+        assertThat(send(offer(other.unitId(), judo, "{\"offered\":true}"), who(other, Role.COORDINATOR)).getStatus()).isEqualTo(200);
+
+        var refused = send(offer(t.unitId(), judo, "{\"offered\":false}"), coordinator);
+        assertThat(refused.getStatus()).isEqualTo(409);
+        var fields = body(refused).findValue("fields");
+        assertThat(body(refused).get("code").asText()).isEqualTo("UNIT_MODALITY_IN_USE");
+        assertThat(fields.findParents("field").stream().map(f -> f.get("field").asText() + "=" + f.get("message").asText()).toList())
+                .containsExactly("class=Judô Adulto", "class=Judô Kids");
+        assertThat(adminJdbc().queryForObject("select offered from unit_modality where unit_id = ? and modality_id = ?", Boolean.class, t.unitId(), judo)).isTrue();
+        assertThat(audits(t, "unit.modality.withdrawn")).isZero();
+
+        assertThat(send(offer(t.unitId(), judo, "{\"offered\":false}"), who(t, Role.ADMINISTRATOR)).getStatus()).isEqualTo(409);
+        assertThat(send(offer(t.unitId(), judo, "{\"offered\":false}"), who(t, Role.TEACHER)).getStatus()).isEqualTo(403);
+        assertThat(send(offer(t.unitId(), judo, "{\"offered\":false}"), who(other, Role.COORDINATOR)).getStatus()).isEqualTo(404);
+        assertThat(send(offer(second, id("Boxe"), "{\"offered\":false}"), coordinator).getStatus()).isEqualTo(200);
+
+        adminJdbc().update("update training_class set status = 'INACTIVE' where unit_id = ? and modality_id = ?", t.unitId(), judo);
+        assertThat(send(offer(t.unitId(), judo, "{\"offered\":false}"), coordinator).getStatus()).isEqualTo(200);
+        assertThat(adminJdbc().queryForObject("select offered from unit_modality where unit_id = ? and modality_id = ?", Boolean.class, other.unitId(), judo)).isTrue();
     }
 
     @Test

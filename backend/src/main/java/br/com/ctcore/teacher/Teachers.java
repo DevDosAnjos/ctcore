@@ -182,7 +182,25 @@ public class Teachers {
         Map<UUID, List<ModalityRef>> modalities = new HashMap<>();
         refs(who.organizationId(), List.of(id), units, modalities);
         return new Detail(b.id(), b.name(), photoUrl(b.photo()), b.bio(), b.email(), b.phone(), b.consent(), b.declared(), b.status(),
-                modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), headClasses(id), List.of(), b.access());
+                modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), classes(id), upcoming(id), b.access());
+    }
+
+    /** RF-PRO-02: turmas ativas como titular ou auxiliar (as mesmas do classCount). Roda dentro da transação da organização. */
+    List<ClassRef> classes(UUID teacherId) {
+        return jdbc.sql("select c.id, c.name, case when c.head_teacher_id = :id then 'HEAD' else 'ASSISTANT' end from training_class c "
+                + "where c.status = 'ACTIVE' and (c.head_teacher_id = :id or exists (select 1 from training_class_assistant a where a.class_id = c.id and a.teacher_id = :id)) "
+                + "order by c.name_key, c.id").param("id", teacherId)
+                .query((rs, n) -> new ClassRef(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3))).list();
+    }
+
+    /** RF-PRO-02, RN-PRO-06: próximas aulas não canceladas em que o professor dá a aula (titular ou substituto) ou é auxiliar da turma; a avulsa traz o título. */
+    List<UpcomingClass> upcoming(UUID teacherId) {
+        return jdbc.sql("select l.class_id, coalesce(c.name, l.title), ((l.lesson_date + l.starts_at) at time zone u.timezone) from lesson l "
+                + "join unit u on u.id = l.unit_id left join training_class c on c.id = l.class_id "
+                + "where not l.cancelled and ((l.lesson_date + l.ends_at) at time zone u.timezone) > now() "
+                + "and (l.teacher_id = :id or exists (select 1 from training_class_assistant a where a.class_id = l.class_id and a.teacher_id = :id)) "
+                + "order by 3, 2 limit 10").param("id", teacherId)
+                .query((rs, n) -> new UpcomingClass(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, java.time.OffsetDateTime.class))).list();
     }
 
     /** RN-PRO-05: turmas ativas em que o professor é titular. Roda dentro da transação da organização. */

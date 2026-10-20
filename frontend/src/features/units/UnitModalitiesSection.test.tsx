@@ -53,6 +53,27 @@ describe("UnitModalitiesSection (RF-MOD-03)", () => {
     expect(screen.getByRole("switch", { name: "Boxe" })).not.toBeChecked();
   });
 
+  it("RN-MOD-06: turma ativa impede desmarcar, o interruptor volta e a tela lista as turmas", async () => {
+    const user = userEvent.setup();
+    server.use(
+      listing({ [A]: [item("m1", "Judô", true)] }),
+      http.put("/api/v1/units/:id/modalities/:mid", () =>
+        HttpResponse.json(
+          { code: "UNIT_MODALITY_IN_USE", message: "x", changed: false, fields: [{ field: "class", message: "Judô Adulto" }, { field: "class", message: "Judô Kids" }] },
+          { status: 409 },
+        ),
+      ),
+    );
+    render(ui(A));
+    await user.click(await screen.findByRole("switch", { name: "Judô" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("A unidade não pode deixar de oferecer Judô enquanto houver turmas ativas dela");
+    expect(alert).toHaveTextContent("Judô Adulto");
+    expect(alert).toHaveTextContent("Judô Kids");
+    expect(screen.getByRole("switch", { name: "Judô" })).toBeChecked();
+    expect(await axeViolations(document.body)).toEqual([]);
+  });
+
   it("CA7: sem canManage o interruptor é só leitura", async () => {
     server.use(listing({ [A]: [item("m1", "Boxe", true)] }, false));
     render(ui(A));

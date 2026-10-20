@@ -216,7 +216,7 @@ class TrainingClassWriteIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA3: nome único na unidade entre ativas, sem caixa nem acento; outra unidade, desativada e editar a si mesma passam")
+    @DisplayName("RN-TUR-01: CA3: nome único na unidade entre ativas, sem caixa nem acento; outra unidade, desativada e editar a si mesma passam")
     void uniqueName() throws Exception {
         var t = tenant();
         var who = who(t, Role.COORDINATOR);
@@ -241,7 +241,7 @@ class TrainingClassWriteIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA4: titular e auxiliares ativos da unidade e da organização; sem auxiliares salva")
+    @DisplayName("RN-TUR-05: CA4: titular e auxiliares ativos da unidade e da organização; sem auxiliares salva")
     void teachers() throws Exception {
         var t = tenant();
         var o = tenant();
@@ -267,7 +267,7 @@ class TrainingClassWriteIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA5: modalidade ativa e oferecida pela unidade; faixa da organização; sem faixa salva")
+    @DisplayName("RN-TUR-01: CA5: modalidade ativa e oferecida pela unidade; faixa da organização; sem faixa salva")
     void modalityAndAge() throws Exception {
         var t = tenant();
         var o = tenant();
