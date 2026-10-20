@@ -31,5 +31,7 @@ grant usage on schema public to :"runtime_user";
 grant select, insert, update, delete on all tables in schema public to :"runtime_user";
 select format('revoke insert, update, delete on modality from %I', :'runtime_user') where to_regclass('public.modality') is not null \gexec
 select format('revoke insert, update, delete on modality_default_level from %I', :'runtime_user') where to_regclass('public.modality_default_level') is not null \gexec
+select format('revoke delete on student from %I', :'runtime_user') where to_regclass('public.student') is not null \gexec
+select format('revoke delete on student_guardian from %I', :'runtime_user') where to_regclass('public.student_guardian') is not null \gexec
 alter default privileges in schema public grant select, insert, update, delete on tables to :"runtime_user";
 SQL

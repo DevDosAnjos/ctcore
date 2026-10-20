@@ -1477,6 +1477,178 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /students:
+    post:
+      summary: Cadastra o aluno (RF-ALU-01). Coordenador e Administrador.
+      description: |
+        Cria o aluno na organização da sessão, com a unidade de cadastro `registeredUnitId` (ativa; o Administrador só as dele, senão 403;
+        de outra organização ou inativa, 400). CPF só com dígitos e dígitos verificadores. Adulto (18 anos ou mais) informa CPF, e-mail e
+        celular próprios; menor precisa de ao menos um e no máximo dois `guardians` (CPF, e-mail e celular do responsável), com exatamente
+        um financeiro (com um só, ele é o financeiro). Cada responsável novo recebe conta `INVITED`, vínculo `GUARDIAN` pendente e o próprio
+        convite; e-mail já cadastrado reaproveita conta e cadastro. Campo fora do contrato (como dado de saúde) é ignorado e não é gravado.
+        CPF já cadastrado na organização: 409 `STUDENT_CPF_EXISTS`; sem CPF, mesmo nome e nascimento: 409 `STUDENT_POSSIBLE_DUPLICATE`,
+        repetível com `confirmDuplicate` igual a `true`; os dois trazem em `fields` só `id`, `name` e `photoUrl` do existente. CPF ou e-mail
+        de responsável em conflito com outro: 409 `GUARDIAN_CONFLICT`. Grava `student.created` e `student.guardian_linked`, sem CPF, e-mail,
+        telefone nem endereço.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StudentInput' } } }
+      responses:
+        '201':
+          description: Aluno criado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Duplicidade ou conflito (STUDENT_CPF_EXISTS, STUDENT_POSSIBLE_DUPLICATE, GUARDIAN_CONFLICT).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/lookup:
+    get:
+      summary: Busca o aluno pelo CPF (RN-ALU-06). Coordenador e Administrador.
+      description: Devolve só `id`, `name` e `photoUrl` do aluno da organização com esse CPF, de qualquer unidade; nenhum outro dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: cpf, in: query, required: true, schema: { type: string }, description: CPF com ou sem máscara. }
+      responses:
+        '200':
+          description: Aluno encontrado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentRef' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}:
+    get:
+      summary: Detalhe do aluno com os responsáveis (RF-ALU-01). Coordenador e Administrador.
+      description: Administrador só alcança o aluno cuja unidade de cadastro está no alcance dele; fora disso, 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Aluno.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/guardians:
+    post:
+      summary: Liga um responsável ao aluno (RN-RSP-02, RN-RSP-06). Coordenador e Administrador.
+      description: |
+        Corpo com os dados do responsável, `financial` (opcional; o primeiro responsável é sempre o financeiro; `true` passa o financeiro
+        ao novo) e `reason` obrigatório (3 a 200 caracteres). Terceiro responsável: 409 `GUARDIAN_LIMIT`; o mesmo responsável já ligado,
+        409; CPF e e-mail em conflito com outro cadastro, 409 `GUARDIAN_CONFLICT`. Grava `student.guardian_linked` com o motivo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StudentGuardianInput' } } }
+      responses:
+        '200':
+          description: Aluno com os responsáveis atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Limite, conflito ou responsável já ligado (GUARDIAN_LIMIT, GUARDIAN_CONFLICT, CONFLICT).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/guardians/{guardianId}:
+    put:
+      summary: Passa o financeiro a este responsável (RN-RSP-02). Coordenador e Administrador.
+      description: Só `financial` igual a `true` existe; `false` sozinho dá 400. Grava `student.guardian_financial_changed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: guardianId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [financial]
+              properties:
+                financial: { type: boolean, enum: [true] }
+      responses:
+        '200':
+          description: Aluno com os responsáveis atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/guardians/{guardianId}/unlink:
+    post:
+      summary: Desliga o responsável do aluno (RN-RSP-05). Coordenador e Administrador.
+      description: |
+        `reason` obrigatório (3 a 200 caracteres), só na auditoria (`student.guardian_unlinked`). Último responsável de aluno menor:
+        409 `MINOR_NEEDS_GUARDIAN`. Desligar o financeiro havendo outro passa o financeiro ao que fica. O desligado recebe e-mail neutro,
+        sem nome do aluno nem motivo; sem aluno nenhum na organização, o vínculo `GUARDIAN` termina e o convite pendente é cancelado.
+        O aluno e o histórico nunca são excluídos.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: guardianId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 200 }
+      responses:
+        '200':
+          description: Aluno com os responsáveis atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Último responsável de menor (MINOR_NEEDS_GUARDIAN).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/guardians/{guardianId}/invite:
+    post:
+      summary: Reenvia o convite pendente do responsável (RN-RSP-05, RN-ACE-13). Coordenador e Administrador.
+      description: |
+        Invalida o convite anterior; no máximo 3 reenvios por dia (429). Acesso já ativo: 409. Grava `student.guardian_invite_resent`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: guardianId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Convite reenviado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429':
+          description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /portal/students:
+    get:
+      summary: Cartões dos alunos do portal (RN-RSP-03, RN-LGP-03). Responsável e Aluno.
+      description: |
+        Um cartão por aluno ligado ao responsável da sessão (em qualquer unidade da organização) e, se a conta também é a de um aluno, o
+        cartão dele com `self` igual a `true`. Só `id`, `name`, `photoUrl` e `self`. Sessão de gestão ou de Professor: 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Cartões, o próprio primeiro.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PortalStudentCard' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 components:
   securitySchemes:
     sessionCookie:
@@ -1722,6 +1894,11 @@ components:
             - PASSWORD_WEAK
             - PASSWORD_LEAKED
             - MINOR_HAS_NO_ACCOUNT
+            - STUDENT_CPF_EXISTS
+            - STUDENT_POSSIBLE_DUPLICATE
+            - MINOR_NEEDS_GUARDIAN
+            - GUARDIAN_LIMIT
+            - GUARDIAN_CONFLICT
             - INVALID_TWO_FACTOR_CODE
             - TWO_FACTOR_TICKET_INVALID
             - TWO_FACTOR_SETUP_REQUIRED
@@ -2489,6 +2666,98 @@ components:
         page: { type: integer, minimum: 1 }
         size: { type: integer, enum: [25, 50, 100] }
         total: { type: integer, format: int64, minimum: 0 }
+    StudentGuardianInput:
+      type: object
+      required: [name, cpf, email, phone]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        cpf: { type: string, description: CPF com dígitos verificadores; guardado só com dígitos. }
+        email: { type: string, format: email }
+        phone: { type: string, description: Celular com DDD. }
+        financial: { type: boolean, description: "Em `POST /students`, exatamente um dos dois; em ligar, opcional." }
+        reason: { type: string, minLength: 3, maxLength: 200, description: Obrigatório ao ligar pela rota de responsáveis; vai para a auditoria. }
+    StudentInput:
+      type: object
+      required: [registeredUnitId, name, birthDate, postalCode, street, number, district, city, state]
+      properties:
+        registeredUnitId: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        birthDate: { type: string, format: date }
+        postalCode: { type: string }
+        street: { type: string }
+        number: { type: string }
+        complement: { type: string, nullable: true }
+        district: { type: string }
+        city: { type: string }
+        state: { type: string, description: UF. }
+        cpf: { type: string, nullable: true, description: Obrigatório para adulto. }
+        email: { type: string, nullable: true, description: Obrigatório para adulto. }
+        phone: { type: string, nullable: true, description: Celular com DDD; obrigatório para adulto. }
+        gender: { type: string, nullable: true, enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY] }
+        referral: { type: string, nullable: true, enum: [INSTAGRAM, REFERRAL, DIRECTORY, WALK_BY, OTHER] }
+        emergencyName: { type: string, nullable: true }
+        emergencyRelationship: { type: string, nullable: true }
+        emergencyPhone: { type: string, nullable: true }
+        confirmDuplicate: { type: boolean, description: Confirma o cadastro apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
+        guardians:
+          type: array
+          maxItems: 2
+          items: { $ref: '#/components/schemas/StudentGuardianInput' }
+    StudentRef:
+      type: object
+      required: [id, name, photoUrl]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+    StudentGuardianRow:
+      type: object
+      required: [guardianId, name, email, phone, financial, access, emailProblem]
+      properties:
+        guardianId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        financial: { type: boolean }
+        access: { type: string, enum: [PENDING, ACTIVE] }
+        emailProblem: { type: boolean }
+    StudentDetail:
+      type: object
+      required: [id, registeredUnitId, name, birthDate, minor, postalCode, street, number, complement, district, city, state, cpf, email, phone, gender, referral, emergencyName, emergencyRelationship, emergencyPhone, photoUrl, emailProblem, guardians]
+      properties:
+        id: { type: string, format: uuid }
+        registeredUnitId: { type: string, format: uuid }
+        name: { type: string }
+        birthDate: { type: string, format: date }
+        minor: { type: boolean }
+        postalCode: { type: string }
+        street: { type: string }
+        number: { type: string }
+        complement: { type: string, nullable: true }
+        district: { type: string }
+        city: { type: string }
+        state: { type: string }
+        cpf: { type: string, nullable: true, description: Só dígitos. }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true, description: Só dígitos. }
+        gender: { type: string, nullable: true }
+        referral: { type: string, nullable: true }
+        emergencyName: { type: string, nullable: true }
+        emergencyRelationship: { type: string, nullable: true }
+        emergencyPhone: { type: string, nullable: true }
+        photoUrl: { type: string, nullable: true }
+        emailProblem: { type: boolean }
+        guardians:
+          type: array
+          items: { $ref: '#/components/schemas/StudentGuardianRow' }
+    PortalStudentCard:
+      type: object
+      required: [id, name, photoUrl, self]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        self: { type: boolean, description: Cartão do próprio aluno ("Você"). }
   responses:
     BadRequest:
       description: Dados inválidos (VALIDATION_ERROR) ou requisição ilegível (MALFORMED_REQUEST).

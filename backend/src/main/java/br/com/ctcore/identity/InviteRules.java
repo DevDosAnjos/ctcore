@@ -36,6 +36,11 @@ public final class InviteRules {
         return by.role() == Role.COORDINATOR || allowed(by, Role.TEACHER, units);
     }
 
+    /** RN-RSP-06: o convite do responsável sai do cadastro do aluno, feito pela gestão (a permissão de alunos é conferida por quem chama). */
+    public static boolean guardianAccess(Inviter by) {
+        return by.role() == Role.COORDINATOR || by.role() == Role.ADMINISTRATOR;
+    }
+
     public static boolean adult(LocalDate birth, LocalDate today) {
         return birth != null && !birth.plusYears(18).isAfter(today);
     }

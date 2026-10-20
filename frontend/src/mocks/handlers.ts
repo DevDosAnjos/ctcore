@@ -1,9 +1,10 @@
 import { http, HttpResponse, type HttpResponseResolver } from "msw";
 import { isStrongPassword } from "@/features/auth/PasswordRules";
-import { isValidCpfOrCnpj, onlyDigits } from "@/components/fields/masks";
+import { isValidCpf, isValidCpfOrCnpj, onlyDigits } from "@/components/fields/masks";
 import { isHexColor, passesContrast } from "@/features/organization/contrastRatio";
 import { nextHolidays, validateDay, type DayBody } from "./noClassDays";
 import { mockPermissions } from "./permissions";
+import type { StudentDetail, StudentGuardianInput, StudentGuardianRow, StudentInput } from "@/features/students/types";
 
 export type Method = "get" | "post" | "put" | "patch" | "delete";
 
@@ -80,6 +81,10 @@ export const resetMockSession = () => {
   mockNoClassDays = [];
   teacherContacts = initialTeacherContacts();
   teacherResends = 0;
+  mockStudents = initialStudents();
+  guardianResends = 0;
+  for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
+  guardianCpfs["00000000-0000-0000-0000-000000000801"] = "98765432100";
   sessions = initialSessions();
   activeModalities.clear();
   unitModalities.clear();
@@ -612,6 +617,57 @@ const teacherFromInput = (b: TeacherInput, current: MockTeacher | null) => {
   const chosen = [...kept, ...asked.map((id) => ({ id, name: units.find((u) => u.id === id)!.name }))].sort((a, c) => a.name.localeCompare(c.name));
   return { name, directoryConsent: consent, modalities: modalities.sort((a, c) => a.name.localeCompare(c.name)), units: chosen, contact: { bio, email, phone, consentDeclaredByManagement: declared } };
 };
+
+// Alunos e responsáveis (RF-ALU-01), em memória: o Administrador (ADMIN_UNIT) só alcança os cadastrados na unidade dele (404 fora).
+const STUDENT_ADULT = "00000000-0000-0000-0000-000000000701";
+const STUDENT_MINOR = "00000000-0000-0000-0000-000000000702";
+const initialStudents = (): StudentDetail[] => [
+  { id: STUDENT_ADULT, registeredUnitId: ADMIN_UNIT, name: "Aluno Adulto Fictício", birthDate: "1990-03-10", minor: false, postalCode: "01001000", street: "Rua Fictícia", number: "1", complement: null, district: "Centro", city: "Rio de Janeiro", state: "RJ", cpf: "52998224725", email: "aluno1@alfa.test", phone: "21900000001", gender: null, referral: null, emergencyName: null, emergencyRelationship: null, emergencyPhone: null, photoUrl: null, emailProblem: false, guardians: [] },
+  { id: STUDENT_MINOR, registeredUnitId: ADMIN_UNIT, name: "Aluno Menor Fictício", birthDate: "2014-05-02", minor: true, postalCode: "01001000", street: "Rua Fictícia", number: "2", complement: null, district: "Centro", city: "Rio de Janeiro", state: "RJ", cpf: null, email: null, phone: null, gender: null, referral: null, emergencyName: null, emergencyRelationship: null, emergencyPhone: null, photoUrl: null, emailProblem: false, guardians: [{ guardianId: "00000000-0000-0000-0000-000000000801", name: "Responsável Um Fictício", email: "responsavel1@alfa.test", phone: "21900000011", financial: true, access: "PENDING", emailProblem: false }] },
+];
+let mockStudents = initialStudents();
+let guardianResends = 0;
+const guardianCpfs: Record<string, string> = { "00000000-0000-0000-0000-000000000801": "98765432100" };
+const studentError = (status: number, code: string, existing?: StudentDetail) =>
+  error(status, code, "Dados inválidos.", existing ? [{ field: "id", message: existing.id }, { field: "name", message: existing.name }, { field: "photoUrl", message: existing.photoUrl ?? "" }] : []);
+const studentBad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+// 401 sem sessão, 403 sem STUDENT_MANAGE (só Coordenador e Administrador).
+const studentAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  return role === "COORDINATOR" || role === "ADMINISTRATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+const studentFor = (id: string) => {
+  const denied = studentAccess();
+  if (denied) return denied;
+  const found = mockStudents.find((s) => s.id === id && (activeRole() === "COORDINATOR" || s.registeredUnitId === ADMIN_UNIT));
+  return found ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+const isMinor = (birthDate: string) => {
+  const limit = new Date(birthDate);
+  limit.setFullYear(limit.getFullYear() + 18);
+  return limit.getTime() > Date.now();
+};
+const studentReason = (reason: unknown) => (typeof reason === "string" && reason.trim().length >= 3 && reason.trim().length <= 200 ? null : studentBad("reason", "de 3 a 200 caracteres"));
+// Valida o responsável e o devolve como linha; CPF e e-mail de outro responsável dão 409 GUARDIAN_CONFLICT.
+const guardianRow = (g: Partial<StudentGuardianInput> | undefined, financial: boolean): StudentGuardianRow | Response => {
+  const name = g?.name?.trim() ?? "";
+  if (name.length < 2 || name.length > 80) return studentBad("guardians.name", "de 2 a 80 caracteres");
+  if (!isValidCpf(g?.cpf ?? "")) return studentBad("guardians.cpf", "CPF inválido");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g?.email?.trim() ?? "")) return studentBad("guardians.email", "e-mail inválido");
+  if (!/^\d{10,11}$/.test(onlyDigits(g?.phone ?? ""))) return studentBad("guardians.phone", "celular com DDD");
+  const email = g!.email!.trim();
+  const known = mockStudents.flatMap((s) => s.guardians).find((x) => x.email.toLowerCase() === email.toLowerCase());
+  const cpf = onlyDigits(g!.cpf!);
+  const cpfOwner = Object.entries(guardianCpfs).find(([, c]) => c === cpf)?.[0];
+  if ((known && guardianCpfs[known.guardianId] !== cpf) || (cpfOwner && cpfOwner !== known?.guardianId)) {
+    return error(409, "GUARDIAN_CONFLICT", "Este e-mail ou CPF já pertence a outro responsável.");
+  }
+  const guardianId = known?.guardianId ?? crypto.randomUUID();
+  guardianCpfs[guardianId] = cpf;
+  return { guardianId, name: known?.name ?? name, email: known?.email ?? email, phone: known?.phone ?? onlyDigits(g!.phone!), financial, access: known?.access ?? "PENDING", emailProblem: false };
+};
+const sortedGuardians = (list: StudentGuardianRow[]) => [...list].sort((a, b) => Number(b.financial) - Number(a.financial) || a.name.localeCompare(b.name));
 
 export const routes: Route[] = [
   {
@@ -1940,6 +1996,158 @@ export const routes: Route[] = [
       if (left.length) return lastAdministrator(left);
       row.status = "ENDED";
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RF-ALU-01: cadastro. Adulto traz CPF, e-mail e celular; menor traz de 1 a 2 responsáveis (exatamente um financeiro).
+    method: "post",
+    path: "/students",
+    resolver: async ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const b = ((await request.json().catch(() => ({}))) as Partial<StudentInput>) ?? {};
+      const name = b.name?.trim() ?? "";
+      if (name.length < 2 || name.length > 80) return studentBad("name", "de 2 a 80 caracteres");
+      if (!b.birthDate || new Date(b.birthDate).getTime() >= Date.now()) return studentBad("birthDate", "informe uma data no passado");
+      const unit = units.find((u) => u.id === b.registeredUnitId);
+      if (!unit?.active) return studentBad("registeredUnitId", "unidade inválida");
+      if (activeRole() === "ADMINISTRATOR" && b.registeredUnitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+      const cpf = b.cpf ? onlyDigits(b.cpf) : null;
+      if (cpf && !isValidCpf(cpf)) return studentBad("cpf", "CPF inválido");
+      const phone = b.phone ? onlyDigits(b.phone) : null;
+      if (phone && !/^\d{10,11}$/.test(phone)) return studentBad("phone", "celular com DDD");
+      const minor = isMinor(b.birthDate);
+      if (!minor) {
+        if (!cpf) return studentBad("cpf", "obrigatório");
+        if (!b.email) return studentBad("email", "obrigatório");
+        if (!phone) return studentBad("phone", "obrigatório");
+      }
+      const asked = b.guardians ?? [];
+      if (asked.length > 2 || (minor && asked.length === 0)) return studentBad("guardians", "aluno menor precisa de um ou dois responsáveis");
+      if (asked.length === 2 && asked.filter((g) => g.financial).length !== 1) return studentBad("guardians", "informe exatamente um responsável financeiro");
+      if (cpf) {
+        const same = mockStudents.find((s) => s.cpf === cpf);
+        if (same) return studentError(409, "STUDENT_CPF_EXISTS", same);
+      } else if (!b.confirmDuplicate) {
+        const key = teacherKey(name);
+        const same = mockStudents.find((s) => teacherKey(s.name) === key && s.birthDate === b.birthDate);
+        if (same) return studentError(409, "STUDENT_POSSIBLE_DUPLICATE", same);
+      }
+      const rows: StudentGuardianRow[] = [];
+      for (const g of asked) {
+        const row = guardianRow(g, asked.length === 1 || g.financial === true);
+        if (row instanceof Response) return row;
+        rows.push(row);
+      }
+      const created: StudentDetail = {
+        id: crypto.randomUUID(), registeredUnitId: b.registeredUnitId!, name, birthDate: b.birthDate, minor, postalCode: onlyDigits(b.postalCode ?? ""), street: b.street ?? "", number: b.number ?? "",
+        complement: b.complement ?? null, district: b.district ?? "", city: b.city ?? "", state: (b.state ?? "").toUpperCase(), cpf, email: b.email ?? null, phone, gender: b.gender ?? null,
+        referral: b.referral ?? null, emergencyName: b.emergencyName ?? null, emergencyRelationship: b.emergencyRelationship ?? null, emergencyPhone: b.emergencyPhone ? onlyDigits(b.emergencyPhone) : null,
+        photoUrl: null, emailProblem: false, guardians: sortedGuardians(rows),
+      };
+      mockStudents = [...mockStudents, created];
+      return HttpResponse.json(created, { status: 201 });
+    },
+  },
+  {
+    // RN-ALU-06: só id, nome e foto do aluno com esse CPF, de qualquer unidade.
+    method: "get",
+    path: "/students/lookup",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const cpf = onlyDigits(new URL(request.url).searchParams.get("cpf") ?? "");
+      if (!isValidCpf(cpf)) return studentBad("cpf", "CPF inválido");
+      const found = mockStudents.find((s) => s.cpf === cpf);
+      return found ? HttpResponse.json({ id: found.id, name: found.name, photoUrl: found.photoUrl }) : error(404, "NOT_FOUND", "Não encontrado.");
+    },
+  },
+  {
+    method: "get",
+    path: "/students/{id}",
+    resolver: ({ params }) => {
+      const found = studentFor(params.id as string);
+      return found instanceof Response ? found : HttpResponse.json(found);
+    },
+  },
+  {
+    // RN-RSP-02, RN-RSP-06: liga com motivo; o primeiro é o financeiro; o terceiro dá GUARDIAN_LIMIT.
+    method: "post",
+    path: "/students/{id}/guardians",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as Partial<StudentGuardianInput>) ?? {};
+      const badReason = studentReason(body.reason);
+      if (badReason) return badReason;
+      if (found.guardians.length >= 2) return error(409, "GUARDIAN_LIMIT", "Um aluno tem no máximo dois responsáveis.");
+      const row = guardianRow(body, found.guardians.length === 0 || body.financial === true);
+      if (row instanceof Response) return row;
+      if (found.guardians.some((g) => g.guardianId === row.guardianId)) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      const others = row.financial ? found.guardians.map((g) => ({ ...g, financial: false })) : found.guardians;
+      found.guardians = sortedGuardians([...others, row]);
+      return HttpResponse.json(found);
+    },
+  },
+  {
+    // Só `financial = true` existe (D4); `false` sozinho dá 400.
+    method: "put",
+    path: "/students/{id}/guardians/{guardianId}",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { financial?: boolean }) ?? {};
+      if (body.financial !== true) return studentBad("financial", "só é possível indicar quem passa a ser o financeiro");
+      if (!found.guardians.some((g) => g.guardianId === params.guardianId)) return error(404, "NOT_FOUND", "Não encontrado.");
+      found.guardians = sortedGuardians(found.guardians.map((g) => ({ ...g, financial: g.guardianId === params.guardianId })));
+      return HttpResponse.json(found);
+    },
+  },
+  {
+    // RN-RSP-01, RN-RSP-05: motivo de 3 a 200; o último responsável de menor dá MINOR_NEEDS_GUARDIAN; o financeiro passa ao que fica.
+    method: "post",
+    path: "/students/{id}/guardians/{guardianId}/unlink",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { reason?: string }) ?? {};
+      const badReason = studentReason(body.reason);
+      if (badReason) return badReason;
+      const leaving = found.guardians.find((g) => g.guardianId === params.guardianId);
+      if (!leaving) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (found.minor && found.guardians.length === 1) return error(409, "MINOR_NEEDS_GUARDIAN", "Aluno menor de 18 anos precisa de ao menos um responsável.");
+      const left = found.guardians.filter((g) => g.guardianId !== params.guardianId);
+      found.guardians = left.map((g) => ({ ...g, financial: leaving.financial ? true : g.financial }));
+      return HttpResponse.json(found);
+    },
+  },
+  {
+    // RN-ACE-13: no máximo 3 reenvios por dia (429); acesso ativo dá 409.
+    method: "post",
+    path: "/students/{id}/guardians/{guardianId}/invite",
+    resolver: ({ params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const guardian = found.guardians.find((g) => g.guardianId === params.guardianId);
+      if (!guardian) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (guardian.access === "ACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      if (guardianResends >= 3) return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
+      guardianResends += 1;
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RN-RSP-03: cartões do portal (Aluno e Responsável); no mock, o Aluno é o adulto e também responsável do menor.
+    method: "get",
+    path: "/portal/students",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "STUDENT" && role !== "GUARDIAN") return error(403, "FORBIDDEN", "Sem permissão.");
+      const card = (s: StudentDetail, self: boolean) => ({ id: s.id, name: s.name, photoUrl: s.photoUrl, self });
+      const adult = mockStudents.find((s) => s.id === STUDENT_ADULT)!;
+      const minor = mockStudents.find((s) => s.id === STUDENT_MINOR)!;
+      return HttpResponse.json(role === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
     },
   },
 ];

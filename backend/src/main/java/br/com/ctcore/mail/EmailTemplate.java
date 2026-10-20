@@ -8,7 +8,11 @@ public enum EmailTemplate {
     EMAIL_CHANGED("mail.email-changed", false, false),
     PASSWORD_CHANGED("mail.password-changed", false, false),
     NEW_ACCESS("mail.new-access", false, false),
-    COORDINATION_TRANSFERRED("mail.coordination-transferred", false, false);
+    COORDINATION_TRANSFERRED("mail.coordination-transferred", false, false),
+    /** RN-RSP-05: neutro, sem nome do aluno nem motivo. */
+    GUARDIAN_UNLINKED("mail.guardian-unlinked", false, false),
+    /** RN-RSP-07: o aluno cadastrado menor completou 18 anos. */
+    STUDENT_MAJORITY("mail.student-majority", false, false);
 
     final String key;
     final boolean secret;
