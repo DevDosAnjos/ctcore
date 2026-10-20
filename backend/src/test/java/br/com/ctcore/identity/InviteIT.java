@@ -229,6 +229,58 @@ class InviteIT extends PostgresIT {
         assertThat(admin.queryForObject("select count(*) from audit_log where action = 'account.sessions_ended'", Long.class)).isEqualTo(2);
     }
 
+
+    @Test
+    @DisplayName("RN-RSP-06: convite do responsável pela gestão: conta nova pendente, sem e-mail antes do commit; conta existente só ganha o vínculo; ativo não convida")
+    void guardianInvite() {
+        var issued = orgTx.provision(org, () -> invites.inviteGuardian(administrator, org, "resp@x.com", "Resp"));
+        assertThat(mails).isEmpty();
+        assertThat(one("select status from account where id = ?", issued.accountId())).isEqualTo("INVITED");
+        assertThat(one("select role || status from account_link where id = ?", issued.linkId())).isEqualTo("GUARDIANPENDING");
+        assertThat(one("select code_hash from account_invite where id = ?", issued.inviteId())).isEqualTo(Codes.hash(issued.code()));
+        invites.sendInvite("resp@x.com", issued.code());
+        assertThat(mails).containsExactly("resp@x.com");
+
+        // Account that already exists elsewhere keeps its data; only the link and the invite are new.
+        UUID existing = accounts.provision("antiga@x.com", "Antiga", null, "Abcdefg1");
+        var second = orgTx.provision(org, () -> invites.inviteGuardian(coordinator, org, "ANTIGA@x.com", "Outro Nome"));
+        assertThat(second.accountId()).isEqualTo(existing);
+        assertThat(one("select status || name from account where id = ?", existing)).isEqualTo("ACTIVEAntiga");
+        assertThat(invites.accept(second.code(), "Abcdefg1", "1.1.1.1").accountId()).isEqualTo(existing);
+
+        // Same person again while the guardian access is active: no new invite.
+        var again = orgTx.provision(org, () -> invites.inviteGuardian(coordinator, org, "antiga@x.com", "Antiga"));
+        assertThat(again.code()).isNull();
+        assertThat(admin.queryForObject("select count(*) from account_invite where account_id = ?", Long.class, existing)).isEqualTo(1);
+
+        assertThatThrownBy(() -> orgTx.provision(org, () -> invites.inviteGuardian(new Inviter(coordinatorAccount, Role.TEACHER, Set.of(unit)), org, "t@x.com", "T")))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    @DisplayName("RN-RSP-05, RN-ACE-13: reenvio ao responsável cancela o convite anterior, vale 3 por dia e recusa acesso ativo")
+    void guardianResend() {
+        var first = orgTx.provision(org, () -> invites.inviteGuardian(administrator, org, "resp@x.com", "Resp"));
+        var next = invites.resendGuardian(administrator, org, first.accountId());
+        assertThatThrownBy(() -> invites.accept(first.code(), "Abcdefg1", "1.1.1.1"))
+                .isInstanceOfSatisfying(IdentityException.class, e -> assertThat(e.detail()).isEqualTo("CANCELED"));
+        assertThat(mails).containsExactly("resp@x.com");
+        invites.resendGuardian(administrator, org, first.accountId());
+        invites.resendGuardian(administrator, org, first.accountId());
+        assertThatThrownBy(() -> invites.resendGuardian(administrator, org, first.accountId()))
+                .isInstanceOfSatisfying(IdentityException.class, e -> assertThat(e.code()).isEqualTo(Code.TOO_MANY_REQUESTS));
+        var last = admin.queryForObject("select code_hash from account_invite where account_id = ? and canceled_at is null", String.class, first.accountId());
+        assertThat(last).isNotNull();
+        assertThat(next.code()).isNotEqualTo(first.code());
+
+        UUID active = accounts.provision("ativa@x.com", "Ativa", null, "Abcdefg1");
+        activeLink(active, org, "GUARDIAN");
+        assertThatThrownBy(() -> invites.resendGuardian(administrator, org, active))
+                .isInstanceOfSatisfying(IdentityException.class, e -> assertThat(e.code()).isEqualTo(Code.ALREADY_LINKED));
+        assertThatThrownBy(() -> invites.resendGuardian(new Inviter(coordinatorAccount, Role.TEACHER, Set.of(unit)), org, first.accountId()))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> invites.resendGuardian(administrator, org, UUID.randomUUID())).isInstanceOf(AccessDeniedException.class);
+    }
     UUID activeLink(UUID account, UUID organization, String role) {
         return admin.queryForObject("insert into account_link (account_id, organization_id, role, status) values (?, ?, ?, 'ACTIVE') returning id",
                 UUID.class, account, organization, role);
