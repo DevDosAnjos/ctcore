@@ -95,7 +95,7 @@ class StudentGuardiansIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA7, CA8, CA9: menor exige responsável; um é financeiro; dois com um financeiro; zero ou dois financeiros e três dão 400; conta, vínculo, convite e e-mail por responsável")
+    @DisplayName("RN-RSP-01: CA7, CA8, CA9: menor exige responsável; um é financeiro; dois com um financeiro; zero ou dois financeiros e três dão 400; conta, vínculo, convite e e-mail por responsável")
     void createsMinor() throws Exception {
         Tenant t = tenant();
         AccountPrincipal who = coordinator(t);

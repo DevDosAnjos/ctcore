@@ -16,7 +16,7 @@ Tabela completa de permissões: `docs/especificacao/02-contas-e-acesso.md`. Perf
 | Equipe da plataforma · Suporte | Consulta organizações e chamados | Alterar sem liberação do Coordenador |
 | Coordenador | Organização inteira: assinatura, unidades, configurações, visão consolidada | Operar unidade sem entrar nela |
 | Administrador | Tudo dentro das unidades a que está ligado | Agir fora delas |
-| Professor | Suas turmas: alunos, aulas, comunicados (quatro permissões ligáveis por unidade) | Ver turmas de outros |
+| Professor | Suas turmas: alunos, aulas, comunicados (cinco permissões ligáveis por unidade; "ver ficha do aluno" desligada por padrão) | Ver turmas de outros |
 | Aluno | Próprios dados no portal (menor de idade não tem conta) | Ver dados de outros |
 | Responsável | Dados dos alunos menores ligados a ele, no portal | Ver outros alunos |
 

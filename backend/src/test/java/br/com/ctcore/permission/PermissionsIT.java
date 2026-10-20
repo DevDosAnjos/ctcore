@@ -70,7 +70,7 @@ class PermissionsIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA4: as quatro permissões do Professor são independentes e desligada vale NONE")
+    @DisplayName("CA4: as cinco permissões do Professor são independentes e desligada vale NONE")
     void teacherFlagsAreIndependent() {
         Org o = org();
         var teacher = who(o, Role.TEACHER, o.unit());

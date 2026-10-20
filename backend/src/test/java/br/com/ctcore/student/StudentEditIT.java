@@ -237,7 +237,7 @@ class StudentEditIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA11: foto 512 x 512 troca e apaga o arquivo anterior; tipo ou tamanho errado dá 400; DELETE remove")
+    @DisplayName("RN-ALU-02: CA11: foto 512 x 512 troca e apaga o arquivo anterior; tipo ou tamanho errado dá 400; DELETE remove")
     void photo() throws Exception {
         Tenant t = tenant();
         String id = student(t, body("Aluno Foto", CPF));

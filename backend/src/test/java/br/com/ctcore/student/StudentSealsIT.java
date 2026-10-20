@@ -33,6 +33,11 @@ class StudentSealsIT extends OrganizationBase {
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
         adminJdbc().update("delete from student");
+        String mine = "(select id from account where email like '%.example')";
+        adminJdbc().update("delete from account_invite where account_id in " + mine);
+        adminJdbc().update("delete from account_session where account_id in " + mine);
+        adminJdbc().update("delete from account_link_unit where link_id in (select id from account_link where account_id in " + mine + ")");
+        adminJdbc().update("delete from account_link where account_id in " + mine);
         adminJdbc().update("delete from account where email like '%.example'");
     }
 
@@ -86,6 +91,45 @@ class StudentSealsIT extends OrganizationBase {
     private List<String> names(JsonNode b) {
         List<String> out = new ArrayList<>();
         b.get("items").forEach(i -> out.add(i.get("name").asText()));
+        return out;
+    }
+
+    @Test
+    @DisplayName("RF-ALU-02, RF-ALU-06: a data de referência é a do fuso da unidade; às 23h30 em Brasília (02h30 UTC) vale o dia de Brasília, e em Tóquio o de Tóquio")
+    void referenceDateIsTheUnitDate() throws Exception {
+        Tenant t = tenant();
+        var coordinator = who(t, Role.COORDINATOR);
+        var admin = who(t, Role.ADMINISTRATOR);
+        student(t, "Hoje em Brasilia", LocalDate.of(1990, 3, 15), "11111111111", "a@ficticia.example", false);
+        student(t, "Hoje em Toquio", LocalDate.of(1990, 3, 16), "22222222222", "b@ficticia.example", false);
+        student(t, "Vespera dos 18", LocalDate.of(2007, 3, 16), "33333333333", "c@ficticia.example", false);
+        // 15/03/2025 23:30 em Brasília = 16/03 02:30 UTC = 16/03 11:30 em Tóquio
+        doReturn(LocalDate.of(2025, 3, 16).atTime(2, 30).toInstant(ZoneOffset.UTC)).when(clock).instant();
+
+        JsonNode brasilia = body("", coordinator);
+        assertThat(seals(brasilia, "Hoje em Brasilia")).containsExactly("BIRTHDAY_TODAY");
+        assertThat(seals(brasilia, "Hoje em Toquio")).isEmpty();
+        assertThat(age(brasilia, "Vespera dos 18")).isEqualTo("17 true");
+        assertThat(birthdayNames(admin)).containsExactly("Hoje em Brasilia");
+
+        adminJdbc().update("update unit set timezone = 'Asia/Tokyo' where id = ?", t.unitId());
+        JsonNode tokyo = body("", coordinator);
+        assertThat(seals(tokyo, "Hoje em Toquio")).containsExactly("BIRTHDAY_TODAY");
+        assertThat(seals(tokyo, "Hoje em Brasilia")).isEmpty();
+        assertThat(age(tokyo, "Vespera dos 18")).isEqualTo("18 false");
+        assertThat(birthdayNames(admin)).containsExactlyInAnyOrder("Hoje em Toquio", "Vespera dos 18");
+    }
+
+    private String age(JsonNode b, String name) {
+        for (JsonNode i : b.get("items")) if (i.get("name").asText().equals(name)) return i.get("age").asInt() + " " + i.get("minor").asBoolean();
+        throw new AssertionError(name);
+    }
+
+    private List<String> birthdayNames(AccountPrincipal who) throws Exception {
+        var r = call(MockMvcRequestBuilders.get("/api/v1/students/birthdays"), who).getResponse();
+        assertThat(r.getStatus()).as(r.getContentAsString()).isEqualTo(200);
+        List<String> out = new ArrayList<>();
+        json.readTree(r.getContentAsString()).forEach(i -> out.add(i.get("name").asText()));
         return out;
     }
 
