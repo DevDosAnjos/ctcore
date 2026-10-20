@@ -58,7 +58,7 @@ class AgendaLessonEditIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA1, CA3, CA8: THIS muda só a aula, marca edição, troca professor sem mudar o titular e audita")
+    @DisplayName("RN-AGE-04: CA1, CA3, CA8: THIS muda só a aula, marca edição, troca professor sem mudar o titular e audita")
     void thisLesson() throws Exception {
         var t = tenant();
         UUID ana = teacher(t, "Ana", null);
@@ -104,7 +104,7 @@ class AgendaLessonEditIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA2: FOLLOWING desloca as seguintes, preserva cancelada e anterior; colisão dá 409 e nada muda")
+    @DisplayName("RN-AGE-04: CA2: FOLLOWING desloca as seguintes, preserva cancelada e anterior; colisão dá 409 e nada muda")
     void following() throws Exception {
         var t = tenant();
         UUID ana = teacher(t, "Ana", null);
@@ -168,7 +168,7 @@ class AgendaLessonEditIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA4: Professor, cancelada, concluída recente e antiga")
+    @DisplayName("RN-AGE-07: CA4: Professor, cancelada, concluída recente e antiga")
     void states() throws Exception {
         var t = tenant();
         UUID acc = account("ana");

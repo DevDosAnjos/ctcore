@@ -80,7 +80,7 @@ class AgendaLessonAdhocIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA1, CA2: Coordenador cria para toda a unidade ou para uma turma; auditoria com ids")
+    @DisplayName("RN-AGE-12: CA1, CA2: Coordenador cria para toda a unidade ou para uma turma; auditoria com ids")
     void createsAndAudits() throws Exception {
         var t = tenant();
         UUID ana = teacher(t, "Ana", null);
@@ -175,7 +175,7 @@ class AgendaLessonAdhocIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA5, CA6, CA7: Professor só cria para si, vê e edita a sua; THIS vale, FOLLOWING não; cancela")
+    @DisplayName("RN-AGE-07: CA5, CA6, CA7: Professor só cria para si, vê e edita a sua; THIS vale, FOLLOWING não; cancela")
     void teacherAndWrites() throws Exception {
         var t = tenant();
         UUID acc = account("ana");

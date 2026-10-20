@@ -598,7 +598,8 @@ paths:
         Só modalidade ativa na organização pode ser marcada; inativa ou fora do catálogo responde 404. Repetir o valor responde 200 sem
         nova auditoria. Sem `If-Match`: cada marcação é independente e idempotente. Grava `unit.modality.offered` ou
         `unit.modality.withdrawn` na auditoria. Corpo sem `offered`, 400. Unidade de outra organização ou inexistente, 404; Professor,
-        portal e Administrador de outra unidade, 403.
+        portal e Administrador de outra unidade, 403. Desmarcar com turma ativa dessa modalidade na unidade responde 409
+        `UNIT_MODALITY_IN_USE`, `fields` traz um item `class` por turma que impede (o nome em `message`), em ordem de nome, e nada muda.
       security: [{ sessionCookie: [], csrfHeader: [] }]
       parameters:
         - { name: unitId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -620,6 +621,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /modalities:
     get:
       summary: Catálogo de modalidades com a situação na organização do vínculo ativo (RF-MOD-01, RN-MOD-01).
@@ -1699,6 +1701,7 @@ components:
             - UNIT_HAS_BLOCKERS
             - LAST_UNIT_ADMINISTRATOR
             - MODALITY_IN_USE
+            - UNIT_MODALITY_IN_USE
             - MODALITY_NOT_ACTIVE
             - REQUEST_ALREADY_OPEN
             - ALREADY_IN_CATALOG
@@ -2196,7 +2199,7 @@ components:
         units: { $ref: '#/components/schemas/TeacherRow/properties/units' }
         classes:
           type: array
-          description: Turmas como titular ou auxiliar; vazia até a Sprint 05.
+          description: Turmas ativas como titular ou auxiliar, por nome (as mesmas contadas em `classCount`).
           items:
             type: object
             required: [id, name, role]
@@ -2206,12 +2209,12 @@ components:
               role: { type: string, enum: [HEAD, ASSISTANT] }
         upcomingClasses:
           type: array
-          description: Próximas aulas; vazia até a Sprint 05.
+          description: Até 10 próximas aulas não canceladas em que o professor dá a aula (titular ou substituto) ou é auxiliar da turma, por início. A aula avulsa traz `classId` nulo e o título em `name`.
           items:
             type: object
             required: [classId, name, startsAt]
             properties:
-              classId: { type: string, format: uuid }
+              classId: { type: string, format: uuid, nullable: true }
               name: { type: string }
               startsAt: { type: string, format: date-time }
         access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED] }

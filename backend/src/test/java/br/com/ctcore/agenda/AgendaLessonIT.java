@@ -1,7 +1,7 @@
 package br.com.ctcore.agenda;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.mockito.Mockito.doReturn;
 
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.Role;
@@ -10,20 +10,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
+import java.time.Clock;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 /** RF-AGE-02: GET /agenda/lessons/{id} com banco real (a janela do substituto tem teste unitário em AgendaRulesTest). */
 class AgendaLessonIT extends AgendaBase {
     @Autowired ObjectMapper json;
+    @MockitoSpyBean Clock clock;
 
     static final LocalDate TODAY = LocalDate.now(ZoneId.of("America/Sao_Paulo"));
 
@@ -46,7 +48,7 @@ class AgendaLessonIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA1, CA2, CA6, CA8: campos, substituição com titular, cancelada, grupo e canViewClass; sem lista de espera nem auditoria")
+    @DisplayName("RN-AGE-13: CA1, CA2, CA6, CA8: campos, substituição com titular, cancelada, grupo e canViewClass; sem lista de espera nem auditoria")
     void fields() throws Exception {
         var t = tenant();
         UUID ana = teacher(t, "Ana", null);
@@ -110,10 +112,9 @@ class AgendaLessonIT extends AgendaBase {
         assertThat(flags(ok(recent, coord))).isEqualTo("true/false");
         assertThat(flags(ok(old, coord))).isEqualTo("false/false");
 
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("America/Sao_Paulo"));
-        assumeTrue(now.getHour() >= 1 && now.getHour() <= 21, "perto da meia-noite o intervalo cruzaria o dia");
-        UUID running = lesson(t, c, ana, now.toLocalDate(), now.minusHours(1).toLocalTime().withSecond(0).withNano(0).toString(),
-                now.plusHours(1).toLocalTime().withSecond(0).withNano(0).toString(), false, false);
+        // Relógio fixo ao meio-dia de hoje em São Paulo: o resultado não depende da hora em que o teste roda.
+        doReturn(TODAY.atTime(12, 0).atZone(ZoneId.of("America/Sao_Paulo")).toInstant()).when(clock).instant();
+        UUID running = lesson(t, c, ana, TODAY, "11:00", "13:00", false, false);
         JsonNode d = ok(running, coord);
         assertThat(d.get("status").asText()).isEqualTo("IN_PROGRESS");
         assertThat(flags(d)).isEqualTo("true/true");

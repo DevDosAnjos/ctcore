@@ -69,7 +69,7 @@ class NoClassDayWriteIT extends NoClassDayBase {
     }
 
     @Test
-    @DisplayName("CA3: várias unidades criam um dia por unidade; outra organização 404; sobreposição 409; nada gravado")
+    @DisplayName("RN-AGE-09: CA3: várias unidades criam um dia por unidade; outra organização 404; sobreposição 409; nada gravado")
     void severalUnits() throws Exception {
         var s = setup();
         var t = s.t();

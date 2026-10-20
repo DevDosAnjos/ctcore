@@ -282,7 +282,11 @@ let teacherContacts = initialTeacherContacts();
 let teacherResends = 0;
 const teacherDetail = (t: MockTeacher) => {
   const { id, name, photoUrl, directoryConsent, status, modalities, units, access } = t;
-  return { id, name, photoUrl, directoryConsent, status, modalities, units, access, ...teacherContacts[id], classes: [], upcomingClasses: [] };
+  // Turmas ativas como titular ou auxiliar (as do classCount); o simulado não gera aulas, então as próximas vêm vazias.
+  const classes = mockClasses
+    .filter((c) => c.status === "ACTIVE" && (c.head === id || c.assistants.includes(id)))
+    .map((c) => ({ id: c.id, name: c.name, role: c.head === id ? "HEAD" : "ASSISTANT" }));
+  return { id, name, photoUrl, directoryConsent, status, modalities, units, access, ...teacherContacts[id], classes, upcomingClasses: [] };
 };
 // Quem chama: 401 sem sessão, 403 sem TEACHERS, 404 fora do alcance (Administrador sem a unidade dele) ou inexistente.
 const teacherFor = (id: string) => {
@@ -983,6 +987,9 @@ export const routes: Route[] = [
       if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
       const { offered } = (await request.json()) as { offered?: boolean };
       if (typeof offered !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "offered", message: "obrigatório" }]);
+      // RN-MOD-06: desmarcar com turma ativa da modalidade na unidade é recusado e lista as turmas.
+      const blocking = mockClasses.filter((c) => c.unitId === unitId && c.modalityId === found.id && c.status === "ACTIVE").map((c) => c.name).sort((a, b) => a.localeCompare(b));
+      if (!offered && unitModalities.get(unitId)?.has(found.id) && blocking.length > 0) return error(409, "UNIT_MODALITY_IN_USE", "Há turmas ativas.", blocking.map((name) => ({ field: "class", message: name })));
       const set = unitModalities.get(unitId) ?? new Set<string>();
       if (offered) set.add(found.id);
       else set.delete(found.id);

@@ -178,7 +178,7 @@ class TrainingClassDetailIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA3: aluno de turma principal tem primary verdadeiro e o de outro horário falso; os dois contam como ativos")
+    @DisplayName("RN-TUR-04: CA3: aluno de turma principal tem primary verdadeiro e o de outro horário falso; os dois contam como ativos")
     void primaryMark() throws Exception {
         var t = tenant();
         UUID id = klass(t, t.unitId(), "Judô", teacher(t, "Ana", t.unitId()), null);
@@ -250,7 +250,7 @@ class TrainingClassDetailIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA7: nenhuma coluna da turma menciona presença ou frequência")
+    @DisplayName("RN-TUR-06: CA7: nenhuma coluna da turma menciona presença ou frequência")
     void noAttendance() {
         assertThat(adminJdbc().queryForList("select column_name from information_schema.columns where table_schema = 'public' and table_name like 'training_class%'", String.class))
                 .noneMatch(n -> n.matches("(?i).*(presen|attend|frequen).*"));

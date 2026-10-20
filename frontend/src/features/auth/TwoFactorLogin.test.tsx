@@ -144,7 +144,7 @@ describe("Coordenador sem duas etapas (CA24)", () => {
     await user.click(screen.getByRole("button", { name: "Entrar" }));
     expect(await screen.findByRole("heading", { name: "Ative as duas etapas para continuar" })).toBeInTheDocument();
     expect(screen.getByTestId("where")).toHaveTextContent("/configurar-duas-etapas");
-    expect(screen.getByRole("button", { name: "Sair da conta" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Sair da conta" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Ativar duas etapas" }));
     await user.type(await screen.findByLabelText("Código de 6 dígitos"), "123456");
@@ -152,7 +152,7 @@ describe("Coordenador sem duas etapas (CA24)", () => {
     await user.click(await screen.findByLabelText("Já guardei os códigos"));
     await user.click(screen.getByRole("button", { name: "Concluir" }));
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(/^\/$/));
-    expect(screen.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeInTheDocument();
   });
 
   it("Sair volta ao login", async () => {

@@ -101,7 +101,7 @@ class AgendaIT extends AgendaBase {
     }
 
     @Test
-    @DisplayName("CA8: canEdit e canCancel por perfil, tempo e aula própria")
+    @DisplayName("RN-AGE-07: CA8: canEdit e canCancel por perfil, tempo e aula própria")
     void canEditAndCancel() throws Exception {
         var t = tenant();
         UUID acc = account("ana");

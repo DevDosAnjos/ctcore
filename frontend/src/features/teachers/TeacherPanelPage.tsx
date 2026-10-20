@@ -133,7 +133,7 @@ function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () =
         ) : (
           <ul>
             {teacher.upcomingClasses.map((c) => (
-              <li key={`${c.classId}-${c.startsAt}`}>
+              <li key={`${c.classId ?? c.name}-${c.startsAt}`}>
                 {c.name} · {formatDateTime(c.startsAt)}
               </li>
             ))}

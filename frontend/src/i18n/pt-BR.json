@@ -1049,7 +1049,8 @@
     "emptyText": "Ative modalidades na organização para escolher quais esta unidade oferece.",
     "emptyLink": "Ir para Configurações › Modalidades",
     "readOnly": "Você pode ver as modalidades, mas não alterá-las.",
-    "changeError": "Não foi possível alterar {{name}}. Nada foi alterado. Tente de novo."
+    "changeError": "Não foi possível alterar {{name}}. Nada foi alterado. Tente de novo.",
+    "inUse": "A unidade não pode deixar de oferecer {{name}} enquanto houver turmas ativas dela. Nada foi alterado. Desative estas turmas antes:"
   },
   "unitSettings": {
     "title": "Configurações da unidade",

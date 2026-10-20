@@ -176,7 +176,7 @@ class TrainingClassIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA3: overCapacity só com mais alunos que a capacidade; a tabela recusa capacidade 0 e 201")
+    @DisplayName("RN-TUR-02: CA3: overCapacity só com mais alunos que a capacidade; a tabela recusa capacidade 0 e 201")
     void capacity() {
         assertThat(TrainingClasses.overCapacity(31, 30)).isTrue();
         assertThat(TrainingClasses.overCapacity(30, 30)).isFalse();
@@ -191,7 +191,7 @@ class TrainingClassIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA4: nenhuma tabela, coluna, campo da resposta ou texto da tela menciona presença ou frequência")
+    @DisplayName("RN-TUR-06: CA4: nenhuma tabela, coluna, campo da resposta ou texto da tela menciona presença ou frequência")
     void noAttendance() throws Exception {
         var t = tenant();
         klass(t, t.unitId(), "Turma", modality("Judô"), null, null, teacher(t, "Ana", t.unitId()), "ACTIVE");
@@ -205,7 +205,7 @@ class TrainingClassIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA5: nome único entre ativas na unidade (sem caixa nem acento); término depois do início; um horário por dia; titular obrigatório")
+    @DisplayName("RN-TUR-01: CA5: nome único entre ativas na unidade (sem caixa nem acento); término depois do início; um horário por dia; titular obrigatório")
     void tableRules() {
         var t = tenant();
         UUID second = unit(t, "Zona Sul");

@@ -76,7 +76,7 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 | Planos | ● | U | — |
 | Cobranças e pagamentos | ● | U | — |
 | Estorno, renegociação, cancelar cobrança | ● | U | — |
-| Turmas: criar e editar | ● | U | — |
+| Turmas: ver lista e painel, criar, editar e desativar | ● | U | — |
 | Agenda: ver | ● | U | T |
 | Agenda: editar e cancelar aula | ● | U | T* |
 | Dias sem aula | ● (várias unidades de uma vez) | U | — |
