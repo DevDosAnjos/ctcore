@@ -6,7 +6,7 @@ const F: Access = "FULL";
 const R: Access = "READ";
 const N: Access = "NONE";
 const rows: Record<Permission, [Access, Access, Access]> = {
-  HOME: [F, F, F], ALL_UNITS_CONSOLIDATED: [R, N, N], STUDENT_VIEW: [F, F, F], STUDENT_CONTACTS: [F, F, R],
+  HOME: [F, F, F], ALL_UNITS_CONSOLIDATED: [R, N, N], STUDENT_VIEW: [F, F, F], STUDENT_RECORD: [F, F, F], STUDENT_CONTACTS: [F, F, R],
   STUDENT_MANAGE: [F, F, N], BENEFITS: [F, F, N], PLANS: [F, F, N], COLLECTIONS: [F, F, N], CHARGE_ADJUSTMENTS: [F, F, N],
   CLASSES_MANAGE: [F, F, N], AGENDA_VIEW: [F, F, F], AGENDA_EDIT: [F, F, F], NO_CLASS_DAYS: [F, F, N], GRADUATION: [F, F, R],
   ANNOUNCEMENTS: [F, F, F], TRIAL_CLASSES: [F, F, R], TEACHERS: [F, F, N], STAFF_USERS: [F, F, N], UNIT_SETTINGS: [F, F, N],

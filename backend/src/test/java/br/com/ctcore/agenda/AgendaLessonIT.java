@@ -170,7 +170,7 @@ class AgendaLessonIT extends AgendaBase {
                 .getStatus()).isEqualTo(404);
 
         // Aula da turma de outro professor, sem AGENDA_EDIT: ele só enxerga se substituir; aqui, auxiliar sem a permissão.
-        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true}' where unit_id = ?", t.unitId());
+        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true,false}' where unit_id = ?", t.unitId());
         assertThat(flags(ok(l1, me))).isEqualTo("false/false");
         assertThat(flags(ok(l2, me))).isEqualTo("false/false");
     }

@@ -99,3 +99,37 @@ export interface StudentList {
   size: number;
   total: number;
 }
+
+// Espelha StudentRecord e StudentHistoryEntry do OpenAPI (RF-ALU-03). Na ficha reduzida do Professor faltam birthDate, seals, cpf, address e, nos responsáveis, financial e access.
+export interface StudentRecordGuardian {
+  guardianId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  financial?: boolean;
+  access?: StudentGuardianAccess;
+  emailProblem?: boolean;
+}
+export interface StudentRecord {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  birthDate?: string;
+  age: number;
+  minor: boolean;
+  ageRange: { id: string; name: string } | null;
+  registeredUnit: { id: string; name: string };
+  seals?: StudentSeal[];
+  contact?: { phone: string | null; email: string | null; emailProblem: boolean };
+  cpf?: string | null;
+  address?: { postalCode: string; street: string; number: string; complement: string | null; district: string; city: string; state: string };
+  emergency?: { name: string | null; relationship: string | null; phone: string | null };
+  guardians: StudentRecordGuardian[];
+}
+export interface StudentHistoryEntry {
+  action: string;
+  at: string;
+  actor: string | null;
+  actorProfile: string | null;
+  reason: string | null;
+}

@@ -65,7 +65,7 @@ class PermissionControllerIT extends PostgresIT {
         assertThat(teacher.path("STUDENT_CONTACTS").asText()).isEqualTo("READ");
         assertThat(teacher.size()).isEqualTo(Permission.values().length);
 
-        adminJdbc().update("update unit_settings set teacher_permissions = '{false,false,false,false}' where unit_id = ?", unitId);
+        adminJdbc().update("update unit_settings set teacher_permissions = '{false,false,false,false,false}' where unit_id = ?", unitId);
         var off = call(Role.TEACHER, orgId, Set.of(unitId));
         for (String code : new String[] {"ANNOUNCEMENTS", "AGENDA_EDIT", "STUDENT_CONTACTS", "TRIAL_CLASSES"}) {
             assertThat(off.path(code).asText()).isEqualTo("NONE");

@@ -353,6 +353,92 @@
       "INCOMPLETE_REGISTRATION": "Cadastro incompleto",
       "EMAIL_PROBLEM": "E-mail com problema",
       "BIRTHDAY_TODAY": "Aniversário hoje"
+    },
+    "record": {
+      "title": "Ficha do aluno",
+      "open": "Abrir a ficha de {{name}}",
+      "close": "Fechar a ficha",
+      "tabsLabel": "Seções da ficha",
+      "tabs": {
+        "summary": "Resumo",
+        "enrollment": "Matrícula e modalidades",
+        "financial": "Financeiro",
+        "graduations": "Graduações",
+        "guardians": "Responsáveis",
+        "history": "Histórico"
+      },
+      "notFound": "Aluno não encontrado.",
+      "notFoundText": "Este aluno não existe ou não está ao seu alcance.",
+      "empty": {
+        "enrollment": "As modalidades, as turmas e o plano do aluno aparecem aqui quando a matrícula estiver disponível.",
+        "financial": "As cobranças, os pagamentos e os recibos do aluno aparecem aqui quando as cobranças estiverem disponíveis.",
+        "graduations": "A linha do tempo de graduação aparece aqui quando a graduação do aluno estiver disponível.",
+        "title": "Ainda não há o que mostrar"
+      },
+      "summary": {
+        "contact": "Contato",
+        "phone": "Celular",
+        "email": "E-mail",
+        "emailProblem": "O e-mail tem problema de entrega.",
+        "emergency": "Emergência",
+        "emergencyName": "Nome",
+        "emergencyRelationship": "Parentesco",
+        "emergencyPhone": "Telefone",
+        "guardians": "Responsáveis",
+        "noGuardians": "Este aluno não tem responsável vinculado.",
+        "unit": "Unidade de cadastro",
+        "ageRange": "Faixa etária",
+        "birthDate": "Nascimento",
+        "none": "Não informado"
+      },
+      "guardians": {
+        "financial": "Financeiro",
+        "accessPending": "Acesso pendente",
+        "accessActive": "Acesso ativo",
+        "resend": "Reenviar convite",
+        "makeFinancial": "Tornar financeiro",
+        "unlink": "Desvincular",
+        "link": "Vincular responsável",
+        "empty": "Nenhum responsável vinculado.",
+        "resent": "Convite reenviado para {{name}}.",
+        "madeFinancial": "{{name}} agora é o responsável financeiro.",
+        "unlinked": "{{name}} foi desvinculado.",
+        "linked": "{{name}} foi vinculado ao aluno.",
+        "unlinkTitle": "Desvincular {{name}}",
+        "unlinkSummary": "O responsável deixa de ter acesso a este aluno. Informe o motivo.",
+        "linkTitle": "Vincular responsável",
+        "name": "Nome",
+        "cpf": "CPF",
+        "email": "E-mail",
+        "phone": "Celular",
+        "makeItFinancial": "É o responsável financeiro",
+        "reason": "Motivo",
+        "submit": "Vincular",
+        "required": "Preencha este campo.",
+        "errors": {
+          "MINOR_NEEDS_GUARDIAN": "Aluno menor de 18 anos precisa de ao menos um responsável. Vincule outro antes de desvincular este.",
+          "GUARDIAN_LIMIT": "Um aluno tem no máximo dois responsáveis.",
+          "GUARDIAN_CONFLICT": "O CPF ou o e-mail já pertence a outro responsável.",
+          "CONFLICT": "Essa ação já foi feita ou não cabe agora.",
+          "TOO_MANY_REQUESTS": "Muitos reenvios hoje. Tente de novo amanhã.",
+          "VALIDATION_ERROR": "Confira os dados informados.",
+          "generic": "Não conseguimos concluir. Nada foi alterado."
+        }
+      },
+      "history": {
+        "empty": "Ainda não há ações registradas para este aluno.",
+        "by": "por {{actor}}",
+        "reason": "Motivo: {{reason}}",
+        "actions": {
+          "student_created": "Cadastro do aluno",
+          "student_guardian_linked": "Responsável vinculado",
+          "student_guardian_unlinked": "Responsável desvinculado",
+          "student_guardian_financial_changed": "Responsável financeiro alterado",
+          "student_guardian_invite_resent": "Convite de responsável reenviado"
+        },
+        "prev": "Anterior",
+        "next": "Próxima"
+      }
     }
   },
   "teachers": {
@@ -1250,7 +1336,8 @@
       "announcements": "Enviar comunicados",
       "agendaEdit": "Editar a agenda",
       "studentContacts": "Ver os contatos dos alunos",
-      "trialClasses": "Ver aulas experimentais"
+      "trialClasses": "Ver aulas experimentais",
+      "studentRecord": "Ver ficha do aluno"
     },
     "directory": "Aparecer no diretório",
     "directoryHelp": "A unidade pode ser encontrada por quem procura uma academia.",

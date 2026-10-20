@@ -44,7 +44,7 @@ class UnitSettingsIT extends UnitBase {
         assertThat(s.path("dueDays")).hasSize(4);
         assertThat(fieldNames(s.path("feesCents"))).containsExactlyInAnyOrder("cash", "pix", "bankSlip", "creditCard", "debitCard",
                 "automaticDebit", "manualPix", "terminalCard", "transfer");
-        assertThat(fieldNames(s.path("teacherPermissions"))).containsExactlyInAnyOrder("announcements", "agendaEdit", "studentContacts", "trialClasses");
+        assertThat(fieldNames(s.path("teacherPermissions"))).containsExactlyInAnyOrder("announcements", "agendaEdit", "studentContacts", "trialClasses", "studentRecord");
         assertThat(s.path("paymentAccount").asText()).isEqualTo("NOT_CONNECTED");
         adminJdbc().update("update unit_settings set payment_account_reference = 'conta-secreta-123' where unit_id = ?", a.unitId());
         var response = call(read(a.unitId()), coordinator(a)).getResponse();
@@ -92,7 +92,7 @@ class UnitSettingsIT extends UnitBase {
         ((ObjectNode) s.path("feesCents")).put("pix", 199).put("creditCard", 450);
         s.putArray("reminderDays").add(-3).add(0).add(3).add(10);
         ((ObjectNode) s.path("teacherPermissions")).put("announcements", false).put("agendaEdit", true).put("studentContacts", false)
-                .put("trialClasses", true);
+                .put("trialClasses", true).put("studentRecord", true);
         s.put("directoryEnabled", true).put("trialLinkEnabled", false).put("selfRegistrationLinkEnabled", false);
         var response = call(put(a.unitId(), body), coordinator(a)).getResponse();
         assertThat(response.getStatus()).as(response.getContentAsString()).isEqualTo(200);
@@ -113,7 +113,7 @@ class UnitSettingsIT extends UnitBase {
         assertThat(rs.path("trialLinkEnabled").asBoolean()).isFalse();
         assertThat(adminJdbc().queryForObject("select organization_id from unit where id = ?", UUID.class, a.unitId())).isEqualTo(a.orgId());
         assertThat(adminJdbc().queryForObject("select teacher_permissions::text from unit_settings where unit_id = ?", String.class, a.unitId()))
-                .isEqualTo("{f,t,f,t}");
+                .isEqualTo("{f,t,f,t,t}");
         // CA14: a tabela de permissões do Professor reflete a mudança.
         var teacher = who(a, Role.TEACHER);
         assertThat(permissions.grant(teacher, Permission.ANNOUNCEMENTS, a.unitId())).isEqualTo(Access.NONE);
@@ -193,13 +193,14 @@ class UnitSettingsIT extends UnitBase {
         assertThat(call(put(a.unitId(), payload()), coordinator(a)).getResponse().getStatus()).isEqualTo(200); // baseline: o nome muda
         ObjectNode body = payload();
         body.put("phone", "21999998888");
+        ((ObjectNode) body.path("settings").path("teacherPermissions")).put("studentRecord", true);
         ((ObjectNode) body.path("settings")).putArray("dueDays").add(7);
         assertThat(call(put(a.unitId(), body), coordinator(a)).getResponse().getStatus()).isEqualTo(200);
         var rows = audit(a, "unit.update");
         assertThat(rows).hasSize(2);
         var row = rows.stream().filter(r -> r.get("a").toString().contains("21999998888")).findFirst().orElseThrow();
         assertThat(row.get("actor_profile")).isEqualTo("COORDINATOR");
-        assertThat(row.get("a").toString()).contains("dueDays").doesNotContain("name");
+        assertThat(row.get("a").toString()).contains("dueDays", "teacher.studentRecord").doesNotContain("name");
         assertThat(row.get("b").toString().replace(" ", "")).contains("dueDays").contains("[1,5,10,15]").doesNotContain("21999998888");
         assertThat(call(put(a.unitId(), body), coordinator(a)).getResponse().getStatus()).isEqualTo(200);
         assertThat(audit(a, "unit.update")).hasSize(2);

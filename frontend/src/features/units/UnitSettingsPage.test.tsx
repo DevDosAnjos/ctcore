@@ -43,7 +43,7 @@ const detail = (id: string, name: string): UnitDetail => ({
     pixKey: null,
     paymentAccount: "NOT_CONNECTED",
     reminderDays: [-3, 0, 3, 10],
-    teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true },
+    teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true, studentRecord: false },
     directoryEnabled: false,
     trialLinkEnabled: true,
     selfRegistrationLinkEnabled: true,
@@ -110,7 +110,9 @@ describe("UnitSettingsPage (RF-ORG-04)", () => {
     expect(screen.getByLabelText("Valor da taxa de matrícula")).toHaveValue("R$ 150,00");
     await user.clear(screen.getByLabelText("Pix"));
     await user.type(screen.getByLabelText("Pix"), "199");
+    expect(screen.getByRole("checkbox", { name: "Ver ficha do aluno" })).not.toBeChecked();
     await user.click(screen.getByRole("checkbox", { name: "Editar a agenda" }));
+    await user.click(screen.getByRole("checkbox", { name: "Ver ficha do aluno" }));
     await user.click(save());
     expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
     expect(puts).toHaveLength(1);
@@ -119,7 +121,7 @@ describe("UnitSettingsPage (RF-ORG-04)", () => {
     expect(settings.dueDays).toEqual([1, 5, 10, 20]);
     expect(settings).toMatchObject({ enrollmentFeeEnabled: true, enrollmentFeeCents: 15000, reminderDays: [-3, 0, 3, 10] });
     expect((settings.feesCents as Record<string, number>).pix).toBe(199);
-    expect(settings.teacherPermissions).toEqual({ announcements: true, agendaEdit: false, studentContacts: true, trialClasses: true });
+    expect(settings.teacherPermissions).toEqual({ announcements: true, agendaEdit: false, studentContacts: true, trialClasses: true, studentRecord: true });
     expect(screen.getByLabelText("Telefone")).toHaveValue("(21) 99999-8888");
     expect(save()).toBeDisabled();
   });
@@ -252,7 +254,7 @@ describe("UnitSettingsPage (RF-ORG-04)", () => {
     setup("COORDINATOR");
     await ready();
     const teacher = screen.getByText("O que o Professor pode fazer nesta unidade.").closest("fieldset")!;
-    expect(within(teacher).getAllByRole("checkbox")).toHaveLength(4);
+    expect(within(teacher).getAllByRole("checkbox")).toHaveLength(5);
     expect(screen.getByRole("heading", { name: "Divulgação", level: 2 })).toBeInTheDocument();
   });
 });

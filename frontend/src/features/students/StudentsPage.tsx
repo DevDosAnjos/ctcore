@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import type { TFunction } from "i18next";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
@@ -7,6 +8,7 @@ import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { formatDate } from "@/lib/format";
 import type { StudentRow } from "./types";
 import { StudentFilters } from "./StudentFilters";
+import { StudentRecordPanel } from "./StudentRecordPanel";
 import { OPTIONAL_COLUMNS, useStudentColumns, type OptionalColumn } from "./useStudentColumns";
 import { fetchStudents } from "./useStudents";
 
@@ -28,15 +30,17 @@ function Avatar({ student }: { student: StudentRow }) {
   );
 }
 
-// O nome ainda não leva a lugar nenhum: a ficha em painel vem na #60.
-const allColumns = (t: TFunction): Record<"name" | OptionalColumn, Column<StudentRow>> => ({
+// O nome abre a ficha em painel (RF-ALU-03), mantendo a busca e os filtros da lista na mesma página.
+const allColumns = (t: TFunction, search: string): Record<"name" | OptionalColumn, Column<StudentRow>> => ({
   name: {
     key: "name",
     label: t("students.columns.name"),
     render: (r) => (
       <span className="flex flex-wrap items-center gap-2">
         <Avatar student={r} />
-        <span className="min-w-0 break-words font-medium">{r.name}</span>
+        <Link to={`/alunos/${r.id}${search}`} aria-label={t("students.record.open", { name: r.name })} className="inline-flex min-h-11 min-w-0 items-center break-words font-medium underline-offset-2 hover:underline">
+          {r.name}
+        </Link>
         {r.seals.map((seal) => (
           <span key={seal} className="rounded-md border px-2 py-0.5 text-sm">
             {t(`students.seals.${seal}`)}
@@ -54,7 +58,10 @@ const allColumns = (t: TFunction): Record<"name" | OptionalColumn, Column<Studen
 function Content({ accountId }: { accountId: string }) {
   const { t } = useTranslation();
   const { visible, toggle } = useStudentColumns(accountId);
-  const all = allColumns(t);
+  const { id } = useParams();
+  const { search } = useLocation();
+  const navigate = useNavigate();
+  const all = allColumns(t, search);
   const columns = [all.name, ...visible.map((c) => all[c])];
   return (
     <div className="flex flex-col gap-4">
@@ -78,6 +85,7 @@ function Content({ accountId }: { accountId: string }) {
         filterKeys={["unitId", "ageRangeId", "seal"]}
         filters={(p) => <StudentFilters {...p} />}
       />
+      {id && <StudentRecordPanel id={id} onClose={() => navigate(`/alunos${search}`)} />}
     </div>
   );
 }

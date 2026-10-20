@@ -22,7 +22,7 @@ class UnitUpdateValidationTest {
     }
 
     private static Settings settings() {
-        return new Settings(List.of(1, 5, 10, 15), false, 0L, fees(), null, List.of(-3, 0, 3, 10), new TeacherPermissions(true, true, true, true),
+        return new Settings(List.of(1, 5, 10, 15), false, 0L, fees(), null, List.of(-3, 0, 3, 10), new TeacherPermissions(true, true, true, true, false),
                 false, true, true);
     }
 
@@ -126,8 +126,10 @@ class UnitUpdateValidationTest {
     @DisplayName("CA14: permissões do Professor nulas ou incompletas e liga/desliga ausentes são recusados")
     void flags() {
         refuses(valid(s -> with(s, s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), null, false)), "settings.teacherPermissions");
-        refuses(valid(s -> with(s, s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), new TeacherPermissions(true, null, true, true), false)),
+        refuses(valid(s -> with(s, s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), new TeacherPermissions(true, null, true, true, false), false)),
                 "settings.teacherPermissions.agendaEdit");
+        refuses(valid(s -> with(s, s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), new TeacherPermissions(true, true, true, true, null), false)),
+                "settings.teacherPermissions.studentRecord");
         refuses(valid(s -> with(s, s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), s.teacherPermissions(), null)),
                 "settings.directoryEnabled");
     }

@@ -12,7 +12,7 @@ export interface UnitChoice {
 }
 export const FEE_KEYS = ["cash", "pix", "bankSlip", "creditCard", "debitCard", "automaticDebit", "manualPix", "terminalCard", "transfer"] as const;
 export type FeeKey = (typeof FEE_KEYS)[number];
-export const TEACHER_KEYS = ["announcements", "agendaEdit", "studentContacts", "trialClasses"] as const;
+export const TEACHER_KEYS = ["announcements", "agendaEdit", "studentContacts", "trialClasses", "studentRecord"] as const;
 export type TeacherKey = (typeof TEACHER_KEYS)[number];
 
 export interface UnitSettingsData {

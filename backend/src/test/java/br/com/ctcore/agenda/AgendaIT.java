@@ -133,9 +133,9 @@ class AgendaIT extends AgendaBase {
         assertThat(flags(v, cancelled)).isEqualTo("false/false");
 
         // Sem AGENDA_EDIT (segundo recurso do Professor na unidade) nada pode, mesmo na aula futura própria.
-        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true}' where unit_id = ?", t.unitId());
+        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true,false}' where unit_id = ?", t.unitId());
         assertThat(flags(ok(range(TODAY.minusDays(10), TODAY.plusDays(10)), teacher), future)).isEqualTo("false/false");
-        adminJdbc().update("update unit_settings set teacher_permissions = '{true,true,true,true}' where unit_id = ?", t.unitId());
+        adminJdbc().update("update unit_settings set teacher_permissions = '{true,true,true,true,false}' where unit_id = ?", t.unitId());
 
         // Professor titular de outra turma, na aula em que é o professor da aula (substituto): vê e pode.
         adminJdbc().update("update lesson set teacher_id = ?, substitute = true where id = ?", ana, other);
