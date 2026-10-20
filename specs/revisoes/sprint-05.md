@@ -241,6 +241,14 @@ Ordem sugerida: A1 (antes do PR); depois A5, A4, A6, A3, A2.
   - **Trava na recusa do A2:** `UnitModalities.refuseIfClasses` consulta as turmas ativas e grava em seguida, sem trava entre a recusa e a criação de uma turma ativa da mesma modalidade na unidade; duas requisições simultâneas podem deixar uma turma ativa com modalidade desmarcada. Fechar com `select ... for update` na linha de `unit_modality` (ou na unidade) tanto aqui quanto em `TrainingClassWrite`.
   - **Lacunas do teste do A6 (`TeacherIT.panelClassesAndUpcoming`):** o corte `limit 10` não tem teste; o isolamento entre organizações só confere a ausência de `upcomingClasses` na resposta, não o 404 explícito; a aula em que o titular foi substituído sai das próximas aulas dele (decisão implícita, sem teste).
   - **R05-9, mantidas:** nginx do front sem `Content-Security-Policy`, `nosniff`, `X-Frame-Options` e `Referrer-Policy` (repete R03-7 e R04-7; item #192); `active_organization_ids()` (V25, `security definer`) sem `REVOKE EXECUTE` de `PUBLIC` e `GRANT` a `ctcore_app`; `notice_status` guarda texto em português em vez de código; edição de aula sem controle de versão (última gravação vence, #51 D7); branches `item/*` e `ajustes/liberar-sprint-05` no remoto (limpas junto deste PR, quando existirem).
+- **Opções de configuração por academia, ainda NÃO decididas (para o dono decidir na sprint indicada, sem issue nova):**
+  - **Sprint 07 (#63/#67):** a capacidade da turma poder bloquear a matrícula acima do limite, por turma, em vez de só avisar (RN-TUR-02, RN-AGE-13).
+  - **Sprint 06:** permissão do Professor por unidade "ver ficha do aluno" (já decidida, ver D2 de 20/10/2026 abaixo; implementação junto da ficha, #60).
+  - **Futuro, baixa prioridade:** prazo de correção de aula concluída por unidade (hoje 30 dias, RN-AGE-08); janela do substituto (RN-PRO-06); Professor criar aula avulsa para outro professor (RN-AGE-07).
+- **Pendências das rodadas 3 e 4, mantidas sem issue nova (decisão do dono de 20/10/2026):**
+  - **Começo da Sprint 06:** tratar a instabilidade de `S3FileStorageIT.refusesExpiredAndTamperedUrls` (R05-17), que falhou no CI dos PRs #50 e #286 e passou ao reexecutar o job; não faz parte de nenhum item de produto.
+  - **Junto da quinta chave da Sprint 06 (ficha do aluno, #60):** corrigir "quatro permissões ligáveis por unidade" em `specs/projeto.md:19` (R05-15). O comentário do mock e o nome de `PermissionsIT:73` dizem "quatro" e hoje isso é verdade, porque só quatro estão implementadas.
+  - **Sugestões sem ação, para a Sprint 06 em diante:** R05-10 (`followingEdited` sem `organization_id` explícito; a RLS cobre), R05-11 (recusas de retirar modalidade da unidade e do professor sem trava de concorrência), R05-13 (auxiliar que deixou de ensinar a modalidade sai da escolha na edição da turma sem aviso) e R05-16 (o MSW de `followingEdited` conta as edições da sessão e não olha `substitute`; o back-end é a referência).
 
 
 ### Rodada 2 — APROVAR — 2026-10-20, estado 48805507b62d1023adf8675a62bc4fae29b2c1d3
@@ -311,3 +319,124 @@ Nenhum antes do PR. Para a Sprint 06, as SUGESTÕES acima, se o dono quiser.
 1. Olhar as telas (Ações 1 a 3 da rodada 1). A Agenda segue vazia depois do seed: siga o README, "Aulas na Agenda" (criar ou editar uma turma em Operação › Turmas).
 2. Conferir as dez decisões de "Itens para as próximas sprints" e o texto das issues #66 e #67.
 3. Abrir o PR de `dev` para `main` com o método "Merge" (nunca squash). Depois de revisar a sprint, dizer "sim" para liberar a Sprint 06.
+
+#### Decisões do dono de 20/10/2026 (depois da rodada 2)
+
+Decisões 1, 4, 5, 6, 8, 9 e 10 e as decisões menores da A1: aceitas como estão. Mudaram três, no PR `ajustes/decisoes-sprint-05`:
+
+- **D3 (titular e auxiliar ensinam a modalidade da turma):** a RN-TUR-05 foi reescrita (`06`), e passou a existir a RN-PRO-09 em `05` (o professor só dá aula nas modalidades cadastradas; tirar uma modalidade em que é titular ou auxiliar de turma ativa é recusado). Servidor: criar ou editar turma com titular ou auxiliar que não ensina a modalidade dá 400 no campo (`headTeacherId` ou `assistantIds`), e a edição de turma antiga com titular que não ensina exige troca; `PUT /teachers/{id}` que tira a modalidade de quem é titular ou auxiliar de turma ativa dá 409 `TEACHER_MODALITY_IN_USE` com as turmas em `fields`. O substituto, a correção do professor da aula (RN-AGE-08) e a aula avulsa já exigiam que o professor ensine a modalidade (RN-PRO-06, D2 de #51); o que mudou foi tirar a exceção do titular da turma em `LessonWrite.checkTeacher`. O seed já cumpria a regra (cada professor ensina Jiu-Jitsu e o segundo também Judô); o `SeedDataIT` agora prova isso. Tela: a janela da turma só lista professores da unidade que ensinam a modalidade escolhida e limpa a escolha ao trocar; a tela de editar professor mostra as turmas que impedem a retirada. Contrato: `modalityIds` por professor em `GET /classes/options` e o 409 em `PUT /teachers/{id}`. Sem migração.
+- **D7 (janela "esta e as seguintes"):** a regra da RN-AGE-04 continua; a janela de editar aula mostra, antes de confirmar, quantas aulas já alteradas à mão serão substituídas. Campo novo `followingEdited` em `GET /agenda/lessons/{id}` (OpenAPI e MSW atualizados; teste de isolamento entre organizações em `AgendaLessonIT.followingEdited`).
+- **D2 (ficha do aluno do Professor): SÓ ESPECIFICAÇÃO.** "Ver ficha do aluno" é a quinta permissão do Professor por unidade (padrão desligada), em `02` (matriz, lista de permissões, Pronto quando), `00`, `01`, `08` (RF-ALU-03) e `15` (RF-INI-03). A implementação (quinta chave no vetor `teacher_permissions`, migração, tela de configurações da unidade, `PermissionTable`, OpenAPI, testes) NÃO entrou na Sprint 05 e vai para a Sprint 06, junto da ficha (#60); o encaixe está em `specs/backlog.md`, "Encaixes para as próximas sprints". O Professor continua sem lista nem painel de turma.
+
+
+### Rodada 3 — APROVAR — 2026-10-20, estado c1aef916c9c5e3bc33841d298243b1edaf6520bc
+
+#### Resumo e veredito
+
+Escopo: só o PR #285 (`ajustes/decisoes-sprint-05`, squash `c1aef91` em `dev`, estado `MERGED`; `changes`, `security`, `backend`, `frontend`, `e2e`, `image-backend`, `image-frontend` e `ci-gate` em `SUCCESS`). Reconferi sem usar o relato de quem construiu: li o diff do commit e rodei testes num clone novo de `origin/dev@c1aef91`, com mutação. Não há BLOQUEIA nem AJUSTAR. Só SUGESTÕES novas. Significa "pode abrir o PR de `dev` para `main`" (método Merge), não "Sprint 06 liberada". A rodada 3 não repetiu o clone completo (`verify` e `test:cov` inteiros): o CI do PR cobre a suíte; rodei os testes que o PR tocou. Decisão do dono registrada: a lista simples do Professor mantém foto e faixa no Início (RF-INI-03); nada muda em `02` e `15`.
+
+Pré-condições: `dev` igual a `origin/dev`; a única mudança na pasta é este relatório (sem commit); `docker info` ok; nenhum PR aberto contra `dev`; nenhum branch apagado.
+
+#### (1) D3: titular e auxiliar ensinam a modalidade
+
+| Ponto | Status | Evidência observada |
+|---|---|---|
+| 400 em `headTeacherId` e `assistantIds` | PASSOU | `TrainingClassWrite.activeTeachers` agora exige `teacher_modality` com a modalidade da turma; `checkReferences` devolve o campo certo nos dois. `TrainingClassWriteIT.teachersMustTeachTheModality` cobre criar (titular e auxiliar) e editar (titular e auxiliar) |
+| turma antiga com titular que não ensina exige troca | PASSOU | mesmo teste: apaga `teacher_modality` do titular, `PUT` dá 400 `headTeacherId`; trocando o titular, 200. Tela: `headCannotTeach` (`ClassFormDialog.tsx:53,58`) distingue "inativo" de "não ensina" |
+| 409 `TEACHER_MODALITY_IN_USE`, só turmas ativas | PASSOU | `TeacherWrite.refuseDroppedModalities`: `status = 'ACTIVE'`, titular ou auxiliar (`training_class_assistant`), só modalidades retiradas, ordem por `name_key, id`, erro antes do `update` (nada muda, sem auditoria). `TeacherWriteIT.removingTaughtModalityIsRefused`: lista `Judô Adulto`, `Judô Kids` (titular e auxiliar); turma `INACTIVE` fora; manter e acrescentar vale; Beto (titular de Judô Kids) trocando Judô por Boxe dá 409; desativando as turmas, 200; vínculo e auditoria intactos |
+| tela: lista filtrada e limpa ao trocar | PASSOU | `ClassFormDialog.tsx`: `teachers = unitTeachers.filter(modalityIds.includes(modalityId))`; `pickModality` limpa titular e filtra auxiliares; `pickUnit` só mantém se a modalidade continua na unidade. Testes de tela e `classes.msw.test.ts` passam |
+| tela do professor mostra as turmas | PASSOU | `TeacherFormDialog.tsx` lista os `fields` `class`; teste `RN-PRO-09` (com axe, como o resto do arquivo) passa |
+| critério da aula (RN-AGE-08, avulsa, substituto) | PASSOU | `LessonWrite.checkTeacher` sem a exceção do titular, usado na avulsa (`create`) e na edição (`update`, inclusive correção de aula concluída e substituto). `AgendaLessonEditIT.headMustTeachTheModality`: titular edita (200), perde a modalidade, 422 em `teacherId` |
+| casos de borda | PASSOU | professor sem modalidade: `coalesce(... '{}')` devolve `modalityIds: []`, nunca é opção e o servidor o recusa (o teste usa "Fora"); turma desativada não impede o 409 e já não é editável; auxiliar e titular juntos: os dois entram na consulta (`Judô Kids` tem Beto titular e Ana auxiliar); troca de modalidade da turma: o servidor valida com a modalidade nova |
+| mutação | PASSOU | no clone, tirei o filtro de modalidade de `activeTeachers`: `TrainingClassWriteIT.teachersMustTeachTheModality` FALHA. O teste não passa sem a regra |
+
+#### (2) D7: `followingEdited`
+
+| Ponto | Status | Evidência observada |
+|---|---|---|
+| mesmo corte de `LessonWrite` | PASSOU | `Agenda.followingEdited`: mesma turma, `lesson_date > data da aula` e `Agenda.status(...) == SCHEDULED` com o mesmo `now` (relógio injetado, fuso da unidade); `LessonWrite.update(FOLLOWING)` usa `lesson_date > oldDate`, `id <> :id` e o mesmo `status`; a conta só soma as que têm `manually_edited` |
+| contagem | PASSOU | `AgendaLessonIT.followingEdited`: 2 (entre 5 seguintes e 1 passada: a não editada, a cancelada e a de outra turma ficam fora); aula avulsa e a última da série dão 0; a mesma aula em outra organização dá 404. Mutação: tirei `and manually_edited`; o teste FALHA em `:65` |
+| isolamento | PASSOU (ressalva) | o 404 entre organizações vem de `agenda.load` antes da conta; a consulta nova só usa o `class_id` já carregado e a RLS vale (sem `organization_id` explícito, ver R05-10) |
+| OpenAPI e MSW | PASSOU | `followingEdited` em `LessonDetail` (`required`, `integer`, `minimum: 0`); `Agenda.LessonDetail` e `useLesson.ts` iguais; o MSW conta as edições seguintes não canceladas da turma. Teste de tela: sem aviso em "só esta", aviso com contagem em "esta e as seguintes"; singular e plural no `pt-BR.json`. `OpenApiContractTest` e `ContractRoutesTest` passam |
+
+#### (3) D2: só especificação
+
+PASSOU. `git show --stat c1aef91`: nenhuma migração, nenhum `PermissionTable`, nenhum arquivo de `features/settings`, `Permissions` nem `UnitSettings`; o vetor `teacher_permissions` segue com 4 posições (`V3`) e o backlog registra a implementação na Sprint 06 (#60). Reconciliação: `00` (cinco permissões, ficha desligada por padrão), `01` (quatro primeiras ligadas, ficha desligada), `02` (matriz com "lista simples ... sempre, sem chave" e "abrir a ficha ... T*"; lista de cinco permissões; critério de "Pronto quando"), `08` RF-ALU-03 e `15` RF-INI-03 (lista simples com foto e faixa; abrir a ficha depende da permissão), `06` RF-AGE-02 (lista simples sem permissão). Não achei contradição entre eles. Resta uma linha histórica em `99-de-para-codigos.md` (R05-12).
+
+#### (4) Fixtures e e2e
+
+PASSOU. Nenhum teste foi enfraquecido: os acréscimos são `insert into teacher_modality` nas fixtures (`AgendaBase.klass`, `LessonGenerationIT`, `TrainingClassWriteIT.teacherOf`), porque a regra nova exige a ligação; nenhuma asserção foi removida ou afrouxada (nos testes só há linhas acrescentadas, fora a troca de `Ana Souza` por `João Pereira` no e2e e a de `modalities[0]` por `find("Judô")` nos testes MSW, que apontam o mesmo alvo sob a regra nova). O e2e `turmas.spec.ts` escolhe Judô e João Pereira (que ensina Judô nos mocks); rodei: 3 testes `@critical` passam. `SeedDataIT` ganhou a asserção de que o seed já cumpre a regra. Testes direcionados no clone: front 26 arquivos, 242 testes, 0 falhas (classes, professores, agenda, mocks); back `TeacherWriteIT`, `TrainingClassWriteIT`, `AgendaLessonIT`, `AgendaLessonEditIT`, `LessonGenerationIT`, `SeedDataIT`, `OpenApiContractTest`, `ContractRoutesTest`: 0 falhas, 0 ignorados.
+
+#### (5) Especificação e código dizem o mesmo
+
+| Regra | Status | Observação |
+|---|---|---|
+| RN-TUR-05 | PASSOU | 400 com o campo; titular que deixou de ensinar exige troca; opções filtradas. Bate com `TrainingClassWrite` e a tela |
+| RN-AGE-04 | PASSOU | o texto novo da janela ("quantas aulas já alteradas à mão") bate com `followingEdited` e `EditLessonDialog`; o corte "ainda não iniciadas" é o mesmo do `LessonWrite` |
+| RN-AGE-08 | PASSOU | "professor ou substituto corrigido também ensina a modalidade" bate com `checkTeacher` (usado na correção de aula concluída) |
+| RN-PRO-06 | PASSOU | continua "substituto de qualquer unidade que ensine a modalidade"; sem exceção de titular |
+| RN-PRO-09 (nova) | PASSOU | bate com `refuseDroppedModalities` e com o OpenAPI (409 em `PUT /teachers/{id}`, enum e `fields` `class`) |
+
+#### Achados novos
+
+Todos SUGESTÃO; nenhum impede o PR.
+
+- **R05-10 (API):** `Agenda.followingEdited` não filtra por `organization_id` (o `LessonWrite` filtra). A RLS cobre e o id vem de aula já carregada; para seguir "filtro no código e RLS", acrescentar `organization_id = :org`.
+- **R05-11 (dados):** `refuseDroppedModalities` não trava a consulta de turmas ativas; criar uma turma no mesmo instante pode passar. Mesma ressalva da A2 (janela estreita, sem efeito financeiro).
+- **R05-12 (especificação):** `99-de-para-codigos.md`, linha `G:RF-USU-04`, ainda diz "quatro permissões do Professor"; com a quinta (D2) fica desatualizada.
+- **R05-13 (front):** ao editar turma antiga, o auxiliar que deixou de ensinar a modalidade sai da escolha sem aviso (o titular tem mensagem, `headCannotTeach`). Mostrar uma linha de aviso, se o dono quiser.
+- **R05-14 (teste e regra):** não há teste que prove que `followingEdited` é igual ao que `update(FOLLOWING)` realmente substitui, e o MSW conta só as edições registradas na sessão (não olha aula já iniciada). Além disso, RN-PRO-09 só protege titular e auxiliar: um substituto já gravado em aula futura que depois deixa de ensinar a modalidade não é recusado nem listado. Decisão de regra para o dono, se quiser.
+
+#### Clone e limpeza
+
+Clone de `origin/dev@c1aef91` no scratchpad, só para testes direcionados e duas mutações (apagado ao fim). Docker: nenhum contêiner nem imagem de projeto criado; `docker images` igual ao de antes. Intocados os volumes `ctcore_postgres-data` e `ctcore_storage-data`.
+
+#### Ações do dono
+
+1. Olhar no navegador: Turmas, janela de turma ao trocar a modalidade (a lista de professores deve mudar e limpar a escolha); Professores, editar professor tirando uma modalidade com turma ativa (deve listar as turmas); Agenda, editar aula com "esta e as seguintes" depois de editar uma aula seguinte à mão (deve avisar a contagem).
+2. Abrir o PR de `dev` para `main` com o método "Merge" (nunca squash). Depois de revisar a sprint, dizer "sim" para liberar a Sprint 06.
+
+#### Decisão do dono sobre a R05-14 e a R05-12 (20/10/2026, depois da rodada 3)
+
+- **R05-14: SIM, proteger o substituto já gravado em aula futura.** Em "esta e as seguintes" (RN-AGE-04), a aula seguinte que já tem substituto gravado mantém o professor e a marca de substituição; data e horário mudam como nas demais, e as demais recebem o professor da edição. Achado no código antes de escrever a regra: `substitute` só é gravado por uma edição, que também marca `manually_edited`, então a aula com substituto já contava em `followingEdited`; o que faltava era a regravação do professor em `LessonWrite.update` (`teacher_id` e `substitute` eram sobrescritos em todas as seguintes) e, por robustez, o contador contar também `substitute` sem `manually_edited`. Aplicado em `ajustes/r05-14`: `06` RN-AGE-04, `LessonWrite` (`Row.keepSubstitute`), `Agenda.followingEdited` (`manually_edited or substitute`), OpenAPI (descrição, sem campo novo), texto da janela em `pt-BR.json`; testes `AgendaLessonEditIT.followingKeepsSubstitutesAndCountMatches` (a contagem é igual às aulas já alteradas que a edição regrava ou preserva, no mesmo cenário) e `AgendaLessonIT.followingEdited`.
+- **R05-12: corrigida.** `99-de-para-codigos.md`, linha `G:RF-USU-04`: "cinco permissões do Professor por unidade", com "ver ficha do aluno" desligada por padrão. As demais ocorrências de "quatro" em `00`, `01` e `02` já descrevem as quatro primeiras mais a quinta.
+- **Achados remanescentes (só registrados, sem ação):** R05-10 (`followingEdited` sem `organization_id` explícito; a RLS cobre), R05-11 (recusa de retirar modalidade sem trava de concorrência, o mesmo ponto do A2) e R05-13 (auxiliar que deixou de ensinar a modalidade sai da escolha na edição da turma sem aviso). Seguem como SUGESTÃO para a Sprint 06 em diante.
+
+
+### Rodada 4 — APROVAR — 2026-10-20, estado 5f4677c083c756a2d773d6441d7fe7439db9639e
+
+#### Resumo e veredito
+
+Escopo: só o PR #286 (`ajustes/r05-14`, squash `5f4677c` em `dev`, estado `MERGED`; `changes`, `security`, `backend`, `frontend`, `e2e`, `image-backend`, `image-frontend` e `ci-gate` em `SUCCESS`; `Publish` em `dev` verde). Reconferi pelo diff e por testes num clone novo de `5f4677c`, com cinco mutações. Não há BLOQUEIA nem erro no que o PR mudou. Veredito: **APROVAR** (pode abrir o PR de `dev` para `main` com "Merge"; não significa Sprint 06 liberada). Nesta rodada não rodei o clone completo (`verify` e `test:cov` inteiros): o CI do PR cobre a suíte; rodei os testes que o PR tocou. Pré-condições: `dev` igual a `origin/dev`; a única mudança na pasta é este relatório (sem commit); Docker 29.8.1 ativo; nenhum branch apagado, nenhum PR aberto por mim.
+
+#### Pontos conferidos
+
+| Ponto | Status | Evidência observada |
+|---|---|---|
+| substituto gravado em aula futura é preservado em "esta e as seguintes" | PASSOU | `LessonWrite.update`: `Row.keepSubstitute` vem de `substitute` na consulta das seguintes (a aula editada entra com `false`); o `update` usa `teacher_id = case when :keep then teacher_id else :teacher end` e o mesmo para `substitute`; data e horário mudam em todas, `manually_edited` e `original_*` seguem gravados. `AgendaLessonEditIT.followingKeepsSubstitutesAndCountMatches`: a aula com Beto (substituta) continua com Beto e `substitute`, as outras recebem Caio, canceladas, de outra turma e passadas ficam intactas |
+| `followingEdited` conta `manually_edited` ou `substitute` | PASSOU | `Agenda.followingEdited`: `(manually_edited or substitute)`, mesmo corte (`lesson_date > data`, status `SCHEDULED`, mesmo `now`). `AgendaLessonIT.followingEdited`: 3 (inclui a com substituto sem `manually_edited`); a última da série dá 1 |
+| a contagem é igual ao que a edição regrava ou preserva | PASSOU | o teste novo compara `followingEdited` (2) com o conjunto marcado (`edited`, `covered`) e com as aulas realmente tocadas (`original_date` não nulo) que estavam marcadas (2); a aula simples (`plain`) é regravada mas não conta, como a regra manda ("alteradas à mão") |
+| RN-AGE-04 e código dizem o mesmo | PASSOU | `06` RN-AGE-04: professor vale para todas menos as com substituto gravado; data e horário mudam em todas; janela conta a aula com substituto como alterada à mão. Bate com `LessonWrite`, `Agenda.followingEdited`, OpenAPI (`PUT /agenda/lessons/{id}` e `followingEdited`, sem campo novo) e `pt-BR.json`/`LessonPanelPage.test.tsx` (texto "atingidas ... o substituto fica") |
+| "cinco permissões" no de-para e demais ocorrências | PASSOU | `99`, `G:RF-USU-04`: "cinco permissões ... a quinta ... desligada por padrão". `grep` em `docs`, `frontend/src`, `backend/src`, `specs`: `00` ("Cinco permissões") e `01` ("As quatro primeiras ligadas ... ficha desligada") coerentes. Restam "quatro" em `specs/projeto.md:19`, `frontend/src/mocks/permissions.ts:4` e `PermissionsIT:73`; ver achados remanescentes |
+| testes | PASSOU | no clone: `AgendaLessonEditIT` 8/8, `AgendaLessonIT` 6/6, `OpenApiContractTest` e `ContractRoutesTest` 7/7, 0 falhas |
+| mutação | PASSOU | todas reprovam: (M1) `keep` sempre falso, `followingKeepsSubstitutesAndCountMatches:96` falha; (M2) `keep` sempre verdadeiro, 3 falhas (`states`, `thisLesson`, o teste novo); (M3) corte sem `substitute`, `AgendaLessonIT.followingEdited:67` falha (esperava 3); (M4) corte só `substitute`, os dois testes falham; (M5) seguintes sem filtro de status, `following` e o teste novo falham. Nenhuma mutação sobreviveu |
+
+#### Achados novos
+
+Nenhum BLOQUEIA ou AJUSTAR. Só o que segue, como SUGESTÃO.
+
+#### Achados remanescentes (sem exigir ajuste)
+
+- **R05-10, R05-11, R05-13:** continuam como na rodada 3 (SUGESTÃO).
+- **R05-15 (especificação, SUGESTÃO):** `specs/projeto.md:19` ainda diz "quatro permissões ligáveis por unidade" para o Professor; com a quinta (D2) fica desatualizada. O comentário de `frontend/src/mocks/permissions.ts:4` e o nome do teste `PermissionsIT:73` ("as quatro permissões") são verdadeiros hoje (só quatro estão implementadas) e mudam com a Sprint 06 (#60).
+- **R05-16 (teste, SUGESTÃO):** o MSW de `followingEdited` conta as edições da sessão e não olha o campo `substitute` nem aula já iniciada; o back-end é a referência, e as duas contagens coincidem porque toda substituição passa por uma edição. Sem ação.
+- **R05-17 (CI, SUGESTÃO, fora deste PR):** a falha de `S3FileStorageIT.refusesExpiredAndTamperedUrls` no CI (já vista no #50) não é parte do #286 e não foi reproduzida aqui (não rodei esse teste); neste PR o `backend` ficou `SUCCESS`. Registrado como instabilidade conhecida, sem ajuste exigido.
+
+#### Clone e limpeza
+
+Clone de `origin/dev@5f4677c` no scratchpad, só para os testes direcionados e as cinco mutações (todas revertidas com `git checkout` no clone, que foi apagado ao fim). Nenhum contêiner nem imagem de projeto criado; os de Testcontainers saem sozinhos. Volumes `ctcore_postgres-data` e `ctcore_storage-data` intocados. Nenhuma alteração em código, especificação ou branches do repositório.
+
+#### Ações do dono
+
+1. Abrir o PR de `dev` para `main` com o método "Merge" (nunca squash). Depois de revisar a sprint, dizer "sim" para liberar a Sprint 06.
+2. Opcional, no navegador: Agenda, editar uma aula já substituída com "esta e as seguintes" e conferir que o aviso diz "atingidas ... o substituto fica" e que a aula com substituto mantém o professor.
