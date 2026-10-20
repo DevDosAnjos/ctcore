@@ -2,6 +2,7 @@ import { http, HttpResponse, type HttpResponseResolver } from "msw";
 import { isStrongPassword } from "@/features/auth/PasswordRules";
 import { isValidCpfOrCnpj, onlyDigits } from "@/components/fields/masks";
 import { isHexColor, passesContrast } from "@/features/organization/contrastRatio";
+import { nextHolidays, validateDay, type DayBody } from "./noClassDays";
 import { mockPermissions } from "./permissions";
 
 export type Method = "get" | "post" | "put" | "patch" | "delete";
@@ -76,6 +77,7 @@ export const resetMockSession = () => {
   mockClasses = initialClasses();
   lessonEdits.clear();
   mockAdhoc = [];
+  mockNoClassDays = [];
   teacherContacts = initialTeacherContacts();
   teacherResends = 0;
   sessions = initialSessions();
@@ -340,6 +342,11 @@ const lessonEdits = new Map<string, LessonEdit>();
 // RF-AGE-04: aulas avulsas criadas no simulado (têm linha própria, ao contrário das aulas de turma).
 type MockAdhoc = { id: string; unitId: string; title: string; modalityId: string; date: string; startsAt: string; endsAt: string; teacherId: string; visibilityClassId: string | null };
 let mockAdhoc: MockAdhoc[] = [];
+// RF-AGE-05: dias sem aula lançados no simulado. As aulas deles não têm linha própria: nascem canceladas pelo dia que as cobre (como o gerador do servidor).
+type MockDay = { id: string; unitId: string; startsOn: string; endsOn: string; reason: string; origin: "HOLIDAY" | "COORDINATOR" | "UNIT"; classIds: string[]; noticeMode: string; noticeAt: string | null };
+let mockNoClassDays: MockDay[] = [];
+const coveringDay = (unitId: string, date: string, classId: string | null, today: string) =>
+  mockNoClassDays.find((d) => d.unitId === unitId && date >= today && date >= d.startsOn && date <= d.endsOn && (d.classIds.length === 0 || (classId !== null && d.classIds.includes(classId))));
 const todayLocal = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -348,22 +355,23 @@ const adhocLesson = (a: MockAdhoc, today: string) => {
   const unit = units.find((u) => u.id === a.unitId)!;
   const teacher = mockTeachers.find((t) => t.id === a.teacherId)!;
   const future = a.date >= today;
+  const day = coveringDay(a.unitId, a.date, null, today);
   return {
     id: a.id,
     date: a.date,
     startsAt: a.startsAt,
     endsAt: a.endsAt,
-    status: future ? "SCHEDULED" : "COMPLETED",
-    cancelReason: null as string | null,
-    cancelReasonCode: null as string | null,
+    status: day ? "CANCELLED" : future ? "SCHEDULED" : "COMPLETED",
+    cancelReason: (day?.reason ?? null) as string | null,
+    cancelReasonCode: (day ? (day.origin === "HOLIDAY" ? "HOLIDAY" : "OTHER") : null) as string | null,
     class: null as { id: string; name: string } | null,
     title: a.title as string | null,
     unit: { id: unit.id, name: unit.name },
     modality: { id: a.modalityId, name: modalityCatalog.find((m) => m.id === a.modalityId)!.name },
     teacher: { id: teacher.id, name: teacher.name },
     substitute: false,
-    canEdit: true,
-    canCancel: future,
+    canEdit: !day,
+    canCancel: future && !day,
   };
 };
 const applyEdit = <T extends { id: string; date: string; startsAt: string; endsAt: string; teacher: { id: string; name: string }; substitute: boolean; status: string; cancelReason: string | null; cancelReasonCode: string | null; canEdit: boolean; canCancel: boolean }>(l: T): T => {
@@ -384,7 +392,8 @@ const mockLesson = (c: MockClass, unit: { id: string; name: string }, date: stri
   const row = classRow(c);
   const substitute = c.id.endsWith("601") && wd === 3;
   const teacher = substitute ? { id: TEACHER_JOAO, name: mockTeachers.find((x) => x.id === TEACHER_JOAO)!.name } : row.head;
-  const cancelled = date === today;
+  const day = coveringDay(unit.id, date, c.id, today);
+  const cancelled = date === today || !!day;
   const future = date > today;
   return {
     id: `${c.id}-${date}-${startsAt}`,
@@ -392,8 +401,8 @@ const mockLesson = (c: MockClass, unit: { id: string; name: string }, date: stri
     startsAt,
     endsAt,
     status: cancelled ? "CANCELLED" : future ? "SCHEDULED" : "COMPLETED",
-    cancelReason: cancelled ? "Feriado sintético" : null,
-    cancelReasonCode: null as string | null,
+    cancelReason: cancelled ? (day?.reason ?? "Feriado sintético") : null,
+    cancelReasonCode: (day ? (day.origin === "HOLIDAY" ? "HOLIDAY" : "OTHER") : null) as string | null,
     class: { id: c.id, name: c.name } as { id: string; name: string } | null,
     title: null as string | null,
     unit: { id: unit.id, name: unit.name },
@@ -454,6 +463,69 @@ const lessonView = (id: string) => {
   };
   return { detail, klass: c, today };
 };
+// RF-AGE-05: Coordenador e Administrador; Professor e portal 403. O Administrador só alcança a unidade dele (ADMIN_UNIT); fora do alcance, 404.
+const dayAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  return role === "COORDINATOR" || role === "ADMINISTRATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+const dayReach = () => units.filter((u) => u.active && (activeRole() === "COORDINATOR" || u.id === ADMIN_UNIT));
+// Aulas da unidade no período que o dia cancelaria: de turma ativa (as escolhidas, ou todas) e, sem turma escolhida, as avulsas; sem cancelamento manual.
+const dayLessons = (unitId: string, start: string, end: string, classIds: string[], today: string) => {
+  const out: { id: string; date: string; startsAt: string; endsAt: string; class: { id: string; name: string } | null; title: string | null }[] = [];
+  for (let t = Date.parse(`${start}T12:00:00Z`); t <= Date.parse(`${end}T12:00:00Z`); t += 86400000) {
+    const date = new Date(t).toISOString().slice(0, 10);
+    if (date <= today) continue;
+    const weekday = ((new Date(t).getUTCDay() + 6) % 7) + 1;
+    for (const c of mockClasses.filter((k) => k.status === "ACTIVE" && k.unitId === unitId && (classIds.length === 0 || classIds.includes(k.id)))) {
+      for (const [, startsAt, endsAt] of c.schedule.filter(([d]) => d === weekday)) {
+        const id = `${c.id}-${date}-${startsAt}`;
+        if (!lessonEdits.get(id)?.cancelCode) out.push({ id, date, startsAt, endsAt, class: { id: c.id, name: c.name }, title: null });
+      }
+    }
+    if (classIds.length === 0) {
+      for (const a of mockAdhoc.filter((x) => x.unitId === unitId && x.date === date && !lessonEdits.get(x.id)?.cancelCode)) {
+        out.push({ id: a.id, date, startsAt: a.startsAt, endsAt: a.endsAt, class: null, title: a.title });
+      }
+    }
+  }
+  return out.sort((a, b) => `${a.date}${a.startsAt}`.localeCompare(`${b.date}${b.startsAt}`));
+};
+const dayItem = (d: MockDay, today: string) => ({
+  id: d.id,
+  unit: { id: d.unitId, name: units.find((u) => u.id === d.unitId)!.name },
+  startsOn: d.startsOn,
+  endsOn: d.endsOn,
+  reason: d.reason,
+  origin: d.origin,
+  allClasses: d.classIds.length === 0,
+  classes: d.classIds.map((id) => mockClasses.find((c) => c.id === id)!).map((c) => ({ id: c.id, name: c.name })),
+  notice: { mode: d.noticeMode, sendAt: d.noticeAt, status: d.noticeMode === "SCHEDULED" ? "SCHEDULED" : "NOT_NOTIFIED" },
+  cancelledLessons: dayLessons(d.unitId, d.startsOn, d.endsOn, d.classIds, today).length,
+  canEdit: d.startsOn > today,
+});
+// Valida como o servidor (400, 404 de unidade, 422/404 de turma) e devolve as unidades já resolvidas ou a resposta de erro.
+const dayPlan = (b: DayBody, unitIds: string[], full: boolean) => {
+  const today = todayLocal();
+  if (unitIds.length === 0) return classBad("unitIds", "obrigatório");
+  if (activeRole() !== "COORDINATOR" && unitIds.length > 1) return classBad("unitIds", "informe uma só unidade");
+  const bad = validateDay(b, today, full);
+  if (bad) return classBad(bad.field, bad.message);
+  const found = unitIds.map((id) => dayReach().find((u) => u.id === id));
+  if (found.some((u) => !u)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const classIds = [...new Set(b.classIds ?? [])];
+  if (classIds.length > 0) {
+    if (unitIds.length > 1) return error(422, "UNPROCESSABLE", "Os dados estão corretos, mas a regra não permite esta operação.", [{ field: "classIds", message: "turmas só com uma unidade" }]);
+    for (const id of classIds) {
+      const k = mockClasses.find((c) => c.id === id);
+      if (!k) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (k.status !== "ACTIVE" || k.unitId !== unitIds[0]) return error(422, "UNPROCESSABLE", "Os dados estão corretos, mas a regra não permite esta operação.", [{ field: "classIds", message: "escolha turmas ativas da unidade" }]);
+    }
+  }
+  return { today, units: unitIds, classIds };
+};
+const dayClash = (unitId: string, start: string, end: string, self?: string) => mockNoClassDays.some((d) => d.unitId === unitId && d.id !== self && d.startsOn <= end && d.endsOn >= start);
+const dayConflict = () => error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "startsOn", message: "já existe dia sem aula neste período" }]);
 // RF-TUR-03: validação como no servidor; devolve o erro 400/409 ou a turma já no formato interno.
 type ClassInput = { unitId?: string; name?: string; modalityId?: string; ageRangeId?: string | null; schedule?: { weekday?: number; startsAt?: string; endsAt?: string }[]; capacity?: number | null; headTeacherId?: string; assistantIds?: string[]; groupLink?: string | null; notifyClass?: boolean };
 const classBad = (field: string, message = "inválido") => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
@@ -1381,7 +1453,10 @@ export const routes: Route[] = [
         if ((teacherId && lesson.teacher.id !== teacherId) || (modalityId && lesson.modality.id !== modalityId)) continue;
         lessons.push(lesson);
       }
-      const noClassDays = today >= from && today <= to ? [{ startsOn: today, endsOn: today, reason: "Feriado sintético" }] : [];
+      const noClassDays = [
+        ...(today >= from && today <= to ? [{ startsOn: today, endsOn: today, reason: "Feriado sintético" }] : []),
+        ...mockNoClassDays.filter((d) => d.unitId === unit.id && d.classIds.length === 0 && d.startsOn <= to && d.endsOn >= from).map((d) => ({ startsOn: d.startsOn, endsOn: d.endsOn, reason: d.reason })),
+      ];
       return HttpResponse.json({
         units: sorted.map(({ id, name }) => ({ id, name })),
         unit: { id: unit.id, name: unit.name },
@@ -1478,6 +1553,113 @@ export const routes: Route[] = [
       if ((b.channels ?? []).some((c) => c !== "EMAIL" && c !== "WHATSAPP")) return classBad("channels", "use EMAIL ou WHATSAPP");
       lessonEdits.set(detail.id, { ...lessonEdits.get(detail.id), cancelCode: b.reason, cancelText: text });
       return HttpResponse.json((lessonView(detail.id) as { detail: object }).detail);
+    },
+  },
+  {
+    // RF-AGE-05: dias da unidade que ainda não terminaram e feriados nacionais sugeridos (ainda não confirmados na unidade); nada é gravado.
+    method: "get",
+    path: "/no-class-days",
+    resolver: ({ request }) => {
+      const denied = dayAccess();
+      if (denied) return denied;
+      const reach = [...dayReach()].sort((a, b) => a.name.localeCompare(b.name));
+      const unitId = new URL(request.url).searchParams.get("unitId");
+      const unit = unitId ? reach.find((u) => u.id === unitId) : reach[0];
+      if (unitId && !unit) return error(404, "NOT_FOUND", "Não encontrado.");
+      const refs = reach.map(({ id, name }) => ({ id, name }));
+      if (!unit) return HttpResponse.json({ units: refs, unit: null, days: [], suggestions: [] });
+      const today = todayLocal();
+      const mine = mockNoClassDays.filter((d) => d.unitId === unit.id && d.endsOn >= today).sort((a, b) => a.startsOn.localeCompare(b.startsOn));
+      const taken = new Set(mine.map((d) => d.startsOn));
+      return HttpResponse.json({
+        units: refs,
+        unit: { id: unit.id, name: unit.name },
+        days: mine.map((d) => dayItem(d, today)),
+        suggestions: nextHolidays(today).filter((h) => !taken.has(h.date)),
+      });
+    },
+  },
+  {
+    // RF-AGE-05: prévia das aulas que seriam canceladas, por unidade; mesmas validações do lançamento, menos o conflito.
+    method: "get",
+    path: "/no-class-days/preview",
+    resolver: ({ request }) => {
+      const denied = dayAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const body: DayBody = { startsOn: p.get("startsOn") ?? undefined, endsOn: p.get("endsOn") ?? undefined, classIds: p.getAll("classIds") };
+      const plan = dayPlan(body, p.getAll("unitIds"), false);
+      if (plan instanceof Response) return plan;
+      return HttpResponse.json({
+        units: plan.units.map((id) => ({ unit: { id, name: units.find((u) => u.id === id)!.name }, lessons: dayLessons(id, body.startsOn!, body.endsOn!, plan.classIds, plan.today) })),
+      });
+    },
+  },
+  {
+    // RF-AGE-05: um dia por unidade, tudo ou nada; 409 se sobrepõe outro da unidade. Origem: feriado, Coordenador ou unidade.
+    method: "post",
+    path: "/no-class-days",
+    resolver: async ({ request }) => {
+      const denied = dayAccess();
+      if (denied) return denied;
+      const b = (await request.json().catch(() => ({}))) as DayBody;
+      const plan = dayPlan(b, b.unitIds ?? [], true);
+      if (plan instanceof Response) return plan;
+      if (plan.units.some((id) => dayClash(id, b.startsOn!, b.endsOn!))) return dayConflict();
+      const mode = b.notice?.mode ?? "NONE";
+      const made: MockDay[] = plan.units.map((unitId) => ({
+        id: crypto.randomUUID(),
+        unitId,
+        startsOn: b.startsOn!,
+        endsOn: b.endsOn!,
+        reason: (b.reason ?? "").trim(),
+        origin: b.holiday ? "HOLIDAY" : activeRole() === "COORDINATOR" ? "COORDINATOR" : "UNIT",
+        classIds: plan.classIds,
+        noticeMode: mode,
+        noticeAt: mode === "SCHEDULED" ? new Date(b.notice!.sendAt!).toISOString() : null,
+      }));
+      mockNoClassDays = [...mockNoClassDays, ...made];
+      return HttpResponse.json(made.map((d) => dayItem(d, plan.today)), { status: 201 });
+    },
+  },
+  {
+    // RF-AGE-05: só dia futuro (início depois de hoje, senão 409); troca período, motivo, turmas e aviso; a unidade e a origem não mudam.
+    method: "put",
+    path: "/no-class-days/{id}",
+    resolver: async ({ request, params }) => {
+      const denied = dayAccess();
+      if (denied) return denied;
+      const found = mockNoClassDays.find((d) => d.id === params.id && dayReach().some((u) => u.id === d.unitId));
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (found.startsOn <= todayLocal()) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      const b = (await request.json().catch(() => ({}))) as DayBody;
+      const plan = dayPlan(b, [found.unitId], true);
+      if (plan instanceof Response) return plan;
+      if (dayClash(found.unitId, b.startsOn!, b.endsOn!, found.id)) return dayConflict();
+      const mode = b.notice?.mode ?? "NONE";
+      Object.assign(found, {
+        startsOn: b.startsOn!,
+        endsOn: b.endsOn!,
+        reason: (b.reason ?? "").trim(),
+        classIds: plan.classIds,
+        noticeMode: mode,
+        noticeAt: mode === "SCHEDULED" ? new Date(b.notice!.sendAt!).toISOString() : null,
+      });
+      return HttpResponse.json(dayItem(found, plan.today));
+    },
+  },
+  {
+    // RF-AGE-05: desfaz um dia futuro; `notify` só fica registrado até a Sprint 09. As aulas voltam porque o simulado as deriva do dia.
+    method: "delete",
+    path: "/no-class-days/{id}",
+    resolver: ({ params }) => {
+      const denied = dayAccess();
+      if (denied) return denied;
+      const found = mockNoClassDays.find((d) => d.id === params.id && dayReach().some((u) => u.id === d.unitId));
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (found.startsOn <= todayLocal()) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      mockNoClassDays = mockNoClassDays.filter((d) => d.id !== found.id);
+      return new HttpResponse(null, { status: 204 });
     },
   },
   {

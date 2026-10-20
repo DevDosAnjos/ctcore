@@ -23,14 +23,19 @@ public class LessonGenerator {
     public static final int DAYS = 56;
 
     private static final String INSERT = """
-            insert into lesson (id, organization_id, unit_id, class_id, lesson_date, starts_at, ends_at, teacher_id, cancelled, cancel_reason)
+            insert into lesson (id, organization_id, unit_id, class_id, lesson_date, starts_at, ends_at, teacher_id, cancelled, cancel_reason,
+                                cancel_reason_code, no_class_day_id)
             select gen_random_uuid(), c.organization_id, c.unit_id, c.id, d.day, s.starts_at, s.ends_at, c.head_teacher_id,
-                   n.reason is not null, n.reason
+                   n.id is not null, n.reason,
+                   case when n.id is null then null when n.origin = 'HOLIDAY' then 'HOLIDAY' else 'OTHER' end, n.id
             from training_class c
             join training_class_schedule s on s.class_id = c.id and s.organization_id = c.organization_id
             cross join (select cast(g as date) as day from generate_series(cast(:from as date), cast(:to as date), interval '1 day') g) d
-            left join lateral (select x.reason from no_class_day x where x.organization_id = c.organization_id and x.unit_id = c.unit_id
-                               and d.day between x.starts_on and x.ends_on order by x.created_at, x.id limit 1) n on true
+            left join lateral (select x.id, x.reason, x.origin from no_class_day x where x.organization_id = c.organization_id and x.unit_id = c.unit_id
+                               and d.day between x.starts_on and x.ends_on
+                               and (not exists (select 1 from no_class_day_class k where k.no_class_day_id = x.id)
+                                    or exists (select 1 from no_class_day_class k where k.no_class_day_id = x.id and k.class_id = c.id))
+                               order by x.created_at, x.id limit 1) n on true
             where c.organization_id = :org and c.unit_id = :unit and c.status = 'ACTIVE'
               and (cast(:class as uuid) is null or c.id = :class) and extract(isodow from d.day) = s.weekday
               and not exists (select 1 from lesson e where e.class_id = c.id and e.original_date = d.day and e.original_starts_at = s.starts_at)

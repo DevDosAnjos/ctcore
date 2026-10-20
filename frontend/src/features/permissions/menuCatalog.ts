@@ -22,7 +22,7 @@ export const menuCatalog: CatalogGroup[] = [
     items: [
       item("agenda", "AGENDA_VIEW", "/agenda", true),
       item("classes", "CLASSES_MANAGE", "/turmas", true),
-      item("noClassDays", "NO_CLASS_DAYS", "/dias-sem-aula"),
+      item("noClassDays", "NO_CLASS_DAYS", "/dias-sem-aula", true),
       item("graduation", "GRADUATION", "/graduacao"),
       item("trialClasses", "TRIAL_CLASSES", "/aulas-experimentais"),
       item("announcements", "ANNOUNCEMENTS", "/comunicados"),
