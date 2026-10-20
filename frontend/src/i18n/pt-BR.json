@@ -729,6 +729,28 @@
       }
     }
   },
+  "plans": {
+    "title": "Planos e benefícios",
+    "intro": "Resumo dos planos e dos benefícios da unidade escolhida.",
+    "emptyTitle": "Nenhum plano ainda",
+    "emptyText": "Quando houver planos ou benefícios, o resumo aparece aqui.",
+    "noRange": "Sem plano ativo",
+    "range": "{{min}} a {{max}}",
+    "plans": {
+      "title": "Planos",
+      "active": "Ativos",
+      "inactive": "Desativados",
+      "studentsUsing": "Alunos usando",
+      "range": "Faixa de valores",
+      "view": "Ver planos"
+    },
+    "benefits": {
+      "title": "Benefícios",
+      "active": "Ativos",
+      "high": "Altos",
+      "view": "Ver benefícios"
+    }
+  },
   "classes": {
     "title": "Turmas",
     "intro": "Turmas das suas unidades, com os dias, os horários, o professor e a situação de cada uma.",
