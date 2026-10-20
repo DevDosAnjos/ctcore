@@ -53,6 +53,7 @@ const detail = (over: Partial<LessonDetail> = {}): LessonDetail => ({
   canEdit: true,
   canCancel: true,
   canViewClass: true,
+  followingEdited: 0,
   ...over,
 });
 
@@ -273,6 +274,22 @@ describe("LessonPanelPage", () => {
         { scope: "FOLLOWING", date: "2026-03-10", startsAt: "18:30", endsAt: "20:00", teacherId: "t2" },
       ]);
       expect(screen.getByText("10/03/2026, das 18:30 às 20:00")).toBeInTheDocument();
+    });
+
+    it("RN-AGE-04: com esta e as seguintes a janela avisa quantas aulas já alteradas à mão serão substituídas", async () => {
+      const user = userEvent.setup();
+      setup();
+      stubTeachers();
+      stateful(detail(), detail({ followingEdited: 2 }));
+      await ready();
+      await user.click(screen.getByRole("button", { name: "Editar aula" }));
+      const dialog = await screen.findByRole("dialog", { name: "Editar aula" });
+      await screen.findByRole("option", { name: "João Pereira" });
+      expect(within(dialog).queryByRole("status")).toBeNull();
+      await user.click(within(dialog).getByRole("radio", { name: /Esta e as seguintes/ }));
+      expect(within(dialog).getByRole("status")).toHaveTextContent("2 aulas seguintes já foram alteradas à mão e serão substituídas por esta edição.");
+      await user.click(within(dialog).getByRole("radio", { name: /Só esta aula/ }));
+      expect(within(dialog).queryByRole("status")).toBeNull();
     });
 
     it("CA11: 409 e 422 aparecem na janela; fica aberta", async () => {

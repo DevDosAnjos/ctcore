@@ -41,7 +41,7 @@ Cadastro de alunos e responsáveis, com a ficha que reúne tudo o que a gestão 
 
 - **RF-ALU-01.** Pessoas › Alunos: colunas padrão nome com foto e selos, modalidades com turma, graduação; filtros rápidos Ativos, Em atraso, Bloqueados, Ex-alunos (com contagem); filtros por modalidade, turma, nível, faixa etária, situação financeira e selos; colunas configuráveis por usuário; paginação.
 - **RF-ALU-02.** Selos: "Termo pendente", "Cadastro incompleto", "Bolsista", "E-mail com problema", "Novo" (até 30 dias da matrícula), "Aniversário hoje".
-- **RF-ALU-03.** Ficha do aluno em painel lateral (tela cheia no celular). Cabeçalho: foto, nome, idade, selos, situação, botões WhatsApp e Cobrar. Abas:
+- **RF-ALU-03.** Ficha do aluno em painel lateral (tela cheia no celular). O Professor só abre a ficha dos alunos das suas turmas e só com a permissão "ver ficha do aluno" da unidade (desligada por padrão, `02`); para ele a ficha omite valores em reais, plano, benefício, CPF, endereço, situação financeira e o botão Cobrar, e contatos e emergência seguem a permissão "ver contatos". Cabeçalho: foto, nome, idade, selos, situação, botões WhatsApp e Cobrar. Abas:
   - **Resumo:** contato, responsáveis, emergência, modalidades com turma, faixa e situação, próximo vencimento, pendências.
   - **Matrícula e modalidades:** cada modalidade com unidade, turma principal, outros horários, plano, benefício, mensalidade resultante, vencimento, situação; ações Trocar turma, Trocar plano, Conceder benefício, Transferir, Encerrar.
   - **Financeiro:** cobranças com situação, recibos, ações de cobrança (ver `10`).

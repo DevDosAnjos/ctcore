@@ -54,6 +54,7 @@ const panel = (over: Partial<LessonDetail> = {}): LessonDetail => ({
   trialClasses: 0,
   groupLink: null,
   canViewClass: false,
+  followingEdited: 0,
   ...over,
 });
 

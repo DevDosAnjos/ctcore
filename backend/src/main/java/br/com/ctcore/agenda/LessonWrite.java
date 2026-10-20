@@ -150,7 +150,7 @@ public class LessonWrite {
                     + "and o.active join unit_modality um on um.modality_id = m.id and um.unit_id = :unit and um.offered where m.id = :m")
                     .param("org", org).param("unit", in.unitId()).param("m", in.modalityId()).query(Integer.class).single();
             if (offered == 0) throw unprocessable("modalityId", "escolha uma modalidade ativa oferecida pela unidade");
-            checkTeacher(org, in.teacherId(), null, in.modalityId());
+            checkTeacher(org, in.teacherId(), in.modalityId());
             if (in.visibilityClassId() != null) {
                 String cls = jdbc.sql("select unit_id, status from training_class where id = :id and organization_id = :org")
                         .param("id", in.visibilityClassId()).param("org", org).query((rs, n) -> rs.getObject(1, UUID.class) + "|" + rs.getString(2))
@@ -195,7 +195,7 @@ public class LessonWrite {
             boolean adhoc = before.trainingClass() == null; // RF-AGE-04: aula avulsa não tem série
             if (adhoc && e.following()) throw new ApiValidationException("scope", "aula avulsa: use THIS");
             UUID classId = adhoc ? null : before.trainingClass().id();
-            checkTeacher(org, e.teacherId(), l.headId(), before.modality().id());
+            checkTeacher(org, e.teacherId(), before.modality().id());
             boolean substitute = !adhoc && !e.teacherId().equals(l.headId());
             LocalDate oldDate = LocalDate.parse(before.date());
             long delta = ChronoUnit.DAYS.between(oldDate, e.date());
@@ -251,11 +251,11 @@ public class LessonWrite {
         return m;
     }
 
-    /** RN-PRO-06 (D2): ativo, da organização e que ensina a modalidade da turma (o titular da turma sempre vale). */
-    private void checkTeacher(UUID org, UUID teacherId, UUID headId, UUID modalityId) {
+    /** RN-PRO-06, RN-PRO-09: ativo, da organização e que ensina a modalidade da aula, inclusive o titular da turma. */
+    private void checkTeacher(UUID org, UUID teacherId, UUID modalityId) {
         int ok = jdbc.sql("select count(*) from teacher t where t.organization_id = :org and t.id = :id and t.status = 'ACTIVE' "
-                + "and (t.id = :head or exists (select 1 from teacher_modality tm where tm.teacher_id = t.id and tm.modality_id = :m))")
-                .param("org", org).param("id", teacherId).param("head", headId).param("m", modalityId).query(Integer.class).single();
+                + "and exists (select 1 from teacher_modality tm where tm.teacher_id = t.id and tm.modality_id = :m)")
+                .param("org", org).param("id", teacherId).param("m", modalityId).query(Integer.class).single();
         if (ok == 0) {
             throw new ApiStatusException(ErrorCode.UNPROCESSABLE,
                     List.of(new ApiError.Field("teacherId", "escolha um professor ativo que ensine a modalidade da aula")));

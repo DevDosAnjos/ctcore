@@ -877,7 +877,7 @@ paths:
       description: |
         `scope` `THIS` muda só a aula; `FOLLOWING` aplica horário e professor a ela e às seguintes da turma ainda não iniciadas (nem canceladas
         nem concluídas) e desloca a data de cada uma pelo mesmo número de dias da mudança desta; tudo ou nada. O professor é ativo, da organização
-        e ensina a modalidade da turma (outro: 422 em `teacherId`); se não for o titular, `substitute` fica verdadeiro, e o titular da turma não muda.
+        e ensina a modalidade da turma, o titular inclusive (outro: 422 em `teacherId`); se não for o titular, `substitute` fica verdadeiro, e o titular da turma não muda.
         A aula editada fica com `manually_edited`. Início no passado ou `endsAt` antes de `startsAt`: 400; mesmo dia e início de outra aula da turma:
         409. Cancelada: 409. Concluída: só Coordenador e Administrador, em até 30 dias do término, só o professor (data e horário iguais), com
         `reason` obrigatório; fora disso 409. Grava `lesson.updated`. Sem `AGENDA_EDIT`, 403; fora do alcance ou da visibilidade, 404.
@@ -1055,7 +1055,7 @@ paths:
         Nasce `ACTIVE` na `unitId` informada. `name` de 2 a 80 (único entre turmas ativas da unidade, sem caixa nem acento; repetido dá 409 com
         o campo `name`); `modalityId` ativa e oferecida pela unidade; `schedule` com ao menos um horário (um por dia de 1 a 7, `HH:mm`,
         término depois do início); `capacity` opcional de 1 a 200 e nunca bloqueia; `headTeacherId` obrigatório; titular e auxiliares são
-        professores ativos da unidade; `groupLink` opcional, `http` ou `https`, até 300. O Administrador só cria em unidade dele (outra: 403).
+        professores ativos da unidade que ensinam a modalidade da turma (RN-TUR-05; outro: 400 em `headTeacherId` ou `assistantIds`); `groupLink` opcional, `http` ou `https`, até 300. O Administrador só cria em unidade dele (outra: 403).
         Grava `class.created`, sem o link do grupo. Sem presença nem frequência (RN-TUR-06).
       security: [{ sessionCookie: [], csrfHeader: [] }]
       requestBody:
@@ -1205,7 +1205,9 @@ paths:
       description: |
         Substitui os campos do cadastro (unidades e modalidades como conjunto completo); não altera situação nem conta e vale também para
         professor inativo. O Administrador troca só as unidades dele e as de fora do alcance dele permanecem; sem alcance sobre o professor,
-        404. Mesmas validações de `POST /teachers`. Grava `teacher.updated`, sem e-mail nem telefone.
+        404. Mesmas validações de `POST /teachers`. Grava `teacher.updated`, sem e-mail nem telefone. Tirar uma modalidade em que o
+        professor é titular ou auxiliar de turma ativa responde 409 `TEACHER_MODALITY_IN_USE` (RN-PRO-09), `fields` com um item `class`
+        por turma que impede (o nome em `message`), e nada muda; turma desativada não impede.
       security: [{ sessionCookie: [], csrfHeader: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1220,6 +1222,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
     get:
       summary: Painel do professor (RF-PRO-02). Coordenador e Administrador.
       description: |
@@ -1702,6 +1705,7 @@ components:
             - LAST_UNIT_ADMINISTRATOR
             - MODALITY_IN_USE
             - UNIT_MODALITY_IN_USE
+            - TEACHER_MODALITY_IN_USE
             - MODALITY_NOT_ACTIVE
             - REQUEST_ALREADY_OPEN
             - ALREADY_IN_CATALOG
@@ -1951,7 +1955,7 @@ components:
         canCancel: { type: boolean }
     LessonDetail:
       type: object
-      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, title, visibilityClass, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass]
+      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, title, visibilityClass, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass, followingEdited]
       properties:
         id: { type: string, format: uuid }
         date: { type: string, format: date }
@@ -1974,6 +1978,7 @@ components:
         canEdit: { type: boolean }
         canCancel: { type: boolean }
         canViewClass: { type: boolean, description: Verdadeiro só para quem gerencia turmas (`CLASSES_MANAGE`). }
+        followingEdited: { type: integer, minimum: 0, description: "Aulas seguintes da turma, ainda agendadas e alteradas à mão, que editar \"esta e as seguintes\" (RN-AGE-04) substituiria; 0 na aula avulsa." }
     LessonCreateInput:
       type: object
       required: [unitId, title, modalityId, date, startsAt, endsAt, teacherId]
@@ -2152,7 +2157,16 @@ components:
               id: { type: string, format: uuid }
               name: { type: string }
               modalities: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
-              teachers: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+              teachers:
+                type: array
+                description: Professores ativos da unidade, cada um com as modalidades que ensina (RN-TUR-05); a janela só oferece quem ensina a da turma.
+                items:
+                  type: object
+                  required: [id, name, modalityIds]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    modalityIds: { type: array, items: { type: string, format: uuid } }
         ageRanges:
           type: array
           items:

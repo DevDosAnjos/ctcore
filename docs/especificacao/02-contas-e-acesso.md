@@ -69,7 +69,8 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 | --- | --- | --- | --- |
 | Início da unidade | ● | U | T |
 | "Todas as unidades" (consolidado) | ○ | — | — |
-| Alunos: ver lista e ficha | ● | U | T (sem dados financeiros, CPF ou endereço) |
+| Alunos: lista simples (nome e ativo ou bloqueado na modalidade) | ● | U | T (sempre, sem chave) |
+| Alunos: abrir a ficha | ● | U | T* (ver ficha do aluno; sem valores, plano, benefício, CPF, endereço nem situação financeira) |
 | Alunos: contatos e emergência | ● | U | T* (ver contatos) |
 | Alunos: cadastrar, editar, matricular, encerrar | ● | U | — |
 | Benefícios | ● | U | — |
@@ -96,13 +97,14 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 | Importar | ● | U | — |
 | Liberar acesso de suporte | ● | — | — |
 
-Permissões do Professor por unidade (todas ligadas por padrão): **enviar comunicado**, **editar e cancelar aulas**, **ver contatos**, **ver aulas experimentais**.
+Permissões do Professor por unidade, ligadas ou desligadas pelo Administrador da unidade: **enviar comunicado**, **editar e cancelar aulas**, **ver contatos** e **ver aulas experimentais** (as quatro ligadas por padrão) e **ver ficha do aluno** (desligada por padrão). Ligada, o Professor abre a ficha dos alunos das suas turmas; desligada, não abre a ficha, mas continua vendo os alunos da turma ou da aula como lista simples, e isso não depende de chave. Contatos e emergência continuam sendo a chave própria "ver contatos", também na ficha.
 
-O Professor nunca vê valores em reais, plano, benefício, CPF, endereço nem situação financeira; vê só se o aluno está ativo ou bloqueado na modalidade.
+O Professor nunca vê valores em reais, plano, benefício, CPF, endereço nem situação financeira, nem na ficha. Na lista simples vê o nome e se o aluno está ativo ou bloqueado na modalidade (nas telas do Início, também foto e faixa, RF-INI-03). Ele não tem lista nem painel de turma (ver `06`): vê os alunos pela agenda, pela aula e pelo Início.
 
 ## Pronto quando
 
 - Um usuário de Professor não encontra nenhum valor em reais em nenhuma tela, busca ou resposta da API.
+- Com "ver ficha do aluno" desligada na unidade, o Professor não abre a ficha (a API recusa) e continua vendo a lista simples dos alunos das suas turmas.
 - Tentar abrir uma rota fora do perfil pelo endereço ou pela API é recusado no servidor.
 - Coordenador sem duas etapas não passa do primeiro acesso sem configurar.
 - Trocar a senha derruba as outras sessões no mesmo minuto (teste ponta a ponta).

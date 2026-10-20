@@ -19,8 +19,8 @@ const session = (role: string): SessionView => ({
 });
 const options: ClassOptions = {
   units: [
-    { id: "u1", name: "Centro", modalities: [{ id: "m1", name: "Jiu-Jitsu" }, { id: "m2", name: "Judô" }], teachers: [{ id: "t1", name: "Ana Souza" }, { id: "t2", name: "João Lima" }] },
-    { id: "u2", name: "Norte", modalities: [{ id: "m2", name: "Judô" }], teachers: [{ id: "t3", name: "Marcos Dias" }] },
+    { id: "u1", name: "Centro", modalities: [{ id: "m1", name: "Jiu-Jitsu" }, { id: "m2", name: "Judô" }], teachers: [{ id: "t1", name: "Ana Souza", modalityIds: ["m1", "m2"] }, { id: "t2", name: "João Lima", modalityIds: ["m1", "m2"] }] },
+    { id: "u2", name: "Norte", modalities: [{ id: "m2", name: "Judô" }], teachers: [{ id: "t3", name: "Marcos Dias", modalityIds: ["m2"] }] },
   ],
   ageRanges: [{ id: "r1", name: "Adulto", minAge: 18, maxAge: null }],
 };

@@ -1,6 +1,9 @@
 package br.com.ctcore.teacher;
 
+import br.com.ctcore.api.error.ApiError;
+import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
+import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.audit.AuditActor;
 import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
@@ -133,6 +136,7 @@ public class TeacherWrite {
             checkUnits(who, c.unitIds());
             List<ModalityInput> previous = currentModalities(who, id);
             List<ModalityInput> modalities = keepHiddenLevels(checkModalities(who, c.modalities()), previous);
+            refuseDroppedModalities(id, previous, modalities);
             Map<String, Object> before = fields(old.name(), old.bio(), old.consent(), old.declared(), current, previous);
             jdbc.sql("update teacher set name = :name, name_key = :key, email = :email, phone = :phone, bio = :bio, "
                     + "directory_consent = :consent, consent_declared_by_management = :declared where organization_id = :org and id = :id")
@@ -272,6 +276,18 @@ public class TeacherWrite {
     private static List<ModalityInput> keepHiddenLevels(List<ModalityInput> asked, List<ModalityInput> previous) {
         return asked.stream().map(m -> m.levelId() != null ? m : previous.stream()
                 .filter(p -> p.modalityId().equals(m.modalityId()) && p.levelId() != null).findFirst().orElse(m)).toList();
+    }
+
+    /** RN-PRO-09: tirar uma modalidade em que o professor é titular ou auxiliar de turma ativa é recusado, com as turmas na resposta. */
+    private void refuseDroppedModalities(UUID teacherId, List<ModalityInput> previous, List<ModalityInput> next) {
+        Set<UUID> kept = next.stream().map(ModalityInput::modalityId).collect(java.util.stream.Collectors.toSet());
+        Set<UUID> dropped = previous.stream().map(ModalityInput::modalityId).filter(m -> !kept.contains(m)).collect(java.util.stream.Collectors.toSet());
+        if (dropped.isEmpty()) return;
+        List<ApiError.Field> classes = jdbc.sql("select c.name from training_class c where c.status = 'ACTIVE' and c.modality_id in (:dropped) "
+                + "and (c.head_teacher_id = :id or exists (select 1 from training_class_assistant a where a.class_id = c.id and a.teacher_id = :id)) "
+                + "order by c.name_key, c.id").param("dropped", dropped).param("id", teacherId)
+                .query((rs, n) -> new ApiError.Field("class", rs.getString(1))).list();
+        if (!classes.isEmpty()) throw new ApiStatusException(ErrorCode.TEACHER_MODALITY_IN_USE, classes);
     }
 
     private void replaceModalities(AccountPrincipal who, UUID id, List<ModalityInput> modalities) {

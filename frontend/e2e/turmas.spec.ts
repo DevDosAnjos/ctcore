@@ -67,7 +67,7 @@ test("@critical Coordenador cria uma turma", async ({ page }) => {
   await dialog.getByLabel("Nome da turma").fill("Muay Thai Noite");
   await dialog.getByLabel("Unidade").selectOption({ label: "Unidade Centro" });
   await dialog.getByLabel("Modalidade").selectOption({ label: "Judô" });
-  await dialog.getByLabel("Professor titular").selectOption({ label: "Ana Souza" });
+  await dialog.getByLabel("Professor titular").selectOption({ label: "João Pereira" });
   await dialog.getByRole("checkbox", { name: "Sexta-feira" }).check();
   await dialog.getByRole("button", { name: "Salvar" }).click();
 

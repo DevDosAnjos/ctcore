@@ -42,18 +42,20 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
   const [unitId, setUnitId] = useState(klass?.unit.id ?? (options.units.length === 1 ? options.units[0].id : ""));
   const unit = options.units.find((u) => u.id === unitId);
   const [name, setName] = useState(klass?.name ?? "");
-  const [modalityId, setModalityId] = useState(klass?.modality.id ?? "");
   const [ageRangeId, setAgeRangeId] = useState(klass?.ageRange?.id ?? "");
   const [days, setDays] = useState(() => initialDays(klass));
   const [capacity, setCapacity] = useState(klass?.capacity?.toString() ?? "");
   // Titular inativo (ou que saiu da unidade) não é escolha: o campo volta vazio e pede um novo (RN-PRO-05).
-  const teachers = unit?.teachers ?? [];
+  const [modalityId, setModalityId] = useState(klass?.modality.id ?? "");
+  const unitTeachers = unit?.teachers ?? [];
+  const teachers = unitTeachers.filter((x) => x.modalityIds.includes(modalityId));
   const headGone = !!klass && !teachers.some((x) => x.id === klass.head.id);
+  const headCannotTeach = headGone && unitTeachers.some((x) => x.id === klass?.head.id);
   const [headId, setHeadId] = useState(headGone ? "" : (klass?.head.id ?? ""));
   const [assistants, setAssistants] = useState(() => (klass?.assistants ?? []).map((a) => a.id).filter((id) => teachers.some((x) => x.id === id)));
   const [link, setLink] = useState(klass?.groupLink ?? "");
   const [notify, setNotify] = useState(true);
-  const [errors, setErrors] = useState<Errors>(headGone ? { head: t("classes.form.headGone", { name: klass.head.name }) } : {});
+  const [errors, setErrors] = useState<Errors>(headGone ? { head: t(headCannotTeach ? "classes.form.headCannotTeach" : "classes.form.headGone", { name: klass.head.name }) } : {});
   const [busy, setBusy] = useState(false);
 
   const schedule = DAYS.filter((d) => days[d].on).map((d) => ({ weekday: d, startsAt: days[d].from, endsAt: days[d].to }));
@@ -63,8 +65,18 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
     setUnitId(id);
     const next = options.units.find((u) => u.id === id);
     if (!next?.modalities.some((m) => m.id === modalityId)) setModalityId("");
-    if (!next?.teachers.some((x) => x.id === headId)) setHeadId("");
-    setAssistants((a) => a.filter((x) => next?.teachers.some((y) => y.id === x)));
+    const modalityKept = !!next?.modalities.some((m) => m.id === modalityId);
+    const can = (tid: string) => modalityKept && !!next?.teachers.some((x) => x.id === tid && x.modalityIds.includes(modalityId));
+    if (!can(headId)) setHeadId("");
+    setAssistants((a) => a.filter(can));
+  }
+
+  // RN-TUR-05: ao trocar a modalidade, titular e auxiliares que não a ensinam saem da escolha.
+  function pickModality(id: string) {
+    setModalityId(id);
+    const teaches = (tid: string) => unitTeachers.some((x) => x.id === tid && x.modalityIds.includes(id));
+    if (!teaches(headId)) setHeadId("");
+    setAssistants((a) => a.filter(teaches));
   }
 
   function setDay(d: number, patch: Partial<Day>) {
@@ -161,7 +173,7 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
         <label htmlFor="class-modality" className="block text-sm font-medium">
           {t("classes.form.modality")}
         </label>
-        <select {...props(F.modality)} className={select} value={modalityId} onChange={(e) => setModalityId(e.target.value)}>
+        <select {...props(F.modality)} className={select} value={modalityId} onChange={(e) => pickModality(e.target.value)}>
           <option value="">{t("classes.form.choose")}</option>
           {(unit?.modalities ?? []).map((m) => (
             <option key={m.id} value={m.id}>
@@ -232,6 +244,7 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
           ))}
         </select>
         {err(F.head)}
+        <p className="text-sm text-muted-foreground">{t("classes.form.teachersHelp")}</p>
       </div>
       <fieldset aria-describedby={errors.assistants ? "class-assistants-erro" : undefined}>
         <legend className="text-sm font-medium">{t("classes.form.assistants")}</legend>

@@ -46,7 +46,10 @@ public class TrainingClassWrite {
     public record Input(UUID unitId, String name, UUID modalityId, UUID ageRangeId, List<SlotInput> schedule, Integer capacity,
             UUID headTeacherId, List<UUID> assistantIds, String groupLink, Boolean notifyClass) {}
 
-    public record UnitOption(UUID id, String name, List<TrainingClasses.Ref> modalities, List<TrainingClasses.Ref> teachers) {}
+    /** RN-TUR-05: cada professor traz as modalidades que ensina, para a janela só oferecer quem ensina a da turma. */
+    public record TeacherOption(UUID id, String name, List<UUID> modalityIds) {}
+
+    public record UnitOption(UUID id, String name, List<TrainingClasses.Ref> modalities, List<TeacherOption> teachers) {}
 
     public record Options(List<UnitOption> units, List<TrainingClasses.AgeRangeRef> ageRanges) {}
 
@@ -211,10 +214,13 @@ public class TrainingClassWrite {
                                     + "join unit_modality um on um.modality_id = m.id and um.unit_id = :unit and um.offered order by m.name, m.id")
                                     .param("org", who.organizationId()).param("unit", u.id())
                                     .query((rs, n) -> new TrainingClasses.Ref(rs.getObject(1, UUID.class), rs.getString(2))).list(),
-                            jdbc.sql("select t.id, t.name from teacher t join teacher_unit tu on tu.teacher_id = t.id and tu.unit_id = :unit "
-                                    + "where t.organization_id = :org and t.status = 'ACTIVE' order by t.name_key, t.id")
+                            jdbc.sql("select t.id, t.name, coalesce(array_agg(tm.modality_id order by tm.modality_id) filter (where tm.modality_id is not null), '{}') "
+                                    + "from teacher t join teacher_unit tu on tu.teacher_id = t.id and tu.unit_id = :unit "
+                                    + "left join teacher_modality tm on tm.teacher_id = t.id "
+                                    + "where t.organization_id = :org and t.status = 'ACTIVE' group by t.id, t.name, t.name_key order by t.name_key, t.id")
                                     .param("org", who.organizationId()).param("unit", u.id())
-                                    .query((rs, n) -> new TrainingClasses.Ref(rs.getObject(1, UUID.class), rs.getString(2))).list()))
+                                    .query((rs, n) -> new TeacherOption(rs.getObject(1, UUID.class), rs.getString(2),
+                                            List.of((UUID[]) rs.getArray(3).getArray()))).list()))
                     .toList();
             List<TrainingClasses.AgeRangeRef> ages = jdbc.sql("select id, name, min_age, max_age from age_range where organization_id = :org order by min_age, name, id")
                     .param("org", who.organizationId())
@@ -234,16 +240,20 @@ public class TrainingClassWrite {
                 .param("org", who.organizationId()).param("id", c.ageRangeId()).query(Integer.class).single() == 0) {
             throw new ApiValidationException("ageRangeId", "faixa etária inválida");
         }
-        if (!activeTeachers(who, unit, Set.of(c.headId()))) throw new ApiValidationException("headTeacherId", "escolha um professor ativo da unidade");
-        if (!c.assistants().isEmpty() && !activeTeachers(who, unit, c.assistants())) {
-            throw new ApiValidationException("assistantIds", "escolha professores ativos da unidade");
+        if (!activeTeachers(who, unit, c.modalityId(), Set.of(c.headId()))) {
+            throw new ApiValidationException("headTeacherId", "escolha um professor ativo da unidade que ensine a modalidade");
+        }
+        if (!c.assistants().isEmpty() && !activeTeachers(who, unit, c.modalityId(), c.assistants())) {
+            throw new ApiValidationException("assistantIds", "escolha professores ativos da unidade que ensinem a modalidade");
         }
     }
 
-    private boolean activeTeachers(AccountPrincipal who, UUID unit, Set<UUID> ids) {
+    /** RN-TUR-05, RN-PRO-09: ativos, da unidade e com a modalidade da turma em "modalidades que ensina". */
+    private boolean activeTeachers(AccountPrincipal who, UUID unit, UUID modalityId, Set<UUID> ids) {
         int found = jdbc.sql("select count(*) from teacher t where t.organization_id = :org and t.status = 'ACTIVE' and t.id in (:ids) "
-                + "and exists (select 1 from teacher_unit tu where tu.teacher_id = t.id and tu.unit_id = :unit)")
-                .param("org", who.organizationId()).param("ids", ids).param("unit", unit).query(Integer.class).single();
+                + "and exists (select 1 from teacher_unit tu where tu.teacher_id = t.id and tu.unit_id = :unit) "
+                + "and exists (select 1 from teacher_modality tm where tm.teacher_id = t.id and tm.modality_id = :m)")
+                .param("org", who.organizationId()).param("ids", ids).param("unit", unit).param("m", modalityId).query(Integer.class).single();
         return found == ids.size();
     }
 

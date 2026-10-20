@@ -22,6 +22,7 @@ Sem CPF e sem endereço.
 - **RN-PRO-06.** Professor substituto pode ser de outra unidade da organização, desde que ensine a modalidade. Ele vê a turma e os alunos dela só durante a substituição (do dia da aula até o fim desse dia). O servidor confere ao gravar a substituição que o substituto ensina a modalidade e, no painel da aula, só o deixa abrir a aula no dia dela (fora disso, 404).
 - **RN-PRO-07.** O professor que também é aluno usa a mesma conta, com os dois vínculos.
 - **RN-PRO-08.** Desconto de professor na mensalidade é um benefício comum (ver `07`). Encerrar o vínculo de professor encerra esse desconto.
+- **RN-PRO-09.** O professor só dá aula nas modalidades que ensina (as cadastradas nele): como titular ou auxiliar de turma, como substituto e como professor de aula avulsa ou de correção de aula. Tirar de um professor uma modalidade em que ele é titular ou auxiliar de turma ativa é recusado (409), listando as turmas; turma desativada não impede, e o professor continua com o que já deu no histórico de aulas.
 
 ## Requisitos
 

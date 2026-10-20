@@ -443,6 +443,7 @@ const lessonView = (id: string) => {
       canEdit: role === "TEACHER" ? false : canEdit,
       canCancel: role === "TEACHER" ? false : canCancel,
       canViewClass: false,
+      followingEdited: 0,
     };
     return { detail, klass: null, today };
   }
@@ -464,6 +465,8 @@ const lessonView = (id: string) => {
     canEdit: role === "TEACHER" ? false : canEdit,
     canCancel: role === "TEACHER" ? false : canCancel,
     canViewClass: role !== "TEACHER",
+    // RN-AGE-04: edições à mão (ainda agendadas) das aulas seguintes da turma, que "esta e as seguintes" substituiria.
+    followingEdited: [...lessonEdits.entries()].filter(([key, e]) => key.startsWith(`${c.id}-`) && !e.cancelCode && key.slice(c.id.length + 1, c.id.length + 11) > m[2]).length,
   };
   return { detail, klass: c, today };
 };
@@ -545,7 +548,8 @@ const classFromInput = (b: ClassInput, unitId: string, self: MockClass | null): 
   if (b.capacity != null && (!Number.isInteger(b.capacity) || b.capacity < 1 || b.capacity > 200)) return classBad("capacity", "de 1 a 200");
   const link = (b.groupLink ?? "").trim() === "" ? undefined : b.groupLink!;
   if (link !== undefined && (link.length > 300 || link !== link.trim() || !/^https?:\/\/\S+$/.test(link))) return classBad("groupLink", "http ou https");
-  const usable = (id: string) => mockTeachers.some((t) => t.id === id && t.status === "ACTIVE" && t.units.some((u) => u.id === unitId));
+  // RN-TUR-05: ativo, da unidade e que ensina a modalidade da turma.
+  const usable = (id: string) => mockTeachers.some((t) => t.id === id && t.status === "ACTIVE" && t.units.some((u) => u.id === unitId) && t.modalities.some((m) => m.id === b.modalityId));
   if (!b.headTeacherId || !usable(b.headTeacherId)) return classBad("headTeacherId");
   const assistants = b.assistantIds ?? [];
   if (new Set(assistants).size !== assistants.length || assistants.includes(b.headTeacherId) || !assistants.every(usable)) return classBad("assistantIds");
@@ -1366,7 +1370,7 @@ export const routes: Route[] = [
             id: u.id,
             name: u.name,
             modalities: teacherOptions().map(({ id, name }) => ({ id, name })),
-            teachers: mockTeachers.filter((t) => t.status === "ACTIVE" && t.units.some((x) => x.id === u.id)).map(({ id, name }) => ({ id, name })),
+            teachers: mockTeachers.filter((t) => t.status === "ACTIVE" && t.units.some((x) => x.id === u.id)).map(({ id, name, modalities }) => ({ id, name, modalityIds: modalities.map((m) => m.id) })),
           })),
         ageRanges: ageRanges.map(({ id, name, minAge, maxAge }) => ({ id, name, minAge, maxAge })),
       });
@@ -1723,6 +1727,13 @@ export const routes: Route[] = [
       if (found instanceof HttpResponse) return found;
       const made = teacherFromInput((await request.json().catch(() => ({}))) as TeacherInput, found);
       if (made instanceof Response) return made;
+      // RN-PRO-09: tirar uma modalidade em que é titular ou auxiliar de turma ativa é recusado, listando as turmas.
+      const kept = new Set(made.modalities.map((m) => m.id));
+      const blocking = mockClasses
+        .filter((c) => c.status === "ACTIVE" && (c.head === found.id || c.assistants.includes(found.id)) && !kept.has(c.modalityId))
+        .map((c) => c.name)
+        .sort((a, b) => a.localeCompare(b));
+      if (blocking.length > 0) return error(409, "TEACHER_MODALITY_IN_USE", "Há turmas ativas.", blocking.map((name) => ({ field: "class", message: name })));
       const { contact, ...fields } = made;
       Object.assign(found, fields);
       teacherContacts[found.id] = contact;

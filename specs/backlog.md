@@ -214,3 +214,8 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
 | — | nenhuma (P1 respondida pelo dono em 19/10/2026: opção recomendada, já implementada na #45) | — | — | — |
+
+## Encaixes para as próximas sprints
+
+- **Sprint 06, ficha do aluno (#60, junto de #58 e #61):** permissão do Professor por unidade: ver ficha do aluno (padrão desligada); implementar junto da ficha, com migração do vetor `teacher_permissions` de 4 para 5, tela de configurações da unidade, `PermissionTable`, openapi e testes. Decisão do dono de 20/10/2026, só especificação até lá (`docs/especificacao/02`, `08`, `15`). Sem a chave, o Professor continua vendo os alunos da turma ou da aula como lista simples (RN-PRO-06). Ainda não há arquivo de item para #58 a #61; quem especificar a ficha lê este encaixe.
+- **Sprint 07, matrícula (#63) e benefícios (#66):** os encaixes de `ModalityUsage.activeStudents` e da RN-PRO-08 estão no fim do corpo das issues #63 e #66.

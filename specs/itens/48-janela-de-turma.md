@@ -110,3 +110,7 @@ Janela de turma (RF-TUR-03): criar (`POST /classes`) e editar (`PUT /classes/{id
 Verificação: `./backend/mvnw -f backend/pom.xml verify` (324 testes, JaCoCo sem violação); em `frontend/`, lint, typecheck, build, `test:cov` (592 testes) e `e2e` (26) verdes.
 
 Decisões: turma desativada não é editável (409); unidade não muda; modalidade precisa ser oferecida pela unidade; layout do canvas não estava acessível (D9), o dono confere no PR.
+
+## Revisão pelo dono (20/10/2026, depois da rodada 2 da Sprint 05)
+
+- D4 revista: titular e auxiliar **têm de ensinar a modalidade da turma** (RN-TUR-05, RN-PRO-09). A janela só oferece professores ativos da unidade que ensinam a modalidade escolhida e limpa a escolha ao trocar de modalidade; o servidor recusa com 400 em `headTeacherId` ou `assistantIds`; turma com titular que não ensina exige troca ao editar. A rota `GET /classes/options` passou a trazer `modalityIds` por professor. Implementado no PR `ajustes/decisoes-sprint-05`.

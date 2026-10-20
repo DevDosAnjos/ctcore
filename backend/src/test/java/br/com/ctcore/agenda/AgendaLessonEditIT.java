@@ -58,6 +58,22 @@ class AgendaLessonEditIT extends AgendaBase {
     }
 
     @Test
+    @DisplayName("RN-PRO-09, RN-AGE-08: o professor da aula, inclusive o titular, ensina a modalidade; titular que deixou de ensinar não é aceito")
+    void headMustTeachTheModality() throws Exception {
+        var t = tenant();
+        UUID ana = teacher(t, "Ana", null);
+        UUID judo = modality(t, "Judô");
+        UUID c = klass(t, "Judô", judo, ana, "ACTIVE");
+        UUID l = lesson(t, c, ana, TODAY.plusDays(3), "19:00", "20:00", false, false);
+        var coord = who(t, Role.COORDINATOR);
+        assertThat(put(l, body("THIS", TODAY.plusDays(3), "20:00", "21:00", ana), coord).getStatus()).isEqualTo(200);
+        adminJdbc().update("delete from teacher_modality where teacher_id = ?", ana);
+        var refused = put(l, body("THIS", TODAY.plusDays(3), "19:00", "20:00", ana), coord);
+        assertThat(refused.getStatus()).isEqualTo(422);
+        assertThat(field(refused)).isEqualTo("teacherId");
+    }
+
+    @Test
     @DisplayName("RN-AGE-04: CA1, CA3, CA8: THIS muda só a aula, marca edição, troca professor sem mudar o titular e audita")
     void thisLesson() throws Exception {
         var t = tenant();

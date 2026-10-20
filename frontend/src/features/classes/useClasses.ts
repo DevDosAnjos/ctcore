@@ -109,7 +109,8 @@ export interface ClassInput {
   notifyClass?: boolean;
 }
 export interface ClassOptions {
-  units: { id: string; name: string; modalities: Choice[]; teachers: Choice[] }[];
+  // Cada professor traz as modalidades que ensina (RN-TUR-05): a janela só oferece quem ensina a da turma.
+  units: { id: string; name: string; modalities: Choice[]; teachers: (Choice & { modalityIds: string[] })[] }[];
   ageRanges: { id: string; name: string; minAge: number; maxAge: number | null }[];
 }
 export const createClass = (input: ClassInput) => api<ClassDetail>("/classes", { method: "POST", body: input });
