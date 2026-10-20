@@ -31,6 +31,23 @@ test("@critical Coordenador abre a Agenda", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Jiu-Jitsu Adulto", level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: "Ver turma" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Avisar turma" })).toBeDisabled();
+
+  // RF-AGE-03: edita o horário desta aula e, em seguida, cancela outra.
+  await page.getByRole("button", { name: "Editar aula" }).click();
+  const edit = page.getByRole("dialog", { name: "Editar aula" });
+  await expect(edit.getByRole("option", { name: "João Pereira" })).toBeAttached();
+  await edit.getByLabel("Início").fill("06:15");
+  await edit.getByLabel("Término").fill("07:15");
+  await edit.getByRole("button", { name: "Salvar" }).click();
+  await expect(page.getByText(/das 06:15 às 07:15/)).toBeVisible();
   await page.getByRole("link", { name: "Voltar à agenda" }).click();
   await expect(page.getByRole("heading", { name: "Agenda", level: 1 })).toBeVisible();
+  await page.getByRole("button", { name: "Próxima semana" }).click();
+  await page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).last().click();
+  await page.getByRole("button", { name: "Cancelar aula" }).click();
+  const cancel = page.getByRole("dialog", { name: "Cancelar aula" });
+  await cancel.getByRole("radio", { name: "Feriado" }).check();
+  await cancel.getByRole("button", { name: "Cancelar aula" }).click();
+  await expect(page.getByText("Aviso pronto")).toBeVisible();
+  await expect(page.getByText("Cancelada").first()).toBeVisible();
 });

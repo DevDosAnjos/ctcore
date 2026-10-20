@@ -74,6 +74,7 @@ export const resetMockSession = () => {
   staff = initialStaff();
   mockTeachers = initialTeachers();
   mockClasses = initialClasses();
+  lessonEdits.clear();
   teacherContacts = initialTeacherContacts();
   teacherResends = 0;
   sessions = initialSessions();
@@ -332,6 +333,23 @@ const classDetail = (c: MockClass) => ({
 });
 // Quem chama: 401 sem sessão, 403 sem CLASSES_MANAGE, 404 fora do alcance (Administrador) ou inexistente.
 // RF-AGE-01: a aula de uma turma numa data (o id junta turma, data e início). Hoje é dia sem aula; a de quarta do Jiu-Jitsu é substituição.
+// RF-AGE-03: o que a edição e o cancelamento mudaram, por id de aula (as aulas do mock nascem das turmas e não têm linha própria).
+type LessonEdit = { date?: string; startsAt?: string; endsAt?: string; teacherId?: string; substitute?: boolean; cancelCode?: string; cancelText?: string | null };
+const lessonEdits = new Map<string, LessonEdit>();
+const applyEdit = <T extends { id: string; date: string; startsAt: string; endsAt: string; teacher: { id: string; name: string }; substitute: boolean; status: string; cancelReason: string | null; cancelReasonCode: string | null; canEdit: boolean; canCancel: boolean }>(l: T): T => {
+  const e = lessonEdits.get(l.id);
+  if (!e) return l;
+  const teacher = e.teacherId ? mockTeachers.find((x) => x.id === e.teacherId) : undefined;
+  return {
+    ...l,
+    date: e.date ?? l.date,
+    startsAt: e.startsAt ?? l.startsAt,
+    endsAt: e.endsAt ?? l.endsAt,
+    teacher: teacher ? { id: teacher.id, name: teacher.name } : l.teacher,
+    substitute: e.substitute ?? l.substitute,
+    ...(e.cancelCode ? { status: "CANCELLED", cancelReason: e.cancelText ?? null, cancelReasonCode: e.cancelCode, canEdit: false, canCancel: false } : {}),
+  };
+};
 const mockLesson = (c: MockClass, unit: { id: string; name: string }, date: string, wd: number, startsAt: string, endsAt: string, today: string) => {
   const row = classRow(c);
   const substitute = c.id.endsWith("601") && wd === 3;
@@ -345,6 +363,7 @@ const mockLesson = (c: MockClass, unit: { id: string; name: string }, date: stri
     endsAt,
     status: cancelled ? "CANCELLED" : future ? "SCHEDULED" : "COMPLETED",
     cancelReason: cancelled ? "Feriado sintético" : null,
+    cancelReasonCode: null as string | null,
     class: { id: c.id, name: c.name },
     unit: { id: unit.id, name: unit.name },
     modality: row.modality,
@@ -359,6 +378,31 @@ const classFor = (id: string) => {
   const role = activeRole();
   if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
   return mockClasses.find((c) => c.id === id && (role === "COORDINATOR" || c.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// RF-AGE-02/03: a aula pelo id (turma, data e início), com as edições aplicadas; 401, 403 e 404 como no servidor.
+const lessonView = (id: string) => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  if (role !== "COORDINATOR" && role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
+  const m = /^(.+)-(\d{4}-\d{2}-\d{2})-(\d{2}:\d{2})$/.exec(id);
+  const c = m && mockClasses.find((k) => k.id === m[1] && k.status === "ACTIVE" && (role !== "ADMINISTRATOR" || k.unitId === ADMIN_UNIT));
+  const unit = c && units.find((u) => u.id === c.unitId);
+  const slot = c && m && c.schedule.find(([d, s]) => s === m[3] && d === ((new Date(`${m[2]}T12:00:00Z`).getUTCDay() + 6) % 7) + 1);
+  if (!m || !c || !unit || !slot) return error(404, "NOT_FOUND", "Não encontrado.");
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const { canEdit, canCancel, ...lesson } = applyEdit(mockLesson(c, unit, m[2], slot[0], slot[1], slot[2], today));
+  const detail = {
+    ...lesson,
+    head: lesson.substitute ? classRow(c).head : null,
+    activeStudents: 0,
+    trialClasses: 0,
+    groupLink: c.groupLink ?? null,
+    canEdit: role === "TEACHER" ? false : canEdit,
+    canCancel: role === "TEACHER" ? false : canCancel,
+    canViewClass: role !== "TEACHER",
+  };
+  return { detail, klass: c, today };
 };
 // RF-TUR-03: validação como no servidor; devolve o erro 400/409 ou a turma já no formato interno.
 type ClassInput = { unitId?: string; name?: string; modalityId?: string; ageRangeId?: string | null; schedule?: { weekday?: number; startsAt?: string; endsAt?: string }[]; capacity?: number | null; headTeacherId?: string; assistantIds?: string[]; groupLink?: string | null; notifyClass?: boolean };
@@ -1276,7 +1320,7 @@ export const routes: Route[] = [
         const weekday = ((new Date(t).getUTCDay() + 6) % 7) + 1;
         for (const c of mockClasses.filter((k) => k.status === "ACTIVE" && k.unitId === unit.id)) {
           for (const [wd, startsAt, endsAt] of c.schedule.filter(([d]) => d === weekday)) {
-            const lesson = mockLesson(c, unit, date, wd, startsAt, endsAt, today);
+            const lesson = applyEdit(mockLesson(c, unit, date, wd, startsAt, endsAt, today));
             if ((teacherId && lesson.teacher.id !== teacherId) || (modalityId && lesson.modality.id !== modalityId)) continue;
             lessons.push(lesson);
           }
@@ -1298,27 +1342,52 @@ export const routes: Route[] = [
     method: "get",
     path: "/agenda/lessons/{id}",
     resolver: ({ params }) => {
-      if (!loggedIn) return unauthenticated();
-      const role = activeRole();
-      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
-      const m = /^(.+)-(\d{4}-\d{2}-\d{2})-(\d{2}:\d{2})$/.exec(params.id as string);
-      const c = m && mockClasses.find((k) => k.id === m[1] && k.status === "ACTIVE" && (role !== "ADMINISTRATOR" || k.unitId === ADMIN_UNIT));
-      const unit = c && units.find((u) => u.id === c.unitId);
-      const slot = c && m && c.schedule.find(([d, s]) => s === m[3] && d === ((new Date(`${m[2]}T12:00:00Z`).getUTCDay() + 6) % 7) + 1);
-      if (!m || !c || !unit || !slot) return error(404, "NOT_FOUND", "Não encontrado.");
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-      const { canEdit, canCancel, ...lesson } = mockLesson(c, unit, m[2], slot[0], slot[1], slot[2], today);
-      return HttpResponse.json({
-        ...lesson,
-        head: lesson.substitute ? classRow(c).head : null,
-        activeStudents: 0,
-        trialClasses: 0,
-        groupLink: c.groupLink ?? null,
-        canEdit: role === "TEACHER" ? false : canEdit,
-        canCancel: role === "TEACHER" ? false : canCancel,
-        canViewClass: role !== "TEACHER",
-      });
+      const found = lessonView(params.id as string);
+      return found instanceof Response ? found : HttpResponse.json(found.detail);
+    },
+  },
+  {
+    // RF-AGE-03: edita a aula (as seguintes de FOLLOWING são geradas pelo mock e não mudam). Concluída: só o professor, com motivo.
+    method: "put",
+    path: "/agenda/lessons/{id}",
+    resolver: async ({ request, params }) => {
+      const found = lessonView(params.id as string);
+      if (found instanceof Response) return found;
+      const { detail } = found;
+      if (!detail.canEdit) return detail.status === "CANCELLED" || detail.status === "COMPLETED" ? error(409, "CONFLICT", "Não é possível editar a aula.") : error(403, "FORBIDDEN", "Sem permissão.");
+      const b = (await request.json().catch(() => ({}))) as { scope?: string; date?: string; startsAt?: string; endsAt?: string; teacherId?: string; reason?: string };
+      const time = /^([01]\d|2[0-3]):[0-5]\d$/;
+      if (b.scope !== "THIS" && b.scope !== "FOLLOWING") return classBad("scope", "use THIS ou FOLLOWING");
+      if (!b.date || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return classBad("date", "data inválida, use yyyy-MM-dd");
+      if (!b.startsAt || !time.test(b.startsAt)) return classBad("startsAt", "horário HH:mm");
+      if (!b.endsAt || !time.test(b.endsAt) || b.endsAt <= b.startsAt) return classBad("endsAt", "o término precisa ser depois do início");
+      if (!b.teacherId) return classBad("teacherId", "obrigatório");
+      if (detail.status === "COMPLETED") {
+        if (b.date !== detail.date || b.startsAt !== detail.startsAt || b.endsAt !== detail.endsAt) return classBad("date", "aula concluída: só o professor pode ser corrigido");
+        if (!b.reason?.trim()) return classBad("reason", "obrigatório para aula concluída");
+      } else if (b.date < found.today) return classBad("date", "o novo início não pode ficar no passado");
+      const teacher = mockTeachers.find((x) => x.id === b.teacherId && x.status === "ACTIVE");
+      if (!teacher) return error(422, "UNPROCESSABLE", "Os dados estão corretos, mas a regra não permite esta operação.", [{ field: "teacherId", message: "escolha um professor ativo que ensine a modalidade da turma" }]);
+      lessonEdits.set(detail.id, { ...lessonEdits.get(detail.id), date: b.date, startsAt: b.startsAt, endsAt: b.endsAt, teacherId: teacher.id, substitute: teacher.id !== classRow(found.klass).head.id });
+      return HttpResponse.json((lessonView(detail.id) as { detail: object }).detail);
+    },
+  },
+  {
+    // RF-AGE-03: cancela a aula; o portal é sempre canal (o mock não tem experimentais, então não pede a decisão).
+    method: "post",
+    path: "/agenda/lessons/{id}/cancel",
+    resolver: async ({ request, params }) => {
+      const found = lessonView(params.id as string);
+      if (found instanceof Response) return found;
+      const { detail } = found;
+      if (!detail.canCancel) return detail.status === "SCHEDULED" || detail.status === "IN_PROGRESS" ? error(403, "FORBIDDEN", "Sem permissão.") : error(409, "CONFLICT", "Não é possível cancelar a aula.");
+      const b = (await request.json().catch(() => ({}))) as { reason?: string; reasonText?: string; channels?: string[]; trialDecision?: string };
+      if (!b.reason || !["TEACHER_UNAVAILABLE", "HOLIDAY", "ACADEMY_EVENT", "OTHER"].includes(b.reason)) return classBad("reason", "motivo inválido");
+      const text = b.reason === "OTHER" ? (b.reasonText ?? "").trim() : null;
+      if (text !== null && (text.length < 1 || text.length > 200)) return classBad("reasonText", "de 1 a 200 caracteres");
+      if ((b.channels ?? []).some((c) => c !== "EMAIL" && c !== "WHATSAPP")) return classBad("channels", "use EMAIL ou WHATSAPP");
+      lessonEdits.set(detail.id, { ...lessonEdits.get(detail.id), cancelCode: b.reason, cancelText: text });
+      return HttpResponse.json((lessonView(detail.id) as { detail: object }).detail);
     },
   },
   {

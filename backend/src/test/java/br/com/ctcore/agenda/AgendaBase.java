@@ -17,6 +17,7 @@ abstract class AgendaBase extends OrganizationBase {
         adminJdbc().update("delete from training_class_schedule");
         adminJdbc().update("delete from training_class");
         adminJdbc().update("delete from teacher_unit");
+        adminJdbc().update("delete from teacher_modality");
         adminJdbc().update("delete from teacher");
         adminJdbc().update("delete from unit_modality");
         adminJdbc().update("delete from organization_modality");

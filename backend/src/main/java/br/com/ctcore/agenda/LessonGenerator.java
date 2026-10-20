@@ -33,6 +33,7 @@ public class LessonGenerator {
                                and d.day between x.starts_on and x.ends_on order by x.created_at, x.id limit 1) n on true
             where c.organization_id = :org and c.unit_id = :unit and c.status = 'ACTIVE'
               and (cast(:class as uuid) is null or c.id = :class) and extract(isodow from d.day) = s.weekday
+              and not exists (select 1 from lesson e where e.class_id = c.id and e.original_date = d.day and e.original_starts_at = s.starts_at)
             on conflict do nothing""";
 
     private final JdbcClient jdbc;

@@ -14,6 +14,7 @@ export interface AgendaLesson {
   endsAt: string;
   status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   cancelReason: string | null;
+  cancelReasonCode: "TEACHER_UNAVAILABLE" | "HOLIDAY" | "ACADEMY_EVENT" | "OTHER" | null;
   class: Choice;
   unit: Choice;
   modality: Choice;

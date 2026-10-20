@@ -40,11 +40,11 @@ public class Agenda {
 
     public enum Status { SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED }
 
-    public record Lesson(UUID id, String date, String startsAt, String endsAt, Status status, String cancelReason,
+    public record Lesson(UUID id, String date, String startsAt, String endsAt, Status status, String cancelReason, String cancelReasonCode,
             @JsonProperty("class") Ref trainingClass, Ref unit, Ref modality, Ref teacher, boolean substitute, boolean canEdit, boolean canCancel) {}
 
     /** RF-AGE-02: painel da aula. {@code head} só vem na substituição (D6). */
-    public record LessonDetail(UUID id, String date, String startsAt, String endsAt, Status status, String cancelReason,
+    public record LessonDetail(UUID id, String date, String startsAt, String endsAt, Status status, String cancelReason, String cancelReasonCode,
             @JsonProperty("class") Ref trainingClass, Ref unit, Ref modality, Ref teacher, Ref head, boolean substitute, int activeStudents,
             int trialClasses, String groupLink, boolean canEdit, boolean canCancel, boolean canViewClass) {}
 
@@ -131,7 +131,7 @@ public class Agenda {
                     + "where a.class_id = c.id and a.teacher_id = :me and a.organization_id = :org))";
             List<Lesson> lessons = teacher && me == null ? List.of() : jdbc.sql(
                     "select l.id, l.lesson_date, l.starts_at, l.ends_at, l.cancelled, l.cancel_reason, c.id, c.name, m.id, m.name, t.id, t.name, "
-                    + "l.substitute, " + mine + " from lesson l join training_class c on c.id = l.class_id and c.organization_id = l.organization_id "
+                    + "l.substitute, " + mine + ", l.cancel_reason_code from lesson l join training_class c on c.id = l.class_id and c.organization_id = l.organization_id "
                     + "join modality m on m.id = c.modality_id join teacher t on t.id = l.teacher_id and t.organization_id = l.organization_id "
                     + "where l.organization_id = :org and l.unit_id = :unit and l.lesson_date between :from and :to "
                     + "and (cast(:teacher as uuid) is null or l.teacher_id = :teacher) and (cast(:modality as uuid) is null or c.modality_id = :modality)"
@@ -145,7 +145,8 @@ public class Agenda {
                         Status st = status(rs.getBoolean(5), day.atTime(s), day.atTime(e), now);
                         Can can = can(who.role(), editPermission, rs.getBoolean(14), st, day.atTime(e), now);
                         return new Lesson(rs.getObject(1, UUID.class), day.toString(), s.toString(), e.toString(), st,
-                                st == Status.CANCELLED ? rs.getString(6) : null, new Ref(rs.getObject(7, UUID.class), rs.getString(8)), unit,
+                                st == Status.CANCELLED ? rs.getString(6) : null, st == Status.CANCELLED ? rs.getString(15) : null,
+                                new Ref(rs.getObject(7, UUID.class), rs.getString(8)), unit,
                                 new Ref(rs.getObject(9, UUID.class), rs.getString(10)), new Ref(rs.getObject(11, UUID.class), rs.getString(12)),
                                 rs.getBoolean(13), can.edit(), can.cancel());
                     }).list();
@@ -175,63 +176,87 @@ public class Agenda {
         return 0;
     }
 
-    private record LessonRow(LessonDetail d, boolean inClass, boolean lessonTeacher, ZoneId zone, LocalDateTime start, LocalDateTime end,
-            boolean cancelled) {}
+    /** Aula carregada com a regra de visibilidade, o que {@code lesson} e {@code LessonWrite} usam; {@code mine} vale para o Professor. */
+    record Loaded(LessonDetail detail, Can can, boolean editPermission, boolean mine, ZoneId zone, LocalDateTime start, LocalDateTime end,
+            UUID headId) {}
 
-    /** RF-AGE-02: leitura do painel. Fora do alcance, da janela do substituto ou de outra organização, 404. */
-    public LessonDetail lesson(AccountPrincipal who, UUID id) {
+    private record LessonRow(LessonDetail d, boolean inClass, boolean lessonTeacher, ZoneId zone, LocalDateTime start, LocalDateTime end,
+            boolean cancelled, UUID headId) {}
+
+    private void requireView(AccountPrincipal who) {
         if (who == null || who.role() == null || permissions.effective(who).get(Permission.AGENDA_VIEW) == Access.NONE) {
             throw new AccessDeniedException("Permission denied");
         }
+    }
+
+    /** RF-AGE-02: leitura do painel. Fora do alcance, da janela do substituto ou de outra organização, 404. */
+    public LessonDetail lesson(AccountPrincipal who, UUID id) {
+        requireView(who);
+        return transactions.execute(() -> load(who, id).detail());
+    }
+
+    /** Dentro da transação da organização: 404 fora do alcance, da janela do substituto ou de outra organização. */
+    Loaded load(AccountPrincipal who, UUID id) {
+        return load(who, id, true);
+    }
+
+    /** {@code visibleOnly} falso só depois de gravar: o Professor que deixou de ser o da aula ainda recebe o resultado. */
+    Loaded load(AccountPrincipal who, UUID id, boolean visibleOnly) {
+        requireView(who);
         boolean teacher = who.role() == Role.TEACHER;
         boolean admin = who.role() == Role.ADMINISTRATOR;
         Set<UUID> reach = who.units() == null ? Set.of() : who.units();
-        return transactions.execute(() -> {
-            UUID org = who.organizationId();
-            UUID me = teacher
-                    ? jdbc.sql("select id from teacher where organization_id = :org and account_id = :acc")
-                            .param("org", org).param("acc", who.accountId()).query(UUID.class).optional().orElse(null)
-                    : null;
-            if (teacher && me == null) throw new ApiStatusException(ErrorCode.NOT_FOUND);
-            LessonRow r = jdbc.sql("select l.id, l.lesson_date, l.starts_at, l.ends_at, l.cancelled, l.cancel_reason, c.id, c.name, m.id, m.name, t.id, t.name, "
-                    + "l.substitute, u.id, u.name, u.timezone, c.group_link, h.id, h.name, "
-                    + "(c.head_teacher_id = :me or exists (select 1 from training_class_assistant a where a.class_id = c.id and a.teacher_id = :me "
-                    + "and a.organization_id = :org)), l.teacher_id = :me "
-                    + "from lesson l join training_class c on c.id = l.class_id and c.organization_id = l.organization_id "
-                    + "join modality m on m.id = c.modality_id join teacher t on t.id = l.teacher_id and t.organization_id = l.organization_id "
-                    + "join teacher h on h.id = c.head_teacher_id and h.organization_id = l.organization_id "
-                    + "join unit u on u.id = l.unit_id and u.organization_id = l.organization_id "
-                    + "where l.organization_id = :org and l.id = :id")
-                    .param("org", org).param("id", id).param("me", me)
-                    .query((rs, n) -> {
-                        LocalDate day = rs.getObject(2, LocalDate.class);
-                        LocalTime s = rs.getObject(3, LocalTime.class);
-                        LocalTime e = rs.getObject(4, LocalTime.class);
-                        boolean sub = rs.getBoolean(13);
-                        LessonDetail d = new LessonDetail(rs.getObject(1, UUID.class), day.toString(), s.toString(), e.toString(), null,
-                                rs.getString(6), new Ref(rs.getObject(7, UUID.class), rs.getString(8)),
-                                new Ref(rs.getObject(14, UUID.class), rs.getString(15)), new Ref(rs.getObject(9, UUID.class), rs.getString(10)),
-                                new Ref(rs.getObject(11, UUID.class), rs.getString(12)),
-                                sub ? new Ref(rs.getObject(18, UUID.class), rs.getString(19)) : null, sub, 0, 0, rs.getString(17), false, false, false);
-                        return new LessonRow(d, rs.getBoolean(20), rs.getBoolean(21), ZoneId.of(rs.getString(16)), day.atTime(s), day.atTime(e),
-                                rs.getBoolean(5));
-                    }).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
-            LessonDetail d = r.d();
-            UUID unitId = d.unit().id();
-            if (admin && !reach.contains(unitId)) throw new ApiStatusException(ErrorCode.NOT_FOUND);
-            Instant now = clock.instant();
-            if (teacher && !r.inClass() && !(r.lessonTeacher() && d.substitute() && substituteWindow(LocalDate.parse(d.date()), r.zone(), now))) {
-                throw new ApiStatusException(ErrorCode.NOT_FOUND);
-            }
-            LocalDateTime local = LocalDateTime.ofInstant(now, r.zone());
-            Status st = status(r.cancelled(), r.start(), r.end(), local);
-            boolean editPermission = permissions.grant(who, Permission.AGENDA_EDIT, unitId) != Access.NONE;
-            Can can = can(who.role(), editPermission, r.inClass() || r.lessonTeacher(), st, r.end(), local);
-            boolean viewClass = permissions.effective(who).get(Permission.CLASSES_MANAGE) != Access.NONE && (!admin || reach.contains(unitId));
-            return new LessonDetail(d.id(), d.date(), d.startsAt(), d.endsAt(), st, st == Status.CANCELLED ? d.cancelReason() : null,
-                    d.trainingClass(), d.unit(), d.modality(), d.teacher(), d.head(), d.substitute(), classes.activeStudentsOf(d.trainingClass().id()),
-                    trialClasses(d.id()), d.groupLink(), can.edit(), can.cancel(), viewClass);
-        });
+        UUID org = who.organizationId();
+        UUID me = teacher
+                ? jdbc.sql("select id from teacher where organization_id = :org and account_id = :acc")
+                        .param("org", org).param("acc", who.accountId()).query(UUID.class).optional().orElse(null)
+                : null;
+        if (teacher && me == null) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        LessonRow r = jdbc.sql("select l.id, l.lesson_date, l.starts_at, l.ends_at, l.cancelled, l.cancel_reason, c.id, c.name, m.id, m.name, t.id, t.name, "
+                + "l.substitute, u.id, u.name, u.timezone, c.group_link, h.id, h.name, "
+                + "(c.head_teacher_id = :me or exists (select 1 from training_class_assistant a where a.class_id = c.id and a.teacher_id = :me "
+                + "and a.organization_id = :org)), l.teacher_id = :me, l.cancel_reason_code "
+                + "from lesson l join training_class c on c.id = l.class_id and c.organization_id = l.organization_id "
+                + "join modality m on m.id = c.modality_id join teacher t on t.id = l.teacher_id and t.organization_id = l.organization_id "
+                + "join teacher h on h.id = c.head_teacher_id and h.organization_id = l.organization_id "
+                + "join unit u on u.id = l.unit_id and u.organization_id = l.organization_id "
+                + "where l.organization_id = :org and l.id = :id")
+                .param("org", org).param("id", id).param("me", me)
+                .query((rs, n) -> {
+                    LocalDate day = rs.getObject(2, LocalDate.class);
+                    LocalTime s = rs.getObject(3, LocalTime.class);
+                    LocalTime e = rs.getObject(4, LocalTime.class);
+                    boolean sub = rs.getBoolean(13);
+                    LessonDetail d = new LessonDetail(rs.getObject(1, UUID.class), day.toString(), s.toString(), e.toString(), null,
+                            rs.getString(6), rs.getString(22), new Ref(rs.getObject(7, UUID.class), rs.getString(8)),
+                            new Ref(rs.getObject(14, UUID.class), rs.getString(15)), new Ref(rs.getObject(9, UUID.class), rs.getString(10)),
+                            new Ref(rs.getObject(11, UUID.class), rs.getString(12)),
+                            sub ? new Ref(rs.getObject(18, UUID.class), rs.getString(19)) : null, sub, 0, 0, rs.getString(17), false, false, false);
+                    return new LessonRow(d, rs.getBoolean(20), rs.getBoolean(21), ZoneId.of(rs.getString(16)), day.atTime(s), day.atTime(e),
+                            rs.getBoolean(5), rs.getObject(18, UUID.class));
+                }).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+        LessonDetail d = r.d();
+        UUID unitId = d.unit().id();
+        if (admin && !reach.contains(unitId)) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        Instant now = clock.instant();
+        if (visibleOnly && teacher && !r.inClass() && !(r.lessonTeacher() && d.substitute() && substituteWindow(LocalDate.parse(d.date()), r.zone(), now))) {
+            throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        }
+        LocalDateTime local = LocalDateTime.ofInstant(now, r.zone());
+        Status st = status(r.cancelled(), r.start(), r.end(), local);
+        boolean editPermission = permissions.grant(who, Permission.AGENDA_EDIT, unitId) != Access.NONE;
+        boolean mine = r.inClass() || r.lessonTeacher();
+        Can can = can(who.role(), editPermission, mine, st, r.end(), local);
+        boolean viewClass = permissions.effective(who).get(Permission.CLASSES_MANAGE) != Access.NONE && (!admin || reach.contains(unitId));
+        boolean cancelled = st == Status.CANCELLED;
+        LessonDetail out = new LessonDetail(d.id(), d.date(), d.startsAt(), d.endsAt(), st, cancelled ? d.cancelReason() : null,
+                cancelled ? d.cancelReasonCode() : null, d.trainingClass(), d.unit(), d.modality(), d.teacher(), d.head(), d.substitute(),
+                classes.activeStudentsOf(d.trainingClass().id()), trialClasses(d.id()), d.groupLink(), can.edit(), can.cancel(), viewClass);
+        return new Loaded(out, can, editPermission, mine, r.zone(), r.start(), r.end(), r.headId());
+    }
+
+    /** Ponto único das aulas experimentais ao cancelar (RN-AGE-06): sem efeito até a Sprint 18. */
+    void resolveTrials(UUID lessonId, String decision) {
     }
 
     private static LocalDate date(String field, String raw) {

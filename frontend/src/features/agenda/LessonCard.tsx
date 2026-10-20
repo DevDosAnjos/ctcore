@@ -6,6 +6,11 @@ import type { AgendaLesson } from "./useAgenda";
 const HUES = [210, 30, 140, 280, 0, 175, 50, 320];
 export const modalityHue = (id: string) => HUES[[...id].reduce((s, c) => s + c.charCodeAt(0), 0) % HUES.length];
 
+// RF-AGE-03 (D5): o código é traduzido; "Outro" e a aula cancelada por dia sem aula mostram o texto que o servidor guardou.
+export function cancelReasonText(lesson: Pick<AgendaLesson, "cancelReason" | "cancelReasonCode">, t: (key: string) => string) {
+  return lesson.cancelReasonCode && lesson.cancelReasonCode !== "OTHER" ? t(`agenda.cancelReasons.${lesson.cancelReasonCode}`) : lesson.cancelReason;
+}
+
 // RF-AGE-02: o cartão inteiro leva ao painel da aula.
 export function LessonCard({ lesson }: { lesson: AgendaLesson }) {
   const { t } = useTranslation();
@@ -27,7 +32,7 @@ export function LessonCard({ lesson }: { lesson: AgendaLesson }) {
         {cancelled && (
           <span className="flex flex-col text-xs">
             <span className="font-medium text-destructive">{t("agenda.cancelled")}</span>
-            {lesson.cancelReason && <span className="text-muted-foreground">{lesson.cancelReason}</span>}
+            {cancelReasonText(lesson, t) && <span className="text-muted-foreground">{cancelReasonText(lesson, t)}</span>}
           </span>
         )}
       </Link>
