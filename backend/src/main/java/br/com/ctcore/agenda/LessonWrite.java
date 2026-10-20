@@ -53,7 +53,8 @@ public class LessonWrite {
 
     private record Edit(boolean following, LocalDate date, LocalTime start, LocalTime end, UUID teacherId, String reason) {}
 
-    private record Row(UUID id, LocalDate date, LocalTime start, LocalTime end) {}
+    /** keepSubstitute: aula seguinte que já tem substituto gravado (RN-AGE-04) mantém o professor e a marca de substituição. */
+    private record Row(UUID id, LocalDate date, LocalTime start, LocalTime end, boolean keepSubstitute) {}
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
@@ -202,16 +203,16 @@ public class LessonWrite {
             LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), l.zone());
 
             List<Row> rows = new ArrayList<>();
-            rows.add(new Row(id, oldDate, LocalTime.parse(before.startsAt()), LocalTime.parse(before.endsAt())));
+            rows.add(new Row(id, oldDate, LocalTime.parse(before.startsAt()), LocalTime.parse(before.endsAt()), false));
             if (e.following()) {
-                jdbc.sql("select id, lesson_date, starts_at, ends_at, cancelled from lesson where organization_id = :org and class_id = :class "
+                jdbc.sql("select id, lesson_date, starts_at, ends_at, cancelled, substitute from lesson where organization_id = :org and class_id = :class "
                         + "and lesson_date > :date and id <> :id order by lesson_date, starts_at").param("org", org).param("class", classId)
                         .param("date", oldDate).param("id", id).query((rs, n) -> {
                             LocalDate d = rs.getObject(2, LocalDate.class);
                             LocalTime s = rs.getObject(3, LocalTime.class);
                             LocalTime en = rs.getObject(4, LocalTime.class);
                             boolean open = Agenda.status(rs.getBoolean(5), d.atTime(s), d.atTime(en), now) == Status.SCHEDULED;
-                            return open ? new Row(rs.getObject(1, UUID.class), d, s, en) : null;
+                            return open ? new Row(rs.getObject(1, UUID.class), d, s, en, rs.getBoolean(6)) : null;
                         }).list().stream().filter(r -> r != null).forEach(rows::add);
             }
             // Sem colidir na própria operação: avançando as datas, a última aula vai primeiro; recuando, a primeira.
@@ -223,10 +224,11 @@ public class LessonWrite {
                     throw new ApiValidationException("date", "o novo início não pode ficar no passado");
                 }
                 try {
-                    jdbc.sql("update lesson set lesson_date = :date, starts_at = :start, ends_at = :end, teacher_id = :teacher, substitute = :sub, "
+                    jdbc.sql("update lesson set lesson_date = :date, starts_at = :start, ends_at = :end, teacher_id = case when :keep then teacher_id else :teacher end, "
+                            + "substitute = case when :keep then substitute else :sub end, "
                             + "manually_edited = true, original_date = coalesce(original_date, :od), original_starts_at = coalesce(original_starts_at, :os) "
                             + "where id = :id and organization_id = :org").param("date", completed ? r.date() : nd).param("start", e.start())
-                            .param("end", e.end()).param("teacher", e.teacherId()).param("sub", substitute).param("od", r.date())
+                            .param("end", e.end()).param("teacher", e.teacherId()).param("sub", substitute).param("keep", r.keepSubstitute()).param("od", r.date())
                             .param("os", r.start()).param("id", r.id()).param("org", org).update();
                 } catch (DuplicateKeyException ex) {
                     throw new ApiStatusException(ErrorCode.CONFLICT, List.of(new ApiError.Field("startsAt", "já existe aula da turma neste dia e horário")));

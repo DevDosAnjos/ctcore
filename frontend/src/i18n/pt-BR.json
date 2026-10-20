@@ -515,8 +515,8 @@
         "THIS": "Só esta aula",
         "FOLLOWING": "Esta e as seguintes (as datas das seguintes mudam pelo mesmo número de dias)"
       },
-      "followingEdited_one": "{{count}} aula seguinte já foi alterada à mão e será substituída por esta edição.",
-      "followingEdited_other": "{{count}} aulas seguintes já foram alteradas à mão e serão substituídas por esta edição.",
+      "followingEdited_one": "{{count}} aula seguinte já foi alterada à mão e será atingida por esta edição: data e horário mudam, e o substituto, se houver, fica.",
+      "followingEdited_other": "{{count}} aulas seguintes já foram alteradas à mão e serão atingidas por esta edição: data e horário mudam, e o substituto, nas que já têm, fica.",
       "reason": "Motivo da correção",
       "completedNote": "Aula concluída: só o professor pode ser corrigido, com motivo.",
       "dateRequired": "Informe a data.",

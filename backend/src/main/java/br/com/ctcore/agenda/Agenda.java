@@ -267,7 +267,7 @@ public class Agenda {
 
     /** RN-AGE-04: aulas seguintes da turma, ainda agendadas e alteradas à mão, que "esta e as seguintes" substituiria (mesmo corte de LessonWrite). */
     private int followingEdited(UUID classId, LocalDate date, LocalDateTime now) {
-        return (int) jdbc.sql("select lesson_date, starts_at, ends_at, cancelled from lesson where class_id = :class and lesson_date > :date and manually_edited")
+        return (int) jdbc.sql("select lesson_date, starts_at, ends_at, cancelled from lesson where class_id = :class and lesson_date > :date and (manually_edited or substitute)")
                 .param("class", classId).param("date", date).query((rs, n) -> status(rs.getBoolean(4), rs.getObject(1, LocalDate.class).atTime(rs.getObject(2, LocalTime.class)),
                         rs.getObject(1, LocalDate.class).atTime(rs.getObject(3, LocalTime.class)), now)).list().stream().filter(s -> s == Status.SCHEDULED).count();
     }
