@@ -177,12 +177,12 @@ const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 // Professor e portal: 403. Unidade que não existe: 404.
 const ADMIN_UNIT = "00000000-0000-0000-0000-000000000021";
 
-// RF-PLA-01: planos fictícios (3 ativos e 1 desativado); dois na unidade do Administrador, um em outra.
+// RF-PLA-01/02: planos fictícios (3 ativos e 1 desativado); dois na unidade do Administrador, um em outra.
 const mockPlans = [
-  { unitId: ADMIN_UNIT, valueCents: 15000, status: "ACTIVE" },
-  { unitId: ADMIN_UNIT, valueCents: 20000, status: "ACTIVE" },
-  { unitId: "00000000-0000-0000-0000-000000000022", valueCents: 30000, status: "ACTIVE" },
-  { unitId: ADMIN_UNIT, valueCents: 12000, status: "INACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000601", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 4, name: "Judô Mensal", valueCents: 15000, weeklyFrequency: 2 as 2 | 3 | null, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000602", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 3, name: "Jiu-Jitsu Livre", valueCents: 20000, weeklyFrequency: null, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000603", unitId: "00000000-0000-0000-0000-000000000022", unitName: "Unidade Norte", modalityIndex: 0, name: "Boxe 3x", valueCents: 30000, weeklyFrequency: 3 as 2 | 3 | null, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000604", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 4, name: "Judô Antigo", valueCents: 12000, weeklyFrequency: 2 as 2 | 3 | null, status: "INACTIVE" },
 ];
 const defaultUnitSettings = () => ({
   dueDays: [1, 5, 10, 15],
@@ -1416,6 +1416,46 @@ export const routes: Route[] = [
         .filter((c) => !weekday || c.schedule.some((s) => s.weekday === Number(weekday)))
         .filter((c) => !unitId || c.unit.id === unitId)
         .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-PLA-02: tabela de planos paginada; Coordenador (todas as unidades) e Administrador (só a dele); demais 403.
+    method: "get",
+    path: "/plans",
+    resolver: ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const p = new URL(request.url).searchParams;
+      const status = p.get("status");
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const bad: { field: string; message: string }[] = [];
+      if (status !== null && !["ACTIVE", "INACTIVE"].includes(status)) bad.push({ field: "status", message: "valor inválido" });
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const modalityId = p.get("modalityId");
+      const unitId = p.get("unitId");
+      const found = mockPlans
+        .filter((x) => role === "COORDINATOR" || x.unitId === ADMIN_UNIT)
+        .map(({ modalityIndex, unitName, ...x }) => ({
+          id: x.id,
+          unit: { id: x.unitId, name: unitName },
+          modality: modalityCatalog[modalityIndex],
+          name: x.name,
+          valueCents: x.valueCents,
+          weeklyFrequency: x.weeklyFrequency,
+          validOtherUnits: false,
+          studentsUsing: 0,
+          status: x.status,
+        }))
+        .filter((x) => teacherKey(x.name).includes(q) && (!status || x.status === status))
+        .filter((x) => !modalityId || x.modality.id === modalityId)
+        .filter((x) => !unitId || x.unit.id === unitId)
+        .sort((a, b) => a.modality.name.localeCompare(b.modality.name) || a.name.localeCompare(b.name));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
     },
   },

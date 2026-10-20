@@ -22,6 +22,7 @@ import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
 import { ClassPanelPage } from "@/features/classes/ClassPanelPage";
 import { PlansPage } from "@/features/plans/PlansPage";
+import { PlansTablePage } from "@/features/plans/PlansTablePage";
 import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { LessonPanelPage } from "@/features/agenda/LessonPanelPage";
 import { NoClassDaysPage } from "@/features/noClassDays/NoClassDaysPage";
@@ -98,6 +99,7 @@ export function App() {
             <Route path="/turmas" element={<ClassesPage />} />
             <Route path="/turmas/:id" element={<ClassPanelPage />} />
             <Route path="/planos" element={<PlansPage />} />
+            <Route path="/planos/lista" element={<PlansTablePage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

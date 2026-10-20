@@ -41,3 +41,33 @@ describe("resumo de planos x OpenAPI (RF-PLA-01, CA10)", () => {
     expect((await summary()).status).toBe(403);
   });
 });
+
+describe("tabela de planos x OpenAPI (RF-PLA-02, CA8)", () => {
+  const list = (query = "") => fetch(`/api/v1/plans${query}`);
+
+  it("sem sessão 401; contrato declara a rota", async () => {
+    expect((await list()).status).toBe(401);
+    expect(Object.keys(openapi.paths["/plans"].get.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403"]));
+  });
+
+  it("Coordenador: formato do contrato, ordem por modalidade e nome, filtros e 400", async () => {
+    await login("ana@exemplo.com");
+    const data = await (await list()).json();
+    expect(data).toMatchObject({ page: 1, size: 25, total: 4 });
+    for (const row of data.items) expect(Object.keys(row).sort()).toEqual([...openapi.components.schemas.PlanRow.required].sort());
+    expect(data.items.map((r: { name: string }) => r.name)).toEqual(["Boxe 3x", "Jiu-Jitsu Livre", "Judô Antigo", "Judô Mensal"]);
+    expect(data.items[1].weeklyFrequency).toBeNull();
+    const judo = await (await list(`?q=JUDO&status=ACTIVE`)).json();
+    expect(judo.items.map((r: { name: string }) => r.name)).toEqual(["Judô Mensal"]);
+    expect((await list("?status=XYZ")).status).toBe(400);
+    expect((await list("?size=10")).status).toBe(400);
+  });
+
+  it("Administrador só vê a unidade dele; Professor 403", async () => {
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await (await list()).json()).total).toBe(3);
+    expect((await (await list("?unitId=00000000-0000-0000-0000-000000000022")).json()).items).toEqual([]);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await list()).status).toBe(403);
+  });
+});

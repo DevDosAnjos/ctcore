@@ -736,6 +736,31 @@
     "emptyText": "Quando houver planos ou benefícios, o resumo aparece aqui.",
     "noRange": "Sem plano ativo",
     "range": "{{min}} a {{max}}",
+    "table": {
+      "title": "Tabela de planos",
+      "intro": "Planos das suas unidades, com o valor, a frequência semanal e a situação de cada um.",
+      "unit": "Unidade {{name}}",
+      "free": "Livre",
+      "perWeek": "{{count}}x por semana",
+      "inactiveBadge": "Desativado",
+      "columns": {
+        "modality": "Modalidade",
+        "name": "Plano",
+        "value": "Valor",
+        "frequency": "Frequência semanal",
+        "students": "Alunos usando",
+        "status": "Situação"
+      },
+      "statuses": { "ACTIVE": "Ativo", "INACTIVE": "Desativado" },
+      "filters": {
+        "modality": "Modalidade",
+        "allModalities": "Todas as modalidades",
+        "unit": "Unidade",
+        "allUnits": "Todas as unidades",
+        "status": "Situação",
+        "allStatuses": "Todas as situações"
+      }
+    },
     "plans": {
       "title": "Planos",
       "active": "Ativos",
