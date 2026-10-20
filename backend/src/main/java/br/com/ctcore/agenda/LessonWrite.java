@@ -10,7 +10,12 @@ import br.com.ctcore.audit.AuditActor;
 import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.identity.AccountPrincipal;
+import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
+import br.com.ctcore.permission.Access;
+import br.com.ctcore.permission.Permission;
+import br.com.ctcore.permission.Permissions;
+import java.time.ZoneId;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -55,8 +60,11 @@ public class LessonWrite {
     private final Agenda agenda;
     private final AuditService audit;
     private final Clock clock;
+    private final Permissions permissions;
 
-    public LessonWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Agenda agenda, AuditService audit, Clock clock) {
+    public LessonWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Agenda agenda, AuditService audit, Clock clock,
+            Permissions permissions) {
+        this.permissions = permissions;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.agenda = agenda;
@@ -101,6 +109,73 @@ public class LessonWrite {
         if (edit ? !l.can().edit() : !l.can().cancel()) throw new ApiStatusException(ErrorCode.CONFLICT);
     }
 
+    public record CreateInput(UUID unitId, String title, UUID modalityId, String date, String startsAt, String endsAt, UUID teacherId,
+            UUID visibilityClassId) {}
+
+    private static ApiStatusException unprocessable(String field, String message) {
+        return new ApiStatusException(ErrorCode.UNPROCESSABLE, List.of(new ApiError.Field(field, message)));
+    }
+
+    /** RF-AGE-04: cria aula avulsa (sem turma). Permissão e alcance antes da validação; uma transação, aula e auditoria juntas. */
+    public Agenda.LessonDetail create(AccountPrincipal who, CreateInput in, String ip) {
+        if (in == null) throw new ApiValidationException("unitId", "obrigatório");
+        return transactions.execute(() -> {
+            agenda.requireView(who);
+            UUID org = who.organizationId();
+            if (in.unitId() == null) throw new ApiValidationException("unitId", "obrigatório");
+            String zone = jdbc.sql("select timezone from unit where id = :id and organization_id = :org and active")
+                    .param("id", in.unitId()).param("org", org).query(String.class).optional()
+                    .orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+            if (who.role() != Role.COORDINATOR && (who.units() == null || !who.units().contains(in.unitId()))) {
+                throw new ApiStatusException(ErrorCode.NOT_FOUND);
+            }
+            if (permissions.grant(who, Permission.AGENDA_EDIT, in.unitId()) == Access.NONE) throw new AccessDeniedException("Permission denied");
+            if (who.role() == Role.TEACHER) {
+                UUID me = jdbc.sql("select id from teacher where organization_id = :org and account_id = :acc")
+                        .param("org", org).param("acc", who.accountId()).query(UUID.class).optional().orElse(null);
+                if (me == null || !me.equals(in.teacherId())) throw new AccessDeniedException("Permission denied");
+            }
+            String title = in.title() == null ? "" : in.title().strip();
+            if (title.isEmpty() || title.length() > 80) throw new ApiValidationException("title", "de 1 a 80 caracteres");
+            if (in.modalityId() == null) throw new ApiValidationException("modalityId", "obrigatório");
+            if (in.teacherId() == null) throw new ApiValidationException("teacherId", "obrigatório");
+            LocalDate date = date(in.date());
+            LocalTime start = time("startsAt", in.startsAt());
+            LocalTime end = time("endsAt", in.endsAt());
+            if (!end.isAfter(start)) throw new ApiValidationException("endsAt", "o término precisa ser depois do início");
+            if (date.atTime(start).isBefore(LocalDateTime.ofInstant(clock.instant(), ZoneId.of(zone)))) {
+                throw new ApiValidationException("date", "o início não pode ficar no passado");
+            }
+            int offered = jdbc.sql("select count(*) from modality m join organization_modality o on o.modality_id = m.id and o.organization_id = :org "
+                    + "and o.active join unit_modality um on um.modality_id = m.id and um.unit_id = :unit and um.offered where m.id = :m")
+                    .param("org", org).param("unit", in.unitId()).param("m", in.modalityId()).query(Integer.class).single();
+            if (offered == 0) throw unprocessable("modalityId", "escolha uma modalidade ativa oferecida pela unidade");
+            checkTeacher(org, in.teacherId(), null, in.modalityId());
+            if (in.visibilityClassId() != null) {
+                String cls = jdbc.sql("select unit_id, status from training_class where id = :id and organization_id = :org")
+                        .param("id", in.visibilityClassId()).param("org", org).query((rs, n) -> rs.getObject(1, UUID.class) + "|" + rs.getString(2))
+                        .optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+                if (!cls.equals(in.unitId() + "|ACTIVE")) throw unprocessable("visibilityClassId", "escolha uma turma ativa da unidade");
+            }
+            UUID id = UUID.randomUUID();
+            jdbc.sql("insert into lesson (id, organization_id, unit_id, class_id, lesson_date, starts_at, ends_at, teacher_id, substitute, title, "
+                    + "modality_id, visibility_class_id) values (:id, :org, :unit, null, :date, :start, :end, :teacher, false, :title, :m, :v)")
+                    .param("id", id).param("org", org).param("unit", in.unitId()).param("date", date).param("start", start).param("end", end)
+                    .param("teacher", in.teacherId()).param("title", title).param("m", in.modalityId()).param("v", in.visibilityClassId()).update();
+            Map<String, Object> next = new LinkedHashMap<>();
+            next.put("unitId", in.unitId().toString());
+            next.put("title", title);
+            next.put("modalityId", in.modalityId().toString());
+            next.put("date", date.toString());
+            next.put("startsAt", start.toString());
+            next.put("endsAt", end.toString());
+            next.put("teacherId", in.teacherId().toString());
+            if (in.visibilityClassId() != null) next.put("visibilityClassId", in.visibilityClassId().toString());
+            audit.record(new AuditEntry(actor(who), "lesson.created", "lesson", id.toString(), in.unitId(), null, next, null, ip));
+            return agenda.load(who, id, false).detail();
+        });
+    }
+
     public Agenda.LessonDetail update(AccountPrincipal who, UUID id, EditInput input, String ip) {
         Edit e = clean(input);
         return transactions.execute(() -> {
@@ -117,9 +192,11 @@ public class LessonWrite {
                 if (e.following()) throw new ApiValidationException("scope", "aula concluída: use THIS");
                 if (e.reason() == null) throw new ApiValidationException("reason", "obrigatório para aula concluída");
             }
-            UUID classId = before.trainingClass().id();
+            boolean adhoc = before.trainingClass() == null; // RF-AGE-04: aula avulsa não tem série
+            if (adhoc && e.following()) throw new ApiValidationException("scope", "aula avulsa: use THIS");
+            UUID classId = adhoc ? null : before.trainingClass().id();
             checkTeacher(org, e.teacherId(), l.headId(), before.modality().id());
-            boolean substitute = !e.teacherId().equals(l.headId());
+            boolean substitute = !adhoc && !e.teacherId().equals(l.headId());
             LocalDate oldDate = LocalDate.parse(before.date());
             long delta = ChronoUnit.DAYS.between(oldDate, e.date());
             LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), l.zone());
@@ -181,7 +258,7 @@ public class LessonWrite {
                 .param("org", org).param("id", teacherId).param("head", headId).param("m", modalityId).query(Integer.class).single();
         if (ok == 0) {
             throw new ApiStatusException(ErrorCode.UNPROCESSABLE,
-                    List.of(new ApiError.Field("teacherId", "escolha um professor ativo que ensine a modalidade da turma")));
+                    List.of(new ApiError.Field("teacherId", "escolha um professor ativo que ensine a modalidade da aula")));
         }
     }
 

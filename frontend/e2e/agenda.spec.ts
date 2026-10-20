@@ -50,4 +50,18 @@ test("@critical Coordenador abre a Agenda", async ({ page }) => {
   await cancel.getByRole("button", { name: "Cancelar aula" }).click();
   await expect(page.getByText("Aviso pronto")).toBeVisible();
   await expect(page.getByText("Cancelada").first()).toBeVisible();
+
+  // RF-AGE-04: o Coordenador cria uma aula avulsa e a vê na agenda.
+  await page.getByRole("link", { name: "Voltar à agenda" }).click();
+  await page.getByRole("button", { name: "Nova aula avulsa" }).click();
+  const adhoc = page.getByRole("dialog", { name: "Nova aula avulsa" });
+  await adhoc.getByLabel("Título").fill("Seminário de quedas");
+  await adhoc.getByLabel("Modalidade").selectOption({ label: "Jiu-Jitsu" });
+  await adhoc.getByLabel("Início").fill("06:30");
+  await adhoc.getByLabel("Término").fill("07:30");
+  await adhoc.getByLabel("Professor").selectOption({ label: "Ana Souza" });
+  await adhoc.getByRole("button", { name: "Criar aula" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Seminário de quedas").first()).toBeVisible();
+  await expect(page.getByText("Avulsa").first()).toBeVisible();
 });

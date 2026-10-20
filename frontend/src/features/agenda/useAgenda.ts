@@ -6,7 +6,7 @@ interface Choice {
   name: string;
 }
 
-// Espelha AgendaLesson do OpenAPI (docs/openapi.yaml). `class` é o nome da turma.
+// Espelha AgendaLesson do OpenAPI (docs/openapi.yaml). `class` é a turma; a aula avulsa não tem turma e traz `title`.
 export interface AgendaLesson {
   id: string;
   date: string;
@@ -15,7 +15,8 @@ export interface AgendaLesson {
   status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   cancelReason: string | null;
   cancelReasonCode: "TEACHER_UNAVAILABLE" | "HOLIDAY" | "ACADEMY_EVENT" | "OTHER" | null;
-  class: Choice;
+  class: Choice | null;
+  title: string | null;
   unit: Choice;
   modality: Choice;
   teacher: Choice;

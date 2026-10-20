@@ -31,6 +31,7 @@ const lesson = (over: Partial<AgendaLesson>): AgendaLesson => ({
   cancelReason: null,
   cancelReasonCode: null,
   class: { id: "c1", name: "Jiu-Jitsu Adulto" },
+  title: null,
   unit: { id: "u1", name: "Centro" },
   modality: { id: "m1", name: "Jiu-Jitsu" },
   teacher: { id: "t1", name: "Ana Souza" },

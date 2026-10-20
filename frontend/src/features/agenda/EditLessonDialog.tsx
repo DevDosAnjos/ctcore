@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import type { LessonDetail } from "./useLesson";
+import { lessonName } from "./LessonCard";
 import { editLesson, useUnitTeachers } from "./useLessonActions";
 
 const select = "min-h-11 w-full rounded-md border bg-background px-2 disabled:opacity-60";
@@ -68,7 +69,7 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
             if (!busy) void submit();
           }}
         >
-          <p className="text-sm">{lesson.class.name}</p>
+          <p className="text-sm">{lessonName(lesson)}</p>
           {completed && <p className="text-sm">{t("agenda.edit.completedNote")}</p>}
           <Text type="date" label={t("agenda.edit.date")} value={date} onChange={setDate} error={errors.date} disabled={completed} />
           <div className="flex flex-wrap gap-3">
@@ -98,7 +99,7 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
           ) : (
             <fieldset>
               <legend className="text-sm font-medium">{t("agenda.edit.scope")}</legend>
-              {(["THIS", "FOLLOWING"] as const).map((s) => (
+              {(lesson.class ? (["THIS", "FOLLOWING"] as const) : (["THIS"] as const)).map((s) => (
                 <label key={s} className="flex min-h-11 items-center gap-2">
                   <input type="radio" name="scope" checked={scope === s} onChange={() => setScope(s)} />
                   {t(`agenda.edit.scopes.${s}`)}

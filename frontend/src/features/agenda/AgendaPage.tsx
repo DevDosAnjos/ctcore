@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { usePermissions } from "@/features/permissions/usePermissions";
 import { addDays, br, mondayOf, todayIso, weekday, weekDays } from "./agendaDates";
 import { AgendaDayList } from "./AgendaDayList";
 import { AgendaFilters, type FilterValues } from "./AgendaFilters";
 import { AgendaWeekGrid } from "./AgendaWeekGrid";
+import { NewLessonDialog } from "./NewLessonDialog";
 import { useAgenda } from "./useAgenda";
 
 const narrow = () => window.innerWidth < 768;
@@ -26,9 +28,12 @@ function Content() {
   const { t } = useTranslation();
   const isNarrow = useNarrow();
   const [anchor, setAnchor] = useState(todayIso);
+  const [creating, setCreating] = useState(false);
+  const { permissions } = usePermissions();
   const [filters, setFilters] = useState<FilterValues>({ unitId: "", teacherId: "", modalityId: "" });
   const days = weekDays(anchor);
   const { status, data, last, retry } = useAgenda({ from: days[0], to: days[6], ...filters });
+  const canCreate = !!permissions && permissions.AGENDA_EDIT !== "NONE" && !!(data ?? last)?.unit;
   const step = isNarrow ? 1 : 7;
   const today = todayIso();
   const label = isNarrow
@@ -45,7 +50,14 @@ function Content() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("agenda.title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">{t("agenda.title")}</h1>
+        {canCreate && (
+          <Button className="min-h-11" onClick={() => setCreating(true)}>
+            {t("agenda.new.open")}
+          </Button>
+        )}
+      </div>
       <p className="text-muted-foreground">{t("agenda.intro")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" className="min-h-11" aria-label={t(isNarrow ? "agenda.prevDay" : "agenda.prevWeek")} onClick={() => setAnchor(addDays(anchor, -step))}>
@@ -65,6 +77,15 @@ function Content() {
         </span>
       </div>
       <AgendaFilters options={data ?? last} values={filters} onChange={(v) => setFilters((f) => ({ ...f, ...v }))} />
+      {creating && canCreate && (
+        <NewLessonDialog
+          unit={(data ?? last)!.unit!}
+          modalities={(data ?? last)!.modalities}
+          teachers={(data ?? last)!.teachers}
+          onClose={() => setCreating(false)}
+          onSaved={retry}
+        />
+      )}
       {status === "loading" && <LoadingState />}
       {status === "error" && <ErrorState onRetry={retry} />}
       {status === "ready" && data && isNarrow && <AgendaDayList data={data} day={anchor} />}

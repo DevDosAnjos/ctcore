@@ -21,6 +21,19 @@ export interface LessonCancelInput {
   trialDecision?: "REBOOK" | "CANCEL_TRIALS";
 }
 
+// Espelha LessonCreateInput (RF-AGE-04).
+export interface LessonCreateInput {
+  unitId: string;
+  title: string;
+  modalityId: string;
+  date: string;
+  startsAt: string;
+  endsAt: string;
+  teacherId: string;
+  visibilityClassId?: string;
+}
+
+export const createLesson = (body: LessonCreateInput) => api<LessonDetail>("/agenda/lessons", { method: "POST", body });
 export const editLesson = (id: string, body: LessonEditInput) => api<LessonDetail>(`/agenda/lessons/${id}`, { method: "PUT", body });
 export const cancelLesson = (id: string, body: LessonCancelInput) => api<LessonDetail>(`/agenda/lessons/${id}/cancel`, { method: "POST", body });
 
@@ -42,6 +55,28 @@ export function useUnitTeachers(unitId: string, date: string) {
   return {
     status: !current ? ("loading" as const) : (current.failure ?? ("ready" as const)),
     teachers: current?.teachers ?? [],
+    retry: () => setTick((n) => n + 1),
+  };
+}
+
+// Turmas ativas da unidade para a visibilidade da aula avulsa (GET /classes). Sem permissão (403), só "todas as turmas" é oferecido; outra falha pede nova tentativa.
+export function useActiveClasses(unitId: string) {
+  const [tick, setTick] = useState(0);
+  const [done, setDone] = useState<{ tick: number; classes?: { id: string; name: string }[]; failure?: true }>();
+  useEffect(() => {
+    let alive = true;
+    api<{ items: { id: string; name: string }[] }>(`/classes?unitId=${unitId}&status=ACTIVE&size=100`).then(
+      (d) => alive && setDone({ tick, classes: d.items }),
+      (e) => alive && setDone(e instanceof ApiError && e.status === 403 ? { tick, classes: [] } : { tick, failure: true }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [unitId, tick]);
+  const current = done?.tick === tick ? done : undefined;
+  return {
+    status: !current ? ("loading" as const) : current.failure ? ("error" as const) : ("ready" as const),
+    classes: current?.classes ?? [],
     retry: () => setTick((n) => n + 1),
   };
 }

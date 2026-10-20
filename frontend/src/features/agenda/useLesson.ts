@@ -4,6 +4,7 @@ import type { AgendaLesson } from "./useAgenda";
 
 // Espelha LessonDetail do OpenAPI (docs/openapi.yaml).
 export interface LessonDetail extends AgendaLesson {
+  visibilityClass: AgendaLesson["teacher"] | null;
   head: AgendaLesson["teacher"] | null;
   activeStudents: number;
   trialClasses: number;

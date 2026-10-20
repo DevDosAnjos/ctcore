@@ -13,7 +13,7 @@ import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { br } from "./agendaDates";
 import { CancelLessonDialog } from "./CancelLessonDialog";
 import { EditLessonDialog } from "./EditLessonDialog";
-import { cancelReasonText, modalityHue } from "./LessonCard";
+import { cancelReasonText, lessonName, modalityHue } from "./LessonCard";
 import { useLesson, type LessonDetail } from "./useLesson";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -48,7 +48,13 @@ function BackLink() {
   );
 }
 
-function Panel({ lesson, onChanged }: { lesson: LessonDetail; onChanged: () => void }) {
+function Panel({
+  lesson,
+  onChanged,
+}: {
+  lesson: LessonDetail;
+  onChanged: () => void;
+}) {
   const { t } = useTranslation();
   const [dialog, setDialog] = useState<"edit" | "cancel">();
   const group = safeLink(lesson.groupLink);
@@ -59,8 +65,13 @@ function Panel({ lesson, onChanged }: { lesson: LessonDetail; onChanged: () => v
       <BackLink />
       <header className="flex flex-wrap items-center gap-3">
         <h1 className="min-w-0 break-words text-2xl font-semibold">
-          {lesson.class.name}
+          {lessonName(lesson)}
         </h1>
+        {!lesson.class && (
+          <span className="rounded border px-1.5 text-sm font-medium">
+            {t("agenda.adhoc")}
+          </span>
+        )}
         <span className="rounded-full border px-2 py-0.5 text-sm">
           {t(`agenda.panel.statuses.${lesson.status}`)}
         </span>
@@ -98,9 +109,9 @@ function Panel({ lesson, onChanged }: { lesson: LessonDetail; onChanged: () => v
             {t("agenda.panel.cancel")}
           </Button>
         )}
-        {lesson.canViewClass && (
+        {lesson.canViewClass && lesson.class && (
           <Button variant="outline" className="min-h-11" asChild>
-            <Link to={`/turmas/${lesson.class.id}`}>
+            <Link to={`/turmas/${lesson.class!.id}`}>
               {t("agenda.panel.viewClass")}
             </Link>
           </Button>
@@ -110,7 +121,7 @@ function Panel({ lesson, onChanged }: { lesson: LessonDetail; onChanged: () => v
         <Card heading="h2" title={t("agenda.panel.noticeTitle")}>
           <p className="break-words">
             {t("agenda.panel.noticeText", {
-              name: lesson.class.name,
+              name: lessonName(lesson),
               date: br(lesson.date),
               from: lesson.startsAt,
               to: lesson.endsAt,
@@ -145,27 +156,38 @@ function Panel({ lesson, onChanged }: { lesson: LessonDetail; onChanged: () => v
           {lesson.substitute && lesson.head && (
             <Field label={t("agenda.panel.head")}>{lesson.head.name}</Field>
           )}
+          {!lesson.class && (
+            <Field label={t("agenda.panel.visibility")}>
+              {lesson.visibilityClass?.name ?? t("agenda.panel.visibilityAll")}
+            </Field>
+          )}
         </dl>
       </Card>
-      <Card heading="h2" title={t("agenda.panel.numbers")}>
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label={t("agenda.panel.students")}>
-            {lesson.activeStudents}
-          </Field>
-          <Field label={t("agenda.panel.trials")}>{lesson.trialClasses}</Field>
-        </dl>
-      </Card>
-      <Card heading="h2" title={t("agenda.panel.group")}>
-        {group ? (
-          <Button variant="outline" className="min-h-11" asChild>
-            <a href={group} target="_blank" rel="noopener noreferrer">
-              {t("agenda.panel.openGroup")}
-            </a>
-          </Button>
-        ) : (
-          <p>{t("agenda.panel.noGroup")}</p>
-        )}
-      </Card>
+      {lesson.class && (
+        <>
+          <Card heading="h2" title={t("agenda.panel.numbers")}>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label={t("agenda.panel.students")}>
+                {lesson.activeStudents}
+              </Field>
+              <Field label={t("agenda.panel.trials")}>
+                {lesson.trialClasses}
+              </Field>
+            </dl>
+          </Card>
+          <Card heading="h2" title={t("agenda.panel.group")}>
+            {group ? (
+              <Button variant="outline" className="min-h-11" asChild>
+                <a href={group} target="_blank" rel="noopener noreferrer">
+                  {t("agenda.panel.openGroup")}
+                </a>
+              </Button>
+            ) : (
+              <p>{t("agenda.panel.noGroup")}</p>
+            )}
+          </Card>
+        </>
+      )}
       <EditLessonDialog
         lesson={dialog === "edit" ? lesson : null}
         onClose={() => setDialog(undefined)}
