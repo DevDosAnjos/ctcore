@@ -100,12 +100,11 @@ public class Students {
             Set<UUID> reach = who.units() == null ? Set.of() : who.units();
             if (admin && (reach.isEmpty() || unitId != null && !reach.contains(unitId))) return PageResponse.of(List.<Row>of(), page, 0);
 
-            LocalDate today = LocalDate.now(clock);
             String age = AGE;
             StringBuilder where = new StringBuilder("s.organization_id = :org");
             Map<String, Object> params = new HashMap<>();
             params.put("org", who.organizationId());
-            params.put("today", today);
+            params.put("now", nowUtc());
             if (q != null && !q.isBlank()) {
                 where.append(" and s.name_key like :q escape '\\'");
                 params.put("q", "%" + Modalities.normalize(q).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
@@ -125,24 +124,33 @@ public class Students {
             where.append(reachPredicate(admin));
             if (admin) params.put("reach", reach);
             if (wanted != null) where.append(" and ").append(sealPredicate(wanted, age));
-            sealParams(params, today);
 
-            long total = jdbc.sql("select count(*) from student s " + PAYER + " where " + where).params(params).query(Long.class).single();
+            long total = jdbc.sql("select count(*) from student s join unit u on u.id = s.registered_unit_id " + PAYER + " where " + where).params(params).query(Long.class).single();
             params.put("limit", page.size());
             params.put("offset", page.offset());
-            List<Row> rows = rows(where.toString(), params, today, "order by s.name_key, s.name, s.id limit :limit offset :offset");
+            List<Row> rows = rows(where.toString(), params, "order by s.name_key, s.name, s.id limit :limit offset :offset");
             return PageResponse.of(rows, page, total);
         });
     }
 
-    private static final String AGE = "extract(year from age(cast(:today as date), s.birth_date))";
+    /** A data de hoje é a do fuso da unidade de cadastro (alias {@code u}), não a do UTC do servidor (RF-ALU-02, RF-ALU-06). */
+    private static final String TODAY = "(cast(:now as timestamptz) at time zone u.timezone)::date";
+    private static final String AGE = "extract(year from age(" + TODAY + ", s.birth_date))";
 
-    /** O select da linha (lista e ficha); {@code params} já traz org, today, md e feb28. Faixas podem se sobrepor: vale a de maior idade mínima (D6). */
-    private List<Row> rows(String where, Map<String, Object> params, LocalDate today, String tail) {
+    private OffsetDateTime nowUtc() {
+        return OffsetDateTime.ofInstant(clock.instant(), java.time.ZoneOffset.UTC);
+    }
+
+    private LocalDate today(String zone) {
+        return LocalDate.ofInstant(clock.instant(), java.time.ZoneId.of(zone));
+    }
+
+    /** O select da linha (lista e ficha); {@code params} já traz org e now. Faixas podem se sobrepor: vale a de maior idade mínima (D6). */
+    private List<Row> rows(String where, Map<String, Object> params, String tail) {
         String age = AGE;
         return jdbc.sql("select s.id, s.name, s.photo, s.birth_date, " + age + ", r.id, r.name, u.id, u.name, s.created_at, "
                 + sealPredicate(StudentSeal.INCOMPLETE_REGISTRATION, age) + ", " + sealPredicate(StudentSeal.EMAIL_PROBLEM, age) + ", "
-                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
+                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + ", u.timezone from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
                 + "left join lateral (select a.id, a.name from age_range a where a.organization_id = s.organization_id and a.min_age <= " + age
                 + " and (a.max_age is null or a.max_age >= " + age + ") order by a.min_age desc, a.name_key limit 1) r on true "
                 + "where " + where + " " + tail)
@@ -151,7 +159,7 @@ public class Students {
                     LocalDate birth = rs.getObject(4, LocalDate.class);
                     UUID rangeId = rs.getObject(6, UUID.class);
                     return new Row(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)), birth, rs.getInt(5),
-                            !InviteRules.adult(birth, today), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
+                            !InviteRules.adult(birth, today(rs.getString(14))), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
                             new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs));
                 }).list();
     }
@@ -164,11 +172,9 @@ public class Students {
         boolean admin = who.role() == Role.ADMINISTRATOR;
         Set<UUID> reach = who.units() == null ? Set.of() : who.units();
         if (admin && reach.isEmpty()) return List.of();
-        LocalDate today = LocalDate.now(clock);
         Map<String, Object> params = new HashMap<>();
         params.put("org", who.organizationId());
-        params.put("today", today);
-        sealParams(params, today);
+        params.put("now", nowUtc());
         if (admin) params.put("reach", reach);
         String age = AGE;
         return jdbc.sql("select s.id, s.name, s.photo, " + age + ", r.id, r.name, u.id, u.name, c.name, c.phone, c.guardian "
@@ -194,16 +200,8 @@ public class Students {
 
     /** Roda dentro da transação da organização: a linha da lista de um aluno (id sem alcance; quem chama já conferiu). */
     Optional<Row> row(UUID organizationId, UUID id) {
-        LocalDate today = LocalDate.now(clock);
-        Map<String, Object> params = new HashMap<>(Map.of("org", organizationId, "id", id, "today", today));
-        sealParams(params, today);
-        return rows("s.organization_id = :org and s.id = :id", params, today, "").stream().findFirst();
-    }
-
-    private static void sealParams(Map<String, Object> params, LocalDate today) {
-        // 29/02 comemora em 28/02 nos anos não bissextos (D4).
-        params.put("md", "%02d%02d".formatted(today.getMonthValue(), today.getDayOfMonth()));
-        params.put("feb28", today.getMonthValue() == 2 && today.getDayOfMonth() == 28 && !today.isLeapYear());
+        Map<String, Object> params = new HashMap<>(Map.of("org", organizationId, "id", id, "now", nowUtc()));
+        return rows("s.organization_id = :org and s.id = :id", params, "").stream().findFirst();
     }
 
     /** Quem paga (RN-ALU-09): o aluno adulto, ou o responsável financeiro do menor (sem ele, tudo nulo). */
@@ -218,7 +216,8 @@ public class Students {
             case INCOMPLETE_REGISTRATION -> "(case when " + adult + " then s.cpf is null or coalesce(trim(s.email), '') = '' "
                     + "else p.cpf is null or coalesce(trim(p.email), '') = '' end)";
             case EMAIL_PROBLEM -> "(case when " + adult + " then s.email_problem_at is not null else coalesce(p.email_problem_at is not null, false) end)";
-            case BIRTHDAY_TODAY -> "(to_char(s.birth_date, 'MMDD') = :md or (:feb28 and to_char(s.birth_date, 'MMDD') = '0229'))";
+            case BIRTHDAY_TODAY -> "(to_char(s.birth_date, 'MMDD') = to_char(" + TODAY + ", 'MMDD') or (to_char(" + TODAY + ", 'MMDD') = '0228' "
+                    + "and to_char(s.birth_date, 'MMDD') = '0229' and extract(day from (date_trunc('year', " + TODAY + ") + interval '2 months' - interval '1 day')) = 28))";
         };
     }
 
@@ -266,13 +265,13 @@ public class Students {
         Set<UUID> reach = who.units() == null ? Set.of() : who.units();
         if (admin && reach.isEmpty()) throw new ApiStatusException(ErrorCode.NOT_FOUND);
         var query = jdbc.sql("select id, registered_unit_id, name, birth_date, postal_code, street, number, complement, district, city, state, cpf, email, "
-                + "phone, gender, referral, emergency_name, emergency_relationship, emergency_phone, photo, email_problem_at is not null from student "
+                + "phone, gender, referral, emergency_name, emergency_relationship, emergency_phone, photo, email_problem_at is not null, "
+                + "(select u.timezone from unit u where u.id = registered_unit_id) from student "
                 + "where organization_id = :org and id = :id" + (admin ? " and registered_unit_id in (:reach)" : ""))
                 .param("org", who.organizationId()).param("id", id);
         if (admin) query = query.param("reach", reach);
-        LocalDate today = LocalDate.now(clock);
         return query.query((rs, n) -> new Detail(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getString(3),
-                rs.getObject(4, LocalDate.class), !InviteRules.adult(rs.getObject(4, LocalDate.class), today), rs.getString(5), rs.getString(6),
+                rs.getObject(4, LocalDate.class), !InviteRules.adult(rs.getObject(4, LocalDate.class), today(rs.getString(22))), rs.getString(5), rs.getString(6),
                 rs.getString(7), rs.getString(8), rs.getString(9), rs.getString(10), rs.getString(11), rs.getString(12), rs.getString(13),
                 rs.getString(14), rs.getString(15), rs.getString(16), rs.getString(17), rs.getString(18), rs.getString(19), photoUrl(rs.getString(20)),
                 rs.getBoolean(21), guardians(who.organizationId(), id))).optional()

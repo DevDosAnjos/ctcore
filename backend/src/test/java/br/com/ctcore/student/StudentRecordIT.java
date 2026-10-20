@@ -105,7 +105,7 @@ class StudentRecordIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA2: Administrador abre o aluno da sua unidade e recebe 404 do cadastrado em outra unidade da organização")
+    @DisplayName("RN-ALU-07: CA2: Administrador abre o aluno da sua unidade e recebe 404 do cadastrado em outra unidade da organização")
     void adminReach() throws Exception {
         Tenant t = tenant();
         UUID second = unit(t, "Zona Sul");

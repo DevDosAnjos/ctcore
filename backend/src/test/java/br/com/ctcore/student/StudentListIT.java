@@ -34,7 +34,15 @@ class StudentListIT extends OrganizationBase {
 
     @AfterEach
     void clean() {
+        adminJdbc().update("delete from student_guardian");
+        adminJdbc().update("delete from guardian");
         adminJdbc().update("delete from student");
+        String mine = "(select id from account where email like '%.example')";
+        adminJdbc().update("delete from account_invite where account_id in " + mine);
+        adminJdbc().update("delete from account_session where account_id in " + mine);
+        adminJdbc().update("delete from account_link_unit where link_id in (select id from account_link where account_id in " + mine + ")");
+        adminJdbc().update("delete from account_link where account_id in " + mine);
+        adminJdbc().update("delete from account where email like '%.example'");
     }
 
     private MockHttpServletResponse get(String query, AccountPrincipal who) throws Exception {
@@ -177,7 +185,7 @@ class StudentListIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA4, CA5: Administrador só vê as unidades dele; unitId fora vazio; sem unidade vazio; demais perfis 403; anônimo 401")
+    @DisplayName("RN-ALU-07: CA4, CA5: Administrador só vê as unidades dele; unitId fora vazio; sem unidade vazio; demais perfis 403; anônimo 401")
     void permissions() throws Exception {
         Tenant t = tenant();
         UUID second = unit(t, "Zona Sul");

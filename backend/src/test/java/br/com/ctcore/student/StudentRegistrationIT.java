@@ -97,7 +97,7 @@ class StudentRegistrationIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA2: dados inválidos dão 400 com o campo e nada é gravado")
+    @DisplayName("RN-ALU-01, RN-ALU-03: CA2: dados inválidos dão 400 com o campo e nada é gravado")
     void validates() throws Exception {
         Tenant t = tenant();
         AccountPrincipal who = coordinator(t);
@@ -118,7 +118,7 @@ class StudentRegistrationIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA4: CPF repetido dá 409 só com id, nome e foto, também para o Administrador de outra unidade; outra organização cria")
+    @DisplayName("RN-ALU-05: CA4: CPF repetido dá 409 só com id, nome e foto, também para o Administrador de outra unidade; outra organização cria")
     void cpfExists() throws Exception {
         Tenant t = tenant();
         String id = ok(send(HttpMethod.POST, "", adult(t, "Aluno Existente", CPF), coordinator(t)), 201).get("id").asText();
@@ -157,7 +157,7 @@ class StudentRegistrationIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA6: busca por CPF devolve só id, nome e foto do aluno de qualquer unidade; inexistente, outra organização e inválido")
+    @DisplayName("RN-ALU-06: CA6: busca por CPF devolve só id, nome e foto do aluno de qualquer unidade; inexistente, outra organização e inválido")
     void lookup() throws Exception {
         Tenant t = tenant();
         String id = ok(send(HttpMethod.POST, "", adult(t, "Aluno Busca", CPF), coordinator(t)), 201).get("id").asText();
@@ -173,7 +173,7 @@ class StudentRegistrationIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA8: menor sem responsável não é gravado (os responsáveis entram na parte 2)")
+    @DisplayName("RN-RSP-01: CA8: menor sem responsável não é gravado (os responsáveis entram na parte 2)")
     void minorNeedsGuardian() throws Exception {
         Tenant t = tenant();
         ObjectNode minor = adult(t, "Aluno Menor", "").put("birthDate", LocalDate.now().minusYears(10).toString()).put("cpf", "");

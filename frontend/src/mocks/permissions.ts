@@ -1,7 +1,7 @@
 import type { Access, Permission, PermissionMap } from "@/features/permissions/types";
 
 // Espelha a tabela do servidor só para o mock (docs/especificacao/02-contas-e-acesso.md): [Coordenador, Administrador, Professor].
-// Professor com as quatro permissões da unidade ligadas (padrão).
+// Professor com as cinco permissões da unidade ligadas; no padrão do servidor as quatro primeiras vêm ligadas e "ver ficha do aluno" desligada.
 const F: Access = "FULL";
 const R: Access = "READ";
 const N: Access = "NONE";

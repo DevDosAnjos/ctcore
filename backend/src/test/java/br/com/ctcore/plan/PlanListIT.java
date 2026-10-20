@@ -62,7 +62,7 @@ class PlanListIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA1, CA3: lista ordenada por modalidade e nome, com campos do contrato, frequência nula e sem presença; size inválido 400")
+    @DisplayName("RN-PLA-02: CA1, CA3: lista ordenada por modalidade e nome, com campos do contrato, frequência nula e sem presença; size inválido 400")
     void list() throws Exception {
         var t = tenant();
         plan(t, t.unitId(), "Judô", "Mensal", 20000, 2, "ACTIVE");

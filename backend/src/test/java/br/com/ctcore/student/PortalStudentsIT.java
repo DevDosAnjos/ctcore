@@ -24,6 +24,11 @@ class PortalStudentsIT extends OrganizationBase {
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
         adminJdbc().update("delete from student");
+        String mine = "(select id from account where email like '%.example')";
+        adminJdbc().update("delete from account_invite where account_id in " + mine);
+        adminJdbc().update("delete from account_session where account_id in " + mine);
+        adminJdbc().update("delete from account_link_unit where link_id in (select id from account_link where account_id in " + mine + ")");
+        adminJdbc().update("delete from account_link where account_id in " + mine);
         adminJdbc().update("delete from account where email like '%.example'");
     }
 
@@ -58,7 +63,28 @@ class PortalStudentsIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA17: três cartões (dois filhos em unidades diferentes e o próprio com self), só id, nome, foto e self; outro responsável não vê; gestão 403; sem sessão 401")
+    @DisplayName("RN-LGP-03: outra organização: o responsável só vê os alunos da organização do vínculo, e quem não tem aluno nela recebe lista vazia")
+    void otherOrganization() throws Exception {
+        Tenant a = tenant();
+        Tenant b = tenant();
+        UUID acc = account("responsavel@portal.example"), alone = account("sozinho@portal.example");
+        UUID inA = student(a, a.unitId(), "Filho da A", "2015-01-01", null), inB = student(b, b.unitId(), "Filho da B", "2016-01-01", null);
+        guardian(a, acc, "52998224725", inA);
+        guardian(b, acc, "11144477735", inB);
+
+        var cardsA = json.readTree(get(portal(a, acc, Role.GUARDIAN)).getContentAsString());
+        assertThat(cardsA).hasSize(1);
+        assertThat(cardsA.get(0).get("name").asText()).isEqualTo("Filho da A");
+        var cardsB = json.readTree(get(portal(b, acc, Role.GUARDIAN)).getContentAsString());
+        assertThat(cardsB).hasSize(1);
+        assertThat(cardsB.get(0).get("name").asText()).isEqualTo("Filho da B");
+        var none = get(portal(a, alone, Role.GUARDIAN));
+        assertThat(none.getStatus()).isEqualTo(200);
+        assertThat(json.readTree(none.getContentAsString())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("RN-LGP-03: CA17: três cartões (dois filhos em unidades diferentes e o próprio com self), só id, nome, foto e self; outro responsável não vê; gestão 403; sem sessão 401")
     void cards() throws Exception {
         Tenant t = tenant();
         UUID other = UUID.randomUUID();

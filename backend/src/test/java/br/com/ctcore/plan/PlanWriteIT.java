@@ -103,7 +103,7 @@ class PlanWriteIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA1, CA9, CA12: cria plano ativo com histórico de hoje e auditoria sem presença")
+    @DisplayName("RN-PLA-01: CA1, CA9, CA12: cria plano ativo com histórico de hoje e auditoria sem presença")
     void create() throws Exception {
         var t = tenant();
         UUID jj = modality(t, t.unitId(), "Jiu-Jitsu", true, true);
@@ -127,7 +127,7 @@ class PlanWriteIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA2: entrada inválida dá 400 no campo e nada é gravado")
+    @DisplayName("RN-PLA-03: CA2: entrada inválida dá 400 no campo e nada é gravado")
     void invalid() throws Exception {
         var t = tenant();
         UUID jj = modality(t, t.unitId(), "Jiu-Jitsu", true, true);
@@ -232,7 +232,7 @@ class PlanWriteIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA5, CA14: vale em outras unidades só com a configuração plan; opções só do alcance e só modalidades ativas")
+    @DisplayName("RN-ORG-13: CA5, CA14: vale em outras unidades só com a configuração plan; opções só do alcance e só modalidades ativas")
     void crossUnit() throws Exception {
         var t = tenant();
         UUID second = unit(t, "Zona Sul", true);
