@@ -72,6 +72,17 @@ public class StudentRecords {
         });
     }
 
+    /** RF-ALU-06: aniversariantes de hoje para o Início do Administrador e do Professor; só leitura, sem auditoria. */
+    public List<Students.Birthday> birthdays(AccountPrincipal who) {
+        if (who == null || who.role() == null) throw new AccessDeniedException("Permission denied");
+        boolean teacher = who.role() == Role.TEACHER;
+        if (!teacher && who.role() != Role.ADMINISTRATOR) throw new AccessDeniedException("Permission denied");
+        var effective = permissions.effective(who);
+        if (effective.get(teacher ? Permission.STUDENT_VIEW : Permission.STUDENT_MANAGE) == Access.NONE) throw new AccessDeniedException("Permission denied");
+        boolean contacts = !teacher || effective.get(Permission.STUDENT_CONTACTS) != Access.NONE;
+        return transactions.execute(() -> students.birthdays(who, contacts, teacher ? id -> teacherReach(who, id) : null));
+    }
+
     /** O único ponto que a matrícula (#63) troca: hoje não há "aluno das suas turmas", então nenhum aluno é alcançável pelo Professor. */
     boolean teacherReach(AccountPrincipal who, UUID studentId) {
         return false;

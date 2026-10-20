@@ -2320,6 +2320,31 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-ALU-06: aniversariantes de hoje. Administrador (unidade dele); Professor 200 vazio até a matrícula (#63); Coordenador e portal 403.
+    method: "get",
+    path: "/students/birthdays",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role === "TEACHER") return HttpResponse.json([]);
+      if (role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const list = mockStudents
+        .filter((s) => s.registeredUnitId === ADMIN_UNIT && sealsOf(s).includes("BIRTHDAY_TODAY"))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((s) => {
+          const row = studentRowOf(s);
+          const own = s.phone ? { name: s.name, phone: s.phone, guardian: false } : undefined;
+          const g = s.guardians.find((x) => x.financial && x.phone) ?? s.guardians.find((x) => x.phone);
+          const contact = own ?? (g ? { name: g.name, phone: g.phone, guardian: true } : undefined);
+          return {
+            id: s.id, name: s.name, photoUrl: s.photoUrl, age: row.age, ageRange: row.ageRange, registeredUnit: row.registeredUnit,
+            contactName: contact?.name ?? null, contactPhone: contact?.phone ?? null, contactIsGuardian: contact?.guardian ?? false,
+          };
+        });
+      return HttpResponse.json(list);
+    },
+  },
+  {
     // RN-ALU-06: só id, nome e foto do aluno com esse CPF, de qualquer unidade.
     method: "get",
     path: "/students/lookup",

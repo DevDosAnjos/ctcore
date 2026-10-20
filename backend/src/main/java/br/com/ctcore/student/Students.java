@@ -56,6 +56,10 @@ public class Students {
     public record Row(UUID id, String name, String photoUrl, LocalDate birthDate, int age, boolean minor, RangeRef ageRange, UnitRef registeredUnit,
             OffsetDateTime createdAt, List<StudentSeal> seals) {}
 
+    /** RF-ALU-06: aniversariante do dia, sem CPF, e-mail, endereço nem data de nascimento; o contato é o do WhatsApp. */
+    public record Birthday(UUID id, String name, String photoUrl, int age, RangeRef ageRange, UnitRef registeredUnit, String contactName,
+            String contactPhone, boolean contactIsGuardian) {}
+
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
     private final Permissions permissions;
@@ -150,6 +154,42 @@ public class Students {
                             !InviteRules.adult(birth, today), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
                             new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs));
                 }).list();
+    }
+
+    /**
+     * RF-ALU-06, dentro da transação da organização: quem faz aniversário hoje (mesmo predicado do selo). Administrador: unidades do alcance;
+     * Professor: quem chama filtra por {@code reachable} (turmas dele). {@code contacts} liga o telefone.
+     */
+    List<Birthday> birthdays(AccountPrincipal who, boolean contacts, java.util.function.Predicate<UUID> reachable) {
+        boolean admin = who.role() == Role.ADMINISTRATOR;
+        Set<UUID> reach = who.units() == null ? Set.of() : who.units();
+        if (admin && reach.isEmpty()) return List.of();
+        LocalDate today = LocalDate.now(clock);
+        Map<String, Object> params = new HashMap<>();
+        params.put("org", who.organizationId());
+        params.put("today", today);
+        sealParams(params, today);
+        if (admin) params.put("reach", reach);
+        String age = AGE;
+        return jdbc.sql("select s.id, s.name, s.photo, " + age + ", r.id, r.name, u.id, u.name, c.name, c.phone, c.guardian "
+                + "from student s join unit u on u.id = s.registered_unit_id "
+                + "left join lateral (select a.id, a.name from age_range a where a.organization_id = s.organization_id and a.min_age <= " + age
+                + " and (a.max_age is null or a.max_age >= " + age + ") order by a.min_age desc, a.name_key limit 1) r on true "
+                + "left join lateral (select x.name, x.phone, x.guardian from (select s.name, s.phone, false as guardian, 0 as rank "
+                + "union all select g.name, g.phone, true, case when sg.financial then 1 else 2 end from student_guardian sg "
+                + "join guardian g on g.organization_id = sg.organization_id and g.id = sg.guardian_id "
+                + "where sg.organization_id = s.organization_id and sg.student_id = s.id) x where coalesce(trim(x.phone), '') <> '' "
+                + "order by x.rank, x.name limit 1) c on true "
+                + "where s.organization_id = :org and " + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + reachPredicate(admin)
+                + " order by s.name_key, s.name, s.id")
+                .params(params)
+                .query((rs, n) -> {
+                    UUID rangeId = rs.getObject(5, UUID.class);
+                    String phone = contacts ? rs.getString(10) : null;
+                    return new Birthday(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)), rs.getInt(4),
+                            rangeId == null ? null : new RangeRef(rangeId, rs.getString(6)), new UnitRef(rs.getObject(7, UUID.class), rs.getString(8)),
+                            phone == null ? null : rs.getString(9), phone, phone != null && rs.getBoolean(11));
+                }).list().stream().filter(b -> reachable == null || reachable.test(b.id())).toList();
     }
 
     /** Roda dentro da transação da organização: a linha da lista de um aluno (id sem alcance; quem chama já conferiu). */

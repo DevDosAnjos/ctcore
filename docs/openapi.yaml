@@ -1676,6 +1676,19 @@ paths:
         '409':
           description: Duplicidade ou conflito (STUDENT_CPF_EXISTS, STUDENT_POSSIBLE_DUPLICATE, GUARDIAN_CONFLICT).
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/birthdays:
+    get:
+      summary: Aniversariantes de hoje (RF-ALU-06). Administrador e Professor.
+      description: >-
+        Alunos que fazem aniversário hoje (29/02 vale em 28/02 nos anos não bissextos), por nome, sem paginação. Administrador vê as unidades do
+        alcance dele; Professor, só os das suas turmas (hoje nenhum, até a matrícula). O contato do Professor só vem com "ver contatos". Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Lista do dia.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/StudentBirthday' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /students/lookup:
     get:
       summary: Busca o aluno pelo CPF (RN-ALU-06). Coordenador e Administrador.
@@ -3100,6 +3113,30 @@ components:
             id: { type: string, format: uuid }
             name: { type: string }
         createdAt: { type: string, format: date-time }
+    StudentBirthday:
+      type: object
+      required: [id, name, photoUrl, age, ageRange, registeredUnit, contactName, contactPhone, contactIsGuardian]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        age: { type: integer, minimum: 0, description: A que completa hoje. }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        registeredUnit:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        contactName: { type: string, nullable: true, description: Quem recebe a mensagem; nulo sem telefone ou sem permissão. }
+        contactPhone: { type: string, nullable: true }
+        contactIsGuardian: { type: boolean }
     StudentList:
       allOf:
         - $ref: '#/components/schemas/Page'

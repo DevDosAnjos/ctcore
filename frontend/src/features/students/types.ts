@@ -136,3 +136,16 @@ export interface StudentHistoryEntry {
 
 // Corpo de PUT /students/{id} (RF-ALU-04): os dados pessoais de StudentInput, sem unidade de cadastro nem responsáveis.
 export type StudentUpdate = Omit<StudentInput, "registeredUnitId" | "guardians">;
+
+// RF-ALU-06 (docs/openapi.yaml: StudentBirthday): aniversariante de hoje; o contato é o do WhatsApp (nulo sem telefone ou sem permissão).
+export interface StudentBirthday {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  age: number;
+  ageRange: { id: string; name: string } | null;
+  registeredUnit: { id: string; name: string };
+  contactName: string | null;
+  contactPhone: string | null;
+  contactIsGuardian: boolean;
+}

@@ -328,6 +328,13 @@
       "appoint": "Nomear a mim mesmo"
     }
   },
+  "birthdays": {
+    "title": "Aniversariantes de hoje",
+    "empty": "Ninguém faz aniversário hoje",
+    "emptyText": "Quando alguém fizer aniversário, aparece aqui com a mensagem de parabéns pronta.",
+    "messageStudent": "Parabéns, {{name}}! A equipe da unidade {{unit}} deseja a você um feliz aniversário!",
+    "messageGuardian": "Olá, {{contact}}! Hoje é aniversário de {{name}}. A equipe da unidade {{unit}} deseja a ele(a) um feliz aniversário!"
+  },
   "students": {
     "title": "Alunos",
     "intro": "Alunos da organização, com a unidade de cadastro, a idade e a faixa etária de cada um.",
