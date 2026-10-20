@@ -1500,6 +1500,25 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria o plano (RF-PLA-03). Coordenador e Administrador.
+      description: |
+        Cria plano mensal ativo numa unidade ativa, com modalidade ativa na unidade. `name` de 2 a 60 caracteres; `valueCents` inteiro de 1 a
+        99999999; `weeklyFrequency` 2, 3 ou nulo (livre), só informativo (RN-PLA-02). Nome repetido entre os ativos da mesma unidade e modalidade
+        (sem acento nem caixa): 409. O Administrador só cria em unidade dele (senão 403). `validOtherUnits` só vale com `crossUnitTraining`
+        `plan` na organização; nos outros casos o servidor grava `false`. Grava a primeira linha do histórico de valor e `plan.created`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PlanInput' } } }
+      responses:
+        '201':
+          description: Plano criado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /plans/summary:
     get:
       summary: Resumo de planos e benefícios (RF-PLA-01). Coordenador e Administrador.
@@ -1517,6 +1536,93 @@ paths:
           content: { application/json: { schema: { $ref: '#/components/schemas/PlanSummary' } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /plans/options:
+    get:
+      summary: Opções da janela de plano (RF-PLA-03). Coordenador e Administrador.
+      description: |
+        Unidades ativas do alcance, cada uma com as modalidades ativas que oferece, e `crossUnitTraining` da organização (`plan`, `allowed` ou
+        `denied`; RN-ORG-13). Só leitura: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Opções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanOptions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /plans/{id}:
+    put:
+      summary: Altera o plano (RF-PLA-03). Coordenador e Administrador.
+      description: |
+        Altera `name`, `valueCents`, `weeklyFrequency` e `validOtherUnits`; `unitId` e `modalityId`, se enviados, têm de ser os atuais (senão 400).
+        Plano desativado: 409. Id de outra organização ou fora do alcance: 404. Com valor diferente, grava nova linha de histórico e aceita
+        `unpaidCharges` (`KEEP` padrão, `ADJUST`) e `paidFutureDifference` (`false` padrão); as escolhas vão para a auditoria `plan.updated`
+        e, até haver cobrança, nenhuma cobrança é alterada. Sem mudança de valor as escolhas são ignoradas. Não há rota de exclusão.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PlanInput' } } }
+      responses:
+        '200':
+          description: Plano alterado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /plans/{id}/value-impact:
+    get:
+      summary: Impacto de mudar o valor do plano (RN-PLA-04). Coordenador e Administrador.
+      description: |
+        `studentsAffected` vale 0 até a Sprint 07; `effectiveFrom` é `NEXT_CHARGE` (a próxima cobrança gerada; cobrança paga não muda).
+        `valueCents` ausente ou fora de 1 a 99999999: 400. Só leitura: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: valueCents, in: query, required: true, schema: { type: integer, format: int64, minimum: 1, maximum: 99999999 } }
+      responses:
+        '200':
+          description: Impacto.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanValueImpact' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /plans/{id}/deactivate:
+    post:
+      summary: Desativa o plano (RN-PLA-06). Coordenador e Administrador.
+      description: |
+        Só muda `status` para `INACTIVE`; nada é apagado e o plano continua na lista. Repetir responde 200 sem mudar nem auditar.
+        Grava `plan.deactivated`. Sem corpo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Plano com `status` `INACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /plans/{id}/activate:
+    post:
+      summary: Reativa o plano (RN-PLA-06). Coordenador e Administrador.
+      description: |
+        Volta `status` para `ACTIVE`. Com outro plano ativo de mesmo nome na unidade e modalidade, 409. Repetir responde 200 sem mudar nem
+        auditar. Grava `plan.activated`. Sem corpo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Plano com `status` `ACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /students:
     post:
       summary: Cadastra o aluno (RF-ALU-01). Coordenador e Administrador.
@@ -2445,6 +2551,40 @@ components:
         - type: object
           properties:
             items: { type: array, items: { $ref: '#/components/schemas/PlanRow' } }
+    PlanInput:
+      type: object
+      required: [name, valueCents]
+      properties:
+        unitId: { type: string, format: uuid, description: 'Obrigatório ao criar; ao editar, se enviado, tem de ser o atual.' }
+        modalityId: { type: string, format: uuid, description: 'Obrigatório ao criar; ao editar, se enviado, tem de ser o atual.' }
+        name: { type: string, minLength: 2, maxLength: 60 }
+        valueCents: { type: integer, format: int64, minimum: 1, maximum: 99999999 }
+        weeklyFrequency: { type: integer, nullable: true, enum: [2, 3], description: Nulo é livre; só informativo. }
+        validOtherUnits: { type: boolean, description: 'Ignorado (grava falso) quando `crossUnitTraining` não é `plan`.' }
+        unpaidCharges: { type: string, enum: [KEEP, ADJUST], default: KEEP, description: 'Só no PUT com valor diferente (RN-PLA-05).' }
+        paidFutureDifference: { type: boolean, default: false, description: 'Só no PUT com valor diferente (RN-PLA-05).' }
+    PlanOptions:
+      type: object
+      required: [crossUnitTraining, units]
+      properties:
+        crossUnitTraining: { type: string, enum: [plan, allowed, denied] }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name, modalities]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              modalities:
+                type: array
+                items: { $ref: '#/components/schemas/ClassRef' }
+    PlanValueImpact:
+      type: object
+      required: [studentsAffected, effectiveFrom]
+      properties:
+        studentsAffected: { type: integer, minimum: 0 }
+        effectiveFrom: { type: string, enum: [NEXT_CHARGE] }
     TeacherList:
       allOf:
         - $ref: '#/components/schemas/Page'
