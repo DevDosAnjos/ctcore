@@ -103,3 +103,4 @@ Achados:
 - Contrato em `docs/openapi.yaml`; handlers MSW batem com ele.
 - Verificação: rodada 1 OK (`mvnw verify` 450 testes; lint, typecheck, build e `test:cov` ok).
 - Limitações: handler MSW do Professor devolve `[]` até a #63 (matrícula); "hoje" usa o relógio do servidor (D5).
+- CI do PR #299 falhou em `backend`: `StudentBirthdaysIT.clean:39` (`delete from account where email like '%.example'`) viola `account_link_account_id_fkey` quando sobram linhas de `account_link` de outro IT na mesma ordem de execução; 6 erros, 444 ok. Corrigir a limpeza do teste (apagar `account_link` antes, como os demais ITs de aluno).
