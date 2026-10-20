@@ -287,7 +287,7 @@ describe("LessonPanelPage", () => {
       await screen.findByRole("option", { name: "João Pereira" });
       expect(within(dialog).queryByRole("status")).toBeNull();
       await user.click(within(dialog).getByRole("radio", { name: /Esta e as seguintes/ }));
-      expect(within(dialog).getByRole("status")).toHaveTextContent("2 aulas seguintes já foram alteradas à mão e serão substituídas por esta edição.");
+      expect(within(dialog).getByRole("status")).toHaveTextContent("2 aulas seguintes já foram alteradas à mão e serão atingidas por esta edição: data e horário mudam, e o substituto, nas que já têm, fica.");
       await user.click(within(dialog).getByRole("radio", { name: /Só esta aula/ }));
       expect(within(dialog).queryByRole("status")).toBeNull();
     });

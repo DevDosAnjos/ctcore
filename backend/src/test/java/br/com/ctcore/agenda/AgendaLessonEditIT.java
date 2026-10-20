@@ -58,6 +58,58 @@ class AgendaLessonEditIT extends AgendaBase {
     }
 
     @Test
+    @DisplayName("RN-AGE-04: FOLLOWING mantém o substituto das aulas que já o têm; followingEdited é igual às aulas que a edição regrava ou preserva dentre as já alteradas")
+    void followingKeepsSubstitutesAndCountMatches() throws Exception {
+        var t = tenant();
+        UUID ana = teacher(t, "Ana", null);
+        UUID beto = teacher(t, "Beto", null);
+        UUID caio = teacher(t, "Caio", null);
+        UUID judo = modality(t, "Judô");
+        for (UUID p : new UUID[] {beto, caio}) {
+            adminJdbc().update("insert into teacher_modality (organization_id, teacher_id, modality_id, level_id, degree) values (?, ?, ?, null, 0)", t.orgId(), p, judo);
+        }
+        UUID c = klass(t, "Judô", judo, ana, "ACTIVE");
+        UUID other = klass(t, "Outra", judo, ana, "ACTIVE");
+        UUID cur = lesson(t, c, ana, TODAY.plusDays(7), "19:00", "20:00", false, false);
+        UUID edited = lesson(t, c, ana, TODAY.plusDays(14), "19:00", "20:00", false, true);
+        UUID covered = lesson(t, c, beto, TODAY.plusDays(21), "19:00", "20:00", false, true);
+        adminJdbc().update("update lesson set substitute = true where id = ?", covered);
+        UUID plain = lesson(t, c, ana, TODAY.plusDays(28), "19:00", "20:00", false, false);
+        UUID cancelled = lesson(t, c, ana, TODAY.plusDays(35), "19:00", "20:00", true, true);
+        UUID elsewhere = lesson(t, other, ana, TODAY.plusDays(14), "19:00", "20:00", false, true);
+        UUID past = lesson(t, c, ana, TODAY.minusDays(7), "19:00", "20:00", false, true);
+        var coord = who(t, Role.COORDINATOR);
+
+        int shown = ok(call(MockMvcRequestBuilders.get("/api/v1/agenda/lessons/" + cur), coord).getResponse()).get("followingEdited").asInt();
+        Set<UUID> flagged = new java.util.HashSet<>(adminJdbc().queryForList("select id from lesson where class_id = ? and lesson_date > ? and not cancelled and (manually_edited or substitute)",
+                UUID.class, c, TODAY.plusDays(7)));
+        assertThat(flagged).containsExactlyInAnyOrder(edited, covered);
+        assertThat(shown).isEqualTo(flagged.size());
+
+        ok(put(cur, body("FOLLOWING", TODAY.plusDays(8), "20:00", "21:00", caio), coord));
+
+        assertThat(row(cur)).isEqualTo(TODAY.plusDays(8) + " 20:00:00 21:00:00 true true");
+        assertThat(row(edited)).isEqualTo(TODAY.plusDays(15) + " 20:00:00 21:00:00 true true");
+        assertThat(row(covered)).isEqualTo(TODAY.plusDays(22) + " 20:00:00 21:00:00 true true");
+        assertThat(row(plain)).isEqualTo(TODAY.plusDays(29) + " 20:00:00 21:00:00 true true");
+        assertThat(teacherOf(edited)).isEqualTo(caio);
+        assertThat(teacherOf(covered)).isEqualTo(beto);
+        assertThat(teacherOf(plain)).isEqualTo(caio);
+        assertThat(row(cancelled)).startsWith(TODAY.plusDays(35) + " 19:00:00");
+        assertThat(row(elsewhere)).startsWith(TODAY.plusDays(14) + " 19:00:00");
+        assertThat(row(past)).startsWith(TODAY.minusDays(7) + " 19:00:00");
+
+        Set<UUID> touched = new java.util.HashSet<>(adminJdbc().queryForList("select id from lesson where class_id = ? and original_date is not null and id <> ?", UUID.class, c, cur));
+        assertThat(touched).containsExactlyInAnyOrder(edited, covered, plain);
+        touched.retainAll(flagged);
+        assertThat(touched).hasSize(shown);
+    }
+
+    private UUID teacherOf(UUID lesson) {
+        return adminJdbc().queryForObject("select teacher_id from lesson where id = ?", UUID.class, lesson);
+    }
+
+    @Test
     @DisplayName("RN-PRO-09, RN-AGE-08: o professor da aula, inclusive o titular, ensina a modalidade; titular que deixou de ensinar não é aceito")
     void headMustTeachTheModality() throws Exception {
         var t = tenant();

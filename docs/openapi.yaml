@@ -875,7 +875,7 @@ paths:
     put:
       summary: Edita a aula (RF-AGE-03). Coordenador, Administrador e Professor com `AGENDA_EDIT`.
       description: |
-        `scope` `THIS` muda só a aula; `FOLLOWING` aplica horário e professor a ela e às seguintes da turma ainda não iniciadas (nem canceladas
+        `scope` `THIS` muda só a aula; `FOLLOWING` aplica horário e professor a ela e às seguintes (as seguintes que já têm substituto gravado mantêm o professor e o `substitute`; só data e horário mudam) da turma ainda não iniciadas (nem canceladas
         nem concluídas) e desloca a data de cada uma pelo mesmo número de dias da mudança desta; tudo ou nada. O professor é ativo, da organização
         e ensina a modalidade da turma, o titular inclusive (outro: 422 em `teacherId`); se não for o titular, `substitute` fica verdadeiro, e o titular da turma não muda.
         A aula editada fica com `manually_edited`. Início no passado ou `endsAt` antes de `startsAt`: 400; mesmo dia e início de outra aula da turma:
@@ -1978,7 +1978,7 @@ components:
         canEdit: { type: boolean }
         canCancel: { type: boolean }
         canViewClass: { type: boolean, description: Verdadeiro só para quem gerencia turmas (`CLASSES_MANAGE`). }
-        followingEdited: { type: integer, minimum: 0, description: "Aulas seguintes da turma, ainda agendadas e alteradas à mão, que editar \"esta e as seguintes\" (RN-AGE-04) substituiria; 0 na aula avulsa." }
+        followingEdited: { type: integer, minimum: 0, description: "Aulas seguintes da turma, ainda agendadas, alteradas à mão ou com substituto gravado, que editar \"esta e as seguintes\" (RN-AGE-04) atingiria: data e horário mudam, e as com substituto mantêm o substituto; 0 na aula avulsa." }
     LessonCreateInput:
       type: object
       required: [unitId, title, modalityId, date, startsAt, endsAt, teacherId]
