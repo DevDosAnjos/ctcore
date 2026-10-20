@@ -11,6 +11,9 @@ export function cancelReasonText(lesson: Pick<AgendaLesson, "cancelReason" | "ca
   return lesson.cancelReasonCode && lesson.cancelReasonCode !== "OTHER" ? t(`agenda.cancelReasons.${lesson.cancelReasonCode}`) : lesson.cancelReason;
 }
 
+// RF-AGE-04: a aula avulsa mostra o título no lugar do nome da turma.
+export const lessonName = (lesson: Pick<AgendaLesson, "class" | "title">) => lesson.class?.name ?? lesson.title ?? "";
+
 // RF-AGE-02: o cartão inteiro leva ao painel da aula.
 export function LessonCard({ lesson }: { lesson: AgendaLesson }) {
   const { t } = useTranslation();
@@ -22,12 +25,13 @@ export function LessonCard({ lesson }: { lesson: AgendaLesson }) {
         <span className="text-xs text-muted-foreground">
           {lesson.startsAt}–{lesson.endsAt}
         </span>
-        <span className={cancelled ? "font-medium line-through" : "font-medium"}>{lesson.class.name}</span>
+        <span className={cancelled ? "font-medium line-through" : "font-medium"}>{lessonName(lesson)}</span>
         <span>{lesson.teacher.name}</span>
         <span className="flex items-center gap-1 text-muted-foreground">
           <span aria-hidden="true" className="inline-block size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
           {lesson.modality.name}
         </span>
+        {!lesson.class && <span className="w-fit rounded border px-1.5 text-xs font-medium">{t("agenda.adhoc")}</span>}
         {lesson.substitute && <span className="w-fit rounded bg-secondary px-1.5 text-xs font-medium text-secondary-foreground">{t("agenda.substitute")}</span>}
         {cancelled && (
           <span className="flex flex-col text-xs">

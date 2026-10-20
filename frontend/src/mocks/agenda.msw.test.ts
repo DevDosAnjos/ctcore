@@ -194,3 +194,61 @@ describe("editar e cancelar aula x OpenAPI (RF-AGE-03)", () => {
     expect((await send("POST", `${l.id}/cancel`, { reason: "HOLIDAY", channels: [] })).status).toBe(403);
   });
 });
+
+describe("aula avulsa x OpenAPI (RF-AGE-04)", () => {
+  const create = (body: object) => fetch("/api/v1/agenda/lessons", { method: "POST", headers: json, body: JSON.stringify(body) });
+  const setup = async () => {
+    await login("ana@exemplo.com");
+    const view = await (await get(week())).json();
+    const lesson = view.lessons[0];
+    return {
+      unitId: view.unit.id as string,
+      modalityId: lesson.modality.id as string,
+      teacherId: lesson.teacher.id as string,
+      body: (over: object = {}) => ({ unitId: view.unit.id, title: "Seminário", modalityId: lesson.modality.id, date: addDays(todayIso(), 3), startsAt: "10:00", endsAt: "11:30", teacherId: lesson.teacher.id, ...over }),
+    };
+  };
+
+  it("contrato declara a rota; sem sessão 401; portal 403", async () => {
+    expect(Object.keys(openapi.paths["/agenda/lessons"].post.responses)).toEqual(expect.arrayContaining(["201", "400", "401", "403", "404", "422"]));
+    expect((await create({})).status).toBe(401);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000012");
+    expect((await create({})).status).toBe(403);
+  });
+
+  it("cria, devolve o painel no formato do contrato e a aula entra na agenda com título e class nulo", async () => {
+    const s = await setup();
+    const res = await create(s.body());
+    expect(res.status).toBe(201);
+    const detail = await res.json();
+    expect(Object.keys(detail).sort()).toEqual([...openapi.components.schemas.LessonDetail.required].sort());
+    expect(detail).toMatchObject({ class: null, title: "Seminário", visibilityClass: null, head: null, substitute: false, status: "SCHEDULED", canViewClass: false });
+    const listed = (await (await get(week() + `&unitId=${s.unitId}&modalityId=${s.modalityId}`)).json()).lessons.find((l: { id: string }) => l.id === detail.id);
+    expect(Object.keys(listed).sort()).toEqual([...openapi.components.schemas.AgendaLesson.required].sort());
+    expect(listed).toMatchObject({ class: null, title: "Seminário" });
+    expect((await fetch(`/api/v1/agenda/lessons/${detail.id}`)).status).toBe(200);
+    expect(JSON.stringify(detail)).not.toMatch(/espera|presen|frequ/i);
+  });
+
+  it("validações com o campo; 422 para professor e modalidade; FOLLOWING em avulsa 400; cancela", async () => {
+    const s = await setup();
+    for (const [over, status, field] of [
+      [{ title: " " }, 400, "title"],
+      [{ endsAt: "09:00" }, 400, "endsAt"],
+      [{ date: addDays(todayIso(), -1) }, 400, "date"],
+      [{ teacherId: "00000000-0000-0000-0000-0000000009ff" }, 422, "teacherId"],
+      [{ modalityId: "00000000-0000-0000-0000-0000000009ff" }, 422, "modalityId"],
+    ] as const) {
+      const res = await create(s.body(over));
+      expect(res.status).toBe(status);
+      expect((await res.json()).fields[0].field).toBe(field);
+    }
+    expect((await create(s.body({ unitId: "00000000-0000-0000-0000-0000000009ff" }))).status).toBe(404);
+    const id = (await (await create(s.body())).json()).id;
+    const put = (scope: string) => fetch(`/api/v1/agenda/lessons/${id}`, { method: "PUT", headers: json, body: JSON.stringify({ scope, date: addDays(todayIso(), 4), startsAt: "11:00", endsAt: "12:00", teacherId: s.teacherId }) });
+    expect((await put("FOLLOWING")).status).toBe(400);
+    expect(await (await put("THIS")).json()).toMatchObject({ date: addDays(todayIso(), 4), substitute: false });
+    const cancelled = await fetch(`/api/v1/agenda/lessons/${id}/cancel`, { method: "POST", headers: json, body: JSON.stringify({ reason: "HOLIDAY", channels: [] }) });
+    expect((await cancelled.json()).status).toBe("CANCELLED");
+  });
+});

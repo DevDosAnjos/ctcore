@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import type { LessonDetail } from "./useLesson";
+import { lessonName } from "./LessonCard";
 import { cancelLesson, type CancelCode } from "./useLessonActions";
 
 const CODES: CancelCode[] = ["TEACHER_UNAVAILABLE", "HOLIDAY", "ACADEMY_EVENT", "OTHER"];
@@ -65,7 +66,7 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
           if (!busy) void submit();
         }}
       >
-        <p className="text-sm">{t("agenda.cancel.intro", { name: lesson.class.name })}</p>
+        <p className="text-sm">{t("agenda.cancel.intro", { name: lessonName(lesson) })}</p>
         <fieldset>
           <legend className="text-sm font-medium">{t("agenda.cancel.reason")}</legend>
           {CODES.map((c) => (

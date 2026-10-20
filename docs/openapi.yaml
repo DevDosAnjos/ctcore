@@ -827,6 +827,30 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /agenda/lessons:
+    post:
+      summary: Cria aula avulsa, sem turma (RF-AGE-04). Coordenador, Administrador e Professor com `AGENDA_EDIT`.
+      description: |
+        A aula avulsa não tem turma (`class` nulo) e traz `title`; `visibilityClassId` (turma ativa da mesma unidade) diz que turma a vê no portal,
+        ausente = todas as turmas da unidade (RN-AGE-12). `title` de 1 a 80 caracteres; `endsAt` depois de `startsAt`; início não fica no passado no
+        fuso da unidade (400 com o campo). A modalidade é ativa e oferecida pela unidade e o professor é ativo e ensina a modalidade (RN-PRO-06), de
+        qualquer unidade (422 em `modalityId` ou `teacherId`); turma de visibilidade desativada ou de outra unidade: 422 em `visibilityClassId`;
+        `substitute` é sempre falso. O Professor só cria aula em que ele é o professor (outro: 403) e só em unidade do alcance dele. Sem `AGENDA_EDIT`,
+        Aluno e Responsável: 403; unidade, turma de visibilidade de outra organização ou unidade fora do alcance do Administrador: 404. Grava
+        `lesson.created`, na mesma transação. A aula avulsa abre no painel, edita (só `THIS`) e cancela como as demais.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LessonCreateInput' } } }
+      responses:
+        '201':
+          description: Painel da aula criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /agenda/lessons/{id}:
     get:
       summary: Painel da aula (RF-AGE-02). Coordenador, Administrador e Professor.
@@ -1804,7 +1828,7 @@ components:
         noClassDays: { type: array, items: { $ref: '#/components/schemas/NoClassDay' } }
     AgendaLesson:
       type: object
-      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, unit, modality, teacher, substitute, canEdit, canCancel]
+      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, title, unit, modality, teacher, substitute, canEdit, canCancel]
       properties:
         id: { type: string, format: uuid }
         date: { type: string, format: date }
@@ -1813,7 +1837,8 @@ components:
         status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
         cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
         cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER], description: 'Só quando `CANCELLED`; nulo na aula cancelada por dia sem aula (o texto vem em `cancelReason`).' }
-        class: { $ref: '#/components/schemas/ClassRef' }
+        class: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Nula na aula avulsa. }
+        title: { type: string, nullable: true, description: Título da aula avulsa; nulo na aula de turma. }
         unit: { $ref: '#/components/schemas/ClassRef' }
         modality: { $ref: '#/components/schemas/ClassRef' }
         teacher: { $ref: '#/components/schemas/ClassRef', description: Professor da aula. }
@@ -1822,7 +1847,7 @@ components:
         canCancel: { type: boolean }
     LessonDetail:
       type: object
-      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass]
+      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, title, visibilityClass, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass]
       properties:
         id: { type: string, format: uuid }
         date: { type: string, format: date }
@@ -1831,7 +1856,9 @@ components:
         status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
         cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
         cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER], description: 'Só quando `CANCELLED`; nulo na aula cancelada por dia sem aula (o texto vem em `cancelReason`).' }
-        class: { $ref: '#/components/schemas/ClassRef' }
+        class: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Nula na aula avulsa. }
+        title: { type: string, nullable: true, description: Título da aula avulsa; nulo na aula de turma. }
+        visibilityClass: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Turma que vê a aula avulsa no portal; nula = todas as turmas da unidade. }
         unit: { $ref: '#/components/schemas/ClassRef' }
         modality: { $ref: '#/components/schemas/ClassRef' }
         teacher: { $ref: '#/components/schemas/ClassRef', description: Professor da aula. }
@@ -1843,6 +1870,18 @@ components:
         canEdit: { type: boolean }
         canCancel: { type: boolean }
         canViewClass: { type: boolean, description: Verdadeiro só para quem gerencia turmas (`CLASSES_MANAGE`). }
+    LessonCreateInput:
+      type: object
+      required: [unitId, title, modalityId, date, startsAt, endsAt, teacherId]
+      properties:
+        unitId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 80 }
+        modalityId: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '10:00' }
+        endsAt: { type: string, example: '11:30' }
+        teacherId: { type: string, format: uuid }
+        visibilityClassId: { type: string, format: uuid, nullable: true, description: Turma ativa da unidade; ausente ou nula = todas as turmas. }
     LessonEditInput:
       type: object
       required: [scope, date, startsAt, endsAt, teacherId]

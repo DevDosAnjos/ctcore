@@ -75,6 +75,7 @@ export const resetMockSession = () => {
   mockTeachers = initialTeachers();
   mockClasses = initialClasses();
   lessonEdits.clear();
+  mockAdhoc = [];
   teacherContacts = initialTeacherContacts();
   teacherResends = 0;
   sessions = initialSessions();
@@ -336,6 +337,35 @@ const classDetail = (c: MockClass) => ({
 // RF-AGE-03: o que a edição e o cancelamento mudaram, por id de aula (as aulas do mock nascem das turmas e não têm linha própria).
 type LessonEdit = { date?: string; startsAt?: string; endsAt?: string; teacherId?: string; substitute?: boolean; cancelCode?: string; cancelText?: string | null };
 const lessonEdits = new Map<string, LessonEdit>();
+// RF-AGE-04: aulas avulsas criadas no simulado (têm linha própria, ao contrário das aulas de turma).
+type MockAdhoc = { id: string; unitId: string; title: string; modalityId: string; date: string; startsAt: string; endsAt: string; teacherId: string; visibilityClassId: string | null };
+let mockAdhoc: MockAdhoc[] = [];
+const todayLocal = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
+const adhocLesson = (a: MockAdhoc, today: string) => {
+  const unit = units.find((u) => u.id === a.unitId)!;
+  const teacher = mockTeachers.find((t) => t.id === a.teacherId)!;
+  const future = a.date >= today;
+  return {
+    id: a.id,
+    date: a.date,
+    startsAt: a.startsAt,
+    endsAt: a.endsAt,
+    status: future ? "SCHEDULED" : "COMPLETED",
+    cancelReason: null as string | null,
+    cancelReasonCode: null as string | null,
+    class: null as { id: string; name: string } | null,
+    title: a.title as string | null,
+    unit: { id: unit.id, name: unit.name },
+    modality: { id: a.modalityId, name: modalityCatalog.find((m) => m.id === a.modalityId)!.name },
+    teacher: { id: teacher.id, name: teacher.name },
+    substitute: false,
+    canEdit: true,
+    canCancel: future,
+  };
+};
 const applyEdit = <T extends { id: string; date: string; startsAt: string; endsAt: string; teacher: { id: string; name: string }; substitute: boolean; status: string; cancelReason: string | null; cancelReasonCode: string | null; canEdit: boolean; canCancel: boolean }>(l: T): T => {
   const e = lessonEdits.get(l.id);
   if (!e) return l;
@@ -364,7 +394,8 @@ const mockLesson = (c: MockClass, unit: { id: string; name: string }, date: stri
     status: cancelled ? "CANCELLED" : future ? "SCHEDULED" : "COMPLETED",
     cancelReason: cancelled ? "Feriado sintético" : null,
     cancelReasonCode: null as string | null,
-    class: { id: c.id, name: c.name },
+    class: { id: c.id, name: c.name } as { id: string; name: string } | null,
+    title: null as string | null,
     unit: { id: unit.id, name: unit.name },
     modality: row.modality,
     teacher,
@@ -384,6 +415,24 @@ const lessonView = (id: string) => {
   if (!loggedIn) return unauthenticated();
   const role = activeRole();
   if (role !== "COORDINATOR" && role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
+  const adhoc = mockAdhoc.find((a) => a.id === id && (role !== "ADMINISTRATOR" || a.unitId === ADMIN_UNIT));
+  if (adhoc) {
+    const today = todayLocal();
+    const { canEdit, canCancel, ...lesson } = applyEdit(adhocLesson(adhoc, today));
+    const visible = adhoc.visibilityClassId ? mockClasses.find((k) => k.id === adhoc.visibilityClassId) : undefined;
+    const detail = {
+      ...lesson,
+      visibilityClass: visible ? { id: visible.id, name: visible.name } : null,
+      head: null,
+      activeStudents: 0,
+      trialClasses: 0,
+      groupLink: null,
+      canEdit: role === "TEACHER" ? false : canEdit,
+      canCancel: role === "TEACHER" ? false : canCancel,
+      canViewClass: false,
+    };
+    return { detail, klass: null, today };
+  }
   const m = /^(.+)-(\d{4}-\d{2}-\d{2})-(\d{2}:\d{2})$/.exec(id);
   const c = m && mockClasses.find((k) => k.id === m[1] && k.status === "ACTIVE" && (role !== "ADMINISTRATOR" || k.unitId === ADMIN_UNIT));
   const unit = c && units.find((u) => u.id === c.unitId);
@@ -394,6 +443,7 @@ const lessonView = (id: string) => {
   const { canEdit, canCancel, ...lesson } = applyEdit(mockLesson(c, unit, m[2], slot[0], slot[1], slot[2], today));
   const detail = {
     ...lesson,
+    visibilityClass: null,
     head: lesson.substitute ? classRow(c).head : null,
     activeStudents: 0,
     trialClasses: 0,
@@ -1326,6 +1376,11 @@ export const routes: Route[] = [
           }
         }
       }
+      for (const a of mockAdhoc.filter((x) => x.unitId === unit.id && x.date >= from && x.date <= to)) {
+        const lesson = applyEdit(adhocLesson(a, today));
+        if ((teacherId && lesson.teacher.id !== teacherId) || (modalityId && lesson.modality.id !== modalityId)) continue;
+        lessons.push(lesson);
+      }
       const noClassDays = today >= from && today <= to ? [{ startsOn: today, endsOn: today, reason: "Feriado sintético" }] : [];
       return HttpResponse.json({
         units: sorted.map(({ id, name }) => ({ id, name })),
@@ -1347,6 +1402,40 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-AGE-04: cria aula avulsa (sem turma); validação como no servidor. Só Coordenador e Administrador (o Professor do mock não edita a agenda).
+    method: "post",
+    path: "/agenda/lessons",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const b = (await request.json().catch(() => ({}))) as { unitId?: string; title?: string; modalityId?: string; date?: string; startsAt?: string; endsAt?: string; teacherId?: string; visibilityClassId?: string | null };
+      const unit = units.find((u) => u.id === b.unitId && u.active && (role === "COORDINATOR" || u.id === ADMIN_UNIT));
+      if (!unit) return error(404, "NOT_FOUND", "Não encontrado.");
+      const title = (b.title ?? "").trim();
+      if (title.length < 1 || title.length > 80) return classBad("title", "de 1 a 80 caracteres");
+      if (!b.modalityId) return classBad("modalityId", "obrigatório");
+      if (!b.teacherId) return classBad("teacherId", "obrigatório");
+      if (!b.date || !/^\d{4}-\d{2}-\d{2}$/.test(b.date) || Number.isNaN(Date.parse(`${b.date}T12:00:00Z`))) return classBad("date", "data inválida, use yyyy-MM-dd");
+      const time = /^([01]\d|2[0-3]):[0-5]\d$/;
+      if (!b.startsAt || !time.test(b.startsAt)) return classBad("startsAt", "horário HH:mm");
+      if (!b.endsAt || !time.test(b.endsAt) || b.endsAt <= b.startsAt) return classBad("endsAt", "o término precisa ser depois do início");
+      if (b.date < todayLocal()) return classBad("date", "o início não pode ficar no passado");
+      const unprocessable = (field: string, message: string) => error(422, "UNPROCESSABLE", "Os dados estão corretos, mas a regra não permite esta operação.", [{ field, message }]);
+      if (!teacherOptions().some((m) => m.id === b.modalityId)) return unprocessable("modalityId", "escolha uma modalidade ativa oferecida pela unidade");
+      const teacher = mockTeachers.find((t) => t.id === b.teacherId && t.status === "ACTIVE" && t.modalities.some((m) => m.id === b.modalityId));
+      if (!teacher) return unprocessable("teacherId", "escolha um professor ativo que ensine a modalidade da aula");
+      if (b.visibilityClassId) {
+        const k = mockClasses.find((c) => c.id === b.visibilityClassId);
+        if (!k) return error(404, "NOT_FOUND", "Não encontrado.");
+        if (k.status !== "ACTIVE" || k.unitId !== unit.id) return unprocessable("visibilityClassId", "escolha uma turma ativa da unidade");
+      }
+      const made: MockAdhoc = { id: crypto.randomUUID(), unitId: unit.id, title, modalityId: b.modalityId, date: b.date, startsAt: b.startsAt, endsAt: b.endsAt, teacherId: teacher.id, visibilityClassId: b.visibilityClassId ?? null };
+      mockAdhoc = [...mockAdhoc, made];
+      return HttpResponse.json((lessonView(made.id) as { detail: object }).detail, { status: 201 });
+    },
+  },
+  {
     // RF-AGE-03: edita a aula (as seguintes de FOLLOWING são geradas pelo mock e não mudam). Concluída: só o professor, com motivo.
     method: "put",
     path: "/agenda/lessons/{id}",
@@ -1356,6 +1445,7 @@ export const routes: Route[] = [
       const { detail } = found;
       if (!detail.canEdit) return detail.status === "CANCELLED" || detail.status === "COMPLETED" ? error(409, "CONFLICT", "Não é possível editar a aula.") : error(403, "FORBIDDEN", "Sem permissão.");
       const b = (await request.json().catch(() => ({}))) as { scope?: string; date?: string; startsAt?: string; endsAt?: string; teacherId?: string; reason?: string };
+      if (!found.klass && b.scope === "FOLLOWING") return classBad("scope", "aula avulsa: use THIS");
       const time = /^([01]\d|2[0-3]):[0-5]\d$/;
       if (b.scope !== "THIS" && b.scope !== "FOLLOWING") return classBad("scope", "use THIS ou FOLLOWING");
       if (!b.date || !/^\d{4}-\d{2}-\d{2}$/.test(b.date)) return classBad("date", "data inválida, use yyyy-MM-dd");
@@ -1368,7 +1458,7 @@ export const routes: Route[] = [
       } else if (b.date < found.today) return classBad("date", "o novo início não pode ficar no passado");
       const teacher = mockTeachers.find((x) => x.id === b.teacherId && x.status === "ACTIVE");
       if (!teacher) return error(422, "UNPROCESSABLE", "Os dados estão corretos, mas a regra não permite esta operação.", [{ field: "teacherId", message: "escolha um professor ativo que ensine a modalidade da turma" }]);
-      lessonEdits.set(detail.id, { ...lessonEdits.get(detail.id), date: b.date, startsAt: b.startsAt, endsAt: b.endsAt, teacherId: teacher.id, substitute: teacher.id !== classRow(found.klass).head.id });
+      lessonEdits.set(detail.id, { ...lessonEdits.get(detail.id), date: b.date, startsAt: b.startsAt, endsAt: b.endsAt, teacherId: teacher.id, substitute: found.klass ? teacher.id !== classRow(found.klass).head.id : false });
       return HttpResponse.json((lessonView(detail.id) as { detail: object }).detail);
     },
   },
