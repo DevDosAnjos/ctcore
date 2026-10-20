@@ -4,7 +4,7 @@ import { isValidCpf, isValidCpfOrCnpj, onlyDigits } from "@/components/fields/ma
 import { isHexColor, passesContrast } from "@/features/organization/contrastRatio";
 import { nextHolidays, validateDay, type DayBody } from "./noClassDays";
 import { mockPermissions } from "./permissions";
-import type { StudentSeal, StudentDetail, StudentGuardianInput, StudentGuardianRow, StudentInput, StudentRow } from "@/features/students/types";
+import type { StudentSeal, StudentDetail, StudentGuardianInput, StudentGuardianRow, StudentInput, StudentRow, StudentUpdate } from "@/features/students/types";
 
 export type Method = "get" | "post" | "put" | "patch" | "delete";
 
@@ -2338,6 +2338,72 @@ export const routes: Route[] = [
     resolver: ({ params }) => {
       const found = studentFor(params.id as string);
       return found instanceof Response ? found : HttpResponse.json(found);
+    },
+  },
+  {
+    // RF-ALU-04: edita os dados pessoais (sem unidade de cadastro nem responsáveis). Mesmas validações do cadastro; o próprio aluno não conta como duplicado.
+    method: "put",
+    path: "/students/{id}",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const b = ((await request.json().catch(() => ({}))) as Partial<StudentUpdate>) ?? {};
+      const name = b.name?.trim() ?? "";
+      if (name.length < 2 || name.length > 80) return studentBad("name", "de 2 a 80 caracteres");
+      if (!b.birthDate || new Date(b.birthDate).getTime() >= Date.now()) return studentBad("birthDate", "informe uma data no passado");
+      if (onlyDigits(b.postalCode ?? "").length !== 8) return studentBad("postalCode", "CEP inválido");
+      for (const f of ["street", "number", "district", "city"] as const) if (!b[f]?.trim()) return studentBad(f, "obrigatório");
+      const cpf = b.cpf ? onlyDigits(b.cpf) : null;
+      if (cpf && !isValidCpf(cpf)) return studentBad("cpf", "CPF inválido");
+      const phone = b.phone ? onlyDigits(b.phone) : null;
+      if (phone && !/^\d{10,11}$/.test(phone)) return studentBad("phone", "celular com DDD");
+      const minor = isMinor(b.birthDate);
+      if (!minor) {
+        if (!cpf) return studentBad("cpf", "obrigatório");
+        if (!b.email) return studentBad("email", "obrigatório");
+        if (!phone) return studentBad("phone", "obrigatório");
+      } else if (found.guardians.length === 0) return studentBad("birthDate", "aluno menor de 18 anos precisa de ao menos um responsável");
+      const emergency = [b.emergencyName, b.emergencyRelationship, b.emergencyPhone].filter(Boolean).length;
+      if (emergency > 0 && emergency < 3) return studentBad(!b.emergencyName ? "emergencyName" : !b.emergencyRelationship ? "emergencyRelationship" : "emergencyPhone", "informe nome, parentesco e telefone do contato de emergência, ou nenhum");
+      if (cpf) {
+        const same = mockStudents.find((s) => s.cpf === cpf && s.id !== found.id);
+        if (same) return studentError(409, "STUDENT_CPF_EXISTS", same);
+      } else if (!b.confirmDuplicate && (teacherKey(name) !== teacherKey(found.name) || b.birthDate !== found.birthDate)) {
+        const same = mockStudents.find((s) => s.id !== found.id && teacherKey(s.name) === teacherKey(name) && s.birthDate === b.birthDate);
+        if (same) return studentError(409, "STUDENT_POSSIBLE_DUPLICATE", same);
+      }
+      Object.assign(found, {
+        name, birthDate: b.birthDate, minor, postalCode: onlyDigits(b.postalCode ?? ""), street: b.street!.trim(), number: b.number!.trim(), complement: b.complement ?? null, district: b.district!.trim(),
+        city: b.city!.trim(), state: (b.state ?? "").toUpperCase(), cpf, email: b.email ?? null, phone, gender: b.gender ?? null, referral: b.referral ?? null, emergencyName: b.emergencyName ?? null,
+        emergencyRelationship: b.emergencyRelationship ?? null, emergencyPhone: b.emergencyPhone ? onlyDigits(b.emergencyPhone) : null,
+      });
+      logStudent(found.id, "student.updated", null);
+      return HttpResponse.json(found);
+    },
+  },
+  {
+    // O corpo multipart é lido como texto (como na foto do professor); o mock só guarda que existe uma foto.
+    method: "put",
+    path: "/students/{id}/photo",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const raw = await request.text();
+      if (!raw.includes('name="file"') || raw.length < 20 || raw.length > 5 * 1024 * 1024) return studentBad("file", "arquivo inválido");
+      found.photoUrl = MOCK_LOGO;
+      logStudent(found.id, "student.photo_updated", null);
+      return HttpResponse.json(found);
+    },
+  },
+  {
+    method: "delete",
+    path: "/students/{id}/photo",
+    resolver: ({ params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      if (found.photoUrl) logStudent(found.id, "student.photo_removed", null);
+      found.photoUrl = null;
+      return HttpResponse.json(found);
     },
   },
   {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import type { TFunction } from "i18next";
@@ -61,6 +62,7 @@ function Content({ accountId }: { accountId: string }) {
   const { id } = useParams();
   const { search } = useLocation();
   const navigate = useNavigate();
+  const [version, setVersion] = useState(0);
   const all = allColumns(t, search);
   const columns = [all.name, ...visible.map((c) => all[c])];
   return (
@@ -79,13 +81,14 @@ function Content({ accountId }: { accountId: string }) {
         </div>
       </details>
       <QueryPage
+        key={version}
         columns={columns}
         fetchPage={fetchStudents}
         rowKey={(r) => r.id}
         filterKeys={["unitId", "ageRangeId", "seal"]}
         filters={(p) => <StudentFilters {...p} />}
       />
-      {id && <StudentRecordPanel id={id} onClose={() => navigate(`/alunos${search}`)} />}
+      {id && <StudentRecordPanel id={id} onClose={() => navigate(`/alunos${search}`)} onChanged={() => setVersion((v) => v + 1)} />}
     </div>
   );
 }

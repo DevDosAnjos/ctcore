@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { StudentHistoryEntry, StudentRecord } from "./types";
+import type { StudentDetail, StudentHistoryEntry, StudentRecord, StudentUpdate } from "./types";
 
 type Failure = "forbidden" | "notFound" | "error";
 type Done<T> = { path: string; data?: T; failure?: Failure };
@@ -33,3 +33,16 @@ export function useStudentRecord(id: string) {
 export function useStudentHistory(id: string, page: number) {
   return useResource<{ items: StudentHistoryEntry[]; page: number; size: number; total: number }>(`/students/${id}/history?page=${page}&size=25`);
 }
+
+// Dados pessoais completos para a janela de edição (RF-ALU-04).
+export function useStudentDetail(id: string) {
+  return useResource<StudentDetail>(`/students/${id}`);
+}
+
+export const updateStudent = (id: string, input: StudentUpdate) => api<StudentDetail>(`/students/${id}`, { method: "PUT", body: input });
+export const uploadStudentPhoto = (id: string, photo: Blob) => {
+  const form = new FormData();
+  form.append("file", photo, "foto.png");
+  return api<StudentDetail>(`/students/${id}/photo`, { method: "PUT", body: form });
+};
+export const removeStudentPhoto = (id: string) => api<StudentDetail>(`/students/${id}/photo`, { method: "DELETE" });

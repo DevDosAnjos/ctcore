@@ -44,7 +44,7 @@ public class StudentRegistration {
             String emergencyName, String emergencyRelationship, String emergencyPhone, Boolean confirmDuplicate,
             List<StudentGuardians.Input> guardians) {}
 
-    private record Clean(UUID unitId, String name, LocalDate birthDate, boolean adult, String postalCode, String street, String number, String complement,
+    record Clean(UUID unitId, String name, LocalDate birthDate, boolean adult, String postalCode, String street, String number, String complement,
             String district, String city, String state, String cpf, String email, String phone, String gender, String referral,
             String emergencyName, String emergencyRelationship, String emergencyPhone, boolean confirm,
             List<StudentGuardians.Clean> guardians) {}
@@ -102,6 +102,15 @@ public class StudentRegistration {
     private Clean clean(Input in) {
         if (in == null) throw new ApiValidationException("name", "obrigatório");
         if (in.registeredUnitId() == null) throw new ApiValidationException("registeredUnitId", "obrigatório");
+        Clean c = personal(in);
+        return new Clean(in.registeredUnitId(), c.name(), c.birthDate(), c.adult(), c.postalCode(), c.street(), c.number(), c.complement(), c.district(),
+                c.city(), c.state(), c.cpf(), c.email(), c.phone(), c.gender(), c.referral(), c.emergencyName(), c.emergencyRelationship(),
+                c.emergencyPhone(), c.confirm(), StudentGuardians.prepare(c.adult(), in.guardians()));
+    }
+
+    /** Validação dos dados pessoais, igual no cadastro e na edição (RF-ALU-04); unidade e responsáveis não entram. */
+    Clean personal(Input in) {
+        if (in == null) throw new ApiValidationException("name", "obrigatório");
         String name = in.name() == null ? "" : in.name().strip();
         if (name.length() < 2 || name.length() > 80) throw new ApiValidationException("name", "de 2 a 80 caracteres");
         LocalDate today = LocalDate.now(clock);
@@ -128,13 +137,13 @@ public class StudentRegistration {
             throw new ApiValidationException(missing, "informe nome, parentesco e telefone do contato de emergência, ou nenhum");
         }
         if (eName != null && eName.length() < 2) throw new ApiValidationException("emergencyName", "de 2 a 80 caracteres");
-        return new Clean(in.registeredUnitId(), name, in.birthDate(), adult, postal, required("street", in.street(), 120), required("number", in.number(), 20),
+        return new Clean(null, name, in.birthDate(), adult, postal, required("street", in.street(), 120), required("number", in.number(), 20),
                 optional("complement", in.complement(), 60), required("district", in.district(), 80), required("city", in.city(), 80), state, cpf, email,
                 phone, oneOf("gender", in.gender(), GENDERS), oneOf("referral", in.referral(), REFERRALS), eName, eRel, ePhone,
-                Boolean.TRUE.equals(in.confirmDuplicate()), StudentGuardians.prepare(adult, in.guardians()));
+                Boolean.TRUE.equals(in.confirmDuplicate()), List.of());
     }
 
-    private static ApiStatusException exists(ErrorCode code, Students.Ref ref) {
+    static ApiStatusException exists(ErrorCode code, Students.Ref ref) {
         return new ApiStatusException(code, List.of(new ApiError.Field("id", ref.id().toString()), new ApiError.Field("name", ref.name()),
                 new ApiError.Field("photoUrl", ref.photoUrl() == null ? "" : ref.photoUrl())));
     }
@@ -165,7 +174,7 @@ public class StudentRegistration {
             var found = students.byCpf(who.organizationId(), c.cpf());
             if (found.isPresent()) throw exists(ErrorCode.STUDENT_CPF_EXISTS, found.get());
         } else if (!c.confirm()) {
-            var found = students.byNameAndBirth(who.organizationId(), Modalities.normalize(c.name()), c.birthDate());
+            var found = students.byNameAndBirth(who.organizationId(), Modalities.normalize(c.name()), c.birthDate(), null);
             if (found.isPresent()) throw exists(ErrorCode.STUDENT_POSSIBLE_DUPLICATE, found.get());
         }
         UUID id = UUID.randomUUID();

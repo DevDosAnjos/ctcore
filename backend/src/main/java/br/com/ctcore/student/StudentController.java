@@ -11,7 +11,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
+import br.com.ctcore.api.error.ApiValidationException;
+import org.springframework.http.MediaType;
+import java.io.IOException;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,12 +32,15 @@ class StudentController {
     private final StudentRegistration registration;
     private final StudentGuardians guardians;
     private final StudentRecords records;
+    private final StudentEdit edit;
 
     record FinancialBody(Boolean financial) {}
 
     record ReasonBody(String reason) {}
 
-    StudentController(Students students, StudentRegistration registration, StudentGuardians guardians, StudentRecords records) {
+    StudentController(Students students, StudentRegistration registration, StudentGuardians guardians, StudentRecords records,
+            StudentEdit edit) {
+        this.edit = edit;
         this.records = records;
         this.guardians = guardians;
         this.students = students;
@@ -61,6 +70,25 @@ class StudentController {
     @GetMapping("/{id}")
     Students.Detail get(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
         return students.get(who, id);
+    }
+
+
+    @PutMapping("/{id}")
+    Students.Detail update(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody StudentEdit.Update body,
+            HttpServletRequest request) {
+        return edit.update(who, id, body, request.getRemoteAddr());
+    }
+
+    @PutMapping(value = "/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    Students.Detail replacePhoto(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
+            @RequestPart(value = "file", required = false) MultipartFile file, HttpServletRequest request) throws IOException {
+        if (file == null) throw new ApiValidationException("file", "obrigatório");
+        return edit.replacePhoto(who, id, file.getBytes(), request.getRemoteAddr());
+    }
+
+    @DeleteMapping("/{id}/photo")
+    Students.Detail removePhoto(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, HttpServletRequest request) {
+        return edit.removePhoto(who, id, request.getRemoteAddr());
     }
 
     @GetMapping("/{id}/record")

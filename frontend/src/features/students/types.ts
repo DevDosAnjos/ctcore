@@ -133,3 +133,6 @@ export interface StudentHistoryEntry {
   actorProfile: string | null;
   reason: string | null;
 }
+
+// Corpo de PUT /students/{id} (RF-ALU-04): os dados pessoais de StudentInput, sem unidade de cadastro nem responsáveis.
+export type StudentUpdate = Omit<StudentInput, "registeredUnitId" | "guardians">;
