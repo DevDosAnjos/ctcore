@@ -17,10 +17,14 @@ import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
+import { BirthdaysCard } from "@/features/students/BirthdaysCard";
+import { StudentsPage } from "@/features/students/StudentsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
 import { ClassPanelPage } from "@/features/classes/ClassPanelPage";
+import { PlansPage } from "@/features/plans/PlansPage";
+import { PlansTablePage } from "@/features/plans/PlansTablePage";
 import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { LessonPanelPage } from "@/features/agenda/LessonPanelPage";
 import { NoClassDaysPage } from "@/features/noClassDays/NoClassDaysPage";
@@ -53,6 +57,7 @@ function Home() {
       <ManagementLayout>
         <Welcome />
         <ScopeLine />
+        {(role === "ADMINISTRATOR" || role === "TEACHER") && <BirthdaysCard />}
       </ManagementLayout>
     );
   }
@@ -96,6 +101,9 @@ export function App() {
             <Route path="/dias-sem-aula" element={<NoClassDaysPage />} />
             <Route path="/turmas" element={<ClassesPage />} />
             <Route path="/turmas/:id" element={<ClassPanelPage />} />
+            <Route path="/planos" element={<PlansPage />} />
+            <Route path="/planos/lista" element={<PlansTablePage />} />
+            <Route path="/alunos/:id?" element={<StudentsPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

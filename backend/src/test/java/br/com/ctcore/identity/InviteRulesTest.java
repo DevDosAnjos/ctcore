@@ -37,6 +37,11 @@ class InviteRulesTest {
         assertThat(InviteRules.allowed(Inviter.system(), Role.STUDENT, Set.of())).isTrue();
         assertThat(InviteRules.allowed(Inviter.system(), Role.GUARDIAN, Set.of())).isTrue();
         assertThat(InviteRules.allowed(Inviter.system(), Role.TEACHER, Set.of(mine))).isFalse();
+        // RN-RSP-06: o convite do responsável sai da gestão de alunos; só Coordenador e Administrador
+        assertThat(InviteRules.guardianAccess(coordinator)).isTrue();
+        assertThat(InviteRules.guardianAccess(admin)).isTrue();
+        assertThat(InviteRules.guardianAccess(teacher)).isFalse();
+        assertThat(InviteRules.guardianAccess(Inviter.system())).isFalse();
     }
 
     @Test

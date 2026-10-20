@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 05 · Turmas e agenda. O dono confirmou em 19/10/2026 que revisou a Sprint 04 e fez o PR dev→main (#273). Só o dono libera a seguinte.
+Sprint liberada: Sprint 06. O dono confirmou em 20/10/2026 que revisou a Sprint 05 (Turmas e agenda) e fez o PR dev→main (#288, merge). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -62,15 +62,15 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 51 | RF-AGE-03 · Editar e cancelar aula | issue #51 | Sprint 05 | — | agente | feito |
 | 52 | RF-AGE-04 · Nova aula avulsa | issue #52 | Sprint 05 | — | agente | feito |
 | 53 | RF-AGE-05 · Dias sem aula | issue #53 | Sprint 05 | — | agente | feito |
-| 54 | Cadastro de aluno e responsáveis no servidor | issue #54 | Sprint 06 | — | agente | a fazer |
-| 55 | RF-PLA-01 · Financeiro › Planos e benefícios | issue #55 | Sprint 06 | — | agente | a fazer |
-| 56 | RF-PLA-02 · Tabela de planos | issue #56 | Sprint 06 | — | agente | a fazer |
-| 57 | RF-PLA-03 · Janela de plano | issue #57 | Sprint 06 | — | agente | a fazer |
-| 58 | RF-ALU-01 · Pessoas › Alunos (lista e filtros) | issue #58 | Sprint 06 | — | agente | a fazer |
-| 59 | RF-ALU-02 · Selos do aluno | issue #59 | Sprint 06 | — | agente | a fazer |
-| 60 | RF-ALU-03 · Ficha do aluno em painel lateral | issue #60 | Sprint 06 | — | agente | a fazer |
-| 61 | RF-ALU-04 · Editar dados pessoais do aluno | issue #61 | Sprint 06 | — | agente | a fazer |
-| 62 | RF-ALU-06 · Aniversariantes do dia | issue #62 | Sprint 06 | — | agente | a fazer |
+| 54 | Cadastro de aluno e responsáveis no servidor | issue #54 | Sprint 06 | — | agente | feito |
+| 55 | RF-PLA-01 · Financeiro › Planos e benefícios | issue #55 | Sprint 06 | — | agente | feito |
+| 56 | RF-PLA-02 · Tabela de planos | issue #56 | Sprint 06 | — | agente | feito |
+| 57 | RF-PLA-03 · Janela de plano | issue #57 | Sprint 06 | — | agente | feito |
+| 58 | RF-ALU-01 · Pessoas › Alunos (lista e filtros) | issue #58 | Sprint 06 | — | agente | feito |
+| 59 | RF-ALU-02 · Selos do aluno | issue #59 | Sprint 06 | — | agente | feito |
+| 60 | RF-ALU-03 · Ficha do aluno em painel lateral | issue #60 | Sprint 06 | — | agente | feito |
+| 61 | RF-ALU-04 · Editar dados pessoais do aluno | issue #61 | Sprint 06 | — | agente | feito |
+| 62 | RF-ALU-06 · Aniversariantes do dia | issue #62 | Sprint 06 | — | agente | feito |
 | 63 | Matrícula no servidor: modalidades, transferência e retorno | issue #63 | Sprint 07 | — | agente | a fazer |
 | 64 | RF-BEN-01 · Tabela de benefícios | issue #64 | Sprint 07 | — | agente | a fazer |
 | 65 | RF-BEN-02 · Conceder benefício | issue #65 | Sprint 07 | — | agente | a fazer |
@@ -219,3 +219,4 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 - **Sprint 06, ficha do aluno (#60, junto de #58 e #61):** permissão do Professor por unidade: ver ficha do aluno (padrão desligada); implementar junto da ficha, com migração do vetor `teacher_permissions` de 4 para 5, tela de configurações da unidade, `PermissionTable`, openapi e testes. Decisão do dono de 20/10/2026, só especificação até lá (`docs/especificacao/02`, `08`, `15`). Sem a chave, o Professor continua vendo os alunos da turma ou da aula como lista simples (RN-PRO-06). Ainda não há arquivo de item para #58 a #61; quem especificar a ficha lê este encaixe.
 - **Sprint 07, matrícula (#63) e benefícios (#66):** os encaixes de `ModalityUsage.activeStudents` e da RN-PRO-08 estão no fim do corpo das issues #63 e #66.
+- **Sprint 06, encaixes da lista, dos selos e da ficha do aluno (#58, #59, #60, #62):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #63 (alcance do Professor e do Administrador, lista simples, modalidades e filtros, selo Novo, abas da ficha, datas no fuso da unidade), #65 (selo Bolsista), #67 (data de matrícula), #70 e #85 (selo Termo pendente), #72 (situação financeira e Em atraso), #73 (aba Financeiro e Cobrar) e #109 (Bloqueados). Sem issue nova.

@@ -12,7 +12,7 @@ const itemIds = (role: string) => buildMenu(mockPermissions(role), t, allAvailab
 
 describe("buildMenu", () => {
   it("CA11: Professor não vê Financeiro nem Configurações; Administrador não vê Unidades; Coordenador vê tudo", () => {
-    expect(groupIds("TEACHER")).toEqual(["home", "operation", "people", "reports"]);
+    expect(groupIds("TEACHER")).toEqual(["home", "operation", "reports"]);
     expect(groupIds("TEACHER")).not.toContain("finance");
     expect(itemIds("ADMINISTRATOR")).not.toContain("units");
     expect(itemIds("ADMINISTRATOR")).toContain("organizationSettings");
@@ -38,10 +38,11 @@ describe("buildMenu", () => {
     const ageRanges = { id: "ageRanges", label: "menu.items.ageRanges", href: "/configuracoes/faixas-etarias" };
     const units = { id: "units", label: "menu.items.units", href: "/configuracoes/unidades" };
     const operation = { id: "operation", label: "menu.groups.operation", items: [agenda, { id: "classes", label: "menu.items.classes", href: "/turmas" }, { id: "noClassDays", label: "menu.items.noClassDays", href: "/dias-sem-aula" }] };
-    const people = { id: "people", label: "menu.groups.people", items: [{ id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
+    const people = { id: "people", label: "menu.groups.people", items: [{ id: "students", label: "menu.items.students", href: "/alunos" }, { id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
+    const finance = { id: "finance", label: "menu.groups.finance", items: [{ id: "plans", label: "menu.items.plans", href: "/planos" }] };
     const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
-    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, operation, people, settings([unit, organization, modalities, ageRanges, users, units])]);
-    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, operation, people, settings([unit, organization, modalities, ageRanges, users])]);
+    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, users, units])]);
+    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, users])]);
   });
 });
 

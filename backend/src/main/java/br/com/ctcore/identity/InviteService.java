@@ -97,6 +97,58 @@ public class InviteService {
         return issued;
     }
 
+    /**
+     * RN-RSP-06: dentro da transação e da organização de quem chama (o cadastro do aluno), cria a conta do responsável se o e-mail é novo,
+     * o vínculo GUARDIAN pendente e o convite. Não envia nada: quem chama manda o e-mail com {@link #sendInvite} depois do commit.
+     * Conta existente só ganha o vínculo e aceita com a senha que tem (RN-ACE-07). Vínculo já ativo não gera convite: {@code code} nulo.
+     */
+    public Issued inviteGuardian(Inviter by, UUID organizationId, String email, String name) {
+        if (!InviteRules.guardianAccess(by)) {
+            throw new AccessDeniedException("Invite not allowed for this role");
+        }
+        jdbc.sql("insert into account (email, name, status) values (:e, :n, 'INVITED') on conflict do nothing")
+                .param("e", email.strip()).param("n", name).update();
+        var account = jdbc.sql("select id, status from account where lower(email) = lower(:e)").param("e", email.strip())
+                .query((rs, n) -> Map.entry(rs.getObject("id", UUID.class), rs.getString("status"))).single();
+        if (account.getValue().equals("DEACTIVATED")) {
+            throw new AccessDeniedException("Account is deactivated");
+        }
+        var link = jdbc.sql("select id, status from account_link where account_id = :a and organization_id = :o and role = 'GUARDIAN'")
+                .param("a", account.getKey()).param("o", organizationId)
+                .query((rs, n) -> Map.entry(rs.getObject("id", UUID.class), rs.getString("status"))).optional();
+        if (link.isPresent() && link.get().getValue().equals("ACTIVE")) {
+            return new Issued(null, link.get().getKey(), account.getKey(), null);
+        }
+        UUID linkId = linkFor(organizationId, account.getKey(), Role.GUARDIAN, Set.of());
+        return issue(by, organizationId, account.getKey(), linkId, false, "invite.created");
+    }
+
+    /** Sends the invite e-mail issued by {@link #inviteGuardian}; call after the transaction commits. */
+    public void sendInvite(String email, String code) {
+        mailer.invite(email.strip(), code);
+    }
+
+    /** RN-RSP-05, RN-ACE-13: new invite for a guardian whose access is still pending (previous one canceled); 3 a day; active access is ALREADY_LINKED. */
+    public Issued resendGuardian(Inviter by, UUID organizationId, UUID accountId) {
+        if (!InviteRules.guardianAccess(by)) {
+            throw new AccessDeniedException("Invite not allowed for this role");
+        }
+        String[] sent = new String[1];
+        Issued issued = orgTx.provision(organizationId, () -> {
+            var link = jdbc.sql("select l.id, l.status, a.email from account_link l join account a on a.id = l.account_id "
+                    + "where l.account_id = :a and l.organization_id = :o and l.role = 'GUARDIAN'").param("a", accountId).param("o", organizationId)
+                    .query((rs, n) -> new String[]{rs.getString(1), rs.getString(2), rs.getString(3)}).optional()
+                    .orElseThrow(() -> new AccessDeniedException("Link not found"));
+            if (link[1].equals("ACTIVE")) throw new IdentityException(Code.ALREADY_LINKED, null);
+            if (!link[1].equals("PENDING")) throw new AccessDeniedException("Link is not a pending invite");
+            checkResendLimit(accountId);
+            sent[0] = link[2];
+            return issue(by, organizationId, accountId, UUID.fromString(link[0]), true, "invite.resent");
+        });
+        mailer.invite(sent[0], issued.code());
+        return issued;
+    }
+
     private UUID linkFor(UUID organizationId, UUID accountId, Role role, Set<UUID> units) {
         Optional<Map.Entry<UUID, String>> existing = jdbc.sql("select id, status from account_link where account_id = :a and organization_id = :o and role = :r")
                 .param("a", accountId).param("o", organizationId).param("r", role.name())

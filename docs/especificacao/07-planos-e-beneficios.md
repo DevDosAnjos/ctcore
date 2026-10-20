@@ -20,7 +20,7 @@ Definir quanto cada modalidade custa em cada unidade e os benefícios individuai
 - **RN-PLA-03.** Todo valor é guardado em centavos inteiros.
 - **RN-PLA-04.** Troca de plano e reajuste valem a partir da próxima cobrança gerada. O reajuste avisa por e-mail os alunos afetados, com o valor novo e a partir de quando vale.
 - **RN-PLA-05.** Cobrança paga nunca muda. Se houver cobranças já geradas e ainda não pagas (pagamento adiantado ou geração antecipada), o Administrador escolhe: mantê-las no valor antigo (padrão) ou ajustá-las. Para cobranças já pagas de meses futuros, ele escolhe se cobra a diferença numa cobrança separada "Diferença de reajuste, referência [mês]", com aviso ao aluno. O padrão é não cobrar, e a escolha vai para a auditoria.
-- **RN-PLA-06.** Plano com alunos ou histórico não é excluído, só desativado. Plano desativado some das escolhas e continua nas matrículas que já o usam até troca.
+- **RN-PLA-06.** Plano com alunos ou histórico não é excluído, só desativado. Plano desativado some das escolhas e continua nas matrículas que já o usam até troca. Desativar e reativar são ações próprias: reativar só se não houver plano ativo com o mesmo nome, e plano desativado não é editável (reativa-se antes). A unidade e a modalidade do plano não mudam depois de criado: para outra, cria-se outro plano e desativa-se o antigo. Cada mudança de valor fica no histórico de valor do plano.
 
 ### Benefícios
 
@@ -36,9 +36,9 @@ Definir quanto cada modalidade custa em cada unidade e os benefícios individuai
 
 ## Requisitos
 
-- **RF-PLA-01.** Financeiro › Planos e benefícios: cartões Planos e Benefícios, cada um com resumo.
+- **RF-PLA-01.** Financeiro › Planos e benefícios: cartões Planos e Benefícios, cada um com resumo. A permissão de planos (Coordenador; Administrador nas suas unidades; Professor sem acesso) vale também para o resumo de benefícios, e uma unidade fora do alcance do Administrador dá resumo e lista vazios, sem erro.
 - **RF-PLA-02.** Planos: tabela com modalidade, nome, valor, frequência, alunos usando, situação; filtro por modalidade.
-- **RF-PLA-03.** Janela de plano: modalidade, nome, valor, frequência, vale em outras unidades. Mudar o valor mostra quantos alunos serão afetados, a partir de quando e as escolhas da RN-PLA-05.
+- **RF-PLA-03.** Janela de plano: modalidade, nome, valor, frequência, vale em outras unidades. Mudar o valor mostra quantos alunos serão afetados, a partir de quando e as escolhas da RN-PLA-05. Só Coordenador e Administrador (nas suas unidades) criam e editam plano. Com "Treinar em outra unidade" em "Sim" ou "Não" (RN-ORG-13), o plano grava "vale em outras unidades" como falso e a janela não oferece o controle.
 - **RF-BEN-01.** Benefícios: tabela com aluno, modalidade, tipo, valor, motivo, decidido por, validade e situação; filtros por tipo, modalidade, situação e "Benefícios altos".
 - **RF-BEN-02.** Conceder benefício: aluno, modalidade, tipo, valor, motivo, decidido por, validade. Antes de confirmar, mostra plano, benefício, nova mensalidade e a partir de qual mês vale. Se já houver um, avisa que ele será encerrado.
 - **RF-BEN-03.** Encerrar benefício, com motivo.

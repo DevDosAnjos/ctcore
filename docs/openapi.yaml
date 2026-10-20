@@ -1477,6 +1477,463 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /plans:
+    get:
+      summary: Tabela de planos da organização do vínculo ativo (RF-PLA-02). Coordenador e Administrador.
+      description: |
+        Ordenada por modalidade e nome. O Coordenador vê todas as unidades; o Administrador, as dele (`unitId` fora do alcance devolve lista
+        vazia). Professor, Aluno e Responsável recebem 403. Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros
+        combinam (E). `valueCents` em centavos inteiros; `weeklyFrequency` nulo é livre e só informa (RN-PLA-02). `studentsUsing` vale 0 até a
+        Sprint 07. Só leitura: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de planos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria o plano (RF-PLA-03). Coordenador e Administrador.
+      description: |
+        Cria plano mensal ativo numa unidade ativa, com modalidade ativa na unidade. `name` de 2 a 60 caracteres; `valueCents` inteiro de 1 a
+        99999999; `weeklyFrequency` 2, 3 ou nulo (livre), só informativo (RN-PLA-02). Nome repetido entre os ativos da mesma unidade e modalidade
+        (sem acento nem caixa): 409. O Administrador só cria em unidade dele (senão 403). `validOtherUnits` só vale com `crossUnitTraining`
+        `plan` na organização; nos outros casos o servidor grava `false`. Grava a primeira linha do histórico de valor e `plan.created`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PlanInput' } } }
+      responses:
+        '201':
+          description: Plano criado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /plans/summary:
+    get:
+      summary: Resumo de planos e benefícios (RF-PLA-01). Coordenador e Administrador.
+      description: |
+        `plans` traz `active`, `inactive`, `studentsUsing` e a faixa de valores (`minValueCents`, `maxValueCents`, só dos planos ativos; nulos sem plano
+        ativo); `benefits` traz `active` e `high`. `studentsUsing` e `benefits` valem 0 até a Sprint 07. O Coordenador vê todas as unidades ou a de
+        `unitId`; o Administrador, as dele (`unitId` fora do alcance devolve resumo zerado). Professor, Aluno e Responsável recebem 403. Só leitura:
+        não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Resumo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanSummary' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /plans/options:
+    get:
+      summary: Opções da janela de plano (RF-PLA-03). Coordenador e Administrador.
+      description: |
+        Unidades ativas do alcance, cada uma com as modalidades ativas que oferece, e `crossUnitTraining` da organização (`plan`, `allowed` ou
+        `denied`; RN-ORG-13). Só leitura: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Opções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanOptions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /plans/{id}:
+    put:
+      summary: Altera o plano (RF-PLA-03). Coordenador e Administrador.
+      description: |
+        Altera `name`, `valueCents`, `weeklyFrequency` e `validOtherUnits`; `unitId` e `modalityId`, se enviados, têm de ser os atuais (senão 400).
+        Plano desativado: 409. Id de outra organização ou fora do alcance: 404. Com valor diferente, grava nova linha de histórico e aceita
+        `unpaidCharges` (`KEEP` padrão, `ADJUST`) e `paidFutureDifference` (`false` padrão); as escolhas vão para a auditoria `plan.updated`
+        e, até haver cobrança, nenhuma cobrança é alterada. Sem mudança de valor as escolhas são ignoradas. Não há rota de exclusão.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PlanInput' } } }
+      responses:
+        '200':
+          description: Plano alterado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /plans/{id}/value-impact:
+    get:
+      summary: Impacto de mudar o valor do plano (RN-PLA-04). Coordenador e Administrador.
+      description: |
+        `studentsAffected` vale 0 até a Sprint 07; `effectiveFrom` é `NEXT_CHARGE` (a próxima cobrança gerada; cobrança paga não muda).
+        `valueCents` ausente ou fora de 1 a 99999999: 400. Só leitura: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: valueCents, in: query, required: true, schema: { type: integer, format: int64, minimum: 1, maximum: 99999999 } }
+      responses:
+        '200':
+          description: Impacto.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanValueImpact' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /plans/{id}/deactivate:
+    post:
+      summary: Desativa o plano (RN-PLA-06). Coordenador e Administrador.
+      description: |
+        Só muda `status` para `INACTIVE`; nada é apagado e o plano continua na lista. Repetir responde 200 sem mudar nem auditar.
+        Grava `plan.deactivated`. Sem corpo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Plano com `status` `INACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /plans/{id}/activate:
+    post:
+      summary: Reativa o plano (RN-PLA-06). Coordenador e Administrador.
+      description: |
+        Volta `status` para `ACTIVE`. Com outro plano ativo de mesmo nome na unidade e modalidade, 409. Repetir responde 200 sem mudar nem
+        auditar. Grava `plan.activated`. Sem corpo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Plano com `status` `ACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanRow' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /students:
+    get:
+      summary: Lista paginada de alunos da organização do vínculo ativo (RF-ALU-01). Coordenador e Administrador.
+      description: |
+        Ordenada por nome (sem acento nem caixa) e depois id (`sort=name`). O Coordenador vê todos; o Administrador só os de `registeredUnitId`
+        dentro das suas unidades (RN-ALU-07, até a matrícula; D2); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e
+        Responsável recebem 403. `q` ignora acento e maiúsculas; `ageRangeId` devolve quem tem hoje idade dentro da faixa (`minAge` até `maxAge`,
+        sem teto quando nulo); faixa de outra organização, 404. Os filtros combinam (E). `ageRange` da linha é a faixa de maior `minAge` que cobre a
+        idade, ou nulo. `photoUrl` é uma URL temporária assinada. `seals` são os selos calculados na leitura (RF-ALU-02), em ordem fixa; `seal` filtra por
+        um deles (E com os demais; valor desconhecido, 400). A resposta nunca traz CPF, e-mail, telefone, endereço nem contato de emergência.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: ageRangeId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: seal, in: query, required: false, schema: { $ref: '#/components/schemas/StudentSeal' } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
+      responses:
+        '200':
+          description: Página de alunos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Cadastra o aluno (RF-ALU-01). Coordenador e Administrador.
+      description: |
+        Cria o aluno na organização da sessão, com a unidade de cadastro `registeredUnitId` (ativa; o Administrador só as dele, senão 403;
+        de outra organização ou inativa, 400). CPF só com dígitos e dígitos verificadores. Adulto (18 anos ou mais) informa CPF, e-mail e
+        celular próprios; menor precisa de ao menos um e no máximo dois `guardians` (CPF, e-mail e celular do responsável), com exatamente
+        um financeiro (com um só, ele é o financeiro). Cada responsável novo recebe conta `INVITED`, vínculo `GUARDIAN` pendente e o próprio
+        convite; e-mail já cadastrado reaproveita conta e cadastro. Campo fora do contrato (como dado de saúde) é ignorado e não é gravado.
+        CPF já cadastrado na organização: 409 `STUDENT_CPF_EXISTS`; sem CPF, mesmo nome e nascimento: 409 `STUDENT_POSSIBLE_DUPLICATE`,
+        repetível com `confirmDuplicate` igual a `true`; os dois trazem em `fields` só `id`, `name` e `photoUrl` do existente. CPF ou e-mail
+        de responsável em conflito com outro: 409 `GUARDIAN_CONFLICT`. Grava `student.created` e `student.guardian_linked`, sem CPF, e-mail,
+        telefone nem endereço.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StudentInput' } } }
+      responses:
+        '201':
+          description: Aluno criado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Duplicidade ou conflito (STUDENT_CPF_EXISTS, STUDENT_POSSIBLE_DUPLICATE, GUARDIAN_CONFLICT).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/birthdays:
+    get:
+      summary: Aniversariantes de hoje (RF-ALU-06). Administrador e Professor.
+      description: >-
+        Alunos que fazem aniversário hoje (29/02 vale em 28/02 nos anos não bissextos), por nome, sem paginação. Administrador vê as unidades do
+        alcance dele; Professor, só os das suas turmas (hoje nenhum, até a matrícula). O contato do Professor só vem com "ver contatos". Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Lista do dia.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/StudentBirthday' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /students/lookup:
+    get:
+      summary: Busca o aluno pelo CPF (RN-ALU-06). Coordenador e Administrador.
+      description: Devolve só `id`, `name` e `photoUrl` do aluno da organização com esse CPF, de qualquer unidade; nenhum outro dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: cpf, in: query, required: true, schema: { type: string }, description: CPF com ou sem máscara. }
+      responses:
+        '200':
+          description: Aluno encontrado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentRef' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}:
+    get:
+      summary: Detalhe do aluno com os responsáveis (RF-ALU-01). Coordenador e Administrador.
+      description: Administrador só alcança o aluno cuja unidade de cadastro está no alcance dele; fora disso, 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Aluno.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Edita os dados pessoais do aluno (RF-ALU-04). Coordenador e Administrador.
+      description: |
+        Substitui os dados pessoais (mesmos campos e validações do cadastro, sem unidade de cadastro nem responsáveis). Menor de 18 anos
+        precisa de ao menos um responsável já vinculado (400 em `birthDate`). CPF de outro aluno: 409 `STUDENT_CPF_EXISTS`; sem CPF, nome ou
+        nascimento mudados para os de outro aluno: 409 `STUDENT_POSSIBLE_DUPLICATE`, repetível com `confirmDuplicate` igual a `true`; os dois
+        trazem em `fields` só `id`, `name` e `photoUrl` do existente. Campo fora do contrato é ignorado. Fora do alcance do Administrador, 404.
+        Grava `student.updated` com antes e depois só dos campos não pessoais; sem mudança, nada é gravado.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StudentUpdate' } } }
+      responses:
+        '200':
+          description: Aluno atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Duplicidade (STUDENT_CPF_EXISTS, STUDENT_POSSIBLE_DUPLICATE).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/photo:
+    put:
+      summary: Troca a foto do aluno (RF-ALU-04). Coordenador e Administrador.
+      description: |
+        Campo `file` com PNG, JPEG ou WebP, exatamente 512 x 512 px e até 5 MB, conferido pelo conteúdo. Erro: 400 (campo `file`) e a foto
+        anterior permanece. O arquivo antigo é apagado. Fora do alcance do aluno, 404. Grava `student.photo_updated`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Foto trocada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+    delete:
+      summary: Remove a foto do aluno (RF-ALU-04). Coordenador e Administrador.
+      description: Apaga o arquivo e grava `student.photo_removed`; sem foto, repete sem erro e sem auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Foto removida.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/record:
+    get:
+      summary: Ficha do aluno (RF-ALU-03). Coordenador e Administrador; Professor com a chave "ver ficha do aluno".
+      description: |
+        Administrador só alcança o aluno do seu alcance (RN-ALU-07); fora dele, 404. Professor sem a chave em nenhuma unidade dele recebe
+        403; com a chave, só abre aluno das suas turmas (até a matrícula, #63, nenhum: 404). A ficha do Professor omite `birthDate`, `seals`,
+        `cpf`, `address` e, nos responsáveis, `financial` e `access`; `contact`, `emergency` e o telefone e e-mail dos responsáveis só com
+        "ver contatos".
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Ficha.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentRecord' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/history:
+    get:
+      summary: Histórico do aluno, da ação mais recente para a mais antiga (RF-ALU-03). Coordenador e Administrador.
+      description: Registros de auditoria do aluno sem os valores antes e depois. Mesmo alcance da ficha; Professor 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página do histórico.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentHistoryList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/guardians:
+    post:
+      summary: Liga um responsável ao aluno (RN-RSP-02, RN-RSP-06). Coordenador e Administrador.
+      description: |
+        Corpo com os dados do responsável, `financial` (opcional; o primeiro responsável é sempre o financeiro; `true` passa o financeiro
+        ao novo) e `reason` obrigatório (3 a 200 caracteres). Terceiro responsável: 409 `GUARDIAN_LIMIT`; o mesmo responsável já ligado,
+        409; CPF e e-mail em conflito com outro cadastro, 409 `GUARDIAN_CONFLICT`. Grava `student.guardian_linked` com o motivo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StudentGuardianInput' } } }
+      responses:
+        '200':
+          description: Aluno com os responsáveis atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Limite, conflito ou responsável já ligado (GUARDIAN_LIMIT, GUARDIAN_CONFLICT, CONFLICT).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/guardians/{guardianId}:
+    put:
+      summary: Passa o financeiro a este responsável (RN-RSP-02). Coordenador e Administrador.
+      description: Só `financial` igual a `true` existe; `false` sozinho dá 400. Grava `student.guardian_financial_changed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: guardianId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [financial]
+              properties:
+                financial: { type: boolean, enum: [true] }
+      responses:
+        '200':
+          description: Aluno com os responsáveis atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/guardians/{guardianId}/unlink:
+    post:
+      summary: Desliga o responsável do aluno (RN-RSP-05). Coordenador e Administrador.
+      description: |
+        `reason` obrigatório (3 a 200 caracteres), só na auditoria (`student.guardian_unlinked`). Último responsável de aluno menor:
+        409 `MINOR_NEEDS_GUARDIAN`. Desligar o financeiro havendo outro passa o financeiro ao que fica. O desligado recebe e-mail neutro,
+        sem nome do aluno nem motivo; sem aluno nenhum na organização, o vínculo `GUARDIAN` termina e o convite pendente é cancelado.
+        O aluno e o histórico nunca são excluídos.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: guardianId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 200 }
+      responses:
+        '200':
+          description: Aluno com os responsáveis atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Último responsável de menor (MINOR_NEEDS_GUARDIAN).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/guardians/{guardianId}/invite:
+    post:
+      summary: Reenvia o convite pendente do responsável (RN-RSP-05, RN-ACE-13). Coordenador e Administrador.
+      description: |
+        Invalida o convite anterior; no máximo 3 reenvios por dia (429). Acesso já ativo: 409. Grava `student.guardian_invite_resent`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: guardianId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Convite reenviado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429':
+          description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /portal/students:
+    get:
+      summary: Cartões dos alunos do portal (RN-RSP-03, RN-LGP-03). Responsável e Aluno.
+      description: |
+        Um cartão por aluno ligado ao responsável da sessão (em qualquer unidade da organização) e, se a conta também é a de um aluno, o
+        cartão dele com `self` igual a `true`. Só `id`, `name`, `photoUrl` e `self`. Sessão de gestão ou de Professor: 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Cartões, o próprio primeiro.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PortalStudentCard' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 components:
   securitySchemes:
     sessionCookie:
@@ -1542,7 +1999,7 @@ components:
     Permission:
       type: string
       description: Linha "Área / ação" da tabela de permissões, na ordem da especificação.
-      enum: [HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS, CHARGE_ADJUSTMENTS, CLASSES_MANAGE, AGENDA_VIEW, AGENDA_EDIT, NO_CLASS_DAYS, GRADUATION, ANNOUNCEMENTS, TRIAL_CLASSES, TEACHERS, STAFF_USERS, UNIT_SETTINGS, ORGANIZATION_SETTINGS, UNITS, SUBSCRIPTION, AUDIT, REPORTS, EXPORT_LISTS, EXPORT_FULL, IMPORT, SUPPORT_ACCESS]
+      enum: [HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_RECORD, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS, CHARGE_ADJUSTMENTS, CLASSES_MANAGE, AGENDA_VIEW, AGENDA_EDIT, NO_CLASS_DAYS, GRADUATION, ANNOUNCEMENTS, TRIAL_CLASSES, TEACHERS, STAFF_USERS, UNIT_SETTINGS, ORGANIZATION_SETTINGS, UNITS, SUBSCRIPTION, AUDIT, REPORTS, EXPORT_LISTS, EXPORT_FULL, IMPORT, SUPPORT_ACCESS]
     PermissionsView:
       type: object
       required: [permissions]
@@ -1722,6 +2179,11 @@ components:
             - PASSWORD_WEAK
             - PASSWORD_LEAKED
             - MINOR_HAS_NO_ACCOUNT
+            - STUDENT_CPF_EXISTS
+            - STUDENT_POSSIBLE_DUPLICATE
+            - MINOR_NEEDS_GUARDIAN
+            - GUARDIAN_LIMIT
+            - GUARDIAN_CONFLICT
             - INVALID_TWO_FACTOR_CODE
             - TWO_FACTOR_TICKET_INVALID
             - TWO_FACTOR_SETUP_REQUIRED
@@ -2144,6 +2606,25 @@ components:
         assistantIds: { type: array, items: { type: string, format: uuid } }
         groupLink: { type: string, nullable: true, maxLength: 300, description: '`http` ou `https`; vazio vira nulo.' }
         notifyClass: { type: boolean, description: Só na edição; padrão verdadeiro quando os horários mudam; ignorado quando não mudam. }
+    PlanSummary:
+      type: object
+      required: [plans, benefits]
+      properties:
+        plans:
+          type: object
+          required: [active, inactive, studentsUsing, minValueCents, maxValueCents]
+          properties:
+            active: { type: integer, minimum: 0 }
+            inactive: { type: integer, minimum: 0 }
+            studentsUsing: { type: integer, minimum: 0 }
+            minValueCents: { type: integer, format: int64, nullable: true }
+            maxValueCents: { type: integer, format: int64, nullable: true }
+        benefits:
+          type: object
+          required: [active, high]
+          properties:
+            active: { type: integer, minimum: 0 }
+            high: { type: integer, minimum: 0 }
     ClassOptions:
       type: object
       required: [units, ageRanges]
@@ -2190,6 +2671,59 @@ components:
         - type: object
           properties:
             items: { type: array, items: { $ref: '#/components/schemas/ClassRow' } }
+    PlanRow:
+      type: object
+      required: [id, unit, modality, name, valueCents, weeklyFrequency, validOtherUnits, studentsUsing, status]
+      properties:
+        id: { type: string, format: uuid }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        name: { type: string }
+        valueCents: { type: integer, format: int64 }
+        weeklyFrequency: { type: integer, nullable: true, enum: [2, 3], description: Nulo é livre; só informativo. }
+        validOtherUnits: { type: boolean }
+        studentsUsing: { type: integer }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    PlanList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PlanRow' } }
+    PlanInput:
+      type: object
+      required: [name, valueCents]
+      properties:
+        unitId: { type: string, format: uuid, description: 'Obrigatório ao criar; ao editar, se enviado, tem de ser o atual.' }
+        modalityId: { type: string, format: uuid, description: 'Obrigatório ao criar; ao editar, se enviado, tem de ser o atual.' }
+        name: { type: string, minLength: 2, maxLength: 60 }
+        valueCents: { type: integer, format: int64, minimum: 1, maximum: 99999999 }
+        weeklyFrequency: { type: integer, nullable: true, enum: [2, 3], description: Nulo é livre; só informativo. }
+        validOtherUnits: { type: boolean, description: 'Ignorado (grava falso) quando `crossUnitTraining` não é `plan`.' }
+        unpaidCharges: { type: string, enum: [KEEP, ADJUST], default: KEEP, description: 'Só no PUT com valor diferente (RN-PLA-05).' }
+        paidFutureDifference: { type: boolean, default: false, description: 'Só no PUT com valor diferente (RN-PLA-05).' }
+    PlanOptions:
+      type: object
+      required: [crossUnitTraining, units]
+      properties:
+        crossUnitTraining: { type: string, enum: [plan, allowed, denied] }
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name, modalities]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              modalities:
+                type: array
+                items: { $ref: '#/components/schemas/ClassRef' }
+    PlanValueImpact:
+      type: object
+      required: [studentsAffected, effectiveFrom]
+      properties:
+        studentsAffected: { type: integer, minimum: 0 }
+        effectiveFrom: { type: string, enum: [NEXT_CHARGE] }
     TeacherList:
       allOf:
         - $ref: '#/components/schemas/Page'
@@ -2403,12 +2937,13 @@ components:
         transfer: { type: integer, format: int64, minimum: 0, maximum: 100000 }
     TeacherPermissions:
       type: object
-      required: [announcements, agendaEdit, studentContacts, trialClasses]
+      required: [announcements, agendaEdit, studentContacts, trialClasses, studentRecord]
       properties:
         announcements: { type: boolean }
         agendaEdit: { type: boolean }
         studentContacts: { type: boolean }
         trialClasses: { type: boolean }
+        studentRecord: { type: boolean }
     UnitSettingsView:
       type: object
       required: [dueDays, enrollmentFeeEnabled, enrollmentFeeCents, feesCents, pixKey, paymentAccount, reminderDays, teacherPermissions,
@@ -2489,6 +3024,259 @@ components:
         page: { type: integer, minimum: 1 }
         size: { type: integer, enum: [25, 50, 100] }
         total: { type: integer, format: int64, minimum: 0 }
+    StudentGuardianInput:
+      type: object
+      required: [name, cpf, email, phone]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        cpf: { type: string, description: CPF com dígitos verificadores; guardado só com dígitos. }
+        email: { type: string, format: email }
+        phone: { type: string, description: Celular com DDD. }
+        financial: { type: boolean, description: "Em `POST /students`, exatamente um dos dois; em ligar, opcional." }
+        reason: { type: string, minLength: 3, maxLength: 200, description: Obrigatório ao ligar pela rota de responsáveis; vai para a auditoria. }
+    StudentInput:
+      type: object
+      required: [registeredUnitId, name, birthDate, postalCode, street, number, district, city, state]
+      properties:
+        registeredUnitId: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        birthDate: { type: string, format: date }
+        postalCode: { type: string }
+        street: { type: string }
+        number: { type: string }
+        complement: { type: string, nullable: true }
+        district: { type: string }
+        city: { type: string }
+        state: { type: string, description: UF. }
+        cpf: { type: string, nullable: true, description: Obrigatório para adulto. }
+        email: { type: string, nullable: true, description: Obrigatório para adulto. }
+        phone: { type: string, nullable: true, description: Celular com DDD; obrigatório para adulto. }
+        gender: { type: string, nullable: true, enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY] }
+        referral: { type: string, nullable: true, enum: [INSTAGRAM, REFERRAL, DIRECTORY, WALK_BY, OTHER] }
+        emergencyName: { type: string, nullable: true }
+        emergencyRelationship: { type: string, nullable: true }
+        emergencyPhone: { type: string, nullable: true }
+        confirmDuplicate: { type: boolean, description: Confirma o cadastro apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
+        guardians:
+          type: array
+          maxItems: 2
+          items: { $ref: '#/components/schemas/StudentGuardianInput' }
+    StudentUpdate:
+      type: object
+      description: Dados pessoais do aluno (RF-ALU-04); os mesmos de `StudentInput`, sem unidade de cadastro nem responsáveis.
+      required: [name, birthDate, postalCode, street, number, district, city, state]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        birthDate: { type: string, format: date }
+        postalCode: { type: string }
+        street: { type: string }
+        number: { type: string }
+        complement: { type: string, nullable: true }
+        district: { type: string }
+        city: { type: string }
+        state: { type: string, description: UF. }
+        cpf: { type: string, nullable: true, description: Obrigatório para adulto. }
+        email: { type: string, nullable: true, description: Obrigatório para adulto. }
+        phone: { type: string, nullable: true, description: Celular com DDD; obrigatório para adulto. }
+        gender: { type: string, nullable: true, enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY] }
+        referral: { type: string, nullable: true, enum: [INSTAGRAM, REFERRAL, DIRECTORY, WALK_BY, OTHER] }
+        emergencyName: { type: string, nullable: true }
+        emergencyRelationship: { type: string, nullable: true }
+        emergencyPhone: { type: string, nullable: true }
+        confirmDuplicate: { type: boolean, description: Confirma a edição apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
+    StudentSeal:
+      type: string
+      description: Selo calculado (RF-ALU-02). Termo pendente, Bolsista e Novo entram com termo, benefício e matrícula (Sprint 07 em diante).
+      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY]
+    StudentRow:
+      type: object
+      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true, description: URL temporária assinada; nulo sem foto. }
+        seals: { type: array, items: { $ref: '#/components/schemas/StudentSeal' } }
+        birthDate: { type: string, format: date }
+        age: { type: integer, minimum: 0 }
+        minor: { type: boolean }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        registeredUnit:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        createdAt: { type: string, format: date-time }
+    StudentBirthday:
+      type: object
+      required: [id, name, photoUrl, age, ageRange, registeredUnit, contactName, contactPhone, contactIsGuardian]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        age: { type: integer, minimum: 0, description: A que completa hoje. }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        registeredUnit:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        contactName: { type: string, nullable: true, description: Quem recebe a mensagem; nulo sem telefone ou sem permissão. }
+        contactPhone: { type: string, nullable: true }
+        contactIsGuardian: { type: boolean }
+    StudentList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/StudentRow' } }
+    StudentRef:
+      type: object
+      required: [id, name, photoUrl]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+    StudentGuardianRow:
+      type: object
+      required: [guardianId, name, email, phone, financial, access, emailProblem]
+      properties:
+        guardianId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        financial: { type: boolean }
+        access: { type: string, enum: [PENDING, ACTIVE] }
+        emailProblem: { type: boolean }
+    StudentDetail:
+      type: object
+      required: [id, registeredUnitId, name, birthDate, minor, postalCode, street, number, complement, district, city, state, cpf, email, phone, gender, referral, emergencyName, emergencyRelationship, emergencyPhone, photoUrl, emailProblem, guardians]
+      properties:
+        id: { type: string, format: uuid }
+        registeredUnitId: { type: string, format: uuid }
+        name: { type: string }
+        birthDate: { type: string, format: date }
+        minor: { type: boolean }
+        postalCode: { type: string }
+        street: { type: string }
+        number: { type: string }
+        complement: { type: string, nullable: true }
+        district: { type: string }
+        city: { type: string }
+        state: { type: string }
+        cpf: { type: string, nullable: true, description: Só dígitos. }
+        email: { type: string, nullable: true }
+        phone: { type: string, nullable: true, description: Só dígitos. }
+        gender: { type: string, nullable: true }
+        referral: { type: string, nullable: true }
+        emergencyName: { type: string, nullable: true }
+        emergencyRelationship: { type: string, nullable: true }
+        emergencyPhone: { type: string, nullable: true }
+        photoUrl: { type: string, nullable: true }
+        emailProblem: { type: boolean }
+        guardians:
+          type: array
+          items: { $ref: '#/components/schemas/StudentGuardianRow' }
+    StudentRecord:
+      type: object
+      description: Os campos `birthDate`, `seals`, `contact`, `cpf`, `address` e `emergency` podem faltar na ficha do Professor.
+      required: [id, name, photoUrl, age, minor, ageRange, registeredUnit, guardians]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        birthDate: { type: string, format: date }
+        age: { type: integer, minimum: 0 }
+        minor: { type: boolean }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        registeredUnit:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        seals: { type: array, items: { $ref: '#/components/schemas/StudentSeal' } }
+        contact:
+          type: object
+          required: [phone, email, emailProblem]
+          properties:
+            phone: { type: string, nullable: true }
+            email: { type: string, nullable: true }
+            emailProblem: { type: boolean }
+        cpf: { type: string, nullable: true, description: Só dígitos. }
+        address:
+          type: object
+          required: [postalCode, street, number, complement, district, city, state]
+          properties:
+            postalCode: { type: string }
+            street: { type: string }
+            number: { type: string }
+            complement: { type: string, nullable: true }
+            district: { type: string }
+            city: { type: string }
+            state: { type: string }
+        emergency:
+          type: object
+          required: [name, relationship, phone]
+          properties:
+            name: { type: string, nullable: true }
+            relationship: { type: string, nullable: true }
+            phone: { type: string, nullable: true }
+        guardians:
+          type: array
+          items:
+            type: object
+            required: [guardianId, name]
+            properties:
+              guardianId: { type: string, format: uuid }
+              name: { type: string }
+              email: { type: string }
+              phone: { type: string }
+              financial: { type: boolean }
+              access: { type: string, enum: [PENDING, ACTIVE] }
+              emailProblem: { type: boolean }
+    StudentHistoryEntry:
+      type: object
+      required: [action, at, actor, actorProfile, reason]
+      properties:
+        action: { type: string, description: 'Código da ação, ex.: student.created.' }
+        at: { type: string, format: date-time }
+        actor: { type: string, nullable: true }
+        actorProfile: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+    StudentHistoryList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/StudentHistoryEntry' } }
+    PortalStudentCard:
+      type: object
+      required: [id, name, photoUrl, self]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        self: { type: boolean, description: Cartão do próprio aluno ("Você"). }
   responses:
     BadRequest:
       description: Dados inválidos (VALIDATION_ERROR) ou requisição ilegível (MALFORMED_REQUEST).

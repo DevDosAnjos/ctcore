@@ -74,7 +74,7 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 | Alunos: contatos e emergência | ● | U | T* (ver contatos) |
 | Alunos: cadastrar, editar, matricular, encerrar | ● | U | — |
 | Benefícios | ● | U | — |
-| Planos | ● | U | — |
+| Planos e resumo de benefícios (unidade fora do alcance: vazio, não erro) | ● | U | — |
 | Cobranças e pagamentos | ● | U | — |
 | Estorno, renegociação, cancelar cobrança | ● | U | — |
 | Turmas: ver lista e painel, criar, editar e desativar | ● | U | — |
@@ -99,7 +99,7 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 
 Permissões do Professor por unidade, ligadas ou desligadas pelo Administrador da unidade: **enviar comunicado**, **editar e cancelar aulas**, **ver contatos** e **ver aulas experimentais** (as quatro ligadas por padrão) e **ver ficha do aluno** (desligada por padrão). Ligada, o Professor abre a ficha dos alunos das suas turmas; desligada, não abre a ficha, mas continua vendo os alunos da turma ou da aula como lista simples, e isso não depende de chave. Contatos e emergência continuam sendo a chave própria "ver contatos", também na ficha.
 
-O Professor nunca vê valores em reais, plano, benefício, CPF, endereço nem situação financeira, nem na ficha. Na lista simples vê o nome e se o aluno está ativo ou bloqueado na modalidade (nas telas do Início, também foto e faixa, RF-INI-03). Ele não tem lista nem painel de turma (ver `06`): vê os alunos pela agenda, pela aula e pelo Início.
+O Professor nunca vê valores em reais, plano, benefício, CPF, endereço nem situação financeira, nem na ficha. Na lista simples vê o nome e se o aluno está ativo ou bloqueado na modalidade (nas telas do Início, também foto e faixa, RF-INI-03). A lista simples só passa a existir com a matrícula (Sprint 07), dentro da turma e da aula. Ele não tem lista nem painel de turma (ver `06`): vê os alunos pela agenda, pela aula e pelo Início.
 
 ## Pronto quando
 

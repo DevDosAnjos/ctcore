@@ -216,7 +216,7 @@ class AgendaLessonAdhocIT extends AgendaBase {
         assertThat(json.readTree(cancel.getContentAsString()).get("status").asText()).isEqualTo("CANCELLED");
 
         // sem AGENDA_EDIT
-        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true}' where unit_id = ?", t.unitId());
+        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true,false}' where unit_id = ?", t.unitId());
         assertThat(post(body(t, judo, ana), me).getStatus()).isEqualTo(403);
     }
 

@@ -1,8 +1,8 @@
 package br.com.ctcore.permission;
 
-/** As 28 linhas "Área / ação" da tabela de permissões (docs/especificacao/02-contas-e-acesso.md), na ordem da especificação. */
+/** As 29 linhas "Área / ação" da tabela de permissões (docs/especificacao/02-contas-e-acesso.md), na ordem da especificação. */
 public enum Permission {
-    HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS,
+    HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_RECORD, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS,
     CHARGE_ADJUSTMENTS, CLASSES_MANAGE, AGENDA_VIEW, AGENDA_EDIT, NO_CLASS_DAYS, GRADUATION, ANNOUNCEMENTS,
     TRIAL_CLASSES, TEACHERS, STAFF_USERS, UNIT_SETTINGS, ORGANIZATION_SETTINGS, UNITS, SUBSCRIPTION, AUDIT,
     REPORTS, EXPORT_LISTS, EXPORT_FULL, IMPORT, SUPPORT_ACCESS

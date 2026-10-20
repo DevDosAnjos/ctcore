@@ -328,6 +328,196 @@
       "appoint": "Nomear a mim mesmo"
     }
   },
+  "birthdays": {
+    "title": "Aniversariantes de hoje",
+    "empty": "Ninguém faz aniversário hoje",
+    "emptyText": "Quando alguém fizer aniversário, aparece aqui com a mensagem de parabéns pronta.",
+    "messageStudent": "Parabéns, {{name}}! A equipe da unidade {{unit}} deseja a você um feliz aniversário!",
+    "messageGuardian": "Olá, {{contact}}! Hoje é aniversário de {{name}}. A equipe da unidade {{unit}} deseja a ele(a) um feliz aniversário!"
+  },
+  "students": {
+    "title": "Alunos",
+    "intro": "Alunos da organização, com a unidade de cadastro, a idade e a faixa etária de cada um.",
+    "columnsChoose": "Escolher colunas",
+    "columns": {
+      "name": "Nome",
+      "unit": "Unidade",
+      "age": "Idade",
+      "ageRange": "Faixa etária",
+      "createdAt": "Cadastrado em"
+    },
+    "age_one": "{{count}} ano",
+    "age_other": "{{count}} anos",
+    "filters": {
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "ageRange": "Faixa etária",
+      "allAgeRanges": "Todas as faixas",
+      "seal": "Selo",
+      "allSeals": "Todos os selos"
+    },
+    "seals": {
+      "INCOMPLETE_REGISTRATION": "Cadastro incompleto",
+      "EMAIL_PROBLEM": "E-mail com problema",
+      "BIRTHDAY_TODAY": "Aniversário hoje"
+    },
+    "edit": {
+      "button": "Editar dados",
+      "title": "Editar dados do aluno",
+      "save": "Salvar",
+      "error": "Não conseguimos salvar. Nada foi alterado.",
+      "required": "Preencha este campo.",
+      "name": "Nome",
+      "birthDate": "Nascimento",
+      "cpf": "CPF",
+      "email": "E-mail",
+      "phone": "Celular",
+      "address": "Endereço",
+      "postalCode": "CEP",
+      "street": "Logradouro",
+      "number": "Número",
+      "complement": "Complemento",
+      "district": "Bairro",
+      "city": "Cidade",
+      "state": "UF",
+      "stateChoose": "Escolha a UF",
+      "gender": "Sexo ou gênero",
+      "referral": "Como conheceu",
+      "none": "Não informado",
+      "genders": {
+        "MALE": "Masculino",
+        "FEMALE": "Feminino",
+        "OTHER": "Outro",
+        "PREFER_NOT_TO_SAY": "Prefere não informar"
+      },
+      "referrals": {
+        "INSTAGRAM": "Instagram",
+        "REFERRAL": "Indicação",
+        "DIRECTORY": "Diretório",
+        "WALK_BY": "Passou em frente",
+        "OTHER": "Outro"
+      },
+      "emergency": "Contato de emergência",
+      "emergencyName": "Nome do contato",
+      "emergencyRelationship": "Parentesco",
+      "emergencyPhone": "Telefone do contato",
+      "emergencyAll": "Informe nome, parentesco e telefone do contato, ou deixe os três em branco.",
+      "nameInvalid": "Use de 2 a 80 caracteres.",
+      "birthDateInvalid": "Informe uma data no passado.",
+      "cpfInvalid": "CPF inválido.",
+      "emailInvalid": "E-mail inválido.",
+      "phoneInvalid": "Informe o celular com DDD.",
+      "postalCodeInvalid": "O CEP tem 8 dígitos.",
+      "cpfExists": "Este CPF já está cadastrado para {{name}}.",
+      "possibleDuplicate": "Parece ser {{name}}, já cadastrado.",
+      "openRecord": "Abrir ficha",
+      "confirmDuplicate": "É outra pessoa, salvar mesmo assim",
+      "photo": "Foto",
+      "photoHint": "Imagem quadrada de 512 x 512 pixels, recortada aqui.",
+      "photoChosen": "Foto escolhida. Ela é enviada ao salvar.",
+      "photoFile": "Arquivo da foto",
+      "photoChoose": "Escolher foto",
+      "photoReplace": "Trocar foto",
+      "photoRemove": "Remover foto",
+      "photoTypeError": "Use uma imagem PNG, JPG ou WebP.",
+      "photoSizeError": "A foto precisa ter até 5 MB.",
+      "photoUploadError": "Os dados foram salvos, mas a foto não foi enviada.",
+      "photoRetry": "Tentar enviar a foto de novo",
+      "closeWithoutPhoto": "Fechar sem a foto",
+      "cropTitle": "Cortar a foto",
+      "cropHint": "Arraste a imagem ou use os controles para escolher o quadrado.",
+      "cropPreview": "Prévia do corte da foto"
+    },
+    "record": {
+      "title": "Ficha do aluno",
+      "open": "Abrir a ficha de {{name}}",
+      "close": "Fechar a ficha",
+      "tabsLabel": "Seções da ficha",
+      "tabs": {
+        "summary": "Resumo",
+        "enrollment": "Matrícula e modalidades",
+        "financial": "Financeiro",
+        "graduations": "Graduações",
+        "guardians": "Responsáveis",
+        "history": "Histórico"
+      },
+      "notFound": "Aluno não encontrado.",
+      "notFoundText": "Este aluno não existe ou não está ao seu alcance.",
+      "empty": {
+        "enrollment": "As modalidades, as turmas e o plano do aluno aparecem aqui quando a matrícula estiver disponível.",
+        "financial": "As cobranças, os pagamentos e os recibos do aluno aparecem aqui quando as cobranças estiverem disponíveis.",
+        "graduations": "A linha do tempo de graduação aparece aqui quando a graduação do aluno estiver disponível.",
+        "title": "Ainda não há o que mostrar"
+      },
+      "summary": {
+        "contact": "Contato",
+        "phone": "Celular",
+        "email": "E-mail",
+        "emailProblem": "O e-mail tem problema de entrega.",
+        "emergency": "Emergência",
+        "emergencyName": "Nome",
+        "emergencyRelationship": "Parentesco",
+        "emergencyPhone": "Telefone",
+        "guardians": "Responsáveis",
+        "noGuardians": "Este aluno não tem responsável vinculado.",
+        "unit": "Unidade de cadastro",
+        "ageRange": "Faixa etária",
+        "birthDate": "Nascimento",
+        "none": "Não informado"
+      },
+      "guardians": {
+        "financial": "Financeiro",
+        "accessPending": "Acesso pendente",
+        "accessActive": "Acesso ativo",
+        "resend": "Reenviar convite",
+        "makeFinancial": "Tornar financeiro",
+        "unlink": "Desvincular",
+        "link": "Vincular responsável",
+        "empty": "Nenhum responsável vinculado.",
+        "resent": "Convite reenviado para {{name}}.",
+        "madeFinancial": "{{name}} agora é o responsável financeiro.",
+        "unlinked": "{{name}} foi desvinculado.",
+        "linked": "{{name}} foi vinculado ao aluno.",
+        "unlinkTitle": "Desvincular {{name}}",
+        "unlinkSummary": "O responsável deixa de ter acesso a este aluno. Informe o motivo.",
+        "linkTitle": "Vincular responsável",
+        "name": "Nome",
+        "cpf": "CPF",
+        "email": "E-mail",
+        "phone": "Celular",
+        "makeItFinancial": "É o responsável financeiro",
+        "reason": "Motivo",
+        "submit": "Vincular",
+        "required": "Preencha este campo.",
+        "errors": {
+          "MINOR_NEEDS_GUARDIAN": "Aluno menor de 18 anos precisa de ao menos um responsável. Vincule outro antes de desvincular este.",
+          "GUARDIAN_LIMIT": "Um aluno tem no máximo dois responsáveis.",
+          "GUARDIAN_CONFLICT": "O CPF ou o e-mail já pertence a outro responsável.",
+          "CONFLICT": "Essa ação já foi feita ou não cabe agora.",
+          "TOO_MANY_REQUESTS": "Muitos reenvios hoje. Tente de novo amanhã.",
+          "VALIDATION_ERROR": "Confira os dados informados.",
+          "generic": "Não conseguimos concluir. Nada foi alterado."
+        }
+      },
+      "history": {
+        "empty": "Ainda não há ações registradas para este aluno.",
+        "by": "por {{actor}}",
+        "reason": "Motivo: {{reason}}",
+        "actions": {
+          "student_created": "Cadastro do aluno",
+          "student_updated": "Dados pessoais alterados",
+          "student_photo_updated": "Foto do aluno trocada",
+          "student_photo_removed": "Foto do aluno removida",
+          "student_guardian_linked": "Responsável vinculado",
+          "student_guardian_unlinked": "Responsável desvinculado",
+          "student_guardian_financial_changed": "Responsável financeiro alterado",
+          "student_guardian_invite_resent": "Convite de responsável reenviado"
+        },
+        "prev": "Anterior",
+        "next": "Próxima"
+      }
+    }
+  },
   "teachers": {
     "title": "Professores",
     "intro": "Professores da organização, com as modalidades, as unidades e a situação de cada um.",
@@ -729,6 +919,110 @@
       }
     }
   },
+  "plans": {
+    "newButton": "Novo plano",
+    "actions": {
+      "label": "Ações",
+      "edit": "Editar",
+      "deactivate": "Desativar",
+      "activate": "Ativar",
+      "forRow": "{{action}} o plano {{name}}",
+      "failed": "Não foi possível concluir. Nada foi alterado. Tente de novo.",
+      "activateConflict": "Já existe um plano ativo com este nome na unidade e modalidade. Nada foi alterado."
+    },
+    "deactivateDialog": {
+      "title": "Desativar o plano {{name}}?",
+      "explain": "O plano deixa de ser oferecido em novas matrículas, mas continua na lista e nas matrículas que já o usam. Você pode ativá-lo de novo.",
+      "errors": {
+        "FORBIDDEN": "Você não tem permissão para isto. Nada foi alterado.",
+        "generic": "Não foi possível desativar. Nada foi alterado. Tente de novo."
+      }
+    },
+    "form": {
+      "newTitle": "Novo plano",
+      "editTitle": "Editar plano",
+      "choose": "Escolha",
+      "unit": "Unidade",
+      "unitRequired": "Escolha a unidade.",
+      "modality": "Modalidade",
+      "modalityRequired": "Escolha a modalidade.",
+      "noModalities": "Esta unidade não oferece modalidades ativas.",
+      "name": "Nome do plano",
+      "nameInvalid": "Informe um nome de 2 a 60 caracteres.",
+      "value": "Valor mensal (R$)",
+      "valueHelp": "Em reais, por exemplo 150,00. A cobrança é mensal.",
+      "valueInvalid": "Informe um valor de R$ 0,01 a R$ 999.999,99.",
+      "frequency": "Frequência semanal",
+      "frequencyHelp": "Só informa quantas vezes por semana o plano prevê.",
+      "frequencyOptions": { "2": "2x por semana", "3": "3x por semana", "free": "Livre" },
+      "validOtherUnits": "Vale em outras unidades",
+      "crossUnit": {
+        "allowed": "Esta organização permite treinar em outra unidade em todos os planos. Para mudar, use as configurações da organização.",
+        "denied": "Esta organização não permite treinar em outra unidade em nenhum plano. Para mudar, use as configurações da organização."
+      },
+      "impact": {
+        "title": "Efeito da mudança de valor",
+        "loading": "Calculando o efeito...",
+        "error": "Não foi possível calcular o efeito.",
+        "students": "Alunos afetados: {{count}}",
+        "from": "O novo valor vale a partir da próxima cobrança gerada. Cobrança já paga não muda.",
+        "unpaid": "Cobranças geradas e ainda não pagas",
+        "unpaidKeep": "Manter no valor antigo",
+        "unpaidAdjust": "Ajustar para o novo valor",
+        "paid": "Cobranças pagas de meses futuros",
+        "paidNone": "Não cobrar a diferença",
+        "paidCharge": "Cobrar a diferença em cobrança separada"
+      },
+      "save": "Salvar",
+      "conflict": "Já existe um plano ativo com este nome na unidade e modalidade. Nada foi alterado.",
+      "error": "Não foi possível salvar. Nada foi alterado. Tente de novo."
+    },
+    "title": "Planos e benefícios",
+    "intro": "Resumo dos planos e dos benefícios da unidade escolhida.",
+    "emptyTitle": "Nenhum plano ainda",
+    "emptyText": "Quando houver planos ou benefícios, o resumo aparece aqui.",
+    "noRange": "Sem plano ativo",
+    "range": "{{min}} a {{max}}",
+    "table": {
+      "title": "Tabela de planos",
+      "intro": "Planos das suas unidades, com o valor, a frequência semanal e a situação de cada um.",
+      "unit": "Unidade {{name}}",
+      "free": "Livre",
+      "perWeek": "{{count}}x por semana",
+      "inactiveBadge": "Desativado",
+      "columns": {
+        "modality": "Modalidade",
+        "name": "Plano",
+        "value": "Valor",
+        "frequency": "Frequência semanal",
+        "students": "Alunos usando",
+        "status": "Situação"
+      },
+      "statuses": { "ACTIVE": "Ativo", "INACTIVE": "Desativado" },
+      "filters": {
+        "modality": "Modalidade",
+        "allModalities": "Todas as modalidades",
+        "unit": "Unidade",
+        "allUnits": "Todas as unidades",
+        "status": "Situação",
+        "allStatuses": "Todas as situações"
+      }
+    },
+    "plans": {
+      "title": "Planos",
+      "active": "Ativos",
+      "inactive": "Desativados",
+      "studentsUsing": "Alunos usando",
+      "range": "Faixa de valores",
+      "view": "Ver planos"
+    },
+    "benefits": {
+      "title": "Benefícios",
+      "active": "Ativos",
+      "high": "Altos",
+      "view": "Ver benefícios"
+    }
+  },
   "classes": {
     "title": "Turmas",
     "intro": "Turmas das suas unidades, com os dias, os horários, o professor e a situação de cada uma.",
@@ -1119,7 +1413,8 @@
       "announcements": "Enviar comunicados",
       "agendaEdit": "Editar a agenda",
       "studentContacts": "Ver os contatos dos alunos",
-      "trialClasses": "Ver aulas experimentais"
+      "trialClasses": "Ver aulas experimentais",
+      "studentRecord": "Ver ficha do aluno"
     },
     "directory": "Aparecer no diretório",
     "directoryHelp": "A unidade pode ser encontrada por quem procura uma academia.",

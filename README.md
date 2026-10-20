@@ -25,6 +25,8 @@ docker compose down             # para, mantendo os dados
 docker compose down -v          # para e apaga os dados (volumes)
 ```
 
+**Atenção aos dados locais.** O compose fixa o nome de projeto `ctcore` (`name: ctcore` em `infra/docker-compose.yml`), então os volumes são `ctcore_postgres-data` e `ctcore_storage-data`, e **qualquer clone do repositório usa os mesmos volumes**. `docker compose down -v` apaga esses dados. Para clonar o repositório, revisar ou fazer uma prova sem tocar nos seus dados, dê outro nome ao projeto (`docker compose -p <outro-nome> ...` ou `COMPOSE_PROJECT_NAME=<outro-nome>`; os volumes passam a ser `<outro-nome>_*`) e só então use `down -v`. Nunca rode `down -v` sem esse nome em outro clone.
+
 Da raiz: `docker compose -f infra/docker-compose.yml up -d --wait`. Para mudar portas ou credenciais, copie `infra/.env.example` para `infra/.env`.
 
 Antes de iniciar o back-end, execute `bash infra/scripts/prepare-runtime-db.sh` (idempotente, preserva volumes existentes). A aplicação usa `DB_RUNTIME_USER=ctcore_app` / `DB_RUNTIME_PASSWORD=ctcore_app_dev`; Flyway usa `DB_MIGRATION_USER` / `DB_MIGRATION_PASSWORD`, com fallback para `POSTGRES_USER` / `POSTGRES_PASSWORD`. Valores padrão são somente de desenvolvimento. Ao personalizar, exporte as variáveis para o script e para o Java (que não carrega `infra/.env`); para a imagem, use as mesmas variáveis com `docker run -e`. Nunca use a credencial administrativa no runtime. Detalhes: `backend/README.md`.

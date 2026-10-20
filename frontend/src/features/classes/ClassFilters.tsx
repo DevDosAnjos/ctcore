@@ -3,7 +3,7 @@ import { useClassFilterOptions } from "./useClasses";
 
 type Props = { get: (k: string) => string; set: (k: string, v: string) => void };
 
-function Filter({ label, value, onChange, all, options }: { label: string; value: string; onChange: (v: string) => void; all: string; options: { id: string; name: string }[] }) {
+export function Filter({ label, value, onChange, all, options }: { label: string; value: string; onChange: (v: string) => void; all: string; options: { id: string; name: string }[] }) {
   return (
     <label className="flex min-w-0 flex-col gap-1 text-sm">
       {label}

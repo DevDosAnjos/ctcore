@@ -198,7 +198,8 @@ public class UnitSettings {
                 new TeacherPermissions(teacher[PermissionTable.teacherFlag(Permission.ANNOUNCEMENTS)],
                         teacher[PermissionTable.teacherFlag(Permission.AGENDA_EDIT)],
                         teacher[PermissionTable.teacherFlag(Permission.STUDENT_CONTACTS)],
-                        teacher[PermissionTable.teacherFlag(Permission.TRIAL_CLASSES)]),
+                        teacher[PermissionTable.teacherFlag(Permission.TRIAL_CLASSES)],
+                        teacher[PermissionTable.teacherFlag(Permission.STUDENT_RECORD)]),
                 rs.getBoolean(30), rs.getBoolean(31), rs.getBoolean(32));
         return new UnitDetail(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6),
                 number(rs.getBigDecimal(7)), number(rs.getBigDecimal(8)), rs.getString(9), rs.getString(10), rs.getString(11),
@@ -214,11 +215,12 @@ public class UnitSettings {
     }
 
     private static List<Boolean> teacher(TeacherPermissions t) {
-        Boolean[] flags = new Boolean[4];
+        Boolean[] flags = new Boolean[5];
         flags[PermissionTable.teacherFlag(Permission.ANNOUNCEMENTS)] = t.announcements();
         flags[PermissionTable.teacherFlag(Permission.AGENDA_EDIT)] = t.agendaEdit();
         flags[PermissionTable.teacherFlag(Permission.STUDENT_CONTACTS)] = t.studentContacts();
         flags[PermissionTable.teacherFlag(Permission.TRIAL_CLASSES)] = t.trialClasses();
+        flags[PermissionTable.teacherFlag(Permission.STUDENT_RECORD)] = t.studentRecord();
         return Arrays.asList(flags);
     }
 
@@ -250,6 +252,7 @@ public class UnitSettings {
         m.put("teacher.agendaEdit", t.agendaEdit());
         m.put("teacher.studentContacts", t.studentContacts());
         m.put("teacher.trialClasses", t.trialClasses());
+        m.put("teacher.studentRecord", t.studentRecord());
         m.put("directoryEnabled", s.directoryEnabled());
         m.put("trialLinkEnabled", s.trialLinkEnabled());
         m.put("selfRegistrationLinkEnabled", s.selfRegistrationLinkEnabled());

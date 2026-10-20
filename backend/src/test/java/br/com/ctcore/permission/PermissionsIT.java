@@ -70,20 +70,20 @@ class PermissionsIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("CA4: as quatro permissões do Professor são independentes e desligada vale NONE")
+    @DisplayName("CA4: as cinco permissões do Professor são independentes e desligada vale NONE")
     void teacherFlagsAreIndependent() {
         Org o = org();
         var teacher = who(o, Role.TEACHER, o.unit());
-        Permission[] star = {Permission.ANNOUNCEMENTS, Permission.AGENDA_EDIT, Permission.STUDENT_CONTACTS, Permission.TRIAL_CLASSES};
-        for (int on = 0; on < 4; on++) {
+        Permission[] star = {Permission.ANNOUNCEMENTS, Permission.AGENDA_EDIT, Permission.STUDENT_CONTACTS, Permission.TRIAL_CLASSES, Permission.STUDENT_RECORD};
+        for (int on = 0; on < 5; on++) {
             StringBuilder v = new StringBuilder("{");
-            for (int i = 0; i < 4; i++) v.append(i == 0 ? "" : ",").append(i == on);
+            for (int i = 0; i < 5; i++) v.append(i == 0 ? "" : ",").append(i == on);
             flags(o.unit(), v.append("}").toString());
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 5; i++) {
                 assertThat(permissions.grant(teacher, star[i], o.unit())).isEqualTo(i == on ? PermissionTable.grant(Role.TEACHER, star[i]).access() : Access.NONE);
             }
         }
-        flags(o.unit(), "{true,true,true,true}");
+        flags(o.unit(), "{true,true,true,true,false}");
         assertThat(permissions.grant(teacher, Permission.STUDENT_CONTACTS, o.unit())).isEqualTo(Access.READ);
         assertThat(permissions.grant(teacher, Permission.COLLECTIONS, o.unit())).isEqualTo(Access.NONE);
     }
@@ -93,8 +93,8 @@ class PermissionsIT extends PostgresIT {
     void teacherFlagPerUnit() {
         Org o = org();
         UUID u2 = extraUnit(o);
-        flags(o.unit(), "{true,true,true,true}");
-        flags(u2, "{true,true,false,true}");
+        flags(o.unit(), "{true,true,true,true,false}");
+        flags(u2, "{true,true,false,true,false}");
         var teacher = who(o, Role.TEACHER, o.unit(), u2);
         permissions.require(teacher, Permission.STUDENT_CONTACTS, o.unit());
         assertThatThrownBy(() -> permissions.require(teacher, Permission.STUDENT_CONTACTS, u2)).isInstanceOf(AccessDeniedException.class);
@@ -106,8 +106,8 @@ class PermissionsIT extends PostgresIT {
     void effectiveTeacher() {
         Org o = org();
         UUID u2 = extraUnit(o);
-        flags(o.unit(), "{true,false,false,false}");
-        flags(u2, "{false,false,true,false}");
+        flags(o.unit(), "{true,false,false,false,false}");
+        flags(u2, "{false,false,true,false,false}");
         var eff = permissions.effective(who(o, Role.TEACHER, o.unit(), u2));
         assertThat(eff.get(Permission.ANNOUNCEMENTS)).isEqualTo(Access.FULL);
         assertThat(eff.get(Permission.STUDENT_CONTACTS)).isEqualTo(Access.READ);
@@ -122,7 +122,7 @@ class PermissionsIT extends PostgresIT {
     @DisplayName("R6: o Professor não lê configuração de unidade de outra organização, mesmo com a unidade no vínculo")
     void otherOrganizationUnitIsInvisible() {
         Org a = org(), b = org();
-        flags(b.unit(), "{true,true,true,true}");
+        flags(b.unit(), "{true,true,true,true,false}");
         var forged = who(a, Role.TEACHER, b.unit());
         assertThat(permissions.grant(forged, Permission.STUDENT_CONTACTS, b.unit())).isEqualTo(Access.NONE);
         assertThat(permissions.effective(forged).get(Permission.STUDENT_CONTACTS)).isEqualTo(Access.NONE);
