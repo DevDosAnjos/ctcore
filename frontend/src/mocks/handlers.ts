@@ -176,6 +176,14 @@ const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 // Configurações da unidade (RF-ORG-04), em memória. Coordenador: qualquer unidade; Administrador: só a primeira (ADMIN_UNIT);
 // Professor e portal: 403. Unidade que não existe: 404.
 const ADMIN_UNIT = "00000000-0000-0000-0000-000000000021";
+
+// RF-PLA-01: planos fictícios (3 ativos e 1 desativado); dois na unidade do Administrador, um em outra.
+const mockPlans = [
+  { unitId: ADMIN_UNIT, valueCents: 15000, status: "ACTIVE" },
+  { unitId: ADMIN_UNIT, valueCents: 20000, status: "ACTIVE" },
+  { unitId: "00000000-0000-0000-0000-000000000022", valueCents: 30000, status: "ACTIVE" },
+  { unitId: ADMIN_UNIT, valueCents: 12000, status: "INACTIVE" },
+];
 const defaultUnitSettings = () => ({
   dueDays: [1, 5, 10, 15],
   enrollmentFeeEnabled: false,
@@ -1409,6 +1417,31 @@ export const routes: Route[] = [
         .filter((c) => !unitId || c.unit.id === unitId)
         .sort((a, b) => a.name.localeCompare(b.name) * (p.get("sort") === "name,desc" ? -1 : 1));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-PLA-01: resumo de planos e benefícios; Coordenador (todas as unidades ou a filtrada) e Administrador (só a dele; fora do alcance, zerado); demais 403.
+    method: "get",
+    path: "/plans/summary",
+    resolver: ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const unitId = new URL(request.url).searchParams.get("unitId");
+      const active = mockPlans
+        .filter((p) => role === "COORDINATOR" || p.unitId === ADMIN_UNIT)
+        .filter((p) => !unitId || p.unitId === unitId);
+      const values = active.filter((p) => p.status === "ACTIVE").map((p) => p.valueCents);
+      return HttpResponse.json({
+        plans: {
+          active: values.length,
+          inactive: active.length - values.length,
+          studentsUsing: 0,
+          minValueCents: values.length ? Math.min(...values) : null,
+          maxValueCents: values.length ? Math.max(...values) : null,
+        },
+        benefits: { active: 0, high: 0 },
+      });
     },
   },
   {

@@ -63,7 +63,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 52 | RF-AGE-04 · Nova aula avulsa | issue #52 | Sprint 05 | — | agente | feito |
 | 53 | RF-AGE-05 · Dias sem aula | issue #53 | Sprint 05 | — | agente | feito |
 | 54 | Cadastro de aluno e responsáveis no servidor | issue #54 | Sprint 06 | — | agente | feito |
-| 55 | RF-PLA-01 · Financeiro › Planos e benefícios | issue #55 | Sprint 06 | — | agente | a fazer |
+| 55 | RF-PLA-01 · Financeiro › Planos e benefícios | issue #55 | Sprint 06 | — | agente | feito |
 | 56 | RF-PLA-02 · Tabela de planos | issue #56 | Sprint 06 | — | agente | a fazer |
 | 57 | RF-PLA-03 · Janela de plano | issue #57 | Sprint 06 | — | agente | a fazer |
 | 58 | RF-ALU-01 · Pessoas › Alunos (lista e filtros) | issue #58 | Sprint 06 | — | agente | a fazer |

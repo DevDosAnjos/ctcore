@@ -39,9 +39,10 @@ describe("buildMenu", () => {
     const units = { id: "units", label: "menu.items.units", href: "/configuracoes/unidades" };
     const operation = { id: "operation", label: "menu.groups.operation", items: [agenda, { id: "classes", label: "menu.items.classes", href: "/turmas" }, { id: "noClassDays", label: "menu.items.noClassDays", href: "/dias-sem-aula" }] };
     const people = { id: "people", label: "menu.groups.people", items: [{ id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
+    const finance = { id: "finance", label: "menu.groups.finance", items: [{ id: "plans", label: "menu.items.plans", href: "/planos" }] };
     const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
-    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, operation, people, settings([unit, organization, modalities, ageRanges, users, units])]);
-    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, operation, people, settings([unit, organization, modalities, ageRanges, users])]);
+    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, users, units])]);
+    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, users])]);
   });
 });
 
