@@ -61,7 +61,7 @@ describe("PlansPage (RF-PLA-01)", () => {
     expect(screen.getByText("Desativados").nextSibling).toHaveTextContent("1");
     expect(screen.getByText("Alunos usando")).toBeInTheDocument();
     expect(screen.getByText("Altos")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Ver planos" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Ver planos" })).toHaveAttribute("href", "/planos/lista");
     expect(screen.getByRole("button", { name: "Ver benefícios" })).toBeDisabled();
   });
 

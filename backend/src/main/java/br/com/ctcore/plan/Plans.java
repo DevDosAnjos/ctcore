@@ -1,6 +1,12 @@
 package br.com.ctcore.plan;
 
+import br.com.ctcore.api.error.ApiValidationException;
+import br.com.ctcore.api.page.PageRequest;
+import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
+import br.com.ctcore.modality.Modalities;
+import java.util.List;
+import java.util.Locale;
 import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.permission.Access;
@@ -27,6 +33,13 @@ public class Plans {
 
     public record Summary(PlanCounts plans, BenefitSummary benefits) {}
 
+    public record Ref(UUID id, String name) {}
+
+    public record Filter(String q, UUID modalityId, UUID unitId, String status) {}
+
+    public record Row(UUID id, Ref unit, Ref modality, String name, long valueCents, Integer weeklyFrequency, boolean validOtherUnits,
+            int studentsUsing, String status) {}
+
     /** Alcance da consulta: unitIds nulo = todas as unidades da organização. */
     record Scope(UUID organizationId, Set<UUID> unitIds) {}
 
@@ -48,16 +61,59 @@ public class Plans {
 
     public Summary summary(AccountPrincipal who, UUID unitId) {
         requireAccess(who);
-        Set<UUID> reach = null;
-        if (who.role() == Role.ADMINISTRATOR) {
-            Set<UUID> own = who.units() == null ? Set.of() : who.units();
-            reach = unitId == null ? own : own.contains(unitId) ? Set.of(unitId) : Set.of();
-        } else if (unitId != null) {
-            reach = Set.of(unitId);
-        }
-        Scope scope = new Scope(who.organizationId(), reach);
+        Scope scope = new Scope(who.organizationId(), reach(who, unitId));
         PlanCounts plans = scope.unitIds() != null && scope.unitIds().isEmpty() ? new PlanCounts(0, 0, 0, null, null) : counts(scope);
         return new Summary(plans, benefits(scope));
+    }
+
+    /** Alcance: nulo = todas as unidades; o Administrador fica nas dele (fora do alcance, vazio). */
+    private Set<UUID> reach(AccountPrincipal who, UUID unitId) {
+        if (who.role() == Role.ADMINISTRATOR) {
+            Set<UUID> own = who.units() == null ? Set.of() : who.units();
+            return unitId == null ? own : own.contains(unitId) ? Set.of(unitId) : Set.of();
+        }
+        return unitId == null ? null : Set.of(unitId);
+    }
+
+    /** RF-PLA-02: tabela de planos, por modalidade e nome. */
+    public PageResponse<Row> list(AccountPrincipal who, Filter f, PageRequest page) {
+        requireAccess(who);
+        String st = f.status() == null || f.status().isBlank() ? null : f.status().strip().toUpperCase(Locale.ROOT);
+        if (st != null && !Set.of("ACTIVE", "INACTIVE").contains(st)) throw new ApiValidationException("status", "valor inválido");
+        Set<UUID> reach = reach(who, f.unitId());
+        if (reach != null && reach.isEmpty()) return PageResponse.of(List.of(), page, 0);
+
+        StringBuilder where = new StringBuilder("p.organization_id = :org");
+        Map<String, Object> params = new HashMap<>();
+        params.put("org", who.organizationId());
+        if (f.q() != null && !f.q().isBlank()) {
+            where.append(" and p.name_key like :q escape '\\'");
+            params.put("q", "%" + Modalities.normalize(f.q()).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+        }
+        if (f.modalityId() != null) {
+            where.append(" and p.modality_id = :modality");
+            params.put("modality", f.modalityId());
+        }
+        if (reach != null) {
+            where.append(" and p.unit_id in (:reach)");
+            params.put("reach", reach);
+        }
+        if (st != null) {
+            where.append(" and p.status = :status");
+            params.put("status", st);
+        }
+        return transactions.execute(() -> {
+            long total = jdbc.sql("select count(*) from plan p where " + where).params(params).query(Long.class).single();
+            List<Row> rows = jdbc.sql("select p.id, u.id, u.name, m.id, m.name, p.name, p.value_cents, p.weekly_frequency, p.valid_other_units, p.status "
+                    + "from plan p join unit u on u.id = p.unit_id join modality m on m.id = p.modality_id where " + where
+                    + " order by m.name, p.name_key, p.id limit :limit offset :offset")
+                    .params(params).param("limit", page.size()).param("offset", page.offset())
+                    .query((rs, n) -> new Row(rs.getObject(1, UUID.class), new Ref(rs.getObject(2, UUID.class), rs.getString(3)),
+                            new Ref(rs.getObject(4, UUID.class), rs.getString(5)), rs.getString(6), rs.getLong(7), (Integer) rs.getObject(8),
+                            rs.getBoolean(9), studentsUsing(new Scope(who.organizationId(), Set.of(rs.getObject(2, UUID.class)))), rs.getString(10)))
+                    .list();
+            return PageResponse.of(rows, page, total);
+        });
     }
 
     private PlanCounts counts(Scope scope) {

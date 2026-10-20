@@ -1477,6 +1477,29 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /plans:
+    get:
+      summary: Tabela de planos da organização do vínculo ativo (RF-PLA-02). Coordenador e Administrador.
+      description: |
+        Ordenada por modalidade e nome. O Coordenador vê todas as unidades; o Administrador, as dele (`unitId` fora do alcance devolve lista
+        vazia). Professor, Aluno e Responsável recebem 403. Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros
+        combinam (E). `valueCents` em centavos inteiros; `weeklyFrequency` nulo é livre e só informa (RN-PLA-02). `studentsUsing` vale 0 até a
+        Sprint 07. Só leitura: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de planos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PlanList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /plans/summary:
     get:
       summary: Resumo de planos e benefícios (RF-PLA-01). Coordenador e Administrador.
@@ -2403,6 +2426,25 @@ components:
         - type: object
           properties:
             items: { type: array, items: { $ref: '#/components/schemas/ClassRow' } }
+    PlanRow:
+      type: object
+      required: [id, unit, modality, name, valueCents, weeklyFrequency, validOtherUnits, studentsUsing, status]
+      properties:
+        id: { type: string, format: uuid }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        name: { type: string }
+        valueCents: { type: integer, format: int64 }
+        weeklyFrequency: { type: integer, nullable: true, enum: [2, 3], description: Nulo é livre; só informativo. }
+        validOtherUnits: { type: boolean }
+        studentsUsing: { type: integer }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    PlanList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PlanRow' } }
     TeacherList:
       allOf:
         - $ref: '#/components/schemas/Page'

@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Card, CardGrid } from "@/components/Card";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router";
 import { formatMoney } from "@/components/fields/masks";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ALL, useUnitScope } from "@/features/units/UnitScopeProvider";
@@ -42,8 +43,8 @@ function Content() {
             title={t("plans.plans.title")}
             heading="h2"
             actions={
-              <Button className="min-h-11" disabled>
-                {t("plans.plans.view")}
+              <Button asChild className="min-h-11">
+                <Link to="/planos/lista">{t("plans.plans.view")}</Link>
               </Button>
             }
           >
