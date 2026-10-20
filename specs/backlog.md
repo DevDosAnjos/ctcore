@@ -70,7 +70,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 59 | RF-ALU-02 · Selos do aluno | issue #59 | Sprint 06 | — | agente | feito |
 | 60 | RF-ALU-03 · Ficha do aluno em painel lateral | issue #60 | Sprint 06 | — | agente | feito |
 | 61 | RF-ALU-04 · Editar dados pessoais do aluno | issue #61 | Sprint 06 | — | agente | feito |
-| 62 | RF-ALU-06 · Aniversariantes do dia | issue #62 | Sprint 06 | — | agente | a fazer |
+| 62 | RF-ALU-06 · Aniversariantes do dia | issue #62 | Sprint 06 | — | agente | feito |
 | 63 | Matrícula no servidor: modalidades, transferência e retorno | issue #63 | Sprint 07 | — | agente | a fazer |
 | 64 | RF-BEN-01 · Tabela de benefícios | issue #64 | Sprint 07 | — | agente | a fazer |
 | 65 | RF-BEN-02 · Conceder benefício | issue #65 | Sprint 07 | — | agente | a fazer |

@@ -17,6 +17,7 @@ import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
+import { BirthdaysCard } from "@/features/students/BirthdaysCard";
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
@@ -56,6 +57,7 @@ function Home() {
       <ManagementLayout>
         <Welcome />
         <ScopeLine />
+        {(role === "ADMINISTRATOR" || role === "TEACHER") && <BirthdaysCard />}
       </ManagementLayout>
     );
   }

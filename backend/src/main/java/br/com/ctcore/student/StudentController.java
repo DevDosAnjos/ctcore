@@ -62,6 +62,11 @@ class StudentController {
         return registration.create(who, body, request.getRemoteAddr());
     }
 
+    @GetMapping("/birthdays")
+    java.util.List<Students.Birthday> birthdays(@AuthenticationPrincipal AccountPrincipal who) {
+        return records.birthdays(who);
+    }
+
     @GetMapping("/lookup")
     Students.Ref lookup(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String cpf) {
         return students.lookup(who, cpf);

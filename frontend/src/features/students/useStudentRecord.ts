@@ -6,7 +6,7 @@ type Failure = "forbidden" | "notFound" | "error";
 type Done<T> = { path: string; data?: T; failure?: Failure };
 
 // GET de um recurso da ficha: 403 vira "sem permissão" e 404 "não encontrado"; `reload` busca de novo (ex.: depois de vincular um responsável).
-function useResource<T>(path: string) {
+export function useResource<T>(path: string) {
   const [tick, setTick] = useState(0);
   const [done, setDone] = useState<Done<T>>();
   useEffect(() => {
