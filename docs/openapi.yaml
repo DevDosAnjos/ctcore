@@ -1705,6 +1705,41 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/record:
+    get:
+      summary: Ficha do aluno (RF-ALU-03). Coordenador e Administrador; Professor com a chave "ver ficha do aluno".
+      description: |
+        Administrador só alcança o aluno do seu alcance (RN-ALU-07); fora dele, 404. Professor sem a chave em nenhuma unidade dele recebe
+        403; com a chave, só abre aluno das suas turmas (até a matrícula, #63, nenhum: 404). A ficha do Professor omite `birthDate`, `seals`,
+        `cpf`, `address` e, nos responsáveis, `financial` e `access`; `contact`, `emergency` e o telefone e e-mail dos responsáveis só com
+        "ver contatos".
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Ficha.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentRecord' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/history:
+    get:
+      summary: Histórico do aluno, da ação mais recente para a mais antiga (RF-ALU-03). Coordenador e Administrador.
+      description: Registros de auditoria do aluno sem os valores antes e depois. Mesmo alcance da ficha; Professor 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página do histórico.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentHistoryList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /students/{id}/guardians:
     post:
       summary: Liga um responsável ao aluno (RN-RSP-02, RN-RSP-06). Coordenador e Administrador.
@@ -1886,7 +1921,7 @@ components:
     Permission:
       type: string
       description: Linha "Área / ação" da tabela de permissões, na ordem da especificação.
-      enum: [HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS, CHARGE_ADJUSTMENTS, CLASSES_MANAGE, AGENDA_VIEW, AGENDA_EDIT, NO_CLASS_DAYS, GRADUATION, ANNOUNCEMENTS, TRIAL_CLASSES, TEACHERS, STAFF_USERS, UNIT_SETTINGS, ORGANIZATION_SETTINGS, UNITS, SUBSCRIPTION, AUDIT, REPORTS, EXPORT_LISTS, EXPORT_FULL, IMPORT, SUPPORT_ACCESS]
+      enum: [HOME, ALL_UNITS_CONSOLIDATED, STUDENT_VIEW, STUDENT_RECORD, STUDENT_CONTACTS, STUDENT_MANAGE, BENEFITS, PLANS, COLLECTIONS, CHARGE_ADJUSTMENTS, CLASSES_MANAGE, AGENDA_VIEW, AGENDA_EDIT, NO_CLASS_DAYS, GRADUATION, ANNOUNCEMENTS, TRIAL_CLASSES, TEACHERS, STAFF_USERS, UNIT_SETTINGS, ORGANIZATION_SETTINGS, UNITS, SUBSCRIPTION, AUDIT, REPORTS, EXPORT_LISTS, EXPORT_FULL, IMPORT, SUPPORT_ACCESS]
     PermissionsView:
       type: object
       required: [permissions]
@@ -2824,12 +2859,13 @@ components:
         transfer: { type: integer, format: int64, minimum: 0, maximum: 100000 }
     TeacherPermissions:
       type: object
-      required: [announcements, agendaEdit, studentContacts, trialClasses]
+      required: [announcements, agendaEdit, studentContacts, trialClasses, studentRecord]
       properties:
         announcements: { type: boolean }
         agendaEdit: { type: boolean }
         studentContacts: { type: boolean }
         trialClasses: { type: boolean }
+        studentRecord: { type: boolean }
     UnitSettingsView:
       type: object
       required: [dueDays, enrollmentFeeEnabled, enrollmentFeeCents, feesCents, pixKey, paymentAccount, reminderDays, teacherPermissions,
@@ -3029,6 +3065,85 @@ components:
         guardians:
           type: array
           items: { $ref: '#/components/schemas/StudentGuardianRow' }
+    StudentRecord:
+      type: object
+      description: Os campos `birthDate`, `seals`, `contact`, `cpf`, `address` e `emergency` podem faltar na ficha do Professor.
+      required: [id, name, photoUrl, age, minor, ageRange, registeredUnit, guardians]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        birthDate: { type: string, format: date }
+        age: { type: integer, minimum: 0 }
+        minor: { type: boolean }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        registeredUnit:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        seals: { type: array, items: { $ref: '#/components/schemas/StudentSeal' } }
+        contact:
+          type: object
+          required: [phone, email, emailProblem]
+          properties:
+            phone: { type: string, nullable: true }
+            email: { type: string, nullable: true }
+            emailProblem: { type: boolean }
+        cpf: { type: string, nullable: true, description: Só dígitos. }
+        address:
+          type: object
+          required: [postalCode, street, number, complement, district, city, state]
+          properties:
+            postalCode: { type: string }
+            street: { type: string }
+            number: { type: string }
+            complement: { type: string, nullable: true }
+            district: { type: string }
+            city: { type: string }
+            state: { type: string }
+        emergency:
+          type: object
+          required: [name, relationship, phone]
+          properties:
+            name: { type: string, nullable: true }
+            relationship: { type: string, nullable: true }
+            phone: { type: string, nullable: true }
+        guardians:
+          type: array
+          items:
+            type: object
+            required: [guardianId, name]
+            properties:
+              guardianId: { type: string, format: uuid }
+              name: { type: string }
+              email: { type: string }
+              phone: { type: string }
+              financial: { type: boolean }
+              access: { type: string, enum: [PENDING, ACTIVE] }
+              emailProblem: { type: boolean }
+    StudentHistoryEntry:
+      type: object
+      required: [action, at, actor, actorProfile, reason]
+      properties:
+        action: { type: string, description: 'Código da ação, ex.: student.created.' }
+        at: { type: string, format: date-time }
+        actor: { type: string, nullable: true }
+        actorProfile: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+    StudentHistoryList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/StudentHistoryEntry' } }
     PortalStudentCard:
       type: object
       required: [id, name, photoUrl, self]

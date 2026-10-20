@@ -101,7 +101,7 @@ export function App() {
             <Route path="/turmas/:id" element={<ClassPanelPage />} />
             <Route path="/planos" element={<PlansPage />} />
             <Route path="/planos/lista" element={<PlansTablePage />} />
-            <Route path="/alunos" element={<StudentsPage />} />
+            <Route path="/alunos/:id?" element={<StudentsPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

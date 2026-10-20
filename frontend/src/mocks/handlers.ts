@@ -84,6 +84,7 @@ export const resetMockSession = () => {
   teacherResends = 0;
   mockStudents = initialStudents();
   guardianResends = 0;
+  studentLog = {};
   for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
   guardianCpfs["00000000-0000-0000-0000-000000000801"] = "98765432100";
   sessions = initialSessions();
@@ -231,7 +232,7 @@ const defaultUnitSettings = () => ({
   pixKey: null as string | null,
   paymentAccount: "NOT_CONNECTED" as "CONNECTED" | "NOT_CONNECTED",
   reminderDays: [-3, 0, 3, 10],
-  teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true },
+  teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true, studentRecord: false },
   directoryEnabled: false,
   trialLinkEnabled: true,
   selfRegistrationLinkEnabled: true,
@@ -674,6 +675,11 @@ const initialStudents = (): StudentDetail[] => [
 ];
 let mockStudents = initialStudents();
 let guardianResends = 0;
+// Histórico do aluno (RF-ALU-03), em memória: o servidor lê a auditoria; aqui as rotas de responsável acrescentam a linha.
+let studentLog: Record<string, { action: string; at: string; actor: string | null; actorProfile: string | null; reason: string | null }[]> = {};
+const logStudent = (id: string, action: string, reason: string | null) => {
+  (studentLog[id] ??= []).push({ action, at: new Date().toISOString(), actor: "Ana Coordenadora", actorProfile: activeRole() ?? null, reason });
+};
 const guardianCpfs: Record<string, string> = { "00000000-0000-0000-0000-000000000801": "98765432100" };
 const studentError = (status: number, code: string, existing?: StudentDetail) =>
   error(status, code, "Dados inválidos.", existing ? [{ field: "id", message: existing.id }, { field: "name", message: existing.name }, { field: "photoUrl", message: existing.photoUrl ?? "" }] : []);
@@ -702,6 +708,22 @@ const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const leapDay = birth.getUTCMonth() === 1 && birth.getUTCDate() === 29 && now.getMonth() === 1 && now.getDate() === 28 && now.getFullYear() % 4 !== 0;
   const birthday = (birth.getUTCMonth() === now.getMonth() && birth.getUTCDate() === now.getDate()) || leapDay;
   return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : birthday));
+};
+const ageOf = (birth: string) => {
+  const b = new Date(birth);
+  const now = new Date();
+  return now.getFullYear() - b.getFullYear() - (now < new Date(now.getFullYear(), b.getMonth(), b.getDate()) ? 1 : 0);
+};
+const covers = (r: MockAgeRange, age: number) => age >= r.minAge && (r.maxAge === null || age <= r.maxAge);
+const studentRowOf = (s: StudentDetail): StudentRow => {
+  const age = ageOf(s.birthDate);
+  const own = [...ageRanges].filter((r) => covers(r, age)).sort((a, b) => b.minAge - a.minAge)[0];
+  return {
+    id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age, minor: s.minor,
+    ageRange: own ? { id: own.id, name: own.name } : null,
+    registeredUnit: { id: s.registeredUnitId, name: units.find((u) => u.id === s.registeredUnitId)?.name ?? "" },
+    createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s),
+  };
 };
 const isMinor = (birthDate: string) => {
   const limit = new Date(birthDate);
@@ -2236,28 +2258,13 @@ export const routes: Route[] = [
       if (rangeId && !range) return error(404, "NOT_FOUND", "Não encontrado.");
       const unitId = p.get("unitId");
       const q = teacherKey((p.get("q") ?? "").trim());
-      const ageOf = (birth: string) => {
-        const b = new Date(birth);
-        const now = new Date();
-        return now.getFullYear() - b.getFullYear() - (now < new Date(now.getFullYear(), b.getMonth(), b.getDate()) ? 1 : 0);
-      };
-      const covers = (r: MockAgeRange, age: number) => age >= r.minAge && (r.maxAge === null || age <= r.maxAge);
       const found = mockStudents
         .filter((s) => role === "COORDINATOR" || s.registeredUnitId === ADMIN_UNIT)
         .filter((s) => teacherKey(s.name).includes(q) && (!unitId || s.registeredUnitId === unitId))
         .filter((s) => !range || covers(range, ageOf(s.birthDate)))
         .filter((s) => !seal || sealsOf(s).includes(seal as StudentSeal))
         .sort((a, b) => teacherKey(a.name).localeCompare(teacherKey(b.name)) || a.id.localeCompare(b.id));
-      const items: StudentRow[] = found.slice((page - 1) * size, page * size).map((s) => {
-        const age = ageOf(s.birthDate);
-        const own = [...ageRanges].filter((r) => covers(r, age)).sort((a, b) => b.minAge - a.minAge)[0];
-        return {
-          id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age, minor: s.minor,
-          ageRange: own ? { id: own.id, name: own.name } : null,
-          registeredUnit: { id: s.registeredUnitId, name: units.find((u) => u.id === s.registeredUnitId)?.name ?? "" },
-          createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s),
-        };
-      });
+      const items = found.slice((page - 1) * size, page * size).map(studentRowOf);
       return HttpResponse.json({ items, page, size, total: found.length });
     },
   },
@@ -2334,6 +2341,39 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-ALU-03: ficha. Coordenador e Administrador (alcance como no detalhe); Professor e portal 403.
+    method: "get",
+    path: "/students/{id}/record",
+    resolver: ({ params }) => {
+      const s = studentFor(params.id as string);
+      if (s instanceof Response) return s;
+      const row = studentRowOf(s);
+      return HttpResponse.json({
+        id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age: row.age, minor: s.minor, ageRange: row.ageRange,
+        registeredUnit: row.registeredUnit, seals: row.seals, contact: { phone: s.phone, email: s.email, emailProblem: s.emailProblem }, cpf: s.cpf,
+        address: { postalCode: s.postalCode, street: s.street, number: s.number, complement: s.complement, district: s.district, city: s.city, state: s.state },
+        emergency: { name: s.emergencyName, relationship: s.emergencyRelationship, phone: s.emergencyPhone },
+        guardians: s.guardians,
+      });
+    },
+  },
+  {
+    // RF-ALU-03: histórico, da ação mais recente para a mais antiga, sem valores antes e depois.
+    method: "get",
+    path: "/students/{id}/history",
+    resolver: ({ request, params }) => {
+      const s = studentFor(params.id as string);
+      if (s instanceof Response) return s;
+      const p = new URL(request.url).searchParams;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      if (!Number.isInteger(page) || page < 1) return studentBad("page", "deve ser 1 ou maior");
+      if (![25, 50, 100].includes(size)) return studentBad("size", "deve ser 25, 50 ou 100");
+      const all = [{ action: "student.created", at: "2026-01-10T12:00:00Z", actor: "Ana Coordenadora", actorProfile: "COORDINATOR", reason: null }, ...(studentLog[s.id] ?? [])].reverse();
+      return HttpResponse.json({ items: all.slice((page - 1) * size, page * size), page, size, total: all.length });
+    },
+  },
+  {
     // RN-RSP-02, RN-RSP-06: liga com motivo; o primeiro é o financeiro; o terceiro dá GUARDIAN_LIMIT.
     method: "post",
     path: "/students/{id}/guardians",
@@ -2349,6 +2389,7 @@ export const routes: Route[] = [
       if (found.guardians.some((g) => g.guardianId === row.guardianId)) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
       const others = row.financial ? found.guardians.map((g) => ({ ...g, financial: false })) : found.guardians;
       found.guardians = sortedGuardians([...others, row]);
+      logStudent(found.id, "student.guardian_linked", body.reason?.trim() ?? null);
       return HttpResponse.json(found);
     },
   },
@@ -2363,6 +2404,7 @@ export const routes: Route[] = [
       if (body.financial !== true) return studentBad("financial", "só é possível indicar quem passa a ser o financeiro");
       if (!found.guardians.some((g) => g.guardianId === params.guardianId)) return error(404, "NOT_FOUND", "Não encontrado.");
       found.guardians = sortedGuardians(found.guardians.map((g) => ({ ...g, financial: g.guardianId === params.guardianId })));
+      logStudent(found.id, "student.guardian_financial_changed", null);
       return HttpResponse.json(found);
     },
   },
@@ -2381,6 +2423,7 @@ export const routes: Route[] = [
       if (found.minor && found.guardians.length === 1) return error(409, "MINOR_NEEDS_GUARDIAN", "Aluno menor de 18 anos precisa de ao menos um responsável.");
       const left = found.guardians.filter((g) => g.guardianId !== params.guardianId);
       found.guardians = left.map((g) => ({ ...g, financial: leaving.financial ? true : g.financial }));
+      logStudent(found.id, "student.guardian_unlinked", body.reason?.trim() ?? null);
       return HttpResponse.json(found);
     },
   },
@@ -2396,6 +2439,7 @@ export const routes: Route[] = [
       if (guardian.access === "ACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
       if (guardianResends >= 3) return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
       guardianResends += 1;
+      logStudent(found.id, "student.guardian_invite_resent", null);
       return new HttpResponse(null, { status: 204 });
     },
   },

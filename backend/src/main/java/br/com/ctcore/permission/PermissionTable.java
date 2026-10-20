@@ -17,7 +17,7 @@ public final class PermissionTable {
     private static final Map<Role, Map<Permission, Grant>> TABLE = new EnumMap<>(Role.class);
     /** Índice da permissão do Professor em unit_settings.teacher_permissions (D3); as demais linhas não dependem dela. */
     private static final Map<Permission, Integer> TEACHER_FLAG = Map.of(
-            ANNOUNCEMENTS, 0, AGENDA_EDIT, 1, STUDENT_CONTACTS, 2, TRIAL_CLASSES, 3);
+            ANNOUNCEMENTS, 0, AGENDA_EDIT, 1, STUDENT_CONTACTS, 2, TRIAL_CLASSES, 3, STUDENT_RECORD, 4);
 
     static {
         for (Role r : new Role[] {Role.COORDINATOR, Role.ADMINISTRATOR, Role.TEACHER}) {
@@ -26,6 +26,7 @@ public final class PermissionTable {
         row(HOME, ALL_FULL, UNIT_FULL, CLASS_FULL);
         row(ALL_UNITS_CONSOLIDATED, ALL_READ, Grant.NONE, Grant.NONE);
         row(STUDENT_VIEW, ALL_FULL, UNIT_FULL, CLASS_FULL);
+        row(STUDENT_RECORD, ALL_FULL, UNIT_FULL, CLASS_FULL);
         row(STUDENT_CONTACTS, ALL_FULL, UNIT_FULL, CLASS_READ);
         row(STUDENT_MANAGE, ALL_FULL, UNIT_FULL, Grant.NONE);
         row(BENEFITS, ALL_FULL, UNIT_FULL, Grant.NONE);

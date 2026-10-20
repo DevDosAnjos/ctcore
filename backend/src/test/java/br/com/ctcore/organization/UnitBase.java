@@ -46,7 +46,7 @@ abstract class UnitBase extends OrganizationBase {
             fees.put(key, 0);
         }
         s.putArray("reminderDays").add(-3).add(0).add(3).add(10);
-        s.putObject("teacherPermissions").put("announcements", true).put("agendaEdit", true).put("studentContacts", true).put("trialClasses", true);
+        s.putObject("teacherPermissions").put("announcements", true).put("agendaEdit", true).put("studentContacts", true).put("trialClasses", true).put("studentRecord", false);
         s.put("directoryEnabled", false).put("trialLinkEnabled", true).put("selfRegistrationLinkEnabled", true);
         return n;
     }

@@ -14,7 +14,8 @@ import java.util.function.Supplier;
  */
 public record UnitUpdate(String name, String postalCode, String address, String city, Double latitude, Double longitude, String phone,
         String email, String whatsapp, String cnpj, Settings settings) {
-    public record TeacherPermissions(Boolean announcements, Boolean agendaEdit, Boolean studentContacts, Boolean trialClasses) {}
+    public record TeacherPermissions(Boolean announcements, Boolean agendaEdit, Boolean studentContacts, Boolean trialClasses,
+            Boolean studentRecord) {}
 
     public record Settings(List<Integer> dueDays, Boolean enrollmentFeeEnabled, Long enrollmentFeeCents, Map<String, Long> feesCents,
             String pixKey, List<Integer> reminderDays, TeacherPermissions teacherPermissions, Boolean directoryEnabled,
@@ -42,7 +43,8 @@ public record UnitUpdate(String name, String postalCode, String address, String 
             TeacherPermissions teacher = new TeacherPermissions(required("settings.teacherPermissions.announcements", t.announcements()),
                     required("settings.teacherPermissions.agendaEdit", t.agendaEdit()),
                     required("settings.teacherPermissions.studentContacts", t.studentContacts()),
-                    required("settings.teacherPermissions.trialClasses", t.trialClasses()));
+                    required("settings.teacherPermissions.trialClasses", t.trialClasses()),
+                    required("settings.teacherPermissions.studentRecord", t.studentRecord()));
             return new Settings(due, feeOn, enrollment, fees, pix, reminders, teacher, required("settings.directoryEnabled", directoryEnabled),
                     required("settings.trialLinkEnabled", trialLinkEnabled),
                     required("settings.selfRegistrationLinkEnabled", selfRegistrationLinkEnabled));

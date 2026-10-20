@@ -25,12 +25,14 @@ class StudentController {
     private final Students students;
     private final StudentRegistration registration;
     private final StudentGuardians guardians;
+    private final StudentRecords records;
 
     record FinancialBody(Boolean financial) {}
 
     record ReasonBody(String reason) {}
 
-    StudentController(Students students, StudentRegistration registration, StudentGuardians guardians) {
+    StudentController(Students students, StudentRegistration registration, StudentGuardians guardians, StudentRecords records) {
+        this.records = records;
         this.guardians = guardians;
         this.students = students;
         this.registration = registration;
@@ -59,6 +61,17 @@ class StudentController {
     @GetMapping("/{id}")
     Students.Detail get(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
         return students.get(who, id);
+    }
+
+    @GetMapping("/{id}/record")
+    StudentRecords.RecordView record(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
+        return records.record(who, id);
+    }
+
+    @GetMapping("/{id}/history")
+    PageResponse<StudentRecords.HistoryEntry> history(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
+        return records.history(who, id, PageRequest.of(page, size, null, Set.of()));
     }
 
     @PostMapping("/{id}/guardians")

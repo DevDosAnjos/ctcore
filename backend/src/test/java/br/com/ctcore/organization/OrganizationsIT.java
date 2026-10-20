@@ -70,7 +70,7 @@ class OrganizationsIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select reminder_days::text from unit_settings where unit_id = ?", String.class, first.unitId()))
                 .isEqualTo("{-3,0,3,10}");
         assertThat(jdbc.queryForObject("select teacher_permissions::text from unit_settings where unit_id = ?", String.class, first.unitId()))
-                .isEqualTo("{t,t,t,t}");
+                .isEqualTo("{t,t,t,t,f}");
         assertThat(jdbc.queryForMap("select active, timezone from unit where id = ?", first.unitId()))
                 .containsEntry("active", true).containsEntry("timezone", "America/Sao_Paulo");
         assertThat(limits(first.id()).orElseThrow()).containsEntry("students", null)

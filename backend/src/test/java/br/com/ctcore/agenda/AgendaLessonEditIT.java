@@ -26,7 +26,7 @@ class AgendaLessonEditIT extends AgendaBase {
     static final br.com.ctcore.audit.AuditActor SYSTEM = new br.com.ctcore.audit.AuditActor(br.com.ctcore.audit.AuditActor.Type.SYSTEM, null, null);
 
     static final LocalDate TODAY = LocalDate.now(ZoneId.of("America/Sao_Paulo"));
-    static final String NO_AGENDA_EDIT = "update unit_settings set teacher_permissions = '{true,false,true,true}' where unit_id = ?";
+    static final String NO_AGENDA_EDIT = "update unit_settings set teacher_permissions = '{true,false,true,true,false}' where unit_id = ?";
 
     private static Map<String, Object> body(String scope, LocalDate date, String from, String to, UUID teacher) {
         Map<String, Object> m = new LinkedHashMap<>();

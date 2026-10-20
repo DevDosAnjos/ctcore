@@ -31,7 +31,7 @@ const body = (change: (b: Body & Record<string, unknown>) => void = () => {}) =>
       feesCents: { cash: 0, pix: 199, bankSlip: 0, creditCard: 0, debitCard: 0, automaticDebit: 0, manualPix: 0, terminalCard: 0, transfer: 0 },
       pixKey: null,
       reminderDays: [3, -3],
-      teacherPermissions: { announcements: true, agendaEdit: false, studentContacts: true, trialClasses: true },
+      teacherPermissions: { announcements: true, agendaEdit: false, studentContacts: true, trialClasses: true, studentRecord: true },
       directoryEnabled: true,
       trialLinkEnabled: true,
       selfRegistrationLinkEnabled: true,

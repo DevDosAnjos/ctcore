@@ -22,10 +22,10 @@ class PermissionTableTest {
     }
 
     @Test
-    @DisplayName("CA1 / RNF-05: as 28 linhas x 3 perfis do código batem com a cópia literal da especificação")
+    @DisplayName("CA1 / RNF-05: as 29 linhas x 3 perfis do código batem com a cópia literal da especificação")
     void everyCellMatchesTheSpecification() throws IOException {
         var rows = csv();
-        assertThat(rows).hasSize(28).hasSize(Permission.values().length);
+        assertThat(rows).hasSize(29).hasSize(Permission.values().length);
         for (String[] row : rows) {
             Permission p = Permission.valueOf(row[0]);
             assertThat(PermissionTable.grant(Role.COORDINATOR, p)).as(row[0] + " COORDINATOR").isEqualTo(parse(row[1]));

@@ -120,7 +120,7 @@ class AgendaLessonCancelIT extends AgendaBase {
         var outOfReach = new AccountPrincipal(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), b.orgId(), Role.ADMINISTRATOR,
                 Set.of(UUID.randomUUID()));
         assertThat(post(bl, body("HOLIDAY", null, null), outOfReach).getStatus()).isEqualTo(404);
-        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true}' where unit_id = ?", t.unitId());
+        adminJdbc().update("update unit_settings set teacher_permissions = '{true,false,true,true,false}' where unit_id = ?", t.unitId());
         UUID l2 = lesson(t, c, ana, TODAY.plusDays(9), "19:00", "20:00", false, false);
         assertThat(post(l2, body("HOLIDAY", null, null), me).getStatus()).isEqualTo(403);
     }
