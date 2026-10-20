@@ -103,4 +103,20 @@ Achados:
 - Contrato em `docs/openapi.yaml`; handlers MSW batem com ele.
 - Verificação: rodada 1 OK (`mvnw verify` 450 testes; lint, typecheck, build e `test:cov` ok).
 - Limitações: handler MSW do Professor devolve `[]` até a #63 (matrícula); "hoje" usa o relógio do servidor (D5).
-- CI do PR #299 falhou em `backend`: `StudentBirthdaysIT.clean:39` (`delete from account where email like '%.example'`) viola `account_link_account_id_fkey` quando sobram linhas de `account_link` de outro IT na mesma ordem de execução; 6 erros, 444 ok. Corrigir a limpeza do teste (apagar `account_link` antes, como os demais ITs de aluno).
+- CI do PR #299 falhou em `backend` (`StudentBirthdaysIT.clean` violava `account_link_account_id_fkey`); corrigido na limpeza do teste e conferido na rodada 2 (56 ITs de aluno, 0 falhas).
+
+### Correção da entrega
+- `StudentBirthdaysIT.clean` apagava `account` sem antes apagar `account_invite`, `account_session`, `account_link_unit` e `account_link`; agora segue a limpeza dos demais ITs de aluno — arquivos: `backend/src/test/java/br/com/ctcore/student/StudentBirthdaysIT.java` — prova: `./backend/mvnw -f backend/pom.xml verify -Dit.test='Student*IT,PortalStudentsIT,EmailProblemsIT,MajorityNoticeJobIT'` → 56 ITs, 0 falhas, BUILD SUCCESS
+Regressão: só o teste mudou; o `verify` completo não foi reexecutado, apenas os ITs de aluno em conjunto (a ordem que falhou no CI).
+
+### Rodada 2 — OK — 2026-10-20, estado 312c1c1ea8c29ea8cefba3a67f549b57a19d4d7a
+
+Achado da entrega (CI do PR #299, `StudentBirthdaysIT.clean` violando `account_link_account_id_fkey`) conferido; o diff desde a rodada 1 só toca `StudentBirthdaysIT.clean` (apaga `account_invite`, `account_session`, `account_link_unit` e `account_link` das contas `%.example` antes de `account`).
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA11 | PASSOU (mantido da rodada 1) | mudança só na limpeza do teste |
+| Falha do CI | PASSOU | `mvnw verify -Dit.test='Student*IT,PortalStudentsIT,EmailProblemsIT,MajorityNoticeJobIT'` → 56 testes, 0 falhas, BUILD SUCCESS |
+
+Comandos: o `verify` acima. Suíte completa não reexecutada (só o teste mudou); o conjunto que falhou no CI passa.
+Achados: nenhum obrigatório.

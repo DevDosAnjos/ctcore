@@ -36,6 +36,11 @@ class StudentBirthdaysIT extends OrganizationBase {
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
         adminJdbc().update("delete from student");
+        String mine = "(select id from account where email like '%.example')";
+        adminJdbc().update("delete from account_invite where account_id in " + mine);
+        adminJdbc().update("delete from account_session where account_id in " + mine);
+        adminJdbc().update("delete from account_link_unit where link_id in (select id from account_link where account_id in " + mine + ")");
+        adminJdbc().update("delete from account_link where account_id in " + mine);
         adminJdbc().update("delete from account where email like '%.example'");
     }
 
