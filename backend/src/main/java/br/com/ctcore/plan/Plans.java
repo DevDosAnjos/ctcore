@@ -1,6 +1,8 @@
 package br.com.ctcore.plan;
 
+import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
+import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.identity.AccountPrincipal;
@@ -67,7 +69,7 @@ public class Plans {
     }
 
     /** Alcance: nulo = todas as unidades; o Administrador fica nas dele (fora do alcance, vazio). */
-    private Set<UUID> reach(AccountPrincipal who, UUID unitId) {
+    Set<UUID> reach(AccountPrincipal who, UUID unitId) {
         if (who.role() == Role.ADMINISTRATOR) {
             Set<UUID> own = who.units() == null ? Set.of() : who.units();
             return unitId == null ? own : own.contains(unitId) ? Set.of(unitId) : Set.of();
@@ -114,6 +116,32 @@ public class Plans {
                     .list();
             return PageResponse.of(rows, page, total);
         });
+    }
+
+    /** RF-PLA-03: um plano por id; outra organização ou fora do alcance do Administrador é 404. */
+    public Row get(AccountPrincipal who, UUID id) {
+        requireAccess(who);
+        return transactions.execute(() -> {
+            Row r = jdbc.sql("select p.id, u.id, u.name, m.id, m.name, p.name, p.value_cents, p.weekly_frequency, p.valid_other_units, p.status "
+                    + "from plan p join unit u on u.id = p.unit_id join modality m on m.id = p.modality_id where p.organization_id = :org and p.id = :id")
+                    .param("org", who.organizationId()).param("id", id)
+                    .query((rs, n) -> new Row(rs.getObject(1, UUID.class), new Ref(rs.getObject(2, UUID.class), rs.getString(3)),
+                            new Ref(rs.getObject(4, UUID.class), rs.getString(5)), rs.getString(6), rs.getLong(7), (Integer) rs.getObject(8),
+                            rs.getBoolean(9), studentsUsing(new Scope(who.organizationId(), Set.of(rs.getObject(2, UUID.class)))), rs.getString(10)))
+                    .optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+            Set<UUID> reach = reach(who, r.unit().id());
+            if (reach != null && reach.isEmpty()) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+            return r;
+        });
+    }
+
+    /** Ponto único (RN-PLA-04): a Sprint 07 troca por contagem real de alunos no plano. */
+    int studentsAffected(UUID planId) {
+        return 0;
+    }
+
+    /** Ponto único (RN-PLA-05): a cobrança troca por reajuste real das cobranças não pagas e pagas futuras. Hoje não altera nada. */
+    void applyRepricing(UUID planId, long oldCents, long newCents, boolean adjustUnpaid, boolean chargePaidDifference) {
     }
 
     private PlanCounts counts(Scope scope) {

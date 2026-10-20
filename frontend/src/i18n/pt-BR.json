@@ -730,6 +730,63 @@
     }
   },
   "plans": {
+    "newButton": "Novo plano",
+    "actions": {
+      "label": "Ações",
+      "edit": "Editar",
+      "deactivate": "Desativar",
+      "activate": "Ativar",
+      "forRow": "{{action}} o plano {{name}}",
+      "failed": "Não foi possível concluir. Nada foi alterado. Tente de novo.",
+      "activateConflict": "Já existe um plano ativo com este nome na unidade e modalidade. Nada foi alterado."
+    },
+    "deactivateDialog": {
+      "title": "Desativar o plano {{name}}?",
+      "explain": "O plano deixa de ser oferecido em novas matrículas, mas continua na lista e nas matrículas que já o usam. Você pode ativá-lo de novo.",
+      "errors": {
+        "FORBIDDEN": "Você não tem permissão para isto. Nada foi alterado.",
+        "generic": "Não foi possível desativar. Nada foi alterado. Tente de novo."
+      }
+    },
+    "form": {
+      "newTitle": "Novo plano",
+      "editTitle": "Editar plano",
+      "choose": "Escolha",
+      "unit": "Unidade",
+      "unitRequired": "Escolha a unidade.",
+      "modality": "Modalidade",
+      "modalityRequired": "Escolha a modalidade.",
+      "noModalities": "Esta unidade não oferece modalidades ativas.",
+      "name": "Nome do plano",
+      "nameInvalid": "Informe um nome de 2 a 60 caracteres.",
+      "value": "Valor mensal (R$)",
+      "valueHelp": "Em reais, por exemplo 150,00. A cobrança é mensal.",
+      "valueInvalid": "Informe um valor de R$ 0,01 a R$ 999.999,99.",
+      "frequency": "Frequência semanal",
+      "frequencyHelp": "Só informa quantas vezes por semana o plano prevê.",
+      "frequencyOptions": { "2": "2x por semana", "3": "3x por semana", "free": "Livre" },
+      "validOtherUnits": "Vale em outras unidades",
+      "crossUnit": {
+        "allowed": "Esta organização permite treinar em outra unidade em todos os planos. Para mudar, use as configurações da organização.",
+        "denied": "Esta organização não permite treinar em outra unidade em nenhum plano. Para mudar, use as configurações da organização."
+      },
+      "impact": {
+        "title": "Efeito da mudança de valor",
+        "loading": "Calculando o efeito...",
+        "error": "Não foi possível calcular o efeito.",
+        "students": "Alunos afetados: {{count}}",
+        "from": "O novo valor vale a partir da próxima cobrança gerada. Cobrança já paga não muda.",
+        "unpaid": "Cobranças geradas e ainda não pagas",
+        "unpaidKeep": "Manter no valor antigo",
+        "unpaidAdjust": "Ajustar para o novo valor",
+        "paid": "Cobranças pagas de meses futuros",
+        "paidNone": "Não cobrar a diferença",
+        "paidCharge": "Cobrar a diferença em cobrança separada"
+      },
+      "save": "Salvar",
+      "conflict": "Já existe um plano ativo com este nome na unidade e modalidade. Nada foi alterado.",
+      "error": "Não foi possível salvar. Nada foi alterado. Tente de novo."
+    },
     "title": "Planos e benefícios",
     "intro": "Resumo dos planos e dos benefícios da unidade escolhida.",
     "emptyTitle": "Nenhum plano ainda",

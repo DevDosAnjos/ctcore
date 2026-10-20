@@ -76,6 +76,7 @@ export const resetMockSession = () => {
   staff = initialStaff();
   mockTeachers = initialTeachers();
   mockClasses = initialClasses();
+  mockPlans = initialPlans();
   lessonEdits.clear();
   mockAdhoc = [];
   mockNoClassDays = [];
@@ -178,12 +179,50 @@ const unauthenticated = () => error(401, "UNAUTHENTICATED", "Sem sessão.");
 const ADMIN_UNIT = "00000000-0000-0000-0000-000000000021";
 
 // RF-PLA-01/02: planos fictícios (3 ativos e 1 desativado); dois na unidade do Administrador, um em outra.
-const mockPlans = [
-  { id: "00000000-0000-0000-0000-000000000601", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 4, name: "Judô Mensal", valueCents: 15000, weeklyFrequency: 2 as 2 | 3 | null, status: "ACTIVE" },
-  { id: "00000000-0000-0000-0000-000000000602", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 3, name: "Jiu-Jitsu Livre", valueCents: 20000, weeklyFrequency: null, status: "ACTIVE" },
-  { id: "00000000-0000-0000-0000-000000000603", unitId: "00000000-0000-0000-0000-000000000022", unitName: "Unidade Norte", modalityIndex: 0, name: "Boxe 3x", valueCents: 30000, weeklyFrequency: 3 as 2 | 3 | null, status: "ACTIVE" },
-  { id: "00000000-0000-0000-0000-000000000604", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 4, name: "Judô Antigo", valueCents: 12000, weeklyFrequency: 2 as 2 | 3 | null, status: "INACTIVE" },
+const initialPlans = () => [
+  { id: "00000000-0000-0000-0000-000000000601", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 4, name: "Judô Mensal", valueCents: 15000, weeklyFrequency: 2 as 2 | 3 | null, validOtherUnits: false as boolean, status: "ACTIVE" as "ACTIVE" | "INACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000602", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 3, name: "Jiu-Jitsu Livre", valueCents: 20000, weeklyFrequency: null, validOtherUnits: false as boolean, status: "ACTIVE" as "ACTIVE" | "INACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000603", unitId: "00000000-0000-0000-0000-000000000022", unitName: "Unidade Norte", modalityIndex: 0, name: "Boxe 3x", valueCents: 30000, weeklyFrequency: 3 as 2 | 3 | null, validOtherUnits: false as boolean, status: "ACTIVE" as "ACTIVE" | "INACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000604", unitId: ADMIN_UNIT, unitName: "Unidade Centro", modalityIndex: 4, name: "Judô Antigo", valueCents: 12000, weeklyFrequency: 2 as 2 | 3 | null, validOtherUnits: false as boolean, status: "INACTIVE" as "ACTIVE" | "INACTIVE" },
 ];
+let mockPlans = initialPlans();
+type MockPlan = ReturnType<typeof initialPlans>[number];
+const planRow = ({ modalityIndex, unitName, unitId, ...x }: MockPlan) => ({
+  id: x.id,
+  unit: { id: unitId, name: unitName },
+  modality: modalityCatalog[modalityIndex],
+  name: x.name,
+  valueCents: x.valueCents,
+  weeklyFrequency: x.weeklyFrequency,
+  validOtherUnits: x.validOtherUnits,
+  studentsUsing: 0,
+  status: x.status,
+});
+// RF-PLA-03: escrita de planos; Coordenador e Administrador (só a unidade dele); demais 403. Unidade e modalidade não mudam ao editar.
+type PlanBody = { unitId?: string; modalityId?: string; name?: string; valueCents?: unknown; weeklyFrequency?: unknown; validOtherUnits?: boolean; unpaidCharges?: string; paidFutureDifference?: boolean };
+const planBad = (field: string, message = "inválido") => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+const planAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  const role = activeRole();
+  return role === "COORDINATOR" || role === "ADMINISTRATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+const planFor = (id: string) => {
+  const found = mockPlans.find((p) => p.id === id && (activeRole() === "COORDINATOR" || p.unitId === ADMIN_UNIT));
+  return found ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+const validCents = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 99_999_999;
+const planTaken = (unitId: string, modalityIndex: number, name: string, self?: string) =>
+  mockPlans.some((p) => p.id !== self && p.status === "ACTIVE" && p.unitId === unitId && p.modalityIndex === modalityIndex && teacherKey(p.name.trim()) === teacherKey(name));
+const planConflict = () => error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "name", message: "já existe um plano ativo com este nome na unidade e modalidade" }]);
+// Ao criar e ao editar: nome, valor e frequência; devolve os campos limpos ou a resposta 400.
+const planFields = (b: PlanBody) => {
+  const name = (b.name ?? "").trim();
+  if (name.length < 2 || name.length > 60) return planBad("name", "de 2 a 60 caracteres");
+  if (!validCents(b.valueCents)) return planBad("valueCents", "inteiro de 1 a 99999999 centavos");
+  if (b.weeklyFrequency !== null && b.weeklyFrequency !== undefined && b.weeklyFrequency !== 2 && b.weeklyFrequency !== 3) return planBad("weeklyFrequency", "2, 3 ou vazio (livre)");
+  if (b.unpaidCharges !== undefined && b.unpaidCharges !== "KEEP" && b.unpaidCharges !== "ADJUST") return planBad("unpaidCharges", "KEEP ou ADJUST");
+  return { name, valueCents: b.valueCents, weeklyFrequency: (b.weeklyFrequency ?? null) as 2 | 3 | null, validOtherUnits: b.validOtherUnits === true };
+};
 const defaultUnitSettings = () => ({
   dueDays: [1, 5, 10, 15],
   enrollmentFeeEnabled: false,
@@ -1441,17 +1480,7 @@ export const routes: Route[] = [
       const unitId = p.get("unitId");
       const found = mockPlans
         .filter((x) => role === "COORDINATOR" || x.unitId === ADMIN_UNIT)
-        .map(({ modalityIndex, unitName, ...x }) => ({
-          id: x.id,
-          unit: { id: x.unitId, name: unitName },
-          modality: modalityCatalog[modalityIndex],
-          name: x.name,
-          valueCents: x.valueCents,
-          weeklyFrequency: x.weeklyFrequency,
-          validOtherUnits: false,
-          studentsUsing: 0,
-          status: x.status,
-        }))
+        .map(planRow)
         .filter((x) => teacherKey(x.name).includes(q) && (!status || x.status === status))
         .filter((x) => !modalityId || x.modality.id === modalityId)
         .filter((x) => !unitId || x.unit.id === unitId)
@@ -1482,6 +1511,104 @@ export const routes: Route[] = [
         },
         benefits: { active: 0, high: 0 },
       });
+    },
+  },
+  {
+    // RF-PLA-03: opções da janela; unidades ativas do alcance com as modalidades ativas de cada uma e a configuração "Treinar em outra unidade".
+    method: "get",
+    path: "/plans/options",
+    resolver: () => {
+      const denied = planAccess();
+      if (denied) return denied;
+      const role = activeRole();
+      return HttpResponse.json({
+        crossUnitTraining: "plan",
+        units: units
+          .filter((u) => u.active && (role === "COORDINATOR" || u.id === ADMIN_UNIT))
+          .map((u) => ({ id: u.id, name: u.name, modalities: modalityCatalog.slice(0, 5) })),
+      });
+    },
+  },
+  {
+    // RF-PLA-03: cria plano ACTIVE; o Administrador só na unidade dele (403); homônimo ativo 409.
+    method: "post",
+    path: "/plans",
+    resolver: async ({ request }) => {
+      const denied = planAccess();
+      if (denied) return denied;
+      const b = (await request.json().catch(() => ({}))) as PlanBody;
+      const fields = planFields(b);
+      if (fields instanceof Response) return fields;
+      if (!b.unitId) return planBad("unitId", "obrigatório");
+      if (activeRole() === "ADMINISTRATOR" && b.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+      const unit = units.find((u) => u.id === b.unitId && u.active);
+      if (!unit) return planBad("unitId", "escolha uma unidade ativa da organização");
+      const modalityIndex = modalityCatalog.findIndex((m) => m.id === b.modalityId);
+      if (modalityIndex < 0 || modalityIndex > 4) return planBad("modalityId", "escolha uma modalidade ativa oferecida pela unidade");
+      if (planTaken(unit.id, modalityIndex, fields.name)) return planConflict();
+      const created: MockPlan = { id: crypto.randomUUID(), unitId: unit.id, unitName: unit.name, modalityIndex, status: "ACTIVE", ...fields };
+      mockPlans = [...mockPlans, created];
+      return HttpResponse.json(planRow(created), { status: 201 });
+    },
+  },
+  {
+    // RF-PLA-03: troca nome, valor, frequência e "vale em outras unidades"; unidade e modalidade não mudam (400); desativado 409.
+    method: "put",
+    path: "/plans/{id}",
+    resolver: async ({ request, params }) => {
+      const denied = planAccess();
+      if (denied) return denied;
+      const found = planFor(params.id as string);
+      if (found instanceof Response) return found;
+      const b = (await request.json().catch(() => ({}))) as PlanBody;
+      const fields = planFields(b);
+      if (fields instanceof Response) return fields;
+      if (b.unitId && b.unitId !== found.unitId) return planBad("unitId", "a unidade não muda");
+      if (b.modalityId && b.modalityId !== modalityCatalog[found.modalityIndex].id) return planBad("modalityId", "a modalidade não muda");
+      if (found.status === "INACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      if (planTaken(found.unitId, found.modalityIndex, fields.name, found.id)) return planConflict();
+      Object.assign(found, fields);
+      return HttpResponse.json(planRow(found));
+    },
+  },
+  {
+    // RN-PLA-04: impacto de mudar o valor; sem aluno nem cobrança ainda, 0 alunos e a partir da próxima cobrança gerada.
+    method: "get",
+    path: "/plans/{id}/value-impact",
+    resolver: ({ request, params }) => {
+      const denied = planAccess();
+      if (denied) return denied;
+      const found = planFor(params.id as string);
+      if (found instanceof Response) return found;
+      const raw = new URL(request.url).searchParams.get("valueCents");
+      if (!raw || !validCents(Number(raw))) return planBad("valueCents", "inteiro de 1 a 99999999 centavos");
+      return HttpResponse.json({ studentsAffected: 0, effectiveFrom: "NEXT_CHARGE" });
+    },
+  },
+  {
+    // RN-PLA-06: desativar e ativar são idempotentes; reativar com homônimo ativo 409; nada é apagado.
+    method: "post",
+    path: "/plans/{id}/deactivate",
+    resolver: ({ params }) => {
+      const denied = planAccess();
+      if (denied) return denied;
+      const found = planFor(params.id as string);
+      if (found instanceof Response) return found;
+      found.status = "INACTIVE";
+      return HttpResponse.json(planRow(found));
+    },
+  },
+  {
+    method: "post",
+    path: "/plans/{id}/activate",
+    resolver: ({ params }) => {
+      const denied = planAccess();
+      if (denied) return denied;
+      const found = planFor(params.id as string);
+      if (found instanceof Response) return found;
+      if (found.status === "INACTIVE" && planTaken(found.unitId, found.modalityIndex, found.name, found.id)) return planConflict();
+      found.status = "ACTIVE";
+      return HttpResponse.json(planRow(found));
     },
   },
   {
