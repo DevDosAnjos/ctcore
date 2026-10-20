@@ -69,7 +69,7 @@ O domínio é exemplo até a escolha do nome definitivo. `{unidade}` é um nome 
 | Equipe da plataforma · Suporte | Consulta organizações e chamados. Altera só com liberação do Coordenador |
 | Coordenador | Organização inteira: assinatura, unidades, configurações da organização, visão consolidada. Para operar uma unidade, entra nela |
 | Administrador | Tudo dentro das unidades a que está ligado |
-| Professor | Suas turmas: alunos, aulas, comunicados. Quatro permissões ligáveis por unidade |
+| Professor | Suas turmas: alunos, aulas, comunicados. Cinco permissões ligáveis por unidade, a ficha do aluno desligada por padrão |
 | Aluno | Próprios dados no portal |
 | Responsável | Dados dos alunos menores ligados a ele, no portal |
 

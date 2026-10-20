@@ -598,7 +598,8 @@ paths:
         Só modalidade ativa na organização pode ser marcada; inativa ou fora do catálogo responde 404. Repetir o valor responde 200 sem
         nova auditoria. Sem `If-Match`: cada marcação é independente e idempotente. Grava `unit.modality.offered` ou
         `unit.modality.withdrawn` na auditoria. Corpo sem `offered`, 400. Unidade de outra organização ou inexistente, 404; Professor,
-        portal e Administrador de outra unidade, 403.
+        portal e Administrador de outra unidade, 403. Desmarcar com turma ativa dessa modalidade na unidade responde 409
+        `UNIT_MODALITY_IN_USE`, `fields` traz um item `class` por turma que impede (o nome em `message`), em ordem de nome, e nada muda.
       security: [{ sessionCookie: [], csrfHeader: [] }]
       parameters:
         - { name: unitId, in: path, required: true, schema: { type: string, format: uuid } }
@@ -620,6 +621,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /modalities:
     get:
       summary: Catálogo de modalidades com a situação na organização do vínculo ativo (RF-MOD-01, RN-MOD-01).
@@ -802,13 +804,355 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /agenda:
+    get:
+      summary: Aulas do período e dias sem aula de uma unidade (RF-AGE-01). Coordenador, Administrador e Professor.
+      description: |
+        `from` e `to` (`yyyy-MM-dd`, `to` >= `from`, no máximo 31 dias) são obrigatórios. Ordenada por data e início. O Coordenador vê todas as
+        unidades; o Administrador, as dele (`unitId` fora do alcance ou desconhecido: 404); sem `unitId`, a primeira unidade do alcance por nome.
+        O Professor só vê aulas das turmas dele (titular ou auxiliar) ou em que é o professor da aula. Aluno e Responsável recebem 403.
+        `teacherId` filtra o professor da aula e `modalityId` a modalidade; combinam (E); id de outra organização devolve lista vazia.
+        A situação é calculada na leitura pelo relógio no fuso da unidade (início inclusive, término exclusive); `CANCELLED` vale sobre qualquer
+        horário e traz `cancelReason`. `canEdit` e `canCancel` são dicas (RN-AGE-08): quem grava confere de novo. Sem lista de espera nem presença.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: teacherId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Agenda do período.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Agenda' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /agenda/lessons:
+    post:
+      summary: Cria aula avulsa, sem turma (RF-AGE-04). Coordenador, Administrador e Professor com `AGENDA_EDIT`.
+      description: |
+        A aula avulsa não tem turma (`class` nulo) e traz `title`; `visibilityClassId` (turma ativa da mesma unidade) diz que turma a vê no portal,
+        ausente = todas as turmas da unidade (RN-AGE-12). `title` de 1 a 80 caracteres; `endsAt` depois de `startsAt`; início não fica no passado no
+        fuso da unidade (400 com o campo). A modalidade é ativa e oferecida pela unidade e o professor é ativo e ensina a modalidade (RN-PRO-06), de
+        qualquer unidade (422 em `modalityId` ou `teacherId`); turma de visibilidade desativada ou de outra unidade: 422 em `visibilityClassId`;
+        `substitute` é sempre falso. O Professor só cria aula em que ele é o professor (outro: 403) e só em unidade do alcance dele. Sem `AGENDA_EDIT`,
+        Aluno e Responsável: 403; unidade, turma de visibilidade de outra organização ou unidade fora do alcance do Administrador: 404. Grava
+        `lesson.created`, na mesma transação. A aula avulsa abre no painel, edita (só `THIS`) e cancela como as demais.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LessonCreateInput' } } }
+      responses:
+        '201':
+          description: Painel da aula criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /agenda/lessons/{id}:
+    get:
+      summary: Painel da aula (RF-AGE-02). Coordenador, Administrador e Professor.
+      description: |
+        Só leitura, sem auditoria. O Coordenador abre qualquer aula da organização; o Administrador, as de unidade dele (outra: 404). O Professor
+        abre as aulas das turmas dele (titular ou auxiliar) e, como substituto de outra turma (RN-PRO-06), só do início ao fim do dia da aula no fuso
+        da unidade; fora disso, 404. Aluno e Responsável recebem 403; aula inexistente ou de outra organização, 404. `head` (titular) só vem na
+        substituição. `activeStudents` e `trialClasses` valem 0 até as Sprints 07 e 18. `canEdit`, `canCancel` e `canViewClass` são dicas.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel da aula.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Edita a aula (RF-AGE-03). Coordenador, Administrador e Professor com `AGENDA_EDIT`.
+      description: |
+        `scope` `THIS` muda só a aula; `FOLLOWING` aplica horário e professor a ela e às seguintes (as seguintes que já têm substituto gravado mantêm o professor e o `substitute`; só data e horário mudam) da turma ainda não iniciadas (nem canceladas
+        nem concluídas) e desloca a data de cada uma pelo mesmo número de dias da mudança desta; tudo ou nada. O professor é ativo, da organização
+        e ensina a modalidade da turma, o titular inclusive (outro: 422 em `teacherId`); se não for o titular, `substitute` fica verdadeiro, e o titular da turma não muda.
+        A aula editada fica com `manually_edited`. Início no passado ou `endsAt` antes de `startsAt`: 400; mesmo dia e início de outra aula da turma:
+        409. Cancelada: 409. Concluída: só Coordenador e Administrador, em até 30 dias do término, só o professor (data e horário iguais), com
+        `reason` obrigatório; fora disso 409. Grava `lesson.updated`. Sem `AGENDA_EDIT`, 403; fora do alcance ou da visibilidade, 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LessonEditInput' } } }
+      responses:
+        '200':
+          description: Painel da aula atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /agenda/lessons/{id}/cancel:
+    post:
+      summary: Cancela a aula (RF-AGE-03). Coordenador, Administrador e Professor com `AGENDA_EDIT`.
+      description: |
+        Só aula agendada ou em andamento (concluída ou já cancelada: 409). `reason` é um dos quatro códigos; `reasonText` (até 200) é obrigatório
+        só em `OTHER` e ignorado nos demais. `channels` escolhe os canais do comunicado (o portal é sempre incluído); o envio é da Sprint 09, aqui
+        só vão para a auditoria. Com aula experimental marcada e sem `trialDecision`, 422 em `trialDecision`. Grava `lesson.cancelled`.
+        Cancela só a aula do id.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LessonCancelInput' } } }
+      responses:
+        '200':
+          description: Painel da aula cancelada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/LessonDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /no-class-days:
+    get:
+      summary: Dias sem aula da unidade e feriados sugeridos (RF-AGE-05). Coordenador e Administrador (`NO_CLASS_DAYS`).
+      description: |
+        Traz os dias da unidade cujo fim é hoje ou depois (fuso da unidade), por início, e `suggestions`: feriados nacionais dos próximos 12
+        meses (calculados no servidor) que ainda não viraram dia sem aula na unidade. Nada é gravado até a unidade confirmar. `unitId` ausente
+        escolhe a primeira unidade do alcance. `notice.status` é `NOT_NOTIFIED`, `SCHEDULED` ou `SENT` (o envio é da Sprint 09). Professor, Aluno e
+        Responsável: 403; unidade fora do alcance do Administrador ou de outra organização: 404.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Dias sem aula da unidade.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Lança dia ou período sem aula, um por unidade (RF-AGE-05). Coordenador (várias unidades) e Administrador (uma).
+      description: |
+        Tudo ou nada. `reason` de 1 a 120 caracteres; `startsOn` hoje ou depois no fuso de cada unidade; `endsOn` não antes de `startsOn`; período de
+        até 90 dias; `holiday` verdadeiro dá origem `HOLIDAY`, senão `COORDINATOR` ou `UNIT`. `classIds` vazio vale para todas as turmas; com
+        turmas, só uma unidade e turmas ativas dela (422 em `classIds`; turma de outra organização: 404). `notice.mode` `SCHEDULED` exige `sendAt`
+        futuro e antes do início do dia (400 em `notice`); nada é enviado nesta entrega. Cancela as aulas da unidade no período que ainda não
+        terminaram e não estão canceladas (`HOLIDAY` para feriado, senão `OTHER`, com o motivo como texto). Período sobreposto a outro dia da unidade:
+        409. Administrador com várias unidades: 400. Grava `no_class_day.created`. A mensalidade não muda (RN-AGE-11).
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayInput' } } }
+      responses:
+        '201':
+          description: Os dias criados, um por unidade.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/NoClassDayItem' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /no-class-days/preview:
+    get:
+      summary: Prévia das aulas que o dia sem aula cancelaria (RF-AGE-05). Coordenador e Administrador.
+      description: |
+        Mesmas validações do lançamento, menos o conflito de período; `unitIds` e `classIds` se repetem na consulta. Devolve, por unidade, as aulas
+        não terminadas e não canceladas do período. Não grava nada.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitIds, in: query, required: true, schema: { type: array, items: { type: string, format: uuid } }, style: form, explode: true }
+        - { name: startsOn, in: query, required: true, schema: { type: string, format: date } }
+        - { name: endsOn, in: query, required: true, schema: { type: string, format: date } }
+        - { name: classIds, in: query, required: false, schema: { type: array, items: { type: string, format: uuid } }, style: form, explode: true }
+      responses:
+        '200':
+          description: Aulas afetadas por unidade.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayPreview' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /no-class-days/{id}:
+    put:
+      summary: Edita um dia sem aula futuro (RF-AGE-05). Coordenador e Administrador.
+      description: |
+        Só dia cujo início é depois de hoje (senão 409). Altera período, motivo, turmas e aviso (a unidade e a origem não mudam; `unitIds` e
+        `holiday` são ignorados). As aulas que deixaram de ser afetadas voltam para Agendada e as recém afetadas são canceladas. Dia com aviso `SENT`
+        não muda o aviso (400 em `notice`). Mesmas validações do lançamento; 409 também para sobreposição. Grava `no_class_day.updated`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayInput' } } }
+      responses:
+        '200':
+          description: O dia atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NoClassDayItem' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: Desfaz um dia sem aula futuro (RF-AGE-05). Coordenador e Administrador.
+      description: |
+        Só dia cujo início é depois de hoje (senão 409). Apaga o dia e devolve para Agendada só as aulas que ele cancelou; cancelamento manual segue.
+        Cada unidade desfaz o seu. `notify` (padrão falso) só fica na auditoria até a Sprint 09. Grava `no_class_day.deleted`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: notify, in: query, required: false, schema: { type: boolean, default: false } }
+      responses:
+        '204': { description: Dia desfeito. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /classes:
+    get:
+      summary: Lista paginada de turmas da organização do vínculo ativo (RF-TUR-01). Coordenador e Administrador.
+      description: |
+        Ordenada por nome e depois id (`sort=name`). O Coordenador vê todas as unidades; o Administrador, as dele (`unitId` fora do alcance
+        devolve lista vazia). Professor, Aluno e Responsável recebem 403. Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e
+        maiúsculas; `teacherId` casa titular e auxiliar; `weekday` vai de 1 (segunda) a 7 (domingo); os filtros combinam (E).
+        `activeStudents` vale 0 até existir matrícula; `overCapacity` só avisa (RN-TUR-02). A resposta não traz link do grupo nem contato.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: teacherId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: ageRangeId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: weekday, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 7 } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, INACTIVE] } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
+      responses:
+        '200':
+          description: Página de turmas.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Cria uma turma (RF-TUR-03). Coordenador e Administrador.
+      description: |
+        Nasce `ACTIVE` na `unitId` informada. `name` de 2 a 80 (único entre turmas ativas da unidade, sem caixa nem acento; repetido dá 409 com
+        o campo `name`); `modalityId` ativa e oferecida pela unidade; `schedule` com ao menos um horário (um por dia de 1 a 7, `HH:mm`,
+        término depois do início); `capacity` opcional de 1 a 200 e nunca bloqueia; `headTeacherId` obrigatório; titular e auxiliares são
+        professores ativos da unidade que ensinam a modalidade da turma (RN-TUR-05; outro: 400 em `headTeacherId` ou `assistantIds`); `groupLink` opcional, `http` ou `https`, até 300. O Administrador só cria em unidade dele (outra: 403).
+        Grava `class.created`, sem o link do grupo. Sem presença nem frequência (RN-TUR-06).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ClassInput' } } }
+      responses:
+        '201':
+          description: Turma criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Já existe turma ativa com este nome na unidade (`fields[0]` = `name`).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /classes/options:
+    get:
+      summary: Opções do formulário de turma (RF-TUR-03). Coordenador e Administrador.
+      description: |
+        Unidades ativas do alcance do usuário (todas para o Coordenador; as dele para o Administrador), cada uma com as modalidades ativas
+        que oferece e os professores ativos dela (só id e nome), e as faixas etárias da organização. Professor, Aluno e Responsável recebem 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Opções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassOptions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /classes/{id}:
+    put:
+      summary: Edita a turma (RF-TUR-03). Coordenador e Administrador.
+      description: |
+        Substitui os campos de `ClassInput`, menos `unitId` (ignorado: a unidade não muda); horários e auxiliares são o conjunto completo.
+        Turma desativada dá 409; fora do alcance do Administrador ou de outra organização, 404. Capacidade abaixo dos alunos ativos salva
+        (só avisa). Quando o conjunto de horários muda, `scheduleChanged` é verdadeiro e `notifyClass` (padrão verdadeiro) vai para a
+        auditoria; as aulas futuras e o comunicado são de outros itens. Grava `class.updated`, sem o link do grupo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ClassInput' } } }
+      responses:
+        '200':
+          description: Painel da turma com `scheduleChanged`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Turma desativada, ou nome já usado por turma ativa da unidade (`fields[0]` = `name`).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    get:
+      summary: Painel da turma (RF-TUR-02). Coordenador e Administrador.
+      description: |
+        Mesma regra de alcance da lista: o Administrador só abre turma de unidade dele; fora dele, ou de outra organização, 404. Professor,
+        Aluno e Responsável recebem 403. `groupLink` só vem aqui (nunca na lista). `nextClass` é nulo até existirem aulas e `students` vem
+        vazia até existir matrícula; `primary` é falso no aluno que tem a turma como outro horário (RN-TUR-04). `deactivation.allowed` é
+        falso quando a turma já está desativada ou há alunos com ela como turma principal (RN-TUR-03). Sem presença nem frequência (RN-TUR-06).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel da turma.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /classes/{id}/deactivate:
+    post:
+      summary: Desativa a turma (RN-TUR-03). Coordenador e Administrador.
+      description: |
+        Só muda `status` para `INACTIVE`; nada é apagado e a turma continua na lista e no painel. Com aluno que a tem como turma principal,
+        409 `HAS_PRIMARY_STUDENTS` com `primaryStudents` em `fields`; turma já desativada, 409. Sem corpo. Mesmo alcance do painel.
+        Grava `class.deactivated`, sem dado pessoal.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Painel com `status` igual a `INACTIVE`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Turma já desativada, ou `HAS_PRIMARY_STUDENTS` (`fields[0]` = `primaryStudents`).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   /teachers:
     get:
       summary: Lista paginada de professores da organização do vínculo ativo (RF-PRO-01). Coordenador e Administrador.
       description: |
         Ordenada por nome e depois id (`sort=name`). O Coordenador vê todos; o Administrador vê os professores com ao menos uma das suas
         unidades (e todas as unidades deles); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e Responsável recebem 403.
-        Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros combinam (E). `classCount` é 0 até existirem turmas.
+        Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e maiúsculas; os filtros combinam (E). `classCount` conta as turmas ativas em que é titular ou auxiliar.
         `photoUrl` é uma URL temporária assinada. A resposta nunca traz telefone nem e-mail (RN-PRO-04).
       security: [{ sessionCookie: [] }]
       parameters:
@@ -861,7 +1205,9 @@ paths:
       description: |
         Substitui os campos do cadastro (unidades e modalidades como conjunto completo); não altera situação nem conta e vale também para
         professor inativo. O Administrador troca só as unidades dele e as de fora do alcance dele permanecem; sem alcance sobre o professor,
-        404. Mesmas validações de `POST /teachers`. Grava `teacher.updated`, sem e-mail nem telefone.
+        404. Mesmas validações de `POST /teachers`. Grava `teacher.updated`, sem e-mail nem telefone. Tirar uma modalidade em que o
+        professor é titular ou auxiliar de turma ativa responde 409 `TEACHER_MODALITY_IN_USE` (RN-PRO-09), `fields` com um item `class`
+        por turma que impede (o nome em `message`), e nada muda; turma desativada não impede.
       security: [{ sessionCookie: [], csrfHeader: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -876,6 +1222,7 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
     get:
       summary: Painel do professor (RF-PRO-02). Coordenador e Administrador.
       description: |
@@ -986,7 +1333,7 @@ paths:
     get:
       summary: Pré-visualiza a inativação do professor (RF-PRO-04). Coordenador e Administrador.
       description: |
-        Não altera nada. `headClasses` lista as turmas em que o professor é titular e que ficarão sem titular (vazia até a Sprint 05).
+        Não altera nada. `headClasses` lista as turmas em que o professor é titular e que ficarão sem titular (turmas ativas).
         `canDeactivate` é falso se o professor já está inativo ou, para o Administrador, se alguma unidade do professor (ativa ou não)
         está fora do alcance dele. Administrador sem alcance sobre o professor: 404.
       security: [{ sessionCookie: [] }]
@@ -1350,18 +1697,22 @@ components:
             - NOT_FOUND
             - METHOD_NOT_ALLOWED
             - CONFLICT
+            - UNPROCESSABLE
             - EDIT_CONFLICT
             - PRECONDITION_REQUIRED
             - UNIT_LIMIT_REACHED
             - UNIT_HAS_BLOCKERS
             - LAST_UNIT_ADMINISTRATOR
             - MODALITY_IN_USE
+            - UNIT_MODALITY_IN_USE
+            - TEACHER_MODALITY_IN_USE
             - MODALITY_NOT_ACTIVE
             - REQUEST_ALREADY_OPEN
             - ALREADY_IN_CATALOG
             - AGE_RANGE_NAME_TAKEN
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
+            - HAS_PRIMARY_STUDENTS
             - UNSUPPORTED_MEDIA_TYPE
             - INVALID_CREDENTIALS
             - TOO_MANY_REQUESTS
@@ -1540,6 +1891,305 @@ components:
         status: { type: string, enum: [ACTIVE, INACTIVE] }
         directoryConsent: { type: boolean }
         access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED], description: Estado do vínculo TEACHER da conta; NONE sem conta ou sem vínculo. }
+    ClassRow:
+      type: object
+      required: [id, name, unit, modality, ageRange, schedule, head, assistants, activeStudents, capacity, overCapacity, status]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        ageRange:
+          type: object
+          nullable: true
+          required: [id, name, minAge, maxAge]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            minAge: { type: integer }
+            maxAge: { type: integer, nullable: true }
+        schedule:
+          type: array
+          description: Um horário por dia da semana, ordenado por dia (1 segunda a 7 domingo); horas de parede da unidade (`HH:mm`).
+          items:
+            type: object
+            required: [weekday, startsAt, endsAt]
+            properties:
+              weekday: { type: integer, minimum: 1, maximum: 7 }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+        head: { $ref: '#/components/schemas/ClassRef' }
+        assistants: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+        activeStudents: { type: integer, minimum: 0 }
+        capacity: { type: integer, minimum: 1, maximum: 200, nullable: true }
+        overCapacity: { type: boolean, description: Verdadeiro quando `activeStudents` passa de `capacity`; só avisa. }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+    Agenda:
+      type: object
+      required: [units, unit, teachers, modalities, lessons, noClassDays]
+      properties:
+        units: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Unidades ativas do alcance. }
+        unit: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: A unidade escolhida; nula se o alcance não tem unidade. }
+        teachers: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Professores ativos da unidade (opções de filtro). }
+        modalities: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Modalidades oferecidas pela unidade (opções de filtro). }
+        lessons: { type: array, items: { $ref: '#/components/schemas/AgendaLesson' } }
+        noClassDays: { type: array, items: { $ref: '#/components/schemas/NoClassDay' } }
+    AgendaLesson:
+      type: object
+      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, title, unit, modality, teacher, substitute, canEdit, canCancel]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
+        cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
+        cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER], description: 'Só quando `CANCELLED`; nulo na aula cancelada por dia sem aula (o texto vem em `cancelReason`).' }
+        class: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Nula na aula avulsa. }
+        title: { type: string, nullable: true, description: Título da aula avulsa; nulo na aula de turma. }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        teacher: { $ref: '#/components/schemas/ClassRef', description: Professor da aula. }
+        substitute: { type: boolean }
+        canEdit: { type: boolean }
+        canCancel: { type: boolean }
+    LessonDetail:
+      type: object
+      required: [id, date, startsAt, endsAt, status, cancelReason, cancelReasonCode, class, title, visibilityClass, unit, modality, teacher, head, substitute, activeStudents, trialClasses, groupLink, canEdit, canCancel, canViewClass, followingEdited]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        status: { type: string, enum: [SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED] }
+        cancelReason: { type: string, nullable: true, description: Só quando `CANCELLED`. }
+        cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER], description: 'Só quando `CANCELLED`; nulo na aula cancelada por dia sem aula (o texto vem em `cancelReason`).' }
+        class: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Nula na aula avulsa. }
+        title: { type: string, nullable: true, description: Título da aula avulsa; nulo na aula de turma. }
+        visibilityClass: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Turma que vê a aula avulsa no portal; nula = todas as turmas da unidade. }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        teacher: { $ref: '#/components/schemas/ClassRef', description: Professor da aula. }
+        head: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true, description: Titular da turma; só na substituição. }
+        substitute: { type: boolean }
+        activeStudents: { type: integer, minimum: 0 }
+        trialClasses: { type: integer, minimum: 0 }
+        groupLink: { type: string, nullable: true }
+        canEdit: { type: boolean }
+        canCancel: { type: boolean }
+        canViewClass: { type: boolean, description: Verdadeiro só para quem gerencia turmas (`CLASSES_MANAGE`). }
+        followingEdited: { type: integer, minimum: 0, description: "Aulas seguintes da turma, ainda agendadas, alteradas à mão ou com substituto gravado, que editar \"esta e as seguintes\" (RN-AGE-04) atingiria: data e horário mudam, e as com substituto mantêm o substituto; 0 na aula avulsa." }
+    LessonCreateInput:
+      type: object
+      required: [unitId, title, modalityId, date, startsAt, endsAt, teacherId]
+      properties:
+        unitId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 80 }
+        modalityId: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '10:00' }
+        endsAt: { type: string, example: '11:30' }
+        teacherId: { type: string, format: uuid }
+        visibilityClassId: { type: string, format: uuid, nullable: true, description: Turma ativa da unidade; ausente ou nula = todas as turmas. }
+    LessonEditInput:
+      type: object
+      required: [scope, date, startsAt, endsAt, teacherId]
+      properties:
+        scope: { type: string, enum: [THIS, FOLLOWING] }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        teacherId: { type: string, format: uuid }
+        reason: { type: string, maxLength: 200, description: Obrigatório para aula concluída. }
+    LessonCancelInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER] }
+        reasonText: { type: string, maxLength: 200, description: Obrigatório em `OTHER`; ignorado nos demais. }
+        channels: { type: array, items: { type: string, enum: [EMAIL, WHATSAPP] } }
+        trialDecision: { type: string, enum: [REBOOK, CANCEL_TRIALS], description: Obrigatório se a aula tem experimental marcada. }
+    NoClassDay:
+      type: object
+      required: [startsOn, endsOn, reason]
+      properties:
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        reason: { type: string }
+    NoClassDayNoticeInput:
+      type: object
+      required: [mode]
+      properties:
+        mode: { type: string, enum: [NONE, NOW, SCHEDULED] }
+        sendAt: { type: string, format: date-time, description: Obrigatório em `SCHEDULED`; futuro e antes do início do dia. }
+    NoClassDayInput:
+      type: object
+      required: [unitIds, startsOn, endsOn, reason]
+      properties:
+        unitIds: { type: array, items: { type: string, format: uuid }, description: Uma unidade (Administrador) ou várias (Coordenador). Ignorado na edição. }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        reason: { type: string, minLength: 1, maxLength: 120 }
+        holiday: { type: boolean, description: Verdadeiro ao confirmar feriado sugerido; origem `HOLIDAY`. }
+        classIds: { type: array, items: { type: string, format: uuid }, description: Vazio ou ausente = todas as turmas. }
+        notice: { $ref: '#/components/schemas/NoClassDayNoticeInput' }
+    NoClassDayNotice:
+      type: object
+      required: [mode, sendAt, status]
+      properties:
+        mode: { type: string, enum: [NONE, NOW, SCHEDULED] }
+        sendAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [NOT_NOTIFIED, SCHEDULED, SENT] }
+    NoClassDayItem:
+      type: object
+      required: [id, unit, startsOn, endsOn, reason, origin, allClasses, classes, notice, cancelledLessons, canEdit]
+      properties:
+        id: { type: string, format: uuid }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        reason: { type: string }
+        origin: { type: string, enum: [HOLIDAY, COORDINATOR, UNIT] }
+        allClasses: { type: boolean }
+        classes: { type: array, items: { $ref: '#/components/schemas/ClassRef' }, description: Vazio quando `allClasses`. }
+        notice: { $ref: '#/components/schemas/NoClassDayNotice' }
+        cancelledLessons: { type: integer }
+        canEdit: { type: boolean, description: Dica; verdadeiro só se o início é depois de hoje. }
+    NoClassDaySuggestion:
+      type: object
+      required: [code, date]
+      properties:
+        code: { type: string, enum: [NEW_YEAR, GOOD_FRIDAY, TIRADENTES, LABOUR_DAY, INDEPENDENCE, APARECIDA, ALL_SOULS, REPUBLIC, BLACK_AWARENESS, CHRISTMAS] }
+        date: { type: string, format: date }
+    NoClassDayList:
+      type: object
+      required: [units, unit, days, suggestions]
+      properties:
+        units: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+        unit: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true }
+        days: { type: array, items: { $ref: '#/components/schemas/NoClassDayItem' } }
+        suggestions: { type: array, items: { $ref: '#/components/schemas/NoClassDaySuggestion' } }
+    NoClassDayPreviewLesson:
+      type: object
+      required: [id, date, startsAt, endsAt, class, title]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string }
+        endsAt: { type: string }
+        class: { allOf: [{ $ref: '#/components/schemas/ClassRef' }], nullable: true }
+        title: { type: string, nullable: true }
+    NoClassDayPreview:
+      type: object
+      required: [units]
+      properties:
+        units:
+          type: array
+          items:
+            type: object
+            required: [unit, lessons]
+            properties:
+              unit: { $ref: '#/components/schemas/ClassRef' }
+              lessons: { type: array, items: { $ref: '#/components/schemas/NoClassDayPreviewLesson' } }
+    ClassRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    ClassDetail:
+      allOf:
+        - $ref: '#/components/schemas/ClassRow'
+        - type: object
+          required: [groupLink, nextClass, students, deactivation]
+          properties:
+            groupLink: { type: string, nullable: true, description: URL do grupo; a tela só a abre se for http ou https. }
+            nextClass:
+              type: object
+              nullable: true
+              description: Primeira aula não cancelada que ainda não terminou (fuso da unidade); nulo se não houver.
+              required: [date, startsAt, endsAt]
+              properties:
+                date: { type: string, format: date }
+                startsAt: { type: string, example: '19:00' }
+                endsAt: { type: string, example: '20:00' }
+            students: { type: array, items: { $ref: '#/components/schemas/ClassStudent' } }
+            deactivation:
+              type: object
+              required: [allowed, blockingStudents]
+              properties:
+                allowed: { type: boolean }
+                blockingStudents: { type: integer, minimum: 0, description: Alunos com esta turma como principal. }
+            scheduleChanged: { type: boolean, description: 'Só nas respostas de PUT /classes/{id}; verdadeiro quando o conjunto de horários mudou.' }
+    ClassInput:
+      type: object
+      required: [name, modalityId, schedule, headTeacherId]
+      properties:
+        unitId: { type: string, format: uuid, description: Obrigatório na criação; ignorado na edição. }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        modalityId: { type: string, format: uuid }
+        ageRangeId: { type: string, format: uuid, nullable: true }
+        schedule:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [weekday, startsAt, endsAt]
+            properties:
+              weekday: { type: integer, minimum: 1, maximum: 7 }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+        capacity: { type: integer, minimum: 1, maximum: 200, nullable: true }
+        headTeacherId: { type: string, format: uuid }
+        assistantIds: { type: array, items: { type: string, format: uuid } }
+        groupLink: { type: string, nullable: true, maxLength: 300, description: '`http` ou `https`; vazio vira nulo.' }
+        notifyClass: { type: boolean, description: Só na edição; padrão verdadeiro quando os horários mudam; ignorado quando não mudam. }
+    ClassOptions:
+      type: object
+      required: [units, ageRanges]
+      properties:
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name, modalities, teachers]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              modalities: { type: array, items: { $ref: '#/components/schemas/ClassRef' } }
+              teachers:
+                type: array
+                description: Professores ativos da unidade, cada um com as modalidades que ensina (RN-TUR-05); a janela só oferece quem ensina a da turma.
+                items:
+                  type: object
+                  required: [id, name, modalityIds]
+                  properties:
+                    id: { type: string, format: uuid }
+                    name: { type: string }
+                    modalityIds: { type: array, items: { type: string, format: uuid } }
+        ageRanges:
+          type: array
+          items:
+            type: object
+            required: [id, name, minAge, maxAge]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              minAge: { type: integer }
+              maxAge: { type: integer, nullable: true }
+    ClassStudent:
+      type: object
+      required: [id, name, primary]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        primary: { type: boolean, description: Falso quando a turma é outro horário do aluno (RN-TUR-04). }
+    ClassList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/ClassRow' } }
     TeacherList:
       allOf:
         - $ref: '#/components/schemas/Page'
@@ -1563,7 +2213,7 @@ components:
         units: { $ref: '#/components/schemas/TeacherRow/properties/units' }
         classes:
           type: array
-          description: Turmas como titular ou auxiliar; vazia até a Sprint 05.
+          description: Turmas ativas como titular ou auxiliar, por nome (as mesmas contadas em `classCount`).
           items:
             type: object
             required: [id, name, role]
@@ -1573,12 +2223,12 @@ components:
               role: { type: string, enum: [HEAD, ASSISTANT] }
         upcomingClasses:
           type: array
-          description: Próximas aulas; vazia até a Sprint 05.
+          description: Até 10 próximas aulas não canceladas em que o professor dá a aula (titular ou substituto) ou é auxiliar da turma, por início. A aula avulsa traz `classId` nulo e o título em `name`.
           items:
             type: object
             required: [classId, name, startsAt]
             properties:
-              classId: { type: string, format: uuid }
+              classId: { type: string, format: uuid, nullable: true }
               name: { type: string }
               startsAt: { type: string, format: date-time }
         access: { type: string, enum: [NONE, PENDING, ACTIVE, ENDED] }
@@ -1588,7 +2238,7 @@ components:
       properties:
         headClasses:
           type: array
-          description: Turmas que ficarão sem titular; vazia até a Sprint 05.
+          description: Turmas ativas que ficarão sem titular.
           items:
             type: object
             required: [id, name, role]

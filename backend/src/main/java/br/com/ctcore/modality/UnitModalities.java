@@ -1,5 +1,6 @@
 package br.com.ctcore.modality;
 
+import br.com.ctcore.api.error.ApiError;
 import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
 import br.com.ctcore.api.error.ErrorCode;
@@ -57,6 +58,7 @@ public class UnitModalities {
                     .query(String.class).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
             boolean current = jdbc.sql("select offered from unit_modality where unit_id = :unit and modality_id = :id")
                     .param("unit", unitId).param("id", modalityId).query(Boolean.class).optional().orElse(false);
+            if (current && !offered) refuseIfClasses(unitId, modalityId);
             if (current != offered) {
                 jdbc.sql("insert into unit_modality (organization_id, unit_id, modality_id, offered) values (:org, :unit, :id, :offered) "
                         + "on conflict (unit_id, modality_id) do update set offered = :offered, updated_at = now()")
@@ -67,5 +69,12 @@ public class UnitModalities {
             }
             return new Item(modalityId, name, offered);
         });
+    }
+
+    /** RN-MOD-06: desmarcar na unidade exige que não haja turma ativa da modalidade nela; a recusa lista as turmas. */
+    private void refuseIfClasses(UUID unitId, UUID modalityId) {
+        List<ApiError.Field> classes = jdbc.sql("select name from training_class where unit_id = :unit and modality_id = :id and status = 'ACTIVE' order by name, id")
+                .param("unit", unitId).param("id", modalityId).query((rs, i) -> new ApiError.Field("class", rs.getString(1))).list();
+        if (!classes.isEmpty()) throw new ApiStatusException(ErrorCode.UNIT_MODALITY_IN_USE, classes);
     }
 }

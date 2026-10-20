@@ -27,6 +27,9 @@ class TeacherIT extends OrganizationBase {
 
     @org.junit.jupiter.api.AfterEach
     void clean() {
+        adminJdbc().update("delete from lesson");
+        adminJdbc().update("delete from training_class_assistant");
+        adminJdbc().update("delete from training_class");
         adminJdbc().update("delete from teacher_modality");
         adminJdbc().update("delete from organization_modality");
         adminJdbc().update("delete from teacher_unit");
@@ -98,6 +101,57 @@ class TeacherIT extends OrganizationBase {
 
     private void link(Tenant t, UUID account, String role, String status) {
         adminJdbc().update("insert into account_link (account_id, organization_id, role, status) values (?, ?, ?, ?)", account, t.orgId(), role, status);
+    }
+
+    private UUID classOf(Tenant t, String name, UUID modality, UUID head, String status, UUID... assistants) {
+        UUID id = UUID.randomUUID();
+        adminJdbc().update("insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, head_teacher_id, status) values (?, ?, ?, ?, ?, ?, ?, ?)",
+                id, t.orgId(), t.unitId(), name, name.toLowerCase(), modality, head, status);
+        for (UUID a : assistants) {
+            adminJdbc().update("insert into training_class_assistant (organization_id, class_id, teacher_id) values (?, ?, ?)", t.orgId(), id, a);
+        }
+        return id;
+    }
+
+    private void lesson(Tenant t, UUID klass, UUID modality, String title, int days, String start, UUID teacher, boolean cancelled) {
+        adminJdbc().update("insert into lesson (id, organization_id, unit_id, class_id, title, modality_id, lesson_date, starts_at, ends_at, teacher_id, cancelled) "
+                + "values (gen_random_uuid(), ?, ?, ?, ?, ?, current_date + ?, ?::time, ?::time + interval '1 hour', ?, ?)",
+                t.orgId(), t.unitId(), klass, title, klass == null ? modality : null, days, start, start, teacher, cancelled);
+    }
+
+    @Test
+    @DisplayName("RN-PRO-05, RN-PRO-06, RF-PRO-02: painel traz turmas como titular e auxiliar (coerente com classCount) e as próximas aulas do professor, do auxiliar e do substituto")
+    void panelClassesAndUpcoming() throws Exception {
+        var t = tenant();
+        UUID judo = modality("Judô");
+        UUID ana = teacher(t, "Ana", "ACTIVE", null, t.unitId());
+        UUID beto = teacher(t, "Beto", "ACTIVE", null, t.unitId());
+        UUID adulto = classOf(t, "Judô Adulto", judo, ana, "ACTIVE");
+        UUID kids = classOf(t, "Judô Kids", judo, beto, "ACTIVE", ana);
+        classOf(t, "Judô Antiga", judo, ana, "INACTIVE");
+        lesson(t, adulto, null, null, 1, "19:00", ana, false);
+        lesson(t, kids, null, null, 2, "18:00", beto, false);
+        lesson(t, adulto, null, null, 3, "19:00", beto, false);
+        lesson(t, adulto, null, null, 4, "19:00", ana, true);
+        lesson(t, adulto, null, null, -3, "19:00", ana, false);
+        lesson(t, null, judo, "Seminário", 5, "10:00", ana, false);
+        var c = who(t, Role.COORDINATOR);
+
+        var panel = body(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + ana), c).getResponse());
+        assertThat(panel.get("classes").findValuesAsText("name")).containsExactly("Judô Adulto", "Judô Kids");
+        assertThat(panel.get("classes").findValuesAsText("role")).containsExactly("HEAD", "ASSISTANT");
+        assertThat(panel.get("classes")).hasSize(body(get("", c)).get("items").findParents("classCount").stream()
+                .filter(r -> r.get("id").asText().equals(ana.toString())).findFirst().orElseThrow().get("classCount").asInt());
+        var next = panel.get("upcomingClasses");
+        assertThat(next.findValuesAsText("name")).containsExactly("Judô Adulto", "Judô Kids", "Seminário");
+        assertThat(next.get(0).get("classId").asText()).isEqualTo(adulto.toString());
+        assertThat(next.get(2).get("classId").isNull()).isTrue();
+        assertThat(next.get(0).get("startsAt").asText()).isNotBlank();
+
+        var substitute = body(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + beto), c).getResponse());
+        assertThat(substitute.get("upcomingClasses").findValuesAsText("name")).containsExactly("Judô Kids", "Judô Adulto");
+        var other = tenant();
+        assertThat(body(call(MockMvcRequestBuilders.get("/api/v1/teachers/" + ana), who(other, Role.COORDINATOR)).getResponse()).has("upcomingClasses")).isFalse();
     }
 
     @Test

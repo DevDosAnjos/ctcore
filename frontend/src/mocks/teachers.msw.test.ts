@@ -66,7 +66,7 @@ describe("painel do professor x OpenAPI (RF-PRO-02, CA10)", () => {
     await login("ana@exemplo.com");
     const data = await (await fetch(`/api/v1/teachers/${JOAO}`)).json();
     expect(Object.keys(data).sort()).toEqual([...openapi.components.schemas.TeacherDetail.required].sort());
-    expect(data).toMatchObject({ email: "joao.pereira@alfa.test", classes: [], upcomingClasses: [], access: "NONE" });
+    expect(data).toMatchObject({ email: "joao.pereira@alfa.test", classes: [{ id: "00000000-0000-0000-0000-000000000601", name: "Jiu-Jitsu Adulto", role: "ASSISTANT" }, { id: "00000000-0000-0000-0000-000000000602", name: "Judô Infantil", role: "HEAD" }], upcomingClasses: [], access: "NONE" });
     expect((await fetch("/api/v1/teachers/00000000-0000-0000-0000-0000000009ff")).status).toBe(404);
   });
 
@@ -159,7 +159,7 @@ describe("cadastro e edição do professor x OpenAPI (RF-PRO-03, CA13)", () => {
   it("Administrador só cria com a unidade dele (403 fora) e PUT mantém as unidades de fora do alcance", async () => {
     await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
     expect((await send("POST", "", valid({ unitIds: ["00000000-0000-0000-0000-000000000022"] }))).status).toBe(403);
-    const res = await send("PUT", `/${JOAO}`, valid({ name: "João P." }));
+    const res = await send("PUT", `/${JOAO}`, valid({ name: "João P.", modalities: [{ modalityId: JUDO, levelId: null, degree: null }, { modalityId: JIU, levelId: null, degree: null }] }));
     expect(res.status).toBe(200);
     expect((await res.json()).units.map((u: { id: string }) => u.id).sort()).toEqual([CENTRO, "00000000-0000-0000-0000-000000000022"]);
     expect((await send("PUT", `/${MARCOS}`, valid())).status).toBe(404);

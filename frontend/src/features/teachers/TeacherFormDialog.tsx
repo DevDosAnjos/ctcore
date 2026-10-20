@@ -74,6 +74,7 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
   const [removePhoto, setRemovePhoto] = useState(false);
   const [photoNotice, setPhotoNotice] = useState<string>();
   const [errors, setErrors] = useState<Errors>({});
+  const [blocking, setBlocking] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   // Cadastro já salvo, mas foto pendente: o envio da foto pode ser repetido sem salvar de novo (D1).
   const [saved, setSaved] = useState<TeacherDetail>();
@@ -150,7 +151,11 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
       await finish(current);
     } catch (e) {
       const next: Errors = {};
-      if (e instanceof ApiError && e.fields.length) for (const f of e.fields) next[FIELD[f.field] ?? "form"] = f.message;
+      // RN-PRO-09: modalidade retirada com turma ativa (409): mostra as turmas que impedem.
+      const inUse = e instanceof ApiError && e.code === "TEACHER_MODALITY_IN_USE";
+      setBlocking(inUse ? e.fields.filter((f) => f.field === "class").map((f) => f.message) : []);
+      if (inUse) next.modalities = t("teachers.form.modalityInUse");
+      else if (e instanceof ApiError && e.fields.length) for (const f of e.fields) next[FIELD[f.field] ?? "form"] = f.message;
       else next.form = t("teachers.form.error");
       setErrors(next);
     } finally {
@@ -287,6 +292,13 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
               <p id="teacher-modalities-erro" className="text-sm text-destructive">
                 {errors.modalities}
               </p>
+            )}
+            {errors.modalities && blocking.length > 0 && (
+              <ul className="list-disc pl-5 text-sm text-destructive">
+                {blocking.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
             )}
           </fieldset>
           <fieldset aria-describedby={errors.declared ? "teacher-declared-erro" : undefined}>

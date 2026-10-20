@@ -225,6 +225,28 @@ describe("TeacherFormDialog (RF-PRO-03, CA12)", () => {
     expect(sent[0]).toMatchObject({ method: "PUT", body: { name: "Ana Maria", unitIds: ["u1"], modalities: [{ modalityId: "m1", levelId: "l2", degree: 3 }] } });
   });
 
+  it("RN-PRO-09: modalidade retirada com turma ativa (409) mostra a mensagem e as turmas que impedem; o formulário continua aberto", async () => {
+    const user = userEvent.setup();
+    setup({ path: "/professores/t1" });
+    server.use(
+      http.put("/api/v1/teachers/t1", () =>
+        HttpResponse.json(
+          { code: "TEACHER_MODALITY_IN_USE", message: "x", changed: false, fields: [{ field: "class", message: "Jiu-Jitsu Adulto" }, { field: "class", message: "Jiu-Jitsu Kids" }] },
+          { status: 409 },
+        ),
+      ),
+    );
+    await screen.findByRole("heading", { name: "Ana Souza", level: 1 });
+    await user.click(await screen.findByRole("button", { name: "Editar" }));
+    const dialog = await screen.findByRole("dialog", { name: "Editar professor" });
+    await within(dialog).findByLabelText("Nome");
+    await user.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    expect(await within(dialog).findByText(/não pode deixar de ensinar uma modalidade/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Jiu-Jitsu Adulto")).toBeInTheDocument();
+    expect(within(dialog).getByText("Jiu-Jitsu Kids")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Editar professor" })).toBeInTheDocument();
+  });
+
   it("foto: o corte é enviado depois de salvar; se falhar, o cadastro fica salvo e dá para tentar de novo", async () => {
     const user = userEvent.setup();
     setup();

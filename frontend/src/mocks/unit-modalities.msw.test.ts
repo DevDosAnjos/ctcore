@@ -45,13 +45,32 @@ describe("modalidades da unidade x OpenAPI (RF-MOD-03, CA9)", () => {
     expect((await offer(FIRST, judo, { offered: true })).status).toBe(200);
     expect((await (await list(FIRST)).json()).items[1].offered).toBe(true);
     expect((await (await list(SECOND)).json()).items[1].offered).toBe(false);
-    expect((await (await offer(FIRST, judo, { offered: false })).json()).offered).toBe(false);
+    // Judô tem turma ativa na unidade (RN-MOD-06): desmarcar vale só para modalidade sem turma ativa.
+    expect((await (await offer(FIRST, boxe, { offered: false })).json()).offered).toBe(false);
 
     expect((await offer(FIRST, judo, {})).status).toBe(400);
     expect((await offer(FIRST, "00000000-0000-0000-0000-0000000009ff", { offered: true })).status).toBe(404);
     expect((await list("00000000-0000-0000-0000-0000000009ff")).status).toBe(404);
     for (const status of ["200", "400", "403", "404"]) expect(declared("/units/{unitId}/modalities/{modalityId}", "put")).toContain(status);
     for (const status of ["200", "403", "404"]) expect(declared("/units/{unitId}/modalities", "get")).toContain(status);
+  });
+
+  it("RN-MOD-06: desmarcar com turma ativa na unidade responde o 409 do contrato com as turmas; sem turma ativa, 200", async () => {
+    await login("ana@exemplo.com");
+    const catalog = await (await fetch("/api/v1/modalities")).json();
+    const judo = catalog.find((m: { name: string }) => m.name === "Judô").id;
+    const boxe = catalog.find((m: { name: string }) => m.name === "Boxe").id;
+    for (const id of [judo, boxe]) await fetch(`/api/v1/modalities/${id}/activation`, { method: "PUT", headers: json, body: JSON.stringify({ active: true }) });
+    await offer(FIRST, judo, { offered: true });
+    await offer(SECOND, boxe, { offered: true });
+    const refused = await offer(FIRST, judo, { offered: false });
+    expect(refused.status).toBe(409);
+    const body = await refused.json();
+    expect(body.code).toBe("UNIT_MODALITY_IN_USE");
+    expect(body.fields).toEqual([{ field: "class", message: "Judô Infantil" }]);
+    expect((await (await list(FIRST)).json()).items.find((m: { id: string }) => m.id === judo).offered).toBe(true);
+    expect((await offer(SECOND, boxe, { offered: false })).status).toBe(200);
+    expect(declared("/units/{unitId}/modalities/{modalityId}", "put")).toContain("409");
   });
 
   it("Professor recebe 403 nas duas rotas", async () => {

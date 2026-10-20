@@ -101,6 +101,8 @@ class DailyJob {
 
 O agendador padrão tem um thread: ao ter mais de uma tarefa real, ajuste `spring.task.scheduling.pool.size`.
 
+**Aulas da agenda (RN-AGE-01).** `LessonGenerationJob` (pacote `agenda`) roda às 03:00 UTC e mantém 8 semanas de aulas das turmas ativas, uma organização por vez. Em ambiente local o seed não cria aulas: elas aparecem no próximo disparo das 03:00 UTC ou na hora, ao criar uma turma ou mudar os horários dela pela tela (`ClassScheduleChange`). `runOnce()` dispara a geração de todas as organizações ativas e é o que os testes usam (`LessonGenerationIT`); não há rota para chamá-lo. Ver o README da raiz, "Aulas na Agenda".
+
 **Recursos por organização** (`features/FeatureFlags`, tabela `organization_feature`). Sem linha, o recurso está desligado (RN-PNL-07). Cada recurso tem uma constante de chave (`[a-z][a-z0-9-]*`, até 64) no item que o cria; não há cache, a mudança vale na próxima consulta.
 
 ```java

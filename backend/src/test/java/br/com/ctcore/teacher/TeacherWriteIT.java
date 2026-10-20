@@ -38,6 +38,8 @@ class TeacherWriteIT extends OrganizationBase {
 
     @AfterEach
     void clean() {
+        adminJdbc().update("delete from training_class_assistant");
+        adminJdbc().update("delete from training_class");
         adminJdbc().update("delete from teacher_modality");
         adminJdbc().update("delete from teacher_unit");
         adminJdbc().update("delete from teacher");
@@ -129,6 +131,48 @@ class TeacherWriteIT extends OrganizationBase {
 
     private String photoColumn(UUID id) {
         return adminJdbc().queryForObject("select photo from teacher where id = ?", String.class, id);
+    }
+
+    private UUID classOf(Tenant t, String name, UUID modality, UUID head, String status, UUID... assistants) {
+        UUID id = UUID.randomUUID();
+        adminJdbc().update("insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, head_teacher_id, status) values (?, ?, ?, ?, ?, ?, ?, ?)",
+                id, t.orgId(), t.unitId(), name, name.toLowerCase(), modality, head, status);
+        for (UUID a : assistants) {
+            adminJdbc().update("insert into training_class_assistant (organization_id, class_id, teacher_id) values (?, ?, ?)", t.orgId(), id, a);
+        }
+        return id;
+    }
+
+    @Test
+    @DisplayName("RN-PRO-09: tirar uma modalidade em que é titular ou auxiliar de turma ativa dá 409 listando as turmas; turma desativada não impede; nada muda")
+    void removingTaughtModalityIsRefused() throws Exception {
+        var t = tenant();
+        UUID judo = modality("Judô", true, false, t);
+        UUID boxe = modality("Boxe", true, false, t);
+        UUID ana = create(t, mod(input("Ana", t.unitId()), judo, null, null));
+        UUID beto = create(t, mod(input("Beto", t.unitId()), judo, null, null));
+        classOf(t, "Judô Adulto", judo, ana, "ACTIVE");
+        classOf(t, "Judô Kids", judo, beto, "ACTIVE", ana);
+        classOf(t, "Judô Antiga", judo, ana, "INACTIVE");
+        var coordinator = who(t, Role.COORDINATOR);
+
+        var r = send(HttpMethod.PUT, "/" + ana, mod(input("Ana", t.unitId()), boxe, null, null), coordinator);
+        assertThat(r.getStatus()).as(r.getContentAsString()).isEqualTo(409);
+        var body = json.readTree(r.getContentAsString());
+        assertThat(body.get("code").asText()).isEqualTo("TEACHER_MODALITY_IN_USE");
+        assertThat(body.get("fields").findValuesAsText("message")).containsExactly("Judô Adulto", "Judô Kids");
+        assertThat(adminJdbc().queryForObject("select count(*) from teacher_modality where teacher_id = ? and modality_id = ?", Integer.class, ana, judo)).isEqualTo(1);
+        assertThat(audits(t, "teacher.updated")).isEmpty();
+
+        // manter a modalidade e acrescentar outra vale; Beto é titular de Judô Kids, então trocar Judô por Boxe também é recusado
+        var keep = input("Ana", t.unitId());
+        keep.putArray("modalities").addObject().put("modalityId", judo.toString()).putNull("levelId").putNull("degree");
+        keep.withArray("modalities").addObject().put("modalityId", boxe.toString()).putNull("levelId").putNull("degree");
+        ok(send(HttpMethod.PUT, "/" + ana, keep, coordinator), 200);
+        ok(send(HttpMethod.PUT, "/" + beto, mod(input("Beto", t.unitId()), boxe, null, null), coordinator), 409);
+
+        adminJdbc().update("update training_class set status = 'INACTIVE'");
+        ok(send(HttpMethod.PUT, "/" + ana, mod(input("Ana", t.unitId()), boxe, null, null), coordinator), 200);
     }
 
     @Test

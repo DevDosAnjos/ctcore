@@ -63,7 +63,7 @@ Liga cada código dos documentos antigos aos códigos desta especificação, com
 | `G:RF-USU-01` | Lista da equipe com perfil e último acesso | `RF-ACE-06` | Mantido |  |
 | `G:RF-USU-02` | Convidar usuário com e-mail e perfil | `RF-ACE-06`, `RN-ACE-05` | Alterado | Convites em cascata: Coordenador convida Administradores; Administrador, Professores. |
 | `G:RF-USU-03` | Reenviar convite não aceito | `RF-ACE-06`, `RN-ACE-13` | Mantido |  |
-| `G:RF-USU-04` | Quadro de perfis Administrador e Professor | `02` (Permissões) | Alterado | Três perfis e quatro permissões do Professor por unidade. |
+| `G:RF-USU-04` | Quadro de perfis Administrador e Professor | `02` (Permissões) | Alterado | Três perfis e cinco permissões do Professor por unidade (a quinta, "ver ficha do aluno", vem desligada por padrão). |
 | `G:RF-USU-05` | Aba com contas do portal | `RF-ALU-03` | Alterado | Acesso ao portal aparece na ficha do aluno, sem aba própria. |
 | `G:RF-USU-06` | Contagem de acessos e convites pendentes do portal | `RF-INI-02` | Alterado | Convites não aceitos vão para o "Precisa de atenção". |
 | `G:RF-USU-07` | Enviar acesso ao portal, um ou todos | `RN-MAT-08`, `RF-IMP-03` | Alterado | Convite sai sozinho na matrícula; envio em massa após importação. |

@@ -36,8 +36,9 @@ public class Teachers {
     private static final Logger LOG = LoggerFactory.getLogger(Teachers.class);
     static final Set<String> SORT = Set.of("name");
     private static final Set<String> STATUSES = Set.of("ACTIVE", "INACTIVE");
-    /** Turmas só existem a partir da Sprint 05 (D4): ponto único a trocar por contagem real. */
-    private static final int CLASS_COUNT = 0;
+    /** Turmas ativas em que o professor é titular ou auxiliar (ponto único da contagem). */
+    private static final String CLASS_COUNT = "(select count(*) from training_class c where c.organization_id = t.organization_id and c.status = 'ACTIVE' "
+            + "and (c.head_teacher_id = t.id or exists (select 1 from training_class_assistant a where a.class_id = c.id and a.teacher_id = t.id)))";
 
     public record UnitRef(UUID id, String name) {}
 
@@ -46,7 +47,7 @@ public class Teachers {
     public record Row(UUID id, String name, String photoUrl, List<ModalityRef> modalities, List<UnitRef> units, int classCount,
             String status, boolean directoryConsent, String access) {}
 
-    /** Turmas e aulas (D1): sem tipo próprio até a Sprint 05; hoje a lista é sempre vazia. */
+    /** Turma ativa do professor; {@code role} é HEAD (titular). */
     public record ClassRef(UUID id, String name, String role) {}
 
     public record UpcomingClass(UUID classId, String name, java.time.OffsetDateTime startsAt) {}
@@ -58,7 +59,7 @@ public class Teachers {
     record Basic(UUID id, String name, String photo, String bio, String email, String phone, boolean consent, boolean declared, String status,
             UUID accountId, String access) {}
 
-    private record Head(UUID id, String name, String photo, String status, boolean consent, String access) {}
+    private record Head(UUID id, String name, String photo, String status, boolean consent, String access, int classCount) {}
 
     private record Loaded(long total, List<Head> heads, Map<UUID, List<UnitRef>> units, Map<UUID, List<ModalityRef>> modalities) {}
 
@@ -109,12 +110,12 @@ public class Teachers {
 
         Loaded loaded = transactions.execute(() -> {
             long total = jdbc.sql("select count(*) from teacher t where " + where).params(params).query(Long.class).single();
-            List<Head> heads = jdbc.sql("select t.id, t.name, t.photo, t.status, t.directory_consent, coalesce(l.status, 'NONE') from teacher t "
+            List<Head> heads = jdbc.sql("select t.id, t.name, t.photo, t.status, t.directory_consent, coalesce(l.status, 'NONE'), " + CLASS_COUNT + " from teacher t "
                     + "left join account_link l on l.organization_id = t.organization_id and l.account_id = t.account_id and l.role = 'TEACHER' "
                     + "where " + where + " order by " + order + " limit :limit offset :offset")
                     .params(params).param("limit", page.size()).param("offset", page.offset())
                     .query((rs, n) -> new Head(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
-                            rs.getBoolean(5), rs.getString(6))).list();
+                            rs.getBoolean(5), rs.getString(6), rs.getInt(7))).list();
             List<UUID> ids = heads.stream().map(Head::id).toList();
             Map<UUID, List<UnitRef>> units = new HashMap<>();
             Map<UUID, List<ModalityRef>> modalities = new HashMap<>();
@@ -122,7 +123,7 @@ public class Teachers {
             return new Loaded(total, heads, units, modalities);
         });
         List<Row> rows = loaded.heads().stream().map(h -> new Row(h.id(), h.name(), photoUrl(h.photo()),
-                loaded.modalities().getOrDefault(h.id(), List.of()), loaded.units().getOrDefault(h.id(), List.of()), CLASS_COUNT,
+                loaded.modalities().getOrDefault(h.id(), List.of()), loaded.units().getOrDefault(h.id(), List.of()), h.classCount(),
                 h.status(), h.consent(), h.access())).toList();
         return PageResponse.of(rows, page, loaded.total());
     }
@@ -147,7 +148,7 @@ public class Teachers {
                 }).list();
     }
 
-    /** RF-PRO-02: o painel. Contato só aqui (D2). Turmas e aulas vêm vazias até a Sprint 05 (D1): ponto único abaixo. */
+    /** RF-PRO-02: o painel. Contato só aqui (D2). Aulas vêm vazias até a Sprint 05. */
     public Detail get(AccountPrincipal who, UUID id) {
         requireAccess(who);
         return transactions.execute(() -> detail(who, id));
@@ -181,12 +182,31 @@ public class Teachers {
         Map<UUID, List<ModalityRef>> modalities = new HashMap<>();
         refs(who.organizationId(), List.of(id), units, modalities);
         return new Detail(b.id(), b.name(), photoUrl(b.photo()), b.bio(), b.email(), b.phone(), b.consent(), b.declared(), b.status(),
-                modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), headClasses(id), List.of(), b.access());
+                modalities.getOrDefault(id, List.of()), units.getOrDefault(id, List.of()), classes(id), upcoming(id), b.access());
     }
 
-    /** RN-PRO-05: turmas em que o professor é titular. Turmas só nascem na Sprint 05 (D1): ponto único a trocar. */
+    /** RF-PRO-02: turmas ativas como titular ou auxiliar (as mesmas do classCount). Roda dentro da transação da organização. */
+    List<ClassRef> classes(UUID teacherId) {
+        return jdbc.sql("select c.id, c.name, case when c.head_teacher_id = :id then 'HEAD' else 'ASSISTANT' end from training_class c "
+                + "where c.status = 'ACTIVE' and (c.head_teacher_id = :id or exists (select 1 from training_class_assistant a where a.class_id = c.id and a.teacher_id = :id)) "
+                + "order by c.name_key, c.id").param("id", teacherId)
+                .query((rs, n) -> new ClassRef(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3))).list();
+    }
+
+    /** RF-PRO-02, RN-PRO-06: próximas aulas não canceladas em que o professor dá a aula (titular ou substituto) ou é auxiliar da turma; a avulsa traz o título. */
+    List<UpcomingClass> upcoming(UUID teacherId) {
+        return jdbc.sql("select l.class_id, coalesce(c.name, l.title), ((l.lesson_date + l.starts_at) at time zone u.timezone) from lesson l "
+                + "join unit u on u.id = l.unit_id left join training_class c on c.id = l.class_id "
+                + "where not l.cancelled and ((l.lesson_date + l.ends_at) at time zone u.timezone) > now() "
+                + "and (l.teacher_id = :id or exists (select 1 from training_class_assistant a where a.class_id = l.class_id and a.teacher_id = :id)) "
+                + "order by 3, 2 limit 10").param("id", teacherId)
+                .query((rs, n) -> new UpcomingClass(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, java.time.OffsetDateTime.class))).list();
+    }
+
+    /** RN-PRO-05: turmas ativas em que o professor é titular. Roda dentro da transação da organização. */
     List<ClassRef> headClasses(UUID teacherId) {
-        return List.of();
+        return jdbc.sql("select id, name from training_class where head_teacher_id = :id and status = 'ACTIVE' order by name_key, id")
+                .param("id", teacherId).query((rs, n) -> new ClassRef(rs.getObject(1, UUID.class), rs.getString(2), "HEAD")).list();
     }
 
     String photoUrl(String photo) {

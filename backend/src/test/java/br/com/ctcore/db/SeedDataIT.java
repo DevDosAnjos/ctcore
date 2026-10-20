@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -48,7 +48,7 @@ class SeedDataIT extends PostgresIT {
     // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
     @org.junit.jupiter.api.AfterEach
     void cleanTeachers() {
-        for (String table : new String[]{"teacher_modality", "teacher_unit", "teacher"}) {
+        for (String table : new String[]{"lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher"}) {
             jdbc.update("delete from " + table);
         }
     }
@@ -188,6 +188,20 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from teacher where status = 'INACTIVE'", Integer.class)).isEqualTo(3);
         assertThat(jdbc.queryForObject("select count(*) from teacher_unit", Integer.class)).isEqualTo(9);
         assertThat(jdbc.queryForObject("select count(*) from teacher_modality", Integer.class)).isEqualTo(12);
+    }
+
+    @Test
+    @DisplayName("RF-TUR-01: seed cria 3 turmas em cada uma das 3 organizações, sem duplicar, com horários e auxiliar")
+    void classesSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from training_class", Integer.class)).isEqualTo(9);
+        assertThat(jdbc.queryForObject("select count(*) from training_class where status = 'INACTIVE'", Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from training_class_schedule", Integer.class)).isEqualTo(15);
+        assertThat(jdbc.queryForObject("select count(*) from training_class_assistant", Integer.class)).isEqualTo(3);
+        // RN-TUR-05, RN-PRO-09: titular e auxiliares do seed ensinam a modalidade da turma.
+        assertThat(jdbc.queryForObject("select count(*) from training_class c where not exists (select 1 from teacher_modality tm where tm.teacher_id = c.head_teacher_id and tm.modality_id = c.modality_id) "
+                + "or exists (select 1 from training_class_assistant a where a.class_id = c.id and not exists (select 1 from teacher_modality tm where tm.teacher_id = a.teacher_id and tm.modality_id = c.modality_id))", Integer.class)).isZero();
     }
 
     @Test

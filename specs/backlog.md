@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 04 · Modalidades, faixas etárias, graduação e professores. O dono confirmou em 18/10/2026 que revisou a Sprint 03 e fez o PR dev→main (#260). Só o dono libera a seguinte.
+Sprint liberada: Sprint 05 · Turmas e agenda. O dono confirmou em 19/10/2026 que revisou a Sprint 04 e fez o PR dev→main (#273). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -54,14 +54,14 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 43 | RF-PRO-02 · Painel do professor | issue #43 | Sprint 04 | — | agente | feito |
 | 44 | RF-PRO-03 · Cadastro e edição de professor | issue #44 | Sprint 04 | — | agente | feito |
 | 45 | RF-PRO-04 · Inativar professor | issue #45 | Sprint 04 | — | agente | feito |
-| 46 | RF-TUR-01 · Operação › Turmas (lista) | issue #46 | Sprint 05 | — | agente | a fazer |
-| 47 | RF-TUR-02 · Painel da turma | issue #47 | Sprint 05 | — | agente | a fazer |
-| 48 | RF-TUR-03 · Janela de turma | issue #48 | Sprint 05 | — | agente | a fazer |
-| 49 | RF-AGE-01 · Operação › Agenda | issue #49 | Sprint 05 | — | agente | a fazer |
-| 50 | RF-AGE-02 · Painel da aula | issue #50 | Sprint 05 | — | agente | a fazer |
-| 51 | RF-AGE-03 · Editar e cancelar aula | issue #51 | Sprint 05 | — | agente | a fazer |
-| 52 | RF-AGE-04 · Nova aula avulsa | issue #52 | Sprint 05 | — | agente | a fazer |
-| 53 | RF-AGE-05 · Dias sem aula | issue #53 | Sprint 05 | — | agente | a fazer |
+| 46 | RF-TUR-01 · Operação › Turmas (lista) | issue #46 | Sprint 05 | — | agente | feito |
+| 47 | RF-TUR-02 · Painel da turma | issue #47 | Sprint 05 | — | agente | feito |
+| 48 | RF-TUR-03 · Janela de turma | issue #48 | Sprint 05 | — | agente | feito |
+| 49 | RF-AGE-01 · Operação › Agenda | issue #49 | Sprint 05 | — | agente | feito |
+| 50 | RF-AGE-02 · Painel da aula | issue #50 | Sprint 05 | — | agente | feito |
+| 51 | RF-AGE-03 · Editar e cancelar aula | issue #51 | Sprint 05 | — | agente | feito |
+| 52 | RF-AGE-04 · Nova aula avulsa | issue #52 | Sprint 05 | — | agente | feito |
+| 53 | RF-AGE-05 · Dias sem aula | issue #53 | Sprint 05 | — | agente | feito |
 | 54 | Cadastro de aluno e responsáveis no servidor | issue #54 | Sprint 06 | — | agente | a fazer |
 | 55 | RF-PLA-01 · Financeiro › Planos e benefícios | issue #55 | Sprint 06 | — | agente | a fazer |
 | 56 | RF-PLA-02 · Tabela de planos | issue #56 | Sprint 06 | — | agente | a fazer |
@@ -214,3 +214,8 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
 | — | nenhuma (P1 respondida pelo dono em 19/10/2026: opção recomendada, já implementada na #45) | — | — | — |
+
+## Encaixes para as próximas sprints
+
+- **Sprint 06, ficha do aluno (#60, junto de #58 e #61):** permissão do Professor por unidade: ver ficha do aluno (padrão desligada); implementar junto da ficha, com migração do vetor `teacher_permissions` de 4 para 5, tela de configurações da unidade, `PermissionTable`, openapi e testes. Decisão do dono de 20/10/2026, só especificação até lá (`docs/especificacao/02`, `08`, `15`). Sem a chave, o Professor continua vendo os alunos da turma ou da aula como lista simples (RN-PRO-06). Ainda não há arquivo de item para #58 a #61; quem especificar a ficha lê este encaixe.
+- **Sprint 07, matrícula (#63) e benefícios (#66):** os encaixes de `ModalityUsage.activeStudents` e da RN-PRO-08 estão no fim do corpo das issues #63 e #66.
