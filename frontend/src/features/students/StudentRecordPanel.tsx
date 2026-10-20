@@ -3,6 +3,9 @@ import { useTranslation } from "react-i18next";
 import { SidePanel } from "@/components/SidePanel";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { WhatsAppButton } from "@/components/whatsapp";
+import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/features/permissions/usePermissions";
+import { StudentEditDialog } from "./StudentEditDialog";
 import { RecordGuardians } from "./RecordGuardians";
 import { RecordHistory } from "./RecordHistory";
 import { RecordSummary } from "./RecordSummary";
@@ -21,7 +24,7 @@ const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join("");
 
-function Header({ record }: { record: StudentRecord }) {
+function Header({ record, onEdit }: { record: StudentRecord; onEdit?: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -44,6 +47,11 @@ function Header({ record }: { record: StudentRecord }) {
         </div>
       </div>
       <WhatsAppButton phone={record.contact?.phone ?? undefined} />
+      {onEdit && (
+        <Button type="button" variant="outline" className="min-h-11" onClick={onEdit}>
+          {t("students.edit.button")}
+        </Button>
+      )}
     </div>
   );
 }
@@ -84,17 +92,30 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
   );
 }
 
-function Body({ id }: { id: string }) {
+function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
   const { t } = useTranslation();
   const { status, data, reload } = useStudentRecord(id);
+  const { permissions } = usePermissions();
   const [tab, setTab] = useState<Tab>("summary");
+  const [editing, setEditing] = useState(false);
+  // Só a gestão vê o botão; a barreira é o servidor.
+  const canEdit = !!permissions && permissions.STUDENT_MANAGE !== "NONE";
   if (status === "loading") return <LoadingState />;
   if (status === "forbidden") return <ForbiddenState />;
   if (status === "notFound") return <EmptyState title={t("students.record.notFound")} text={t("students.record.notFoundText")} />;
   if (status === "error" || !data) return <ErrorState onRetry={reload} />;
   return (
     <div className="flex flex-col gap-4">
-      <Header record={data} />
+      <Header record={data} onEdit={canEdit ? () => setEditing(true) : undefined} />
+      <StudentEditDialog
+        studentId={id}
+        open={editing}
+        onClose={() => setEditing(false)}
+        onSaved={() => {
+          reload();
+          onChanged?.();
+        }}
+      />
       <Tabs tab={tab} onChange={setTab} />
       <div role="tabpanel" id={`record-panel-${tab}`} aria-labelledby={`record-tab-${tab}`}>
         {tab === "summary" && <RecordSummary record={data} />}
@@ -107,11 +128,11 @@ function Body({ id }: { id: string }) {
 }
 
 // RF-ALU-03: ficha em painel lateral (tela cheia no celular). O servidor decide o que cada perfil vê; aqui só se mostra o que veio.
-export function StudentRecordPanel({ id, onClose }: { id: string; onClose: () => void }) {
+export function StudentRecordPanel({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged?: () => void }) {
   const { t } = useTranslation();
   return (
     <SidePanel open onOpenChange={(open) => !open && onClose()} title={t("students.record.title")}>
-      <Body key={id} id={id} />
+      <Body key={id} id={id} onChanged={onChanged} />
     </SidePanel>
   );
 }

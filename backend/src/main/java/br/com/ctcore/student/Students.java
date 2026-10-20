@@ -213,9 +213,10 @@ public class Students {
     }
 
     /** Roda dentro da transação da organização. */
-    Optional<Ref> byNameAndBirth(UUID organizationId, String nameKey, LocalDate birthDate) {
+    Optional<Ref> byNameAndBirth(UUID organizationId, String nameKey, LocalDate birthDate, UUID except) {
         return jdbc.sql("select id, name, photo from student where organization_id = :org and name_key = :key and birth_date = :birth "
-                + "order by created_at, id limit 1").param("org", organizationId).param("key", nameKey).param("birth", birthDate)
+                + "and id <> :except order by created_at, id limit 1").param("org", organizationId)
+                .param("key", nameKey).param("birth", birthDate).param("except", except == null ? new UUID(0, 0) : except)
                 .query((rs, n) -> new Ref(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)))).optional();
     }
 

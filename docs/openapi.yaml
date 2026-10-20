@@ -1705,6 +1705,71 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Edita os dados pessoais do aluno (RF-ALU-04). Coordenador e Administrador.
+      description: |
+        Substitui os dados pessoais (mesmos campos e validações do cadastro, sem unidade de cadastro nem responsáveis). Menor de 18 anos
+        precisa de ao menos um responsável já vinculado (400 em `birthDate`). CPF de outro aluno: 409 `STUDENT_CPF_EXISTS`; sem CPF, nome ou
+        nascimento mudados para os de outro aluno: 409 `STUDENT_POSSIBLE_DUPLICATE`, repetível com `confirmDuplicate` igual a `true`; os dois
+        trazem em `fields` só `id`, `name` e `photoUrl` do existente. Campo fora do contrato é ignorado. Fora do alcance do Administrador, 404.
+        Grava `student.updated` com antes e depois só dos campos não pessoais; sem mudança, nada é gravado.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/StudentUpdate' } } }
+      responses:
+        '200':
+          description: Aluno atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: Duplicidade (STUDENT_CPF_EXISTS, STUDENT_POSSIBLE_DUPLICATE).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/photo:
+    put:
+      summary: Troca a foto do aluno (RF-ALU-04). Coordenador e Administrador.
+      description: |
+        Campo `file` com PNG, JPEG ou WebP, exatamente 512 x 512 px e até 5 MB, conferido pelo conteúdo. Erro: 400 (campo `file`) e a foto
+        anterior permanece. O arquivo antigo é apagado. Fora do alcance do aluno, 404. Grava `student.photo_updated`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Foto trocada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+    delete:
+      summary: Remove a foto do aluno (RF-ALU-04). Coordenador e Administrador.
+      description: Apaga o arquivo e grava `student.photo_removed`; sem foto, repete sem erro e sem auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Foto removida.
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /students/{id}/record:
     get:
       summary: Ficha do aluno (RF-ALU-03). Coordenador e Administrador; Professor com a chave "ver ficha do aluno".
@@ -2983,6 +3048,29 @@ components:
           type: array
           maxItems: 2
           items: { $ref: '#/components/schemas/StudentGuardianInput' }
+    StudentUpdate:
+      type: object
+      description: Dados pessoais do aluno (RF-ALU-04); os mesmos de `StudentInput`, sem unidade de cadastro nem responsáveis.
+      required: [name, birthDate, postalCode, street, number, district, city, state]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        birthDate: { type: string, format: date }
+        postalCode: { type: string }
+        street: { type: string }
+        number: { type: string }
+        complement: { type: string, nullable: true }
+        district: { type: string }
+        city: { type: string }
+        state: { type: string, description: UF. }
+        cpf: { type: string, nullable: true, description: Obrigatório para adulto. }
+        email: { type: string, nullable: true, description: Obrigatório para adulto. }
+        phone: { type: string, nullable: true, description: Celular com DDD; obrigatório para adulto. }
+        gender: { type: string, nullable: true, enum: [MALE, FEMALE, OTHER, PREFER_NOT_TO_SAY] }
+        referral: { type: string, nullable: true, enum: [INSTAGRAM, REFERRAL, DIRECTORY, WALK_BY, OTHER] }
+        emergencyName: { type: string, nullable: true }
+        emergencyRelationship: { type: string, nullable: true }
+        emergencyPhone: { type: string, nullable: true }
+        confirmDuplicate: { type: boolean, description: Confirma a edição apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
     StudentSeal:
       type: string
       description: Selo calculado (RF-ALU-02). Termo pendente, Bolsista e Novo entram com termo, benefício e matrícula (Sprint 07 em diante).
