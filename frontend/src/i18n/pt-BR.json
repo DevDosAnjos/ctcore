@@ -1706,6 +1706,10 @@
       "limit": "O aluno pode ter no máximo {{max}} modalidades ativas.",
       "noModality": "Esta unidade não oferece modalidade disponível para este aluno. Ligue uma modalidade na unidade e tente de novo.",
       "noClass": "Não há turma ativa para esta modalidade na unidade. Crie uma turma e volte.",
+      "warnLoading": "Conferindo faixa etária e capacidade da turma...",
+      "warnAge": "Aluno com {{age}} anos, fora da faixa etária da turma {{klass}} ({{range}}, {{min}}–{{max}} anos).",
+      "warnAgeOpen": "Aluno com {{age}} anos, fora da faixa etária da turma {{klass}} ({{range}}, a partir de {{min}} anos).",
+      "warnCapacity": "Turma {{klass}} acima da capacidade com esta matrícula ({{count}}/{{capacity}}).",
       "noPlan": "Não há plano ativo para esta modalidade na unidade. Crie um plano e volte.",
       "benefit": {
         "title": "Benefício",

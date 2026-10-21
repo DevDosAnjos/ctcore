@@ -155,6 +155,11 @@ class StudentController {
         return conclusion.preview(who, id, body);
     }
 
+    @GetMapping("/{id}/enrollment/class-warnings")
+    ClassWarnings classWarnings(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestParam(required = false) UUID classId) {
+        return conclusion.warnings(who, id, classId);
+    }
+
     @PostMapping("/{id}/enrollment/conclude")
     @ResponseStatus(HttpStatus.CREATED)
     EnrollmentConclusion.Concluded concludeEnrollment(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,

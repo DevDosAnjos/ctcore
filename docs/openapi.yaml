@@ -2067,6 +2067,26 @@ paths:
         '422':
           description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo.
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/enrollment/class-warnings:
+    get:
+      summary: Avisos da turma na matrícula (RF-MAT-02, RN-MOD-07, RN-TUR-02). Coordenador e Administrador.
+      description: |
+        Só lê (nada é gravado nem auditado). `ageOutOfRange` é verdadeiro quando a turma tem faixa etária e a idade do aluno hoje, no fuso da unidade
+        da turma, é menor que a mínima ou maior que a máxima (RN-ORG-17). `overCapacity` é verdadeiro quando a turma tem capacidade e os alunos ativos
+        mais esta matrícula passam dela; aluno já ativo na turma não conta de novo. Os avisos nunca impedem a matrícula. Exige `STUDENT_MANAGE` na
+        unidade da turma (403); aluno ou turma de outra organização, 404; `classId` ausente ou inválido, 400.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: classId, in: query, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Os avisos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ClassWarnings' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /students/{id}/enrollment/conclude:
     post:
       summary: Conclui a nova matrícula (RF-MAT-01, RN-MAT-04, 08, 09, 12). Coordenador e Administrador.
@@ -3717,6 +3737,16 @@ components:
         firstChargeCents: { type: integer, format: int64 }
         secondDueOn: { type: string, format: date }
         suggestedSecondDueOn: { type: string, format: date }
+    ClassWarnings:
+      type: object
+      required: [studentAge, ageRange, ageOutOfRange, capacity, activeStudents, overCapacity]
+      properties:
+        studentAge: { type: integer, minimum: 0 }
+        ageRange: { allOf: [{ $ref: '#/components/schemas/AgeRange' }], nullable: true, description: Nulo quando a turma não tem faixa. }
+        ageOutOfRange: { type: boolean }
+        capacity: { type: integer, nullable: true }
+        activeStudents: { type: integer, minimum: 0 }
+        overCapacity: { type: boolean }
     EnrollmentPreview:
       type: object
       required: [modalities, units]

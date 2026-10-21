@@ -460,6 +460,25 @@ class EnrollmentConclusionIT extends OrganizationBase {
     }
 
     @Test
+    @DisplayName("RF-MAT-02 CA6: a conclusão aceita turma fora da faixa etária e acima da capacidade")
+    void warningsDoNotBlock() throws Exception {
+        var t = tenant();
+        var o = offer(t, t.unitId(), 0);
+        UUID range = UUID.randomUUID();
+        adminJdbc().update("insert into age_range (id, organization_id, name, name_key, min_age, max_age) values (?, ?, 'Faixa Infantil T2', 'faixa infantil t2', 4, 12)", range, t.orgId());
+        adminJdbc().update("update training_class set age_range_id = ?, capacity = 1 where id = ?", range, o.klass());
+        try {
+            var first = adult(t);
+            ok(post(first, "conclude", body(modality(o, 10)), coordinator(t)), 201);
+            ok(post(adult(t), "conclude", body(modality(o, 10)), coordinator(t)), 201); // adulto na turma infantil, já cheia
+            assertThat(count("select count(*) from enrollment_modality where primary_class_id = ?", o.klass())).isEqualTo(2);
+        } finally {
+            adminJdbc().update("update training_class set age_range_id = null where id = ?", o.klass());
+            adminJdbc().update("delete from age_range where id = ?", range);
+        }
+    }
+
+    @Test
     @DisplayName("T1: as tabelas novas têm RLS forçada e o papel de execução não apaga linhas delas")
     void isolation() {
         for (String table : new String[] {"student_graduation", "enrollment_start"}) {

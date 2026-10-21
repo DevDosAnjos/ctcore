@@ -110,3 +110,13 @@ export interface WizardStudent {
   enrollmentStatus: EnrollmentStatus;
 }
 export type Drafts = Record<string, UnitDraft>;
+
+// Espelha ClassWarnings do OpenAPI (RF-MAT-02, #68).
+export interface ClassWarnings {
+  studentAge: number;
+  ageRange: { id: string; name: string; minAge: number; maxAge: number | null } | null;
+  ageOutOfRange: boolean;
+  capacity: number | null;
+  activeStudents: number;
+  overCapacity: boolean;
+}

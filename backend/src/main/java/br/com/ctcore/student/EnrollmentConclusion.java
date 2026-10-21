@@ -16,6 +16,8 @@ import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.permission.Access;
 import br.com.ctcore.permission.Permission;
 import br.com.ctcore.permission.Permissions;
+import br.com.ctcore.trainingclass.TrainingClasses;
+import java.time.Period;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -90,9 +92,11 @@ public class EnrollmentConclusion {
     private final InviteService invites;
     private final OriginProof proofs;
     private final Clock clock;
+    private final TrainingClasses classes;
 
     public EnrollmentConclusion(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Students students, Enrollments enrollments,
-            BenefitWrite benefits, Permissions permissions, AuditService audit, InviteService invites, OriginProof proofs, Clock clock) {
+            BenefitWrite benefits, Permissions permissions, AuditService audit, InviteService invites, OriginProof proofs, Clock clock,
+            TrainingClasses classes) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.students = students;
@@ -103,6 +107,7 @@ public class EnrollmentConclusion {
         this.invites = invites;
         this.proofs = proofs;
         this.clock = clock;
+        this.classes = classes;
     }
 
     private static ApiStatusException rule(String field, String message) {
@@ -145,6 +150,33 @@ public class EnrollmentConclusion {
         return transactions.execute(() -> {
             students.detail(who, studentId);
             return compute(who, req, facts(who.organizationId(), studentId));
+        });
+    }
+
+    /** RF-MAT-02, R1 e R2: avisos de faixa etária e capacidade da turma, sem gravar nada. */
+    public ClassWarnings warnings(AccountPrincipal who, UUID studentId, UUID classId) {
+        students.requireAccess(who);
+        if (classId == null) throw new ApiValidationException("classId", "obrigatório");
+        return transactions.execute(() -> {
+            UUID org = who.organizationId();
+            LocalDate birth = students.detail(who, studentId).birthDate();
+            var c = jdbc.sql("select c.unit_id, u.timezone, c.capacity, a.id, a.name, a.min_age, a.max_age from training_class c "
+                    + "join unit u on u.organization_id = c.organization_id and u.id = c.unit_id "
+                    + "left join age_range a on a.organization_id = c.organization_id and a.id = c.age_range_id where c.organization_id = :org and c.id = :id")
+                    .param("org", org).param("id", classId).query((rs, n) -> new Object[] {rs.getObject(1, UUID.class), ZoneId.of(rs.getString(2)),
+                            rs.getObject(3), rs.getObject(4) == null ? null : new TrainingClasses.AgeRangeRef(rs.getObject(4, UUID.class), rs.getString(5),
+                                    rs.getInt(6), (Integer) rs.getObject(7))})
+                    .optional().orElseThrow(EnrollmentConclusion::missing);
+            requireManage(who, (UUID) c[0]);
+            int age = Period.between(birth, LocalDate.ofInstant(clock.instant(), (ZoneId) c[1])).getYears();
+            var range = (TrainingClasses.AgeRangeRef) c[3];
+            Integer capacity = (Integer) c[2];
+            int active = classes.activeStudentsOf(classId);
+            boolean in = jdbc.sql("select count(*) from enrollment_modality m where m.organization_id = :org and m.student_id = :s and m.status = 'ACTIVE' "
+                    + "and (m.primary_class_id = :c or exists (select 1 from enrollment_modality_class o where o.organization_id = m.organization_id "
+                    + "and o.modality_row_id = m.id and o.class_id = :c))").param("org", org).param("s", studentId).param("c", classId)
+                    .query(Integer.class).single() > 0;
+            return new ClassWarnings(age, range, ClassWarnings.outOfRange(age, range), capacity, active, ClassWarnings.over(active, in, capacity));
         });
     }
 

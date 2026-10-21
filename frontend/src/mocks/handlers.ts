@@ -2827,6 +2827,32 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-MAT-02: avisos da turma na matrícula; só lê. O aluno já ativo na turma não conta de novo (D1).
+    method: "get",
+    path: "/students/{id}/enrollment/class-warnings",
+    resolver: ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const classId = new URL(request.url).searchParams.get("classId");
+      if (!classId || !/^[0-9a-f-]{36}$/i.test(classId)) return error(400, "BAD_REQUEST", "classId inválido.");
+      const klass = classFor(classId);
+      if (klass instanceof Response) return klass;
+      const row = classRow(klass);
+      const studentAge = ageOf(found.birthDate);
+      const inClass = (e: MockEnrollment | undefined) => (e?.modalities ?? []).some((m) => m.status === "ACTIVE" && (m.primaryClassId === classId || m.otherClassIds.includes(classId)));
+      const activeStudents = Object.values(mockEnrollments).filter(inClass).length;
+      const range = row.ageRange;
+      return HttpResponse.json({
+        studentAge,
+        ageRange: range,
+        ageOutOfRange: Boolean(range) && (studentAge < range!.minAge || (range!.maxAge !== null && studentAge > range!.maxAge)),
+        capacity: klass.capacity,
+        activeStudents,
+        overCapacity: klass.capacity !== null && activeStudents + (inClass(mockEnrollments[found.id]) ? 0 : 1) > klass.capacity,
+      });
+    },
+  },
+  {
     // RF-MAT-01, R4: conclui; valida tudo antes de gravar (tudo ou nada), guarda o benefício, a graduação de origem e o início da matrícula por unidade.
     method: "post",
     path: "/students/{id}/enrollment/conclude",

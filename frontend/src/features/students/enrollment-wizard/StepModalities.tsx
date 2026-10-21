@@ -7,6 +7,7 @@ import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import { OtherClasses, PickSelect, useClassChoices, usePlanChoices, type Choice } from "../ModalityPickers";
 import { useResource } from "../useStudentRecord";
+import { ClassWarnings } from "./ClassWarnings";
 import { uploadOriginProof } from "./api";
 import { emptyOrigin, MAX_ACTIVE, newModality } from "./request";
 import type { ModalityDraft } from "./types";
@@ -183,6 +184,9 @@ function ModalityCard({
         <>
           <PickSelect label={t(`${k}class`)} value={draft.primaryClassId} onChange={(v) => set({ primaryClassId: v, otherClassIds: draft.otherClassIds.filter((x) => x !== v) })} options={classes.data!.items} error={errors.primaryClassId} />
           <OtherClasses options={classes.data!.items} primary={draft.primaryClassId} value={draft.otherClassIds} onChange={(v) => set({ otherClassIds: v })} error={errors.otherClassIds} />
+          {[draft.primaryClassId, ...draft.otherClassIds].filter(Boolean).map((id) => (
+            <ClassWarnings key={id} studentId={studentId} classId={id} className={classes.data!.items.find((c) => c.id === id)?.name ?? ""} />
+          ))}
         </>
       )}
       {draft.modalityId && plans.status === "ready" && (plans.data?.items.length ?? 0) > 0 && (
