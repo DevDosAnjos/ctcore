@@ -12,6 +12,7 @@ import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
 import { AgeRangesPage } from "@/features/age-ranges/AgeRangesPage";
+import { TermsPage } from "@/features/terms/TermsPage";
 import { ModalitiesPage } from "@/features/modalities/ModalitiesPage";
 import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
@@ -114,6 +115,7 @@ export function App() {
             <Route path="/configuracoes/unidade" element={<UnitSettingsPage />} />
             <Route path="/configuracoes/modalidades" element={<ModalitiesPage />} />
             <Route path="/configuracoes/faixas-etarias" element={<AgeRangesPage />} />
+            <Route path="/configuracoes/termos" element={<TermsPage />} />
             <Route path="/configuracoes/usuarios" element={<UsersPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR"]} />}>
