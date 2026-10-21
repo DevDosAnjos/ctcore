@@ -15,7 +15,7 @@ class StudentRecordsTest {
 
     private String teacherJson(boolean contacts) throws Exception {
         var row = new Students.Row(UUID.randomUUID(), "Aluno", null, LocalDate.of(2000, 1, 1), 25, false, null,
-                new Students.UnitRef(UUID.randomUUID(), "Unidade"), null, List.of(StudentSeal.EMAIL_PROBLEM));
+                new Students.UnitRef(UUID.randomUUID(), "Unidade"), null, List.of(StudentSeal.EMAIL_PROBLEM), "ACTIVE", List.of());
         var detail = new Students.Detail(row.id(), UUID.randomUUID(), "Aluno", LocalDate.of(2000, 1, 1), false, "01001000", "Rua Segredo", "1", null,
                 "Centro", "Cidade", "SP", "52998224725", "aluno@ficticia.example", "11987654321", null, null, "Emergencia Nome", "Mae", "11911112222", null, false,
                 List.of(new Students.GuardianRow(UUID.randomUUID(), "Resp", "resp@ficticia.example", "11933334444", true, "ACTIVE", false)));

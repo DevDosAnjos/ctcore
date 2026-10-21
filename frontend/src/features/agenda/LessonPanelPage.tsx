@@ -10,6 +10,7 @@ import {
 } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { StudentSimpleList } from "@/features/students/StudentSimpleList";
 import { br } from "./agendaDates";
 import { CancelLessonDialog } from "./CancelLessonDialog";
 import { EditLessonDialog } from "./EditLessonDialog";
@@ -174,6 +175,9 @@ function Panel({
                 {lesson.trialClasses}
               </Field>
             </dl>
+          </Card>
+          <Card heading="h2" title={t("students.simple.title")}>
+            <StudentSimpleList lessonId={lesson.id} />
           </Card>
           <Card heading="h2" title={t("agenda.panel.group")}>
             {group ? (

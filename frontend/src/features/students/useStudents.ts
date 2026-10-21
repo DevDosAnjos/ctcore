@@ -14,18 +14,21 @@ export async function fetchStudents(q: Query): Promise<Page<StudentRow>> {
   if (q.q) p.set("q", q.q);
   for (const [k, v] of Object.entries(q.filtros)) p.set(k, v);
   const data = await api<StudentList>(`/students?${p}`);
-  return { rows: data.items, total: data.total };
+  return { rows: data.items, total: data.total, counts: data.counts };
 }
 
-// Opções dos filtros: unidades ao alcance e faixas etárias. Falha deixa a lista vazia; a lista de alunos segue.
+// Opções dos filtros: unidades ao alcance, faixas etárias, modalidades e turmas ativas. Cada uma falha sozinha (fica vazia); a lista de alunos segue.
 export function useStudentFilterOptions() {
-  const [options, setOptions] = useState<{ units: Choice[]; ageRanges: Choice[] }>({ units: [], ageRanges: [] });
+  const [options, setOptions] = useState<{ units: Choice[]; ageRanges: Choice[]; modalities: Choice[]; classes: Choice[] }>({ units: [], ageRanges: [], modalities: [], classes: [] });
   useEffect(() => {
     let alive = true;
-    Promise.all([api<{ units: Choice[] }>("/units/reachable"), api<{ items: Choice[] }>("/age-ranges")]).then(
-      ([u, r]) => alive && setOptions({ units: u.units, ageRanges: r.items }),
-      () => undefined,
-    );
+    const safe = <T,>(path: string) => api<T>(path).catch(() => null);
+    Promise.all([
+      safe<{ units: Choice[] }>("/units/reachable"),
+      safe<{ items: Choice[] }>("/age-ranges"),
+      safe<(Choice & { active: boolean })[]>("/modalities"),
+      safe<{ items: Choice[] }>("/classes?size=100&status=ACTIVE"),
+    ]).then(([u, r, m, c]) => alive && setOptions({ units: u?.units ?? [], ageRanges: r?.items ?? [], modalities: (m ?? []).filter((x) => x.active), classes: c?.items ?? [] }));
     return () => {
       alive = false;
     };

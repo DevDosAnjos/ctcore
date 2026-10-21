@@ -5,6 +5,7 @@ import br.com.ctcore.api.error.ApiValidationException;
 import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.api.page.PageResponse;
+import br.com.ctcore.benefit.Benefits;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.modality.Modalities;
 import java.util.List;
@@ -55,7 +56,7 @@ public class Plans {
         this.permissions = permissions;
     }
 
-    void requireAccess(AccountPrincipal who) {
+    public void requireAccess(AccountPrincipal who) {
         if (who.role() == null || permissions.effective(who).get(Permission.PLANS) == Access.NONE) {
             throw new AccessDeniedException("Permission denied");
         }
@@ -69,7 +70,7 @@ public class Plans {
     }
 
     /** Alcance: nulo = todas as unidades; o Administrador fica nas dele (fora do alcance, vazio). */
-    Set<UUID> reach(AccountPrincipal who, UUID unitId) {
+    public Set<UUID> reach(AccountPrincipal who, UUID unitId) {
         if (who.role() == Role.ADMINISTRATOR) {
             Set<UUID> own = who.units() == null ? Set.of() : who.units();
             return unitId == null ? own : own.contains(unitId) ? Set.of(unitId) : Set.of();
@@ -164,8 +165,18 @@ public class Plans {
         return 0;
     }
 
-    /** Ponto único: a Sprint 07 (benefícios) troca por contagem real. */
+    /** Benefícios ativos não vencidos e, entre eles, os altos (RN-BEN-06), no alcance da consulta. */
     BenefitSummary benefits(Scope scope) {
-        return new BenefitSummary(0, 0);
+        if (scope.unitIds() != null && scope.unitIds().isEmpty()) return new BenefitSummary(0, 0);
+        Map<String, Object> params = new HashMap<>();
+        params.put("org", scope.organizationId());
+        String filter = "";
+        if (scope.unitIds() != null) {
+            filter = " and b.unit_id in (:units)";
+            params.put("units", scope.unitIds());
+        }
+        String sql = "select count(*), count(*) filter (where " + Benefits.HIGH_SQL + ") from " + Benefits.FROM_SQL
+                + " where b.organization_id = :org and " + Benefits.STATUS_SQL + " = 'ACTIVE'" + filter;
+        return transactions.execute(() -> jdbc.sql(sql).params(params).query((rs, n) -> new BenefitSummary(rs.getInt(1), rs.getInt(2))).single());
     }
 }

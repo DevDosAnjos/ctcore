@@ -3,6 +3,7 @@ package br.com.ctcore.teacher;
 import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.audit.AuditActor;
+import br.com.ctcore.benefit.BenefitWrite;
 import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.identity.AccountPrincipal;
@@ -35,15 +36,17 @@ public class TeacherDeactivation {
     private final LinkService links;
     private final InviteService invites;
     private final AuditService audit;
+    private final BenefitWrite benefitWrite;
 
     public TeacherDeactivation(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Teachers teachers, LinkService links,
-            InviteService invites, AuditService audit) {
+            InviteService invites, AuditService audit, BenefitWrite benefitWrite) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.teachers = teachers;
         this.links = links;
         this.invites = invites;
         this.audit = audit;
+        this.benefitWrite = benefitWrite;
     }
 
     private static AuditActor actor(AccountPrincipal who) {
@@ -84,6 +87,7 @@ public class TeacherDeactivation {
                 else ended = links.endInScope(actor(who), who.organizationId(), link);
             }
             jdbc.sql("update teacher set status = 'INACTIVE' where id = :id").param("id", id).update();
+            benefitWrite.endTeacherBenefits(who, id, ip);
             audit.record(new AuditEntry(actor(who), "teacher.deactivated", "teacher", id.toString(), null,
                     Map.of("status", "ACTIVE"), Map.of("status", "INACTIVE", "classesWithoutHead", teachers.headClasses(id).size(),
                             "accessEnded", !t.access().equals("NONE") && !t.access().equals("ENDED")), null, ip));

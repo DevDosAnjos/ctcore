@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 06. O dono confirmou em 20/10/2026 que revisou a Sprint 05 (Turmas e agenda) e fez o PR dev→main (#288, merge). Só o dono libera a seguinte.
+Sprint liberada: Sprint 07. O dono confirmou em 20/10/2026 que revisou a Sprint 06 (Alunos) e fez o PR dev→main (#302, merge). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -71,14 +71,14 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 60 | RF-ALU-03 · Ficha do aluno em painel lateral | issue #60 | Sprint 06 | — | agente | feito |
 | 61 | RF-ALU-04 · Editar dados pessoais do aluno | issue #61 | Sprint 06 | — | agente | feito |
 | 62 | RF-ALU-06 · Aniversariantes do dia | issue #62 | Sprint 06 | — | agente | feito |
-| 63 | Matrícula no servidor: modalidades, transferência e retorno | issue #63 | Sprint 07 | — | agente | a fazer |
-| 64 | RF-BEN-01 · Tabela de benefícios | issue #64 | Sprint 07 | — | agente | a fazer |
-| 65 | RF-BEN-02 · Conceder benefício | issue #65 | Sprint 07 | — | agente | a fazer |
-| 66 | RF-BEN-03 · Encerrar benefício | issue #66 | Sprint 07 | — | agente | a fazer |
-| 67 | RF-MAT-01 · Nova matrícula em etapas | issue #67 | Sprint 07 | — | agente | a fazer |
-| 68 | RF-MAT-02 · Avisos de faixa etária e capacidade na matrícula | issue #68 | Sprint 07 | — | agente | a fazer |
-| 69 | RF-MAT-03 · Encerrar modalidade | issue #69 | Sprint 07 | — | agente | a fazer |
-| 70 | RF-MAT-05 · Configurações › Termos | issue #70 | Sprint 07 | — | agente | a fazer |
+| 63 | Matrícula no servidor: modalidades, transferência e retorno | issue #63 | Sprint 07 | — | agente | feito |
+| 64 | RF-BEN-01 · Tabela de benefícios | issue #64 | Sprint 07 | — | agente | feito |
+| 65 | RF-BEN-02 · Conceder benefício | issue #65 | Sprint 07 | — | agente | feito |
+| 66 | RF-BEN-03 · Encerrar benefício | issue #66 | Sprint 07 | — | agente | feito |
+| 67 | RF-MAT-01 · Nova matrícula em etapas | issue #67 | Sprint 07 | — | agente | feito |
+| 68 | RF-MAT-02 · Avisos de faixa etária e capacidade na matrícula | issue #68 | Sprint 07 | — | agente | feito |
+| 69 | RF-MAT-03 · Encerrar modalidade | issue #69 | Sprint 07 | — | agente | feito |
+| 70 | RF-MAT-05 · Configurações › Termos | issue #70 | Sprint 07 | — | agente | feito |
 | 71 | Geração de cobranças e primeira cobrança no servidor | issue #71 | Sprint 08 | — | agente | a fazer |
 | 72 | RF-COB-01 · Financeiro › Cobranças (lista) | issue #72 | Sprint 08 | — | agente | a fazer |
 | 73 | RF-COB-02 · Painel da cobrança | issue #73 | Sprint 08 | — | agente | a fazer |
@@ -209,11 +209,11 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Pendências para o dono
 
-Último número usado: P1. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
+Último número usado: P2. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
 
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
-| — | nenhuma (P1 respondida pelo dono em 19/10/2026: opção recomendada, já implementada na #45) | — | — | — |
+| P2 | Com a #67, `student_graduation` aponta para `graduation_level`: salvar a graduação da modalidade sem um nível já usado por graduação de aluno (origem) falha na chave estrangeira (a resposta é a de conflito de dados, sem texto próprio). A #105/#106 decidem a mensagem (ex.: "nível em uso por N alunos"). | Tratar na #105, junto da tela de graduações do aluno. | nenhum | Salvar o sistema de graduação continua valendo; só a exclusão de nível em uso é recusada. |
 
 ## Encaixes para as próximas sprints
 

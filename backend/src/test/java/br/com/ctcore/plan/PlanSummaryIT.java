@@ -107,6 +107,46 @@ class PlanSummaryIT extends OrganizationBase {
     }
 
     @Test
+    @DisplayName("CA9: benefícios do resumo contam só ativos não vencidos e, entre eles, os altos; Administrador conta só a unidade dele")
+    void benefitCounts() throws Exception {
+        var t = tenant();
+        UUID second = unit(t, "Zona Sul");
+        UUID account = UUID.randomUUID();
+        adminJdbc().update("insert into account (id, email, status) values (?, ?, 'ACTIVE')", account, "sum-" + account + "@example.com");
+        UUID teacher = UUID.randomUUID();
+        adminJdbc().update("insert into teacher (id, organization_id, name, name_key) values (?, ?, 'Professor', 'professor')", teacher, t.orgId());
+        String[][] specs = {{"PERCENT", "30", "null", "ACTIVE", "0"}, {"PERCENT", "60", "null", "ACTIVE", "0"}, {"AMOUNT", "9000", "null", "ACTIVE", "0"},
+                {"PERCENT", "80", "(current_date - 2)", "ACTIVE", "0"}, {"PERCENT", "80", "null", "ENDED", "0"}, {"PERCENT", "90", "null", "ACTIVE", "1"}};
+        UUID modality = modality("Judô");
+        adminJdbc().update("insert into organization_modality (organization_id, modality_id, active) values (?, ?, true) on conflict do nothing", t.orgId(), modality);
+        for (String[] s : specs) {
+            UUID unit = s[4].equals("1") ? second : t.unitId(), plan = plan(t, unit, "P" + UUID.randomUUID(), 15000, "ACTIVE");
+            UUID klass = UUID.randomUUID(), student = UUID.randomUUID(), enrollment = UUID.randomUUID(), row = UUID.randomUUID();
+            adminJdbc().update("insert into unit_modality (organization_id, unit_id, modality_id, offered) values (?, ?, ?, true) on conflict do nothing", t.orgId(), unit, modality);
+            adminJdbc().update("insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, head_teacher_id, status) values (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')",
+                    klass, t.orgId(), unit, "T" + klass, "t" + klass, modality, teacher);
+            adminJdbc().update("insert into student (id, organization_id, registered_unit_id, name, name_key, birth_date, postal_code, street, number, district, city, state) "
+                    + "values (?, ?, ?, 'Aluno', 'aluno', date '1990-01-01', '01001000', 'Rua', '1', 'Centro', 'Cidade', 'SP')", student, t.orgId(), unit);
+            adminJdbc().update("insert into enrollment (id, organization_id, student_id, enrolled_at) values (?, ?, ?, now())", enrollment, t.orgId(), student);
+            adminJdbc().update("insert into enrollment_modality (id, organization_id, enrollment_id, student_id, unit_id, modality_id, primary_class_id, plan_id, due_day, status, started_at) "
+                    + "values (?, ?, ?, ?, ?, ?, ?, ?, 5, 'ACTIVE', now())", row, t.orgId(), enrollment, student, unit, modality, klass, plan);
+            adminJdbc().update("insert into benefit (id, organization_id, enrollment_modality_id, student_id, unit_id, type, value, reason, decided_by, granted_by_account_id, valid_until, status, ended_at) "
+                    + "values (gen_random_uuid(), ?, ?, ?, ?, ?, ?, 'Motivo', 'Mestre', ?, " + s[2] + ", ?, case when ? = 'ENDED' then now() end)",
+                    t.orgId(), row, student, unit, s[0], Long.parseLong(s[1]), account, s[3], s[3]);
+        }
+        var coord = body(get("", who(t, Role.COORDINATOR))).get("benefits");
+        assertThat(coord.get("active").asInt()).isEqualTo(4);
+        assertThat(coord.get("high").asInt()).isEqualTo(3);
+        var admin = body(get("", who(t, Role.ADMINISTRATOR))).get("benefits");
+        assertThat(admin.get("active").asInt()).isEqualTo(3);
+        assertThat(admin.get("high").asInt()).isEqualTo(2);
+        adminJdbc().update("delete from benefit");
+        for (String table : new String[] {"enrollment_modality", "enrollment", "student", "training_class", "teacher", "unit_modality", "organization_modality"}) {
+            adminJdbc().update("delete from " + table);
+        }
+    }
+
+    @Test
     @DisplayName("CA5: plano de outra organização não entra na conta; RLS com ctcore_app")
     void isolation() throws Exception {
         var a = tenant();

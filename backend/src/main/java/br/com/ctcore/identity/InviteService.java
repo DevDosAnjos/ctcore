@@ -63,6 +63,13 @@ public class InviteService {
         return OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
     }
 
+    /** S8, R28: o dia de hoje é o do fuso da unidade (a de cadastro do aluno); UTC sem unidade. */
+    private java.time.ZoneId unitZone(UUID organizationId, Set<UUID> unitIds) {
+        if (unitIds.isEmpty()) return ZoneOffset.UTC;
+        return orgTx.provision(organizationId, () -> jdbc.sql("select timezone from unit where organization_id = :org and id in (:ids) order by id limit 1")
+                .param("org", organizationId).param("ids", unitIds).query(String.class).optional().map(java.time.ZoneId::of).orElse(ZoneOffset.UTC));
+    }
+
     /** Creates the pending link (and the account, if the e-mail is new) and sends the invite. */
     public Issued invite(Inviter by, UUID organizationId, String email, String name, Role role, Set<UUID> units, LocalDate birthDate) {
         return invite(by, organizationId, email, name, role, units, birthDate, false);
@@ -79,7 +86,7 @@ public class InviteService {
         if (teacherAccess ? !InviteRules.teacherAccess(by, unitIds) : !InviteRules.allowed(by, role, unitIds)) {
             throw new AccessDeniedException("Invite not allowed for this role");
         }
-        if (role == Role.STUDENT && !InviteRules.adult(birthDate, now().toLocalDate())) {
+        if (role == Role.STUDENT && !InviteRules.adult(birthDate, LocalDate.ofInstant(clock.instant(), unitZone(organizationId, unitIds)))) {
             throw new IdentityException(Code.MINOR_HAS_NO_ACCOUNT, null);
         }
         Issued issued = orgTx.provision(organizationId, () -> {
@@ -103,6 +110,15 @@ public class InviteService {
      * Conta existente só ganha o vínculo e aceita com a senha que tem (RN-ACE-07). Vínculo já ativo não gera convite: {@code code} nulo.
      */
     public Issued inviteGuardian(Inviter by, UUID organizationId, String email, String name) {
+        return inviteInside(by, organizationId, email, name, Role.GUARDIAN);
+    }
+
+    /** RN-MAT-08: como {@link #inviteGuardian}, para o aluno adulto na conclusão da matrícula (idade e permissão conferidas por quem chama). */
+    public Issued inviteStudent(Inviter by, UUID organizationId, String email, String name) {
+        return inviteInside(by, organizationId, email, name, Role.STUDENT);
+    }
+
+    private Issued inviteInside(Inviter by, UUID organizationId, String email, String name, Role role) {
         if (!InviteRules.guardianAccess(by)) {
             throw new AccessDeniedException("Invite not allowed for this role");
         }
@@ -113,13 +129,13 @@ public class InviteService {
         if (account.getValue().equals("DEACTIVATED")) {
             throw new AccessDeniedException("Account is deactivated");
         }
-        var link = jdbc.sql("select id, status from account_link where account_id = :a and organization_id = :o and role = 'GUARDIAN'")
-                .param("a", account.getKey()).param("o", organizationId)
+        var link = jdbc.sql("select id, status from account_link where account_id = :a and organization_id = :o and role = :r")
+                .param("a", account.getKey()).param("o", organizationId).param("r", role.name())
                 .query((rs, n) -> Map.entry(rs.getObject("id", UUID.class), rs.getString("status"))).optional();
         if (link.isPresent() && link.get().getValue().equals("ACTIVE")) {
             return new Issued(null, link.get().getKey(), account.getKey(), null);
         }
-        UUID linkId = linkFor(organizationId, account.getKey(), Role.GUARDIAN, Set.of());
+        UUID linkId = linkFor(organizationId, account.getKey(), role, Set.of());
         return issue(by, organizationId, account.getKey(), linkId, false, "invite.created");
     }
 

@@ -12,12 +12,14 @@ import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
 import { AgeRangesPage } from "@/features/age-ranges/AgeRangesPage";
+import { TermsPage } from "@/features/terms/TermsPage";
 import { ModalitiesPage } from "@/features/modalities/ModalitiesPage";
 import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 import { BirthdaysCard } from "@/features/students/BirthdaysCard";
+import { EnrollmentWizardPage } from "@/features/students/enrollment-wizard/EnrollmentWizardPage";
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
@@ -25,6 +27,7 @@ import { ClassesPage } from "@/features/classes/ClassesPage";
 import { ClassPanelPage } from "@/features/classes/ClassPanelPage";
 import { PlansPage } from "@/features/plans/PlansPage";
 import { PlansTablePage } from "@/features/plans/PlansTablePage";
+import { BenefitsPage } from "@/features/benefits/BenefitsPage";
 import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { LessonPanelPage } from "@/features/agenda/LessonPanelPage";
 import { NoClassDaysPage } from "@/features/noClassDays/NoClassDaysPage";
@@ -103,6 +106,8 @@ export function App() {
             <Route path="/turmas/:id" element={<ClassPanelPage />} />
             <Route path="/planos" element={<PlansPage />} />
             <Route path="/planos/lista" element={<PlansTablePage />} />
+            <Route path="/beneficios" element={<BenefitsPage />} />
+            <Route path="/alunos/nova-matricula" element={<EnrollmentWizardPage />} />
             <Route path="/alunos/:id?" element={<StudentsPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
@@ -110,6 +115,7 @@ export function App() {
             <Route path="/configuracoes/unidade" element={<UnitSettingsPage />} />
             <Route path="/configuracoes/modalidades" element={<ModalitiesPage />} />
             <Route path="/configuracoes/faixas-etarias" element={<AgeRangesPage />} />
+            <Route path="/configuracoes/termos" element={<TermsPage />} />
             <Route path="/configuracoes/usuarios" element={<UsersPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR"]} />}>

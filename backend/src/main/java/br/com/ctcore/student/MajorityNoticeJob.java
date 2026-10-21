@@ -71,12 +71,14 @@ public class MajorityNoticeJob {
     }
 
     private int notify(UUID org, List<Notice> notices) {
-        LocalDate today = LocalDate.now(clock);
         OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         // Cadastrado menor: o cadastro é anterior ao 18º aniversário.
-        var due = jdbc.sql("select id, name from student where organization_id = :org and majority_notice_at is null "
-                + "and (birth_date + interval '18 years')::date <= :today and (created_at at time zone 'UTC')::date < (birth_date + interval '18 years')::date "
-                + "order by id").param("org", org).param("today", today)
+        // S8, R28: "hoje" e o dia do cadastro são os do fuso da unidade de cadastro.
+        var due = jdbc.sql("select s.id, s.name from student s join unit u on u.id = s.registered_unit_id and u.organization_id = s.organization_id "
+                + "where s.organization_id = :org and s.majority_notice_at is null "
+                + "and (s.birth_date + interval '18 years')::date <= (cast(:now as timestamptz) at time zone u.timezone)::date "
+                + "and (s.created_at at time zone u.timezone)::date < (s.birth_date + interval '18 years')::date "
+                + "order by s.id").param("org", org).param("now", now)
                 .query((rs, n) -> new Object[]{rs.getObject(1, UUID.class), rs.getString(2)}).list();
         for (Object[] s : due) {
             UUID id = (UUID) s[0];

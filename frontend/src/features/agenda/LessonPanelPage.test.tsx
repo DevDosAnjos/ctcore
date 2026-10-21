@@ -57,6 +57,7 @@ const detail = (over: Partial<LessonDetail> = {}): LessonDetail => ({
   ...over,
 });
 
+let asked: string[] = [];
 type Opts = {
   role?: string;
   width?: number;
@@ -65,6 +66,7 @@ type Opts = {
   path?: string;
 };
 function setup(opts: Opts = {}) {
+  asked = [];
   window.innerWidth = opts.width ?? 1280;
   const path = opts.path ?? "/agenda/aulas/les1";
   window.history.replaceState(null, "", path);
@@ -80,6 +82,10 @@ function setup(opts: Opts = {}) {
         units: [{ id: "u1", name: "Centro", shortName: "c" }],
       }),
     ),
+    http.get("/api/v1/students/simple", ({ request }) => {
+      asked.push(new URL(request.url).searchParams.get("lessonId") ?? "");
+      return HttpResponse.json([{ id: "s9", name: "Bia Lima", photoUrl: null, belt: null, blocked: false }]);
+    }),
     http.get("/api/v1/agenda/lessons/:id", () =>
       opts.status
         ? HttpResponse.json({ code: "X" }, { status: opts.status })
@@ -130,6 +136,14 @@ describe("LessonPanelPage", () => {
     expect(
       screen.getByRole("link", { name: "Voltar à agenda" }),
     ).toHaveAttribute("href", "/agenda");
+  });
+
+  it("CA32: o painel mostra a lista simples dos alunos da aula, pedida pelo id da aula", async () => {
+    setup({ role: "TEACHER" });
+    await ready();
+    expect(await screen.findByText("Bia Lima")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Alunos da aula" })).toBeInTheDocument();
+    expect(new Set(asked)).toEqual(new Set(["les1"]));
   });
 
   it("CA9: substituição mostra o selo e o titular; cancelada mostra a situação e o motivo, sem Cancelar aula nem Editar aula", async () => {

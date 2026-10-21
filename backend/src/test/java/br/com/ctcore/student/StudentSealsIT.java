@@ -30,6 +30,7 @@ class StudentSealsIT extends OrganizationBase {
 
     @AfterEach
     void clean() {
+        EnrollmentFixtures.clean(adminJdbc());
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
         adminJdbc().update("delete from student");
@@ -94,15 +95,20 @@ class StudentSealsIT extends OrganizationBase {
         return out;
     }
 
+    private void enrolled(Tenant t, UUID student) {
+        EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), student, t.unitId(), "ACTIVE", 0, null);
+        adminJdbc().update("update enrollment set enrolled_at = ?::timestamptz where student_id = ?", "2020-01-01T00:00:00Z", student);
+    }
+
     @Test
     @DisplayName("RF-ALU-02, RF-ALU-06: a data de referência é a do fuso da unidade; às 23h30 em Brasília (02h30 UTC) vale o dia de Brasília, e em Tóquio o de Tóquio")
     void referenceDateIsTheUnitDate() throws Exception {
         Tenant t = tenant();
         var coordinator = who(t, Role.COORDINATOR);
         var admin = who(t, Role.ADMINISTRATOR);
-        student(t, "Hoje em Brasilia", LocalDate.of(1990, 3, 15), "11111111111", "a@ficticia.example", false);
-        student(t, "Hoje em Toquio", LocalDate.of(1990, 3, 16), "22222222222", "b@ficticia.example", false);
-        student(t, "Vespera dos 18", LocalDate.of(2007, 3, 16), "33333333333", "c@ficticia.example", false);
+        enrolled(t, student(t, "Hoje em Brasilia", LocalDate.of(1990, 3, 15), "11111111111", "a@ficticia.example", false));
+        enrolled(t, student(t, "Hoje em Toquio", LocalDate.of(1990, 3, 16), "22222222222", "b@ficticia.example", false));
+        enrolled(t, student(t, "Vespera dos 18", LocalDate.of(2007, 3, 16), "33333333333", "c@ficticia.example", false));
         // 15/03/2025 23:30 em Brasília = 16/03 02:30 UTC = 16/03 11:30 em Tóquio
         doReturn(LocalDate.of(2025, 3, 16).atTime(2, 30).toInstant(ZoneOffset.UTC)).when(clock).instant();
 
@@ -236,5 +242,90 @@ class StudentSealsIT extends OrganizationBase {
             assertThat(get("?seal=EMAIL_PROBLEM", who(a, role)).getStatus()).as(role.name()).isEqualTo(403);
         }
         assertThat(get("?seal=EMAIL_PROBLEM", null).getStatus()).isEqualTo(401);
+    }
+
+    private void enrolled(Tenant t, UUID student, String enrolledAt, String reopenedAt) {
+        adminJdbc().update("insert into enrollment (id, organization_id, student_id, enrolled_at, reopened_at) values (?, ?, ?, ?::timestamptz, ?::timestamptz)",
+                UUID.randomUUID(), t.orgId(), student, enrolledAt, reopenedAt);
+    }
+
+    @Test
+    @DisplayName("CA30 (R21, D8): o selo Novo vale até 30 dias da matrícula (dia 30 incluso, 31 fora), no fuso da unidade, volta com a reabertura e aparece na lista, na ficha e no filtro")
+    void newSeal() throws Exception {
+        Tenant t = tenant();
+        var c = who(t, Role.COORDINATOR);
+        today(LocalDate.of(2025, 6, 30));
+        UUID day30 = adult(t, "Trinta Dias", "11111111111", "a@ficticia.example"), day31 = adult(t, "Trinta e Um", "22222222222", "b@ficticia.example"),
+                fresh = adult(t, "Recente", "33333333333", "c@ficticia.example"), back = adult(t, "Voltou", "44444444444", "d@ficticia.example"),
+                never = adult(t, "Sem Matricula", "55555555555", "e@ficticia.example");
+        enrolled(t, day30, "2025-05-31T12:00:00-03:00", null);
+        enrolled(t, day31, "2025-05-30T12:00:00-03:00", null);
+        enrolled(t, fresh, "2025-06-30T08:00:00-03:00", null);
+        enrolled(t, back, "2024-01-10T12:00:00-03:00", "2025-06-10T12:00:00-03:00");
+        assertThat(never).isNotNull();
+        JsonNode b = body("", c);
+        assertThat(seals(b, "Trinta Dias")).containsExactly("NEW");
+        assertThat(seals(b, "Trinta e Um")).isEmpty();
+        assertThat(seals(b, "Recente")).containsExactly("NEW");
+        assertThat(seals(b, "Voltou")).containsExactly("NEW");
+        assertThat(seals(b, "Sem Matricula")).isEmpty();
+        assertThat(names(body("?seal=NEW", c))).containsExactly("Recente", "Trinta Dias", "Voltou");
+        var record = call(MockMvcRequestBuilders.get("/api/v1/students/" + day30 + "/record"), c).getResponse();
+        assertThat(json.readTree(record.getContentAsString()).get("seals").toString()).contains("NEW");
+
+        // 23h30 em Brasília (02h30 UTC do dia seguinte): a conta usa o dia da unidade, que ainda é 30/06; 31/05 00h30 em Brasília é o dia 30.
+        doReturn(LocalDate.of(2025, 7, 1).atTime(2, 30).toInstant(ZoneOffset.UTC)).when(clock).instant();
+        adminJdbc().update("update enrollment set enrolled_at = '2025-05-31T00:30:00-03:00' where student_id = ?", day30);
+        assertThat(seals(body("", c), "Trinta Dias")).containsExactly("NEW");
+        // Em Tóquio já é 01/07: o mesmo instante de matrícula (31/05 12h30 em Tóquio) fica a 31 dias.
+        adminJdbc().update("update unit set timezone = 'Asia/Tokyo' where id = ?", t.unitId());
+        assertThat(seals(body("", c), "Trinta Dias")).isEmpty();
+    }
+
+    private void benefit(Tenant t, UUID row, String type, long value, String validUntil, String status) {
+        UUID account = UUID.randomUUID();
+        adminJdbc().update("insert into account (id, email, name, status) values (?, ?, 'Gestora', 'ACTIVE')", account, "sch-" + account + ".example");
+        adminJdbc().update("insert into benefit (id, organization_id, enrollment_modality_id, student_id, unit_id, type, value, reason, decided_by, granted_by_account_id, "
+                + "valid_until, status, ended_at) select ?, em.organization_id, em.id, em.student_id, em.unit_id, ?, ?, 'Motivo', 'Mestre', ?, "
+                + (validUntil == null ? "null" : "date '" + validUntil + "'") + ", ?, case when ? = 'ENDED' then now() end from enrollment_modality em where em.id = ?",
+                UUID.randomUUID(), type, value, account, status, status, row);
+    }
+
+    @Test
+    @DisplayName("CA12 (RF-BEN-02, D10): Bolsista só com bolsa percentual ativa e dentro da validade; vencida, encerrada, desconto em reais e sem benefício não; lista, ficha e filtro")
+    void scholarshipSeal() throws Exception {
+        Tenant t = tenant();
+        var c = who(t, Role.COORDINATOR);
+        today(LocalDate.of(2025, 6, 30));
+        String[] names = {"Com Bolsa", "Bolsa Hoje", "Bolsa Vencida", "Bolsa Encerrada", "So Desconto", "Sem Beneficio"};
+        UUID[] ids = new UUID[names.length];
+        UUID[] rows = new UUID[names.length];
+        for (int i = 0; i < names.length; i++) {
+            ids[i] = adult(t, names[i], "1111111111" + i, "s" + i + "@ficticia.example");
+            rows[i] = EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), ids[i], t.unitId(), "ACTIVE", 0, null).row();
+        }
+        benefit(t, rows[0], "PERCENT", 30, null, "ACTIVE");
+        benefit(t, rows[1], "PERCENT", 100, "2025-06-30", "ACTIVE");
+        benefit(t, rows[2], "PERCENT", 30, "2025-06-29", "ACTIVE");
+        benefit(t, rows[3], "PERCENT", 30, null, "ENDED");
+        benefit(t, rows[4], "AMOUNT", 5000, null, "ACTIVE");
+        JsonNode b = body("", c);
+        assertThat(seals(b, "Com Bolsa")).contains("SCHOLARSHIP");
+        assertThat(seals(b, "Bolsa Hoje")).contains("SCHOLARSHIP");
+        for (String n : new String[] {"Bolsa Vencida", "Bolsa Encerrada", "So Desconto", "Sem Beneficio"}) assertThat(seals(b, n)).as(n).doesNotContain("SCHOLARSHIP");
+        assertThat(names(body("?seal=SCHOLARSHIP", c))).containsExactly("Bolsa Hoje", "Com Bolsa");
+        var record = call(MockMvcRequestBuilders.get("/api/v1/students/" + ids[0] + "/record"), c).getResponse();
+        assertThat(json.readTree(record.getContentAsString()).get("seals").toString()).contains("SCHOLARSHIP");
+        // Administrador só enxerga o alcance dele
+        UUID other = UUID.randomUUID();
+        adminJdbc().update("insert into unit (id, organization_id, name, short_name) values (?, ?, 'Outra', ?)", other, t.orgId(), "o" + other.toString().substring(0, 12));
+        assertThat(names(body("?seal=SCHOLARSHIP", who(t, Role.ADMINISTRATOR)))).containsExactly("Bolsa Hoje", "Com Bolsa");
+        adminJdbc().update("update student set registered_unit_id = ? where id = ?", other, ids[0]);
+        adminJdbc().update("update enrollment_modality set unit_id = ? where student_id = ?", other, ids[0]);
+        adminJdbc().update("update benefit set unit_id = ? where student_id = ?", other, ids[0]);
+        assertThat(names(body("?seal=SCHOLARSHIP", who(t, Role.ADMINISTRATOR)))).containsExactly("Bolsa Hoje");
+        // modalidade encerrada tira o selo
+        adminJdbc().update("update enrollment_modality set status = 'ENDED', ended_at = now() where student_id = ?", ids[1]);
+        assertThat(names(body("?seal=SCHOLARSHIP", c))).containsExactly("Com Bolsa");
     }
 }

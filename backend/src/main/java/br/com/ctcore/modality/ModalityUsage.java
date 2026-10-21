@@ -11,7 +11,7 @@ public interface ModalityUsage {
 
     int activeStudents(UUID modalityId);
 
-    /** Turmas ativas vêm do banco; alunos ativos valem 0 até a matrícula existir (Sprint 07). */
+    /** Turmas ativas e alunos distintos com a modalidade ativa na matrícula (#63, R12). */
     @Component
     class Jdbc implements ModalityUsage {
         private final JdbcClient jdbc;
@@ -28,7 +28,8 @@ public interface ModalityUsage {
 
         @Override
         public int activeStudents(UUID modalityId) {
-            return 0;
+            return jdbc.sql("select count(distinct student_id) from enrollment_modality where modality_id = :id and status = 'ACTIVE'")
+                    .param("id", modalityId).query(Integer.class).single();
         }
     }
 }

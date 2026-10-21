@@ -72,7 +72,7 @@ describe("alunos e responsáveis x OpenAPI (RF-ALU-01, CA23)", () => {
     expect(Object.keys(data.guardians[0]).sort()).toEqual([...openapi.components.schemas.StudentGuardianRow.required].sort());
   });
 
-  it("CPF repetido dá 409 com id, nome e foto; nome e nascimento iguais avisam e confirmDuplicate cria; busca por CPF devolve só três campos", async () => {
+  it("CPF repetido dá 409 com id, nome e foto; nome e nascimento iguais avisam e confirmDuplicate cria; busca por CPF devolve só id, nome, foto e situação", async () => {
     await login("ana@exemplo.com");
     const same = await send("POST", "/students", adultBody({ cpf: "529.982.247-25" }));
     expect(same.status).toBe(409);
@@ -83,7 +83,7 @@ describe("alunos e responsáveis x OpenAPI (RF-ALU-01, CA23)", () => {
     expect((await (await send("POST", "/students", warn)).json()).code).toBe("STUDENT_POSSIBLE_DUPLICATE");
     expect((await send("POST", "/students", { ...warn, confirmDuplicate: true })).status).toBe(201);
     const found = await (await send("GET", "/students/lookup?cpf=52998224725")).json();
-    expect(found).toEqual({ id: ADULT, name: "Aluno Adulto Fictício", photoUrl: null });
+    expect(found).toEqual({ id: ADULT, name: "Aluno Adulto Fictício", photoUrl: null, enrollmentStatus: "NONE" });
     expect((await send("GET", "/students/lookup?cpf=11144477735")).status).toBe(404);
     expect((await send("GET", "/students/lookup?cpf=123")).status).toBe(400);
   });
@@ -170,7 +170,7 @@ describe("lista de alunos x OpenAPI (RF-ALU-01, CA11)", () => {
     await login("ana@exemplo.com");
     const rows = async (qs = "") => (await (await send("GET", `/students${qs}`)).json()).items as { name: string; seals: string[] }[];
     expect(openapi.paths["/students"].get.parameters.some((p: { name: string }) => p.name === "seal")).toBe(true);
-    expect(openapi.components.schemas.StudentSeal.enum).toEqual(["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY"]);
+    expect(openapi.components.schemas.StudentSeal.enum).toEqual(["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP"]);
     expect((await rows()).map((r) => r.seals)).toEqual([["INCOMPLETE_REGISTRATION"], []]);
     expect((await rows("?seal=INCOMPLETE_REGISTRATION")).map((r) => r.name)).toEqual(["Aluno Adulto Fictício"]);
     expect(await rows("?seal=EMAIL_PROBLEM")).toEqual([]);
@@ -185,5 +185,71 @@ describe("lista de alunos x OpenAPI (RF-ALU-01, CA11)", () => {
     await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
     expect((await (await send("GET", "/students")).json()).total).toBe(2);
     expect(await (await send("GET", `/students?unitId=${NORTE}`)).json()).toMatchObject({ items: [], total: 0 });
+  });
+});
+
+const BJJ = "00000000-0000-0000-0000-000000000103";
+const BJJ_CLASS = "00000000-0000-0000-0000-000000000601";
+const JUDO_CLASS = "00000000-0000-0000-0000-000000000602";
+const BJJ_PLAN = "00000000-0000-0000-0000-000000000602";
+const UNKNOWN = "00000000-0000-0000-0000-00000000ffff";
+const enrollAdult = () =>
+  send("POST", `/students/${ADULT}/modalities`, { modalities: [{ unitId: CENTRO, modalityId: BJJ, primaryClassId: BJJ_CLASS, planId: BJJ_PLAN, dueDay: 5 }] });
+
+describe("lista de alunos com matrícula x OpenAPI (RF-ALU-01, RF-ALU-02, R18 a R22)", () => {
+  it("o contrato declara os filtros, as modalidades da linha, as contagens, o selo Novo e a lista simples", () => {
+    const names = openapi.paths["/students"].get.parameters.map((p: { name: string }) => p.name);
+    expect(names).toEqual(expect.arrayContaining(["modalityId", "classId", "levelId", "status"]));
+    expect(openapi.components.schemas.StudentRow.required).toEqual(expect.arrayContaining(["status", "modalities"]));
+    expect(openapi.components.schemas.StudentList.allOf[1].required).toContain("counts");
+    expect(Object.keys(openapi.paths["/students/simple"].get.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404"]));
+    expect(openapi.components.schemas.StudentSimple.required.sort()).toEqual(["belt", "blocked", "id", "name", "photoUrl"]);
+  });
+
+  it("a linha traz status e modalidades ativas, o selo Novo e as contagens; filtros por modalidade, turma, nível e situação combinam", async () => {
+    await login("ana@exemplo.com");
+    const before = await (await send("GET", "/students")).json();
+    expect(before.counts).toEqual({ active: 0, former: 0 });
+    expect(before.items.map((i: { status: string }) => i.status)).toEqual(["NONE", "NONE"]);
+    expect((await enrollAdult()).status).toBe(201);
+    const list = await (await send("GET", "/students")).json();
+    const adult = list.items.find((i: { id: string }) => i.id === ADULT);
+    expect(adult).toMatchObject({ status: "ACTIVE", seals: expect.arrayContaining(["NEW"]), modalities: [{ unit: { id: CENTRO }, modality: { id: BJJ }, primaryClass: { id: BJJ_CLASS }, level: null }] });
+    expect(Object.keys(adult.modalities[0]).sort()).toEqual([...openapi.components.schemas.StudentRowModality.required].sort());
+    expect(list.counts).toEqual({ active: 1, former: 0 });
+    const ids = async (qs: string) => ((await (await send("GET", `/students?${qs}`)).json()).items as { id: string }[]).map((i) => i.id);
+    expect(await ids("status=ACTIVE")).toEqual([ADULT]);
+    expect(await ids("status=FORMER")).toEqual([]);
+    expect(await ids(`modalityId=${BJJ}`)).toEqual([ADULT]);
+    expect(await ids(`classId=${BJJ_CLASS}`)).toEqual([ADULT]);
+    expect(await ids(`classId=${JUDO_CLASS}`)).toEqual([]);
+    expect(await ids(`modalityId=${BJJ}&classId=${JUDO_CLASS}`)).toEqual([]);
+    expect(await ids(`seal=NEW&unitId=${CENTRO}`)).toEqual([ADULT]);
+    expect(await ids(`levelId=${UNKNOWN}`)).toEqual([]);
+    // As contagens ignoram o filtro rápido e os demais filtros, e acompanham a unidade.
+    expect((await (await send("GET", "/students?status=FORMER")).json()).counts).toEqual({ active: 1, former: 0 });
+    expect((await send("GET", `/students?classId=${UNKNOWN}`)).status).toBe(404);
+    expect((await send("GET", `/students?unitId=${UNKNOWN}`)).status).toBe(404);
+    expect((await send("GET", "/students?status=OUTRO")).status).toBe(400);
+  });
+
+  it("lista simples: gestão e Professor da turma veem só id, nome, foto, faixa e blocked; turma de outro 404; sem sessão 401; ambos os parâmetros 400", async () => {
+    expect((await send("GET", `/students/simple?classId=${BJJ_CLASS}`)).status).toBe(401);
+    await login("ana@exemplo.com");
+    await enrollAdult();
+    const mine = await (await send("GET", `/students/simple?classId=${BJJ_CLASS}`)).json();
+    expect(mine).toEqual([{ id: ADULT, name: "Aluno Adulto Fictício", photoUrl: null, belt: null, blocked: false }]);
+    expect((await send("GET", "/students/simple")).status).toBe(400);
+    expect((await send("GET", `/students/simple?classId=${BJJ_CLASS}&lessonId=${BJJ_CLASS}-2026-01-05-19:00`)).status).toBe(400);
+    expect(await (await send("GET", `/students/simple?lessonId=${BJJ_CLASS}-2026-01-05-19:00`)).json()).toEqual(mine);
+    expect((await send("GET", `/students/simple?classId=${UNKNOWN}`)).status).toBe(404);
+    // Professor (Ana é titular da turma 601, João da 602): o da turma dele vê, o da outra não.
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect(await (await send("GET", `/students/simple?classId=${BJJ_CLASS}`)).json()).toEqual(mine);
+    expect((await send("GET", `/students/simple?classId=${JUDO_CLASS}`)).status).toBe(404);
+    // Administrador: só a turma da unidade dele.
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000011");
+    expect((await send("GET", `/students/simple?classId=${BJJ_CLASS}`)).status).toBe(200);
+    expect((await send("GET", `/students/simple?classId=00000000-0000-0000-0000-000000000603`)).status).toBe(404);
   });
 });

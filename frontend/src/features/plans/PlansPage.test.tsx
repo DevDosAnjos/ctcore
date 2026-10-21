@@ -62,7 +62,7 @@ describe("PlansPage (RF-PLA-01)", () => {
     expect(screen.getByText("Alunos usando")).toBeInTheDocument();
     expect(screen.getByText("Altos")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver planos" })).toHaveAttribute("href", "/planos/lista");
-    expect(screen.getByRole("button", { name: "Ver benefícios" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Ver benefícios" })).toHaveAttribute("href", "/beneficios");
   });
 
   it("CA7: sem plano ativo a faixa mostra o texto de vazio; faixa de um valor só mostra um valor", async () => {
@@ -112,11 +112,11 @@ describe("PlansPage (RF-PLA-01)", () => {
     await waitFor(() => expect(calls.at(-1)!.get("unitId")).toBe("u2"));
   });
 
-  it("CA10: o menu leva Planos a /planos e Benefícios segue sem link", async () => {
+  it("CA10: o menu leva Planos a /planos e Benefícios a /beneficios", async () => {
     setup();
     await screen.findByText("R$ 150,00 a R$ 300,00");
     expect(screen.getAllByRole("link", { name: "Planos" })[0]).toHaveAttribute("href", "/planos");
-    expect(screen.queryByRole("link", { name: "Benefícios" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Benefícios" })[0]).toHaveAttribute("href", "/beneficios");
   });
 
   it.each([

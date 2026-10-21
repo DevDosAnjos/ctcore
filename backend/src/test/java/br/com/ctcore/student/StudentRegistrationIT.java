@@ -157,7 +157,7 @@ class StudentRegistrationIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("RN-ALU-06: CA6: busca por CPF devolve só id, nome e foto do aluno de qualquer unidade; inexistente, outra organização e inválido")
+    @DisplayName("RN-ALU-06: CA6: busca por CPF devolve só id, nome, foto e situação do aluno de qualquer unidade; inexistente, outra organização e inválido")
     void lookup() throws Exception {
         Tenant t = tenant();
         String id = ok(send(HttpMethod.POST, "", adult(t, "Aluno Busca", CPF), coordinator(t)), 201).get("id").asText();
@@ -165,7 +165,8 @@ class StudentRegistrationIT extends OrganizationBase {
         JsonNode found = ok(send(HttpMethod.GET, "/lookup?cpf=" + CPF, null, admin(t, other)), 200);
         assertThat(found.get("id").asText()).isEqualTo(id);
         assertThat(found.get("name").asText()).isEqualTo("Aluno Busca");
-        assertThat(found.size()).isEqualTo(3);
+        assertThat(found.size()).isEqualTo(4); // id, nome, foto e situação da matrícula (R8)
+        assertThat(found.get("enrollmentStatus").asText()).isEqualTo("NONE");
         assertThat(send(HttpMethod.GET, "/lookup?cpf=" + OTHER_CPF, null, coordinator(t)).getStatus()).isEqualTo(404);
         assertThat(send(HttpMethod.GET, "/lookup?cpf=" + CPF, null, coordinator(tenant())).getStatus()).isEqualTo(404);
         assertThat(send(HttpMethod.GET, "/lookup?cpf=123", null, coordinator(t)).getStatus()).isEqualTo(400);

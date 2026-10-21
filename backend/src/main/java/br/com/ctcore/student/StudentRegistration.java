@@ -99,21 +99,21 @@ public class StudentRegistration {
         return v;
     }
 
-    private Clean clean(Input in) {
+    private Clean clean(AccountPrincipal who, Input in) {
         if (in == null) throw new ApiValidationException("name", "obrigatório");
         if (in.registeredUnitId() == null) throw new ApiValidationException("registeredUnitId", "obrigatório");
-        Clean c = personal(in);
+        Clean c = personal(in, transactions.execute(() -> students.unitZone(who.organizationId(), in.registeredUnitId())));
         return new Clean(in.registeredUnitId(), c.name(), c.birthDate(), c.adult(), c.postalCode(), c.street(), c.number(), c.complement(), c.district(),
                 c.city(), c.state(), c.cpf(), c.email(), c.phone(), c.gender(), c.referral(), c.emergencyName(), c.emergencyRelationship(),
                 c.emergencyPhone(), c.confirm(), StudentGuardians.prepare(c.adult(), in.guardians()));
     }
 
     /** Validação dos dados pessoais, igual no cadastro e na edição (RF-ALU-04); unidade e responsáveis não entram. */
-    Clean personal(Input in) {
+    Clean personal(Input in, java.time.ZoneId zone) {
         if (in == null) throw new ApiValidationException("name", "obrigatório");
         String name = in.name() == null ? "" : in.name().strip();
         if (name.length() < 2 || name.length() > 80) throw new ApiValidationException("name", "de 2 a 80 caracteres");
-        LocalDate today = LocalDate.now(clock);
+        LocalDate today = LocalDate.ofInstant(clock.instant(), zone);
         if (in.birthDate() == null) throw new ApiValidationException("birthDate", "obrigatório");
         if (!in.birthDate().isBefore(today)) throw new ApiValidationException("birthDate", "informe uma data no passado");
         String postal = in.postalCode() == null ? "" : in.postalCode().replaceAll("\\D", "");
@@ -150,7 +150,7 @@ public class StudentRegistration {
 
     public Students.Detail create(AccountPrincipal who, Input input, String ip) {
         students.requireAccess(who);
-        Clean c = clean(input);
+        Clean c = clean(who, input);
         try {
             var mails = new java.util.ArrayList<StudentGuardians.Mail>();
             Students.Detail created = transactions.execute(() -> insert(who, c, ip, mails));

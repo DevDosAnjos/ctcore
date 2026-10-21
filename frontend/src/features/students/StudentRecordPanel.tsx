@@ -6,15 +6,18 @@ import { WhatsAppButton } from "@/components/whatsapp";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/features/permissions/usePermissions";
 import { StudentEditDialog } from "./StudentEditDialog";
+import { RecordEnrollment } from "./RecordEnrollment";
 import { RecordGuardians } from "./RecordGuardians";
 import { RecordHistory } from "./RecordHistory";
 import { RecordSummary } from "./RecordSummary";
-import { useStudentRecord } from "./useStudentRecord";
-import type { StudentRecord } from "./types";
+import { useEnrollment, useStudentRecord } from "./useStudentRecord";
+import type { EnrollmentStatus, StudentRecord } from "./types";
 
 const TABS = ["summary", "enrollment", "financial", "graduations", "guardians", "history"] as const;
 type Tab = (typeof TABS)[number];
-const LATER: Tab[] = ["enrollment", "financial", "graduations"];
+const LATER: Tab[] = ["financial", "graduations"];
+// O Professor vê só o Resumo e os Responsáveis (RF-ALU-03, R26): matrícula, histórico e o que vier depois são da gestão.
+const TEACHER_TABS: readonly Tab[] = ["summary", "guardians"];
 
 const initials = (name: string) =>
   name
@@ -24,7 +27,7 @@ const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join("");
 
-function Header({ record, onEdit }: { record: StudentRecord; onEdit?: () => void }) {
+function Header({ record, status, onEdit }: { record: StudentRecord; status?: EnrollmentStatus; onEdit?: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -39,6 +42,7 @@ function Header({ record, onEdit }: { record: StudentRecord; onEdit?: () => void
         <p className="break-words text-lg font-semibold">{record.name}</p>
         <p className="text-sm text-muted-foreground">{t("students.age", { count: record.age })}</p>
         <div className="mt-1 flex flex-wrap gap-1">
+          {status && <span className="rounded-md border px-2 py-0.5 text-sm font-medium">{t(`students.statuses.${status}`)}</span>}
           {(record.seals ?? []).map((seal) => (
             <span key={seal} className="rounded-md border px-2 py-0.5 text-sm">
               {t(`students.seals.${seal}`)}
@@ -57,20 +61,20 @@ function Header({ record, onEdit }: { record: StudentRecord; onEdit?: () => void
 }
 
 // Abas com setas, Home e End (padrão WAI-ARIA): só a aba ativa entra na ordem de Tab.
-function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
+function Tabs({ tab, tabs, onChange }: { tab: Tab; tabs: readonly Tab[]; onChange: (t: Tab) => void }) {
   const { t } = useTranslation();
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   function onKey(e: KeyboardEvent) {
-    const i = TABS.indexOf(tab);
-    const next = e.key === "ArrowRight" ? (i + 1) % TABS.length : e.key === "ArrowLeft" ? (i + TABS.length - 1) % TABS.length : e.key === "Home" ? 0 : e.key === "End" ? TABS.length - 1 : -1;
+    const i = tabs.indexOf(tab);
+    const next = e.key === "ArrowRight" ? (i + 1) % tabs.length : e.key === "ArrowLeft" ? (i + tabs.length - 1) % tabs.length : e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : -1;
     if (next < 0) return;
     e.preventDefault();
-    onChange(TABS[next]);
-    refs.current[TABS[next]]?.focus();
+    onChange(tabs[next]);
+    refs.current[tabs[next]]?.focus();
   }
   return (
     <div role="tablist" aria-label={t("students.record.tabsLabel")} onKeyDown={onKey} className="flex flex-wrap gap-1 border-b">
-      {TABS.map((id) => (
+      {tabs.map((id) => (
         <button
           key={id}
           ref={(el) => {
@@ -95,18 +99,19 @@ function Tabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
 function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
   const { t } = useTranslation();
   const { status, data, reload } = useStudentRecord(id);
-  const { permissions } = usePermissions();
+  const { permissions, status: permStatus } = usePermissions();
   const [tab, setTab] = useState<Tab>("summary");
   const [editing, setEditing] = useState(false);
   // Só a gestão vê o botão; a barreira é o servidor.
   const canEdit = !!permissions && permissions.STUDENT_MANAGE !== "NONE";
-  if (status === "loading") return <LoadingState />;
+  const enrollment = useEnrollment(id, canEdit);
+  if (status === "loading" || permStatus === "loading") return <LoadingState />;
   if (status === "forbidden") return <ForbiddenState />;
   if (status === "notFound") return <EmptyState title={t("students.record.notFound")} text={t("students.record.notFoundText")} />;
   if (status === "error" || !data) return <ErrorState onRetry={reload} />;
   return (
     <div className="flex flex-col gap-4">
-      <Header record={data} onEdit={canEdit ? () => setEditing(true) : undefined} />
+      <Header record={data} status={enrollment.data?.status} onEdit={canEdit ? () => setEditing(true) : undefined} />
       <StudentEditDialog
         studentId={id}
         open={editing}
@@ -116,11 +121,12 @@ function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
           onChanged?.();
         }}
       />
-      <Tabs tab={tab} onChange={setTab} />
+      <Tabs tab={tab} tabs={canEdit ? TABS : TEACHER_TABS} onChange={setTab} />
       <div role="tabpanel" id={`record-panel-${tab}`} aria-labelledby={`record-tab-${tab}`}>
-        {tab === "summary" && <RecordSummary record={data} />}
+        {tab === "summary" && <RecordSummary record={data} modalities={enrollment.data?.modalities} />}
+        {tab === "enrollment" && <RecordEnrollment studentId={id} studentName={data.name} canGrant={!!permissions && permissions.BENEFITS !== "NONE"} enrollment={enrollment} onChanged={() => { reload(); onChanged?.(); }} />}
         {LATER.includes(tab) && <EmptyState title={t("students.record.empty.title")} text={t(`students.record.empty.${tab}`)} />}
-        {tab === "guardians" && <RecordGuardians record={data} onChanged={reload} />}
+        {tab === "guardians" && <RecordGuardians record={data} onChanged={reload} canManage={canEdit} />}
         {tab === "history" && <RecordHistory id={id} />}
       </div>
     </div>

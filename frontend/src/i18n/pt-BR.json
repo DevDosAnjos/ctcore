@@ -344,7 +344,9 @@
       "unit": "Unidade",
       "age": "Idade",
       "ageRange": "Faixa etária",
-      "createdAt": "Cadastrado em"
+      "createdAt": "Cadastrado em",
+      "modalities": "Modalidades",
+      "status": "Situação"
     },
     "age_one": "{{count}} ano",
     "age_other": "{{count}} anos",
@@ -354,12 +356,20 @@
       "ageRange": "Faixa etária",
       "allAgeRanges": "Todas as faixas",
       "seal": "Selo",
-      "allSeals": "Todos os selos"
+      "allSeals": "Todos os selos",
+      "modality": "Modalidade",
+      "allModalities": "Todas as modalidades",
+      "class": "Turma",
+      "allClasses": "Todas as turmas",
+      "level": "Nível",
+      "allLevels": "Todos os níveis"
     },
     "seals": {
       "INCOMPLETE_REGISTRATION": "Cadastro incompleto",
       "EMAIL_PROBLEM": "E-mail com problema",
-      "BIRTHDAY_TODAY": "Aniversário hoje"
+      "BIRTHDAY_TODAY": "Aniversário hoje",
+      "NEW": "Novo",
+      "SCHOLARSHIP": "Bolsista"
     },
     "edit": {
       "button": "Editar dados",
@@ -444,12 +454,83 @@
       "notFound": "Aluno não encontrado.",
       "notFoundText": "Este aluno não existe ou não está ao seu alcance.",
       "empty": {
-        "enrollment": "As modalidades, as turmas e o plano do aluno aparecem aqui quando a matrícula estiver disponível.",
         "financial": "As cobranças, os pagamentos e os recibos do aluno aparecem aqui quando as cobranças estiverem disponíveis.",
         "graduations": "A linha do tempo de graduação aparece aqui quando a graduação do aluno estiver disponível.",
         "title": "Ainda não há o que mostrar"
       },
+      "enrollment": {
+        "emptyTitle": "Sem matrícula",
+        "emptyText": "Este aluno ainda não tem modalidade. A matrícula começa pela tela de nova matrícula.",
+        "choose": "Escolha",
+        "otherClasses": "Outros horários",
+        "ended": "Encerrada",
+        "active": "Ativa",
+        "unit": "Unidade",
+        "classLabel": "Turma",
+        "planLabel": "Plano",
+        "nextPlan": "A partir da próxima cobrança: {{plan}}",
+        "dueDay": "Vencimento",
+        "dueDayValue": "Dia {{day}}",
+        "otherClassesLine": "Outros horários: {{names}}",
+        "actions": {
+          "class": "Trocar turma",
+          "plan": "Trocar plano",
+          "transfer": "Transferir",
+          "benefit": "Conceder benefício",
+          "end": "Encerrar"
+        },
+        "readOnly": "Modalidade de outra unidade: só leitura.",
+        "errors": {
+          "403": "Você não tem permissão para alterar esta modalidade.",
+          "404": "Esta modalidade não existe mais ou já foi encerrada.",
+          "409": "O benefício ativo da modalidade mudou. Confira o resumo e tente de novo.",
+          "generic": "Não conseguimos concluir. Nada foi alterado."
+        },
+        "class": {
+          "title": "Trocar turma de {{modality}}",
+          "effect": "A troca vale na hora.",
+          "primary": "Turma principal",
+          "submit": "Trocar turma"
+        },
+        "plan": {
+          "title": "Trocar plano de {{modality}}",
+          "effect": "O plano novo vale a partir da próxima cobrança; até lá, o plano atual continua.",
+          "current": "Plano atual: {{plan}}",
+          "next": "Plano novo",
+          "submit": "Trocar plano"
+        },
+        "end": {
+          "title": "Encerrar modalidade",
+          "effect": "A modalidade para de gerar cobrança, a vaga na turma é liberada e o benefício ativo dela encerra. O histórico fica.",
+          "who": "{{student}} · {{modality}} ({{unit}})",
+          "charges": "Cobranças em aberto",
+          "noCharges": "Nenhuma cobrança em aberto",
+          "chargeLine": "{{due}} · {{amount}} · {{status}}",
+          "reason": "Motivo",
+          "reasons": {
+            "CITY_CHANGE": "Mudança de cidade",
+            "FINANCIAL": "Motivo financeiro",
+            "SCHEDULE": "Horário",
+            "INJURY": "Lesão",
+            "DISSATISFACTION": "Insatisfação",
+            "OTHER": "Outro"
+          },
+          "note": "Observação (opcional)",
+          "submit": "Encerrar modalidade"
+        },
+        "transfer": {
+          "title": "Transferir {{modality}} para outra unidade",
+          "effect": "A modalidade sai de {{unit}}. O histórico e a graduação são mantidos; as cobranças já geradas ficam na unidade de origem.",
+          "unit": "Unidade de destino",
+          "plan": "Plano na unidade nova",
+          "dueDay": "Dia de vencimento (1 a 28)",
+          "inheritedDay": "O vencimento será o dia {{day}}, o mesmo das outras modalidades do aluno nesta unidade.",
+          "submit": "Transferir"
+        }
+      },
       "summary": {
+        "modalities": "Modalidades",
+        "noModalities": "Nenhuma modalidade ativa.",
         "contact": "Contato",
         "phone": "Celular",
         "email": "E-mail",
@@ -516,6 +597,24 @@
         "prev": "Anterior",
         "next": "Próxima"
       }
+    },
+    "simple": {
+      "title": "Alunos da aula",
+      "emptyTitle": "Nenhum aluno ativo",
+      "emptyText": "Esta turma ainda não tem alunos com modalidade ativa.",
+      "blocked": "Bloqueado"
+    },
+    "modalityLine": "{{modality}} · {{unit}} · {{class}}",
+    "statuses": {
+      "NONE": "Sem matrícula",
+      "ACTIVE": "Ativo",
+      "FORMER": "Ex-aluno"
+    },
+    "quick": {
+      "label": "Situação do aluno",
+      "ACTIVE": "Ativos",
+      "FORMER": "Ex-alunos",
+      "withCount": "{{label}} ({{count}})"
     }
   },
   "teachers": {
@@ -1023,6 +1122,81 @@
       "view": "Ver benefícios"
     }
   },
+  "benefits": {
+    "title": "Benefícios",
+    "intro": "Bolsas e descontos dos alunos, com o motivo, quem decidiu, a validade e a situação de cada um.",
+    "unit": "Unidade {{name}}",
+    "percent": "{{value}}%",
+    "highBadge": "Benefício alto",
+    "noDeadline": "Sem prazo",
+    "grant": {
+      "button": "Conceder benefício",
+      "title": "Conceder benefício",
+      "titleFor": "Conceder benefício em {{modality}}",
+      "effect": "O benefício vale a partir do mês indicado no resumo. Cobranças já geradas não mudam.",
+      "fixed": "{{student}} · {{modality}}",
+      "search": "Buscar aluno por nome",
+      "noStudent": "Nenhum aluno encontrado.",
+      "student": "Aluno",
+      "modality": "Modalidade",
+      "noModalityTitle": "Sem modalidade ativa",
+      "noModalityText": "Este aluno não tem modalidade ativa em que você possa conceder benefício.",
+      "type": "Tipo",
+      "percent": "Percentual (1 a 100)",
+      "amount": "Valor do desconto",
+      "reason": "Motivo",
+      "decidedBy": "Decidido por",
+      "validUntil": "Válido até (opcional)",
+      "teacher": "Desconto de professor (opcional)",
+      "noTeacher": "Não é desconto de professor",
+      "submit": "Conceder",
+      "summary": {
+        "title": "Resumo do benefício",
+        "plan": "Plano: {{plan}} ({{value}})",
+        "percent": "Benefício: bolsa de {{value}}%",
+        "amount": "Benefício: desconto de {{value}}",
+        "monthly": "Nova mensalidade: {{value}}",
+        "from": "Vale a partir de {{month}}",
+        "zero": "Esta modalidade não vai gerar mensalidade. O aluno segue Ativo.",
+        "replaces": "Atenção: o benefício ativo atual ({{current}}) será encerrado e substituído por este."
+      }
+    },
+    "end": {
+      "button": "Encerrar",
+      "title": "Encerrar benefício",
+      "summary": "{{student}} · {{modality}}",
+      "effect": "O encerramento vale a partir da próxima cobrança gerada. Cobranças já geradas não mudam.",
+      "reason": "Motivo do encerramento",
+      "submit": "Encerrar benefício",
+      "sending": "Encerrando...",
+      "goneTitle": "Benefício já encerrado",
+      "goneText": "Outra pessoa já encerrou este benefício. Nada foi alterado."
+    },
+    "columns": {
+      "student": "Aluno",
+      "modality": "Modalidade",
+      "type": "Tipo",
+      "value": "Valor",
+      "reason": "Motivo",
+      "decidedBy": "Decidido por",
+      "validUntil": "Validade",
+      "status": "Situação",
+      "actions": "Ações"
+    },
+    "types": { "PERCENT": "Bolsa (%)", "AMOUNT": "Desconto (R$)" },
+    "statuses": { "ACTIVE": "Ativo", "EXPIRED": "Vencido", "ENDED": "Encerrado" },
+    "filters": {
+      "type": "Tipo",
+      "allTypes": "Todos os tipos",
+      "modality": "Modalidade",
+      "allModalities": "Todas as modalidades",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "status": "Situação",
+      "allStatuses": "Todas as situações",
+      "high": "Benefícios altos"
+    }
+  },
   "classes": {
     "title": "Turmas",
     "intro": "Turmas das suas unidades, com os dias, os horários, o professor e a situação de cada uma.",
@@ -1150,6 +1324,44 @@
       "conflict": "Já existe uma turma ativa com este nome na unidade.",
       "error": "Não foi possível salvar. Nada foi alterado. Tente de novo.",
       "save": "Salvar"
+    }
+  },
+  "terms": {
+    "title": "Termos",
+    "intro": "Cada publicação cria uma versão que não muda mais; o aceite do aluno aponta a versão exata.",
+    "tabs": "Tipo de termo",
+    "kinds": {
+      "ENROLLMENT": "Termo de matrícula",
+      "IMAGE_USE": "Termo de uso de imagem"
+    },
+    "current": {
+      "title": "Texto atual",
+      "model": "Ainda não há versão publicada: vale o texto padrão da plataforma.",
+      "published": "Versão atual: {{version}}, publicada em {{date}} por {{by}}."
+    },
+    "editor": {
+      "label": "Texto do termo"
+    },
+    "reaccept": {
+      "legend": "Quem precisa aceitar esta versão",
+      "newOnly": "Só para novos alunos",
+      "everyone": "Todos aceitam de novo no próximo acesso"
+    },
+    "publish": "Publicar nova versão",
+    "published": "Nova versão publicada.",
+    "errors": {
+      "invalid": "O texto precisa ter de 20 a 20000 caracteres e ser diferente do atual. Nada foi publicado.",
+      "conflict": "Outra pessoa publicou uma versão agora há pouco. A tela foi atualizada; confira e publique de novo. Nada foi alterado.",
+      "generic": "Não foi possível publicar. Nada foi alterado. Tente de novo."
+    },
+    "history": {
+      "title": "Histórico de versões",
+      "empty": "Nenhuma versão publicada ainda",
+      "emptyText": "O texto padrão da plataforma está no editor. Publique para criar a versão 1.",
+      "version": "Versão {{version}}",
+      "reacceptAll": "Todos aceitam de novo",
+      "reacceptNew": "Só novos alunos",
+      "read": "Ler o texto"
     }
   },
   "ageRanges": {
@@ -1462,6 +1674,7 @@
       "organizationSettings": "Configurações da organização",
       "modalities": "Modalidades",
       "ageRanges": "Faixas etárias",
+      "terms": "Termos",
       "staffUsers": "Usuários da gestão",
       "units": "Unidades",
       "subscription": "Assinatura e faturas",
@@ -1480,6 +1693,148 @@
   "counter": {
     "nearLimit": "Faltam poucos caracteres para o limite.",
     "atLimit": "Você chegou ao limite de caracteres."
+  },
+  "enrollmentWizard": {
+    "title": "Nova matrícula",
+    "open": "Nova matrícula",
+    "progress": "Etapas da matrícula",
+    "forStudent": "Aluno: {{name}}",
+    "steps": {
+      "student": "Aluno",
+      "modalities": "Modalidades",
+      "billing": "Vencimento e cobrança",
+      "summary": "Resumo",
+      "done": "Conclusão"
+    },
+    "student": {
+      "intro": "Busque o aluno pelo CPF. Se ele já existe na organização, só o nome e a foto aparecem, para você confirmar.",
+      "cpf": "CPF do aluno",
+      "search": "Buscar",
+      "foundTitle": "Aluno encontrado",
+      "confirm": "É este aluno, continuar",
+      "status": {
+        "NONE": "Matrícula nova",
+        "ACTIVE": "Nova modalidade para quem já é aluno",
+        "FORMER": "Retorno de ex-aluno"
+      },
+      "form": {
+        "title": "Cadastrar aluno",
+        "intro": "Este CPF ainda não tem cadastro. Preencha os dados para continuar.",
+        "required": "Campo obrigatório.",
+        "emailInvalid": "Informe um e-mail válido.",
+        "phoneInvalid": "Informe um telefone válido, com DDD.",
+        "postalCodeInvalid": "Informe um CEP com 8 números.",
+        "guardianRequired": "Informe os dados do responsável.",
+        "error": "Não foi possível cadastrar o aluno. Tente de novo.",
+        "possibleDuplicate": "Já existe um aluno chamado {{name}} com a mesma data de nascimento. É a mesma pessoa?",
+        "useExisting": "Usar o aluno existente",
+        "createAnyway": "Cadastrar mesmo assim",
+        "unit": "Unidade de cadastro",
+        "name": "Nome completo",
+        "birthDate": "Data de nascimento",
+        "email": "E-mail",
+        "phone": "Celular",
+        "postalCode": "CEP",
+        "street": "Rua",
+        "number": "Número",
+        "district": "Bairro",
+        "city": "Cidade",
+        "state": "Estado",
+        "guardian": "Responsável",
+        "guardianHelp": "O aluno é menor de idade: o responsável financeiro recebe o convite do portal.",
+        "guardianName": "Nome do responsável",
+        "guardianCpf": "CPF do responsável",
+        "guardianEmail": "E-mail do responsável",
+        "guardianPhone": "Celular do responsável",
+        "submit": "Cadastrar e continuar"
+      }
+    },
+    "modalities": {
+      "intro": "Escolha uma ou mais modalidades. Ainda cabem {{remaining}} modalidades ativas para este aluno.",
+      "emptyTitle": "Nenhuma unidade disponível",
+      "emptyText": "Você não alcança nenhuma unidade ativa. Peça acesso a uma unidade para matricular.",
+      "item": "Modalidade {{n}}",
+      "remove": "Remover",
+      "unit": "Unidade",
+      "modality": "Modalidade",
+      "class": "Turma principal",
+      "plan": "Plano",
+      "add": "Adicionar modalidade",
+      "limit": "O aluno pode ter no máximo {{max}} modalidades ativas.",
+      "noModality": "Esta unidade não oferece modalidade disponível para este aluno. Ligue uma modalidade na unidade e tente de novo.",
+      "noClass": "Não há turma ativa para esta modalidade na unidade. Crie uma turma e volte.",
+      "warnLoading": "Conferindo faixa etária e capacidade da turma...",
+      "warnAge": "Aluno com {{age}} anos, fora da faixa etária da turma {{klass}} ({{range}}, {{min}}–{{max}} anos).",
+      "warnAgeOpen": "Aluno com {{age}} anos, fora da faixa etária da turma {{klass}} ({{range}}, a partir de {{min}} anos).",
+      "warnCapacity": "Turma {{klass}} acima da capacidade com esta matrícula ({{count}}/{{capacity}}).",
+      "noPlan": "Não há plano ativo para esta modalidade na unidade. Crie um plano e volte.",
+      "benefit": {
+        "title": "Benefício",
+        "toggle": "Conceder benefício a esta modalidade",
+        "type": "Tipo",
+        "percent": "Bolsa em porcentagem",
+        "amount": "Desconto em valor",
+        "percentValue": "Porcentagem (1 a 100)",
+        "amountValue": "Valor do desconto",
+        "reason": "Motivo",
+        "decidedBy": "Decidido por",
+        "validUntil": "Válido até (opcional)"
+      },
+      "origin": {
+        "title": "Graduação de origem",
+        "toggle": "O aluno já tem graduação nesta modalidade",
+        "level": "Nível",
+        "degree": "Grau",
+        "achievedOn": "Data da graduação (opcional)",
+        "proofRequired": "Comprovante da graduação (obrigatório)",
+        "proofOptional": "Comprovante da graduação (opcional)",
+        "proofSent": "Comprovante enviado: {{name}}",
+        "proofNeeded": "Envie o comprovante para continuar.",
+        "fileInvalid": "Envie JPG, PNG, WebP ou PDF de até 5 MB.",
+        "uploadError": "Não foi possível enviar o comprovante. Tente de novo."
+      }
+    },
+    "billing": {
+      "intro": "Escolha o dia de vencimento de cada unidade e confira a taxa e a segunda cobrança.",
+      "dueDay": "Dia de vencimento",
+      "dayOption": "Dia {{day}}",
+      "dueInherited": "O aluno já paga nesta unidade no dia {{day}}.",
+      "fee": "Taxa de matrícula: {{value}}",
+      "feeHelp": "Cobrada uma vez por aluno na unidade, e de novo no retorno de ex-aluno.",
+      "exempt": "Isentar taxa",
+      "exemptReason": "Motivo da isenção (3 a 200 caracteres)",
+      "secondDue": "Segunda cobrança (opcional)",
+      "secondDueHelp": "Em branco, vale a data sugerida. Pode ser de 15 a 60 dias da matrícula."
+    },
+    "summary": {
+      "modalities": "Modalidades",
+      "planValue": "Plano: {{value}}",
+      "discount": "Desconto do benefício: {{value}}",
+      "monthly": "Mensalidade: {{value}}",
+      "units": "Por unidade",
+      "dueDay": "Vencimento: dia {{day}}",
+      "firstDue": "Primeira cobrança em {{date}}, com {{days}} dias de tolerância",
+      "fee": "Taxa de matrícula: {{value}}",
+      "feeExempt": "Taxa de matrícula isentada: {{reason}}",
+      "firstTotal": "Total da primeira cobrança: {{value}}",
+      "secondDue": "Segunda cobrança em {{date}}",
+      "noCharge": "Nenhuma cobrança é criada agora: o resumo fica guardado para as cobranças.",
+      "conclude": "Concluir matrícula"
+    },
+    "done": {
+      "title": "Matrícula de {{name}} concluída",
+      "active": "Aluno Ativo",
+      "invite": {
+        "SENT": "Convite do portal enviado ao aluno.",
+        "FAILED": "A matrícula foi gravada, mas o convite do portal não foi enviado. Reenvie pela ficha do aluno.",
+        "MINOR": "Sem convite: o aluno é menor e os responsáveis já foram convidados.",
+        "EXISTING_ACCOUNT": "Sem convite novo: o aluno já tem acesso ao portal.",
+        "NO_EMAIL": "Sem convite: o aluno não tem e-mail cadastrado."
+      },
+      "payNow": "Registrar pagamento agora",
+      "payNowHint": "Disponível com as cobranças",
+      "portal": "Aluno paga pelo portal"
+    }
   },
   "common": {
     "cancel": "Cancelar",

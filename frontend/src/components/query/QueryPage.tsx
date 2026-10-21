@@ -7,7 +7,8 @@ import { DEFAULT_PAGE_SIZE, PAGE_SIZES, Pagination } from "./Pagination";
 import { useQueryParams } from "./useQueryParams";
 
 export type Query = { q: string; pagina: number; ordem: string; filtros: Record<string, string>; tamanho: number };
-export type Page<T> = { rows: T[]; total: number };
+// `counts` são totais auxiliares da tela (ex.: filtros rápidos), vindos do mesmo pedido.
+export type Page<T> = { rows: T[]; total: number; counts?: Record<string, number> };
 
 // Consulta: busca, filtros, ordenação, página e tamanho vivem no endereço (RNF-27). Nunca pede mais que uma página.
 // A tela mapeia Query para o contrato da rota (`tamanho` vira `size`, sempre 25, 50 ou 100); erro com status 403 vira "sem permissão".
@@ -24,7 +25,7 @@ export function QueryPage<T>({
   fetchPage: (q: Query) => Promise<Page<T>>;
   rowKey: (row: T) => string;
   filterKeys?: string[];
-  filters?: (p: { get: (k: string) => string; set: (k: string, v: string) => void }) => ReactNode;
+  filters?: (p: { get: (k: string) => string; set: (k: string, v: string) => void; counts?: Record<string, number> }) => ReactNode;
   emptyAction?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -46,6 +47,8 @@ export function QueryPage<T>({
   const key = JSON.stringify([q, pagina, ordem, filtrosKey, tamanho, tick]);
   const [done, setDone] = useState<{ key: string; s: "error" | "forbidden" | "ok"; data?: Page<T> }>();
   const state = done?.key === key ? done : { s: "loading" as const, data: undefined };
+  // Os totais auxiliares ficam à vista enquanto a página seguinte carrega.
+  const [lastCounts, setLastCounts] = useState<Record<string, number>>();
 
   useEffect(() => {
     let alive = true;
@@ -54,7 +57,10 @@ export function QueryPage<T>({
         if (!alive) return;
         // Página fora do intervalo: volta para a primeira, sem erro (CA6).
         if (pagina > 1 && data.rows.length === 0) set({ pagina: "" }, true);
-        else setDone({ key, s: "ok", data });
+        else {
+          setDone({ key, s: "ok", data });
+          if (data.counts) setLastCounts(data.counts);
+        }
       },
       (e: { status?: number }) => {
         if (alive) setDone({ key, s: e?.status === 403 ? "forbidden" : "error" });
@@ -116,7 +122,7 @@ export function QueryPage<T>({
           value={q}
           onChange={(e) => set({ q: e.target.value })}
         />
-        {filters?.({ get, set: (k, v) => set({ [k]: v }) })}
+        {filters?.({ get, set: (k, v) => set({ [k]: v }), counts: lastCounts })}
       </form>
       {body}
     </div>
