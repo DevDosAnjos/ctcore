@@ -18,6 +18,7 @@ import { ScopeLine } from "@/features/units/UnitSwitcher";
 import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 import { BirthdaysCard } from "@/features/students/BirthdaysCard";
+import { EnrollmentWizardPage } from "@/features/students/enrollment-wizard/EnrollmentWizardPage";
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
@@ -105,6 +106,7 @@ export function App() {
             <Route path="/planos" element={<PlansPage />} />
             <Route path="/planos/lista" element={<PlansTablePage />} />
             <Route path="/beneficios" element={<BenefitsPage />} />
+            <Route path="/alunos/nova-matricula" element={<EnrollmentWizardPage />} />
             <Route path="/alunos/:id?" element={<StudentsPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />

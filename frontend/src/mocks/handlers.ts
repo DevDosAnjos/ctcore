@@ -86,6 +86,8 @@ export const resetMockSession = () => {
   mockStudents = initialStudents();
   guardianResends = 0;
   mockEnrollments = {};
+  mockProofs.clear();
+  mockStartedUnits.length = 0;
   studentLog = {};
   for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
   guardianCpfs["00000000-0000-0000-0000-000000000801"] = "98765432100";
@@ -740,6 +742,154 @@ const enrollmentView = (studentId: string) => {
   };
 };
 type ModalityBody = { unitId?: string; modalityId?: string; primaryClassId?: string; otherClassIds?: string[] | null; planId?: string; dueDay?: number | null };
+// RF-MAT-01 (#67): nova matrícula em etapas. Prévia sem gravar, conclusão que só grava depois de validar tudo, e o comprovante da graduação de origem.
+type ConclusionBody = {
+  modalities?: (ModalityBody & { benefit?: { type?: string; value?: number; reason?: string; decidedBy?: string; validUntil?: string | null } | null; origin?: { levelId?: string; degree?: number; achievedOn?: string | null; proofKey?: string | null } | null })[];
+  units?: { unitId?: string; feeExempt?: boolean | null; feeExemptReason?: string | null; secondDueOn?: string | null }[];
+};
+const mockProofs = new Map<string, string>();
+const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; feeExemptReason: string | null; secondDueOn: string }[] = [];
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const plusDays = (iso: string, days: number) => isoDay(new Date(Date.parse(`${iso}T12:00:00Z`) + days * 86_400_000));
+// RN-MAT-07: a primeira data com o dia de vencimento a pelo menos 15 dias da matrícula.
+const suggestSecond = (today: string, dueDay: number) => {
+  const min = plusDays(today, 15);
+  const [y, m] = min.split("-").map(Number);
+  const same = `${y}-${String(m).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+  if (same >= min) return same;
+  const next = new Date(Date.UTC(y, m, 1));
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+};
+function mockPreview(found: StudentDetail, body: ConclusionBody) {
+  const asked = body.modalities;
+  if (!Array.isArray(asked) || asked.length === 0) return studentBad("modalities", "obrigatório");
+  for (const m of asked) for (const k of ["unitId", "modalityId", "primaryClassId", "planId"] as const) if (!m?.[k]) return studentBad(k, "obrigatório");
+  const current = mockEnrollments[found.id];
+  const activeRows = current?.modalities.filter((m) => m.status === "ACTIVE") ?? [];
+  const returning = Boolean(current) && activeRows.length === 0;
+  const modalities: { unitId: string; modalityId: string; planId: string; planName: string; planCents: number; discountCents: number; monthlyCents: number }[] = [];
+  const monthlyByUnit = new Map<string, number>();
+  for (const m of asked) {
+    if (!units.some((u) => u.id === m.unitId)) return error(404, "NOT_FOUND", "Não encontrado.");
+    if (activeRole() !== "COORDINATOR" && m.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+    const plan = mockPlans.find((p) => p.id === m.planId);
+    if (!plan) return error(404, "NOT_FOUND", "Não encontrado.");
+    if (plan.unitId !== m.unitId || modalityCatalog[plan.modalityIndex].id !== m.modalityId || plan.status !== "ACTIVE") return rule("planId", "plano inativo ou de outra unidade ou modalidade");
+    let monthly = plan.valueCents;
+    if (m.benefit) {
+      const { type, value } = m.benefit;
+      if (type !== "PERCENT" && type !== "AMOUNT") return studentBad("type", "PERCENT ou AMOUNT");
+      if (!Number.isInteger(value) || value! < 1 || (type === "PERCENT" && value! > 100)) return studentBad("value", "valor inválido");
+      monthly = Math.max(0, plan.valueCents - benefitDiscount(type, value!, plan.valueCents));
+    }
+    modalities.push({ unitId: m.unitId!, modalityId: m.modalityId!, planId: plan.id, planName: plan.name, planCents: plan.valueCents, discountCents: plan.valueCents - monthly, monthlyCents: monthly });
+    monthlyByUnit.set(m.unitId!, (monthlyByUnit.get(m.unitId!) ?? 0) + monthly);
+  }
+  const today = isoDay(new Date());
+  const summaries = [];
+  for (const unitId of monthlyByUnit.keys()) {
+    const settings = unitDetail(unitId).settings;
+    const wanted = new Set(asked.filter((m) => m.unitId === unitId && m.dueDay != null).map((m) => m.dueDay!));
+    const inherited = activeRows.find((r) => r.unitId === unitId)?.dueDay;
+    let dueDay: number;
+    if (inherited !== undefined) {
+      if (wanted.size > 0 && !(wanted.size === 1 && wanted.has(inherited))) return rule("dueDay", `o aluno já paga nesta unidade no dia ${inherited}`);
+      dueDay = inherited;
+    } else if (wanted.size === 0) return studentBad("dueDay", "obrigatório");
+    else {
+      dueDay = [...wanted][0];
+      if (wanted.size > 1 || !MOCK_DUE_DAYS.includes(dueDay)) return rule("dueDay", "dia não permitido pela unidade");
+    }
+    const had = (current?.modalities ?? []).some((r) => r.unitId === unitId);
+    const standard = settings.enrollmentFeeEnabled && (returning || !had) ? settings.enrollmentFeeCents : 0;
+    const ask = body.units?.find((u) => u.unitId === unitId);
+    let fee = standard;
+    let reason: string | null = null;
+    if (ask?.feeExempt) {
+      const text = (ask.feeExemptReason ?? "").trim();
+      if (text.length < 3 || text.length > 200) return rule("feeExemptReason", "de 3 a 200 caracteres");
+      if (!settings.enrollmentFeeEnabled) return rule("feeExemptReason", "a unidade não cobra taxa de matrícula");
+      if (standard > 0) {
+        fee = 0;
+        reason = text;
+      }
+    }
+    const suggested = suggestSecond(today, dueDay);
+    let second = suggested;
+    if (ask?.secondDueOn) {
+      second = ask.secondDueOn;
+      if (second < plusDays(today, 15) || second > plusDays(today, 60)) return rule("secondDueOn", "entre 15 e 60 dias da matrícula");
+    }
+    summaries.push({
+      unitId, unitName: units.find((u) => u.id === unitId)?.name ?? "", dueDay, firstDueOn: today, toleranceDays: 5, feeCents: fee, feeExempt: reason !== null, feeExemptReason: reason,
+      firstChargeCents: (monthlyByUnit.get(unitId) ?? 0) + fee, secondDueOn: second, suggestedSecondDueOn: suggested,
+    });
+  }
+  return { modalities, units: summaries };
+}
+// RN-GRA-09: graduação de origem só em modalidade com graduação ligada; com a exigência ligada, o comprovante é obrigatório.
+function checkOrigin(studentId: string, m: NonNullable<ConclusionBody["modalities"]>[number]) {
+  const o = m.origin;
+  if (!o) return null;
+  const graduation = graduationOf(m.modalityId!);
+  if (!graduation.enabled) return rule("origin", "a modalidade não tem graduação ligada");
+  const level = graduation.levels.find((l) => l.id === o.levelId);
+  if (!level) return error(404, "NOT_FOUND", "Não encontrado.");
+  if (!Number.isInteger(o.degree) || o.degree! < 0 || o.degree! > level.maxDegree) return rule("origin.degree", `de 0 a ${level.maxDegree}`);
+  if (o.achievedOn && o.achievedOn > isoDay(new Date())) return rule("origin.achievedOn", "não pode ser no futuro");
+  if (!o.proofKey && graduation.requireOriginProof) return rule("origin.proofKey", "a modalidade exige o comprovante da graduação de origem");
+  if (o.proofKey && mockProofs.get(o.proofKey) !== studentId) return rule("origin.proofKey", "comprovante inválido");
+  return null;
+}
+// RN-MAT-01, 02, 03, 04, 19: valida e grava as modalidades do pedido (tudo ou nada); devolve a resposta de recusa ou as linhas criadas.
+function addMockModalities(found: StudentDetail, asked: ModalityBody[]): Response | MockEnrollmentModality[] {
+  for (const m of asked) for (const k of ["unitId", "modalityId", "primaryClassId", "planId"] as const) if (!m?.[k]) return studentBad(k, "obrigatório");
+  const current = mockEnrollments[found.id];
+  const active = current?.modalities.filter((m) => m.status === "ACTIVE") ?? [];
+  const kinds = new Set(active.map((m) => m.modalityId));
+  for (const m of asked) {
+    if (kinds.has(m.modalityId!)) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "modalityId", message: "o aluno já tem esta modalidade ativa" }]);
+    kinds.add(m.modalityId!);
+  }
+  if (active.length + asked.length > 10) return rule("modalities", "no máximo 10 modalidades ativas");
+  const dueByUnit = new Map(active.map((m) => [m.unitId, m.dueDay]));
+  const rows: MockEnrollmentModality[] = [];
+  for (const m of asked) {
+    if (activeRole() !== "COORDINATOR" && m.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+    const unit = units.find((u) => u.id === m.unitId);
+    const klass = mockClasses.find((c) => c.id === m.primaryClassId);
+    const plan = mockPlans.find((p) => p.id === m.planId);
+    if (!unit || !klass || !plan) return error(404, "NOT_FOUND", "Não encontrado.");
+    if (klass.unitId !== m.unitId || klass.modalityId !== m.modalityId || klass.status !== "ACTIVE") return rule("primaryClassId", "turma inativa ou de outra unidade ou modalidade");
+    for (const other of m.otherClassIds ?? []) {
+      const c = mockClasses.find((x) => x.id === other);
+      if (!c) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (other === m.primaryClassId || c.unitId !== m.unitId || c.modalityId !== m.modalityId || c.status !== "ACTIVE") return rule("otherClassIds", "turma inativa, de outra unidade ou modalidade, ou igual à principal");
+    }
+    if (plan.unitId !== m.unitId || modalityCatalog[plan.modalityIndex].id !== m.modalityId || plan.status !== "ACTIVE") return rule("planId", "plano inativo ou de outra unidade ou modalidade");
+    const inherited = dueByUnit.get(m.unitId!);
+    if (inherited !== undefined) {
+      if (m.dueDay != null && m.dueDay !== inherited) return rule("dueDay", `o aluno já paga nesta unidade no dia ${inherited}`);
+    } else if (m.dueDay == null) return studentBad("dueDay", "obrigatório");
+    else if (!MOCK_DUE_DAYS.includes(m.dueDay)) return rule("dueDay", "dia não permitido pela unidade");
+    const dueDay = inherited ?? m.dueDay!;
+    dueByUnit.set(m.unitId!, dueDay);
+    rows.push({ id: crypto.randomUUID(), unitId: m.unitId!, modalityId: m.modalityId!, primaryClassId: m.primaryClassId!, otherClassIds: [...new Set(m.otherClassIds ?? [])], planId: m.planId!, nextPlanId: null, dueDay, status: "ACTIVE", startedAt: new Date().toISOString(), endedAt: null });
+  }
+  const now = new Date().toISOString();
+  if (!current) {
+    mockEnrollments[found.id] = { id: crypto.randomUUID(), enrolledAt: now, reopenedAt: null, modalities: rows };
+    logStudent(found.id, "student.enrolled", null);
+  } else {
+    if (active.length === 0) {
+      current.reopenedAt = now;
+      logStudent(found.id, "student.enrollment_reopened", null);
+    }
+    current.modalities.push(...rows);
+  }
+  for (let i = 0; i < rows.length; i++) logStudent(found.id, "student.modality_added", null);
+  return rows;
+}
 // Histórico do aluno (RF-ALU-03), em memória: o servidor lê a auditoria; aqui as rotas de responsável acrescentam a linha.
 let studentLog: Record<string, { action: string; at: string; actor: string | null; actorProfile: string | null; reason: string | null }[]> = {};
 const logStudent = (id: string, action: string, reason: string | null) => {
@@ -2652,51 +2802,8 @@ export const routes: Route[] = [
       const asked = body.modalities;
       if (!Array.isArray(asked) || asked.length === 0) return studentBad("modalities", "obrigatório");
       for (const m of asked) for (const k of ["unitId", "modalityId", "primaryClassId", "planId"] as const) if (!m?.[k]) return studentBad(k, "obrigatório");
-      const current = mockEnrollments[found.id];
-      const active = current?.modalities.filter((m) => m.status === "ACTIVE") ?? [];
-      const kinds = new Set(active.map((m) => m.modalityId));
-      for (const m of asked) {
-        if (kinds.has(m.modalityId!)) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "modalityId", message: "o aluno já tem esta modalidade ativa" }]);
-        kinds.add(m.modalityId!);
-      }
-      if (active.length + asked.length > 10) return rule("modalities", "no máximo 10 modalidades ativas");
-      const dueByUnit = new Map(active.map((m) => [m.unitId, m.dueDay]));
-      const rows: MockEnrollmentModality[] = [];
-      for (const m of asked) {
-        if (activeRole() !== "COORDINATOR" && m.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
-        const unit = units.find((u) => u.id === m.unitId);
-        const klass = mockClasses.find((c) => c.id === m.primaryClassId);
-        const plan = mockPlans.find((p) => p.id === m.planId);
-        if (!unit || !klass || !plan) return error(404, "NOT_FOUND", "Não encontrado.");
-        if (klass.unitId !== m.unitId || klass.modalityId !== m.modalityId || klass.status !== "ACTIVE") return rule("primaryClassId", "turma inativa ou de outra unidade ou modalidade");
-        for (const other of m.otherClassIds ?? []) {
-          const c = mockClasses.find((x) => x.id === other);
-          if (!c) return error(404, "NOT_FOUND", "Não encontrado.");
-          if (other === m.primaryClassId || c.unitId !== m.unitId || c.modalityId !== m.modalityId || c.status !== "ACTIVE") return rule("otherClassIds", "turma inativa, de outra unidade ou modalidade, ou igual à principal");
-        }
-        if (plan.unitId !== m.unitId || modalityCatalog[plan.modalityIndex].id !== m.modalityId || plan.status !== "ACTIVE") return rule("planId", "plano inativo ou de outra unidade ou modalidade");
-        const inherited = dueByUnit.get(m.unitId!);
-        if (inherited !== undefined) {
-          if (m.dueDay != null && m.dueDay !== inherited) return rule("dueDay", `o aluno já paga nesta unidade no dia ${inherited}`);
-        } else if (m.dueDay == null) return studentBad("dueDay", "obrigatório");
-        else if (!MOCK_DUE_DAYS.includes(m.dueDay)) return rule("dueDay", "dia não permitido pela unidade");
-        const dueDay = inherited ?? m.dueDay!;
-        dueByUnit.set(m.unitId!, dueDay);
-        rows.push({ id: crypto.randomUUID(), unitId: m.unitId!, modalityId: m.modalityId!, primaryClassId: m.primaryClassId!, otherClassIds: [...new Set(m.otherClassIds ?? [])], planId: m.planId!, nextPlanId: null, dueDay, status: "ACTIVE", startedAt: new Date().toISOString(), endedAt: null });
-      }
-      const now = new Date().toISOString();
-      if (!current) {
-        mockEnrollments[found.id] = { id: crypto.randomUUID(), enrolledAt: now, reopenedAt: null, modalities: rows };
-        logStudent(found.id, "student.enrolled", null);
-      } else {
-        if (active.length === 0) {
-          current.reopenedAt = now;
-          logStudent(found.id, "student.enrollment_reopened", null);
-        }
-        current.modalities.push(...rows);
-      }
-      for (let i = 0; i < rows.length; i++) logStudent(found.id, "student.modality_added", null);
-      return HttpResponse.json(enrollmentView(found.id), { status: 201 });
+      const added = addMockModalities(found, asked);
+      return added instanceof Response ? added : HttpResponse.json(enrollmentView(found.id), { status: 201 });
     },
   },
   {
@@ -2706,6 +2813,72 @@ export const routes: Route[] = [
     resolver: ({ params }) => {
       const found = studentFor(params.id as string);
       return found instanceof Response ? found : HttpResponse.json(enrollmentView(found.id));
+    },
+  },
+  {
+    // RF-MAT-01, R1: prévia da nova matrícula; não grava nada.
+    method: "post",
+    path: "/students/{id}/enrollment/preview",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const preview = mockPreview(found, ((await request.json().catch(() => ({}))) as ConclusionBody) ?? {});
+      return preview instanceof Response ? preview : HttpResponse.json(preview);
+    },
+  },
+  {
+    // RF-MAT-01, R4: conclui; valida tudo antes de gravar (tudo ou nada), guarda o benefício, a graduação de origem e o início da matrícula por unidade.
+    method: "post",
+    path: "/students/{id}/enrollment/conclude",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as ConclusionBody) ?? {};
+      const summary = mockPreview(found, body);
+      if (summary instanceof Response) return summary;
+      for (const m of body.modalities!) {
+        const bad = checkOrigin(found.id, m);
+        if (bad) return bad;
+      }
+      const added = addMockModalities(found, body.modalities!);
+      if (added instanceof Response) return added;
+      body.modalities!.forEach((m, i) => {
+        if (m.benefit) {
+          const plan = mockPlans.find((p) => p.id === m.planId)!;
+          const type = m.benefit.type as "PERCENT" | "AMOUNT";
+          const value = m.benefit.value!;
+          benefitRows.push({
+            id: crypto.randomUUID(), rowId: added[i].id, student: { id: found.id, name: found.name }, unit: { id: m.unitId!, name: units.find((u) => u.id === m.unitId)?.name ?? "" },
+            modality: modalityCatalog.find((c) => c.id === m.modalityId) ?? modalityCatalog[0], type, value, reason: m.benefit.reason ?? "", decidedBy: m.benefit.decidedBy ?? "",
+            grantedBy: session.account.name, validUntil: m.benefit.validUntil ?? null, status: "ACTIVE", high: type === "PERCENT" ? value > 50 : value * 2 > plan.valueCents,
+            monthlyValueCents: Math.max(0, plan.valueCents - benefitDiscount(type, value, plan.valueCents)),
+          });
+        }
+      });
+      for (const u of summary.units) {
+        mockStartedUnits.push({ studentId: found.id, unitId: u.unitId, feeCents: u.feeCents, feeExemptReason: u.feeExemptReason, secondDueOn: u.secondDueOn });
+        if (u.feeExempt) logStudent(found.id, "enrollment.fee_exempted", u.feeExemptReason);
+      }
+      const inviteStatus = found.minor ? "MINOR" : found.email ? "SENT" : "NO_EMAIL";
+      return HttpResponse.json({ enrollment: enrollmentView(found.id), summary, termPending: true, inviteStatus }, { status: 201 });
+    },
+  },
+  {
+    // RF-MAT-01, R7: comprovante da graduação de origem (JPG, PNG, WebP ou PDF, até 5 MB); devolve a chave que a conclusão referencia.
+    method: "post",
+    path: "/students/{id}/enrollment/origin-proof",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      // FormData e File do jsdom não passam pelo fetch do Node: o corpo é lido como texto, como na foto do aluno.
+      const raw = await request.text();
+      if (!raw.includes('name="file"')) return studentBad("file", "obrigatório");
+      const type = /Content-Type:\s*([^\r\n]+)/i.exec(raw.slice(raw.indexOf('name="file"')))?.[1]?.trim() ?? "";
+      const ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" } as Record<string, string>)[type];
+      if (!ext || raw.length > 5 * 1024 * 1024) return error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.", [{ field: "file", message: "use JPG, PNG, WebP ou PDF de até 5 MB" }]);
+      const proofKey = `origin-proof-${found.id}-${crypto.randomUUID()}.${ext}`;
+      mockProofs.set(proofKey, found.id);
+      return HttpResponse.json({ proofKey }, { status: 201 });
     },
   },
   {

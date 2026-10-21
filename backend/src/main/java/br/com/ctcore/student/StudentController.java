@@ -35,13 +35,17 @@ class StudentController {
     private final StudentEdit edit;
     private final Enrollments enrollments;
     private final StudentSimple simple;
+    private final EnrollmentConclusion conclusion;
+    private final OriginProof originProof;
 
     record FinancialBody(Boolean financial) {}
 
     record ReasonBody(String reason) {}
 
     StudentController(Students students, StudentRegistration registration, StudentGuardians guardians, StudentRecords records,
-            StudentEdit edit, Enrollments enrollments, StudentSimple simple) {
+            StudentEdit edit, Enrollments enrollments, StudentSimple simple, EnrollmentConclusion conclusion, OriginProof originProof) {
+        this.conclusion = conclusion;
+        this.originProof = originProof;
         this.simple = simple;
         this.enrollments = enrollments;
         this.edit = edit;
@@ -143,6 +147,27 @@ class StudentController {
     Enrollments.Enrollment transfer(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable("modalityRowId") UUID rowId,
             @RequestBody Enrollments.TransferInput body, HttpServletRequest request) {
         return enrollments.transfer(who, id, rowId, body, request.getRemoteAddr());
+    }
+
+    @PostMapping("/{id}/enrollment/preview")
+    EnrollmentConclusion.Preview previewEnrollment(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
+            @RequestBody EnrollmentConclusion.Request body) {
+        return conclusion.preview(who, id, body);
+    }
+
+    @PostMapping("/{id}/enrollment/conclude")
+    @ResponseStatus(HttpStatus.CREATED)
+    EnrollmentConclusion.Concluded concludeEnrollment(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
+            @RequestBody EnrollmentConclusion.Request body, HttpServletRequest request) {
+        return conclusion.conclude(who, id, body, request.getRemoteAddr());
+    }
+
+    @PostMapping(value = "/{id}/enrollment/origin-proof", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    OriginProof.Stored originProof(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
+            @RequestPart(value = "file", required = false) MultipartFile file, HttpServletRequest request) throws IOException {
+        if (file == null) throw new ApiValidationException("file", "obrigatório");
+        return originProof.store(who, id, file.getBytes(), request.getRemoteAddr());
     }
 
     @GetMapping("/{id}/enrollment")

@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
@@ -13,7 +14,9 @@ const result = (status: Result["status"], data?: Enrollment): Result => ({ statu
 const show = (enrollment: Result, canGrant = false) =>
   render(
     <ThemeProvider>
-      <RecordEnrollment studentId="s1" studentName="Aluno Teste" canGrant={canGrant} enrollment={enrollment} onChanged={() => {}} />
+      <MemoryRouter>
+        <RecordEnrollment studentId="s1" studentName="Aluno Teste" canGrant={canGrant} enrollment={enrollment} onChanged={() => {}} />
+      </MemoryRouter>
     </ThemeProvider>,
   );
 
@@ -49,12 +52,15 @@ describe("aba Matrícula e modalidades (R23, R27, CA33)", () => {
     show(result("ready", { id: null, status: "NONE", enrolledAt: null, reopenedAt: null, modalities: [] }));
     expect(screen.getByText("Sem matrícula")).toBeInTheDocument();
     expect(screen.getByText(/nova matrícula/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Nova matrícula" })).toHaveAttribute("href", "/alunos/nova-matricula?aluno=s1");
   });
 
   it("modalidade encerrada aparece sem ações", () => {
     show(result("ready", enrollmentOf([modalityRow({ status: "ENDED", endedAt: "2026-03-01T12:00:00Z" })])));
     expect(screen.getByText("Encerrada")).toBeInTheDocument();
     expect(screen.queryByRole("button")).toBeNull();
+    // R11: ex-aluno recomeça pelo assistente, já no aluno
+    expect(screen.getByRole("link", { name: "Nova matrícula" })).toHaveAttribute("href", "/alunos/nova-matricula?aluno=s1");
   });
 
   it.each([

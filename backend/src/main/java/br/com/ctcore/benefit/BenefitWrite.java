@@ -77,13 +77,13 @@ public class BenefitWrite {
         return "PERCENT".equals(type) ? value > 50 : value * 2 > planCents;
     }
 
-    static String type(String raw) {
+    public static String type(String raw) {
         String t = raw == null ? "" : raw.strip().toUpperCase(java.util.Locale.ROOT);
         if (!t.equals("PERCENT") && !t.equals("AMOUNT")) throw new ApiValidationException("type", "PERCENT ou AMOUNT");
         return t;
     }
 
-    static long value(String type, BigDecimal raw) {
+    public static long value(String type, BigDecimal raw) {
         long max = type.equals("PERCENT") ? 100 : MAX_AMOUNT;
         String message = type.equals("PERCENT") ? "inteiro de 1 a 100" : "inteiro de 1 a 99999999 centavos";
         if (raw == null) throw new ApiValidationException("value", "obrigatório");

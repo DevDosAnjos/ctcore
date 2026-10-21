@@ -8,6 +8,7 @@ import { useSession } from "@/features/auth/SessionProvider";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { formatDate } from "@/lib/format";
 import type { StudentRow } from "./types";
+import { NewEnrollmentLink } from "./NewEnrollmentLink";
 import { StudentFilters } from "./StudentFilters";
 import { StudentRecordPanel } from "./StudentRecordPanel";
 import { OPTIONAL_COLUMNS, useStudentColumns, type OptionalColumn } from "./useStudentColumns";
@@ -87,6 +88,7 @@ function Content({ accountId }: { accountId: string }) {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">{t("students.title")}</h1>
       <p className="text-muted-foreground">{t("students.intro")}</p>
+      <NewEnrollmentLink />
       <details>
         <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium">{t("students.columnsChoose")}</summary>
         <div className="flex flex-wrap gap-x-4">
