@@ -80,7 +80,24 @@ export interface StudentInput {
 }
 
 // Espelha StudentRow e StudentList do OpenAPI (RF-ALU-01). CPF, e-mail, telefone, endereço e emergência nunca vêm na lista.
-export type StudentSeal = "INCOMPLETE_REGISTRATION" | "EMAIL_PROBLEM" | "BIRTHDAY_TODAY";
+export type StudentSeal = "INCOMPLETE_REGISTRATION" | "EMAIL_PROBLEM" | "BIRTHDAY_TODAY" | "NEW";
+export type EnrollmentStatus = "NONE" | "ACTIVE" | "FORMER";
+// Modalidade ativa na linha da lista (StudentRowModality); o nível é nulo até a graduação do aluno (D13).
+export interface StudentRowModality {
+  id: string;
+  unit: { id: string; name: string };
+  modality: { id: string; name: string };
+  primaryClass: { id: string; name: string };
+  level: { id: string; name: string } | null;
+}
+// Lista simples de turma ou aula (StudentSimple): sem CPF, contato, valores nem selos.
+export interface StudentSimple {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  belt: string | null;
+  blocked: boolean;
+}
 export interface StudentRow {
   id: string;
   name: string;
@@ -92,12 +109,15 @@ export interface StudentRow {
   registeredUnit: { id: string; name: string };
   createdAt: string;
   seals: StudentSeal[];
+  status: EnrollmentStatus;
+  modalities: StudentRowModality[];
 }
 export interface StudentList {
   items: StudentRow[];
   page: number;
   size: number;
   total: number;
+  counts: { active: number; former: number };
 }
 
 // Espelha StudentRecord e StudentHistoryEntry do OpenAPI (RF-ALU-03). Na ficha reduzida do Professor faltam birthDate, seals, cpf, address e, nos responsáveis, financial e access.
@@ -148,4 +168,31 @@ export interface StudentBirthday {
   contactName: string | null;
   contactPhone: string | null;
   contactIsGuardian: boolean;
+}
+
+// Espelha Enrollment e EnrollmentModality do OpenAPI (RN-MAT-01, 02): a matrícula do aluno; `canEdit` vale por unidade (RN-ALU-07).
+export interface EnrollmentNamed {
+  id: string;
+  name: string;
+}
+export interface EnrollmentModality {
+  id: string;
+  unit: EnrollmentNamed;
+  modality: EnrollmentNamed;
+  primaryClass: EnrollmentNamed;
+  otherClasses: EnrollmentNamed[];
+  plan: EnrollmentNamed;
+  nextPlan: EnrollmentNamed | null;
+  dueDay: number;
+  status: "ACTIVE" | "ENDED";
+  startedAt: string;
+  endedAt: string | null;
+  canEdit: boolean;
+}
+export interface Enrollment {
+  id: string | null;
+  status: EnrollmentStatus;
+  enrolledAt: string | null;
+  reopenedAt: string | null;
+  modalities: EnrollmentModality[];
 }

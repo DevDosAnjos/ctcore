@@ -66,7 +66,7 @@ public class TrainingClasses {
 
     private record Head(UUID id, String name, Ref unit, Ref modality, AgeRangeRef ageRange, Ref head, Integer capacity, String status) {}
 
-    private record Loaded(long total, List<Head> heads, Map<UUID, List<Slot>> schedule, Map<UUID, List<Ref>> assistants) {}
+    private record Loaded(long total, List<Head> heads, Map<UUID, List<Slot>> schedule, Map<UUID, List<Ref>> assistants, Map<UUID, Integer> students) {}
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
@@ -142,10 +142,12 @@ public class TrainingClasses {
             Map<UUID, List<Slot>> schedule = new HashMap<>();
             Map<UUID, List<Ref>> assistants = new HashMap<>();
             children(who.organizationId(), ids, schedule, assistants);
-            return new Loaded(total, heads, schedule, assistants);
+            Map<UUID, Integer> counts = new HashMap<>();
+            heads.forEach(h -> counts.put(h.id(), activeStudents(h.id())));
+            return new Loaded(total, heads, schedule, assistants, counts);
         });
         List<Row> rows = loaded.heads().stream().map(h -> {
-            int students = activeStudents(h.id());
+            int students = loaded.students().get(h.id());
             return new Row(h.id(), h.name(), h.unit(), h.modality(), h.ageRange(), loaded.schedule().getOrDefault(h.id(), List.of()), h.head(),
                     loaded.assistants().getOrDefault(h.id(), List.of()), students, h.capacity(), overCapacity(students, h.capacity()), h.status());
         }).toList();
@@ -215,14 +217,18 @@ public class TrainingClasses {
                 .optional().orElse(null);
     }
 
-    /** Alunos ativos da turma, com a marca de turma principal (RN-TUR-04); vazia até a Sprint 07. É o ponto a trocar. */
+    /** Alunos ativos da turma (principal ou outro horário), com a marca de turma principal (RN-TUR-04). Roda na transação da organização. */
     List<Student> students(UUID classId) {
-        return List.of();
+        return jdbc.sql("select s.id, s.name, m.primary_class_id = :class from enrollment_modality m join student s on s.organization_id = m.organization_id "
+                + "and s.id = m.student_id where m.status = 'ACTIVE' and (m.primary_class_id = :class or exists (select 1 from enrollment_modality_class o "
+                + "where o.organization_id = m.organization_id and o.modality_row_id = m.id and o.class_id = :class)) order by s.name_key, s.name, s.id")
+                .param("class", classId).query((rs, n) -> new Student(rs.getObject(1, UUID.class), rs.getString(2), rs.getBoolean(3))).list();
     }
 
-    /** Alunos que têm esta turma como principal (RN-TUR-03); 0 até a Sprint 07. É o ponto a trocar. */
+    /** Alunos ativos que têm esta turma como principal (RN-TUR-03). */
     int primaryStudents(UUID classId) {
-        return 0;
+        return jdbc.sql("select count(*) from enrollment_modality where primary_class_id = :class and status = 'ACTIVE'")
+                .param("class", classId).query(Integer.class).single();
     }
 
     /** RN-TUR-04: a turma é a principal do aluno na modalidade; nas demais, é outro horário. */
@@ -230,9 +236,11 @@ public class TrainingClasses {
         return classId.equals(studentPrimaryClassId);
     }
 
-    /** Alunos ativos da turma: 0 até a matrícula existir (Sprint 07, D5); é o único ponto a trocar. */
+    /** Alunos distintos ativos da turma, principal ou outro horário (RN-TUR-02). */
     int activeStudents(UUID classId) {
-        return 0;
+        return jdbc.sql("select count(distinct m.student_id) from enrollment_modality m where m.status = 'ACTIVE' and (m.primary_class_id = :class "
+                + "or exists (select 1 from enrollment_modality_class o where o.organization_id = m.organization_id and o.modality_row_id = m.id "
+                + "and o.class_id = :class))").param("class", classId).query(Integer.class).single();
     }
 
     /** Mesmo ponto para outros pacotes (painel da aula, RF-AGE-02). */

@@ -62,4 +62,37 @@ describe("ficha e histórico do aluno x OpenAPI (RF-ALU-03)", () => {
     const unit = await (await send("GET", "/units/00000000-0000-0000-0000-000000000021")).json();
     expect(unit.settings.teacherPermissions).toMatchObject({ studentRecord: false });
   });
+
+  it("o Professor só abre a ficha de aluno de turma dele, com a chave ligada na unidade da turma, e recebe só os campos permitidos (R16, R17)", async () => {
+    const ADULT = "00000000-0000-0000-0000-000000000701";
+    const CENTRO = "00000000-0000-0000-0000-000000000021";
+    const setKeys = async (keys: Record<string, boolean>) => {
+      await login("ana@exemplo.com");
+      const unit = await (await send("GET", `/units/${CENTRO}`)).json();
+      const saved = await fetch(`/api/v1/units/${CENTRO}`, {
+        method: "PUT", headers: { ...json, "If-Match": String(unit.version) },
+        body: JSON.stringify({ ...unit, settings: { ...unit.settings, teacherPermissions: { ...unit.settings.teacherPermissions, ...keys } } }),
+      });
+      expect(saved.status).toBe(200);
+    };
+    await login("ana@exemplo.com");
+    // Matricula o adulto na turma 601, titular Ana (o Professor do simulado); o menor segue sem matrícula.
+    const enrolled = await send("POST", `/students/${ADULT}/modalities`, {
+      modalities: [{ unitId: CENTRO, modalityId: "00000000-0000-0000-0000-000000000103", primaryClassId: "00000000-0000-0000-0000-000000000601", planId: "00000000-0000-0000-0000-000000000602", dueDay: 5 }],
+    });
+    expect(enrolled.status).toBe(201);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await send("GET", `/students/${ADULT}/record`)).status).toBe(403);
+    await setKeys({ studentRecord: true, studentContacts: false });
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await send("GET", `/students/${MINOR}/record`)).status).toBe(404);
+    const view = await (await send("GET", `/students/${ADULT}/record`)).json();
+    for (const forbidden of ["birthDate", "seals", "cpf", "address", "contact", "emergency"]) expect(view).not.toHaveProperty(forbidden);
+    expect(view).toMatchObject({ id: ADULT, name: "Aluno Adulto Fictício" });
+    await setKeys({ studentContacts: true });
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    const withContacts = await (await send("GET", `/students/${ADULT}/record`)).json();
+    expect(withContacts).toHaveProperty("contact");
+    expect(withContacts).not.toHaveProperty("cpf");
+  });
 });

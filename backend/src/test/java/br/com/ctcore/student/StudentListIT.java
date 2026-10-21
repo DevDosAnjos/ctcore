@@ -55,7 +55,7 @@ class StudentListIT extends OrganizationBase {
     }
 
     private static LocalDate today() {
-        return LocalDate.now(ZoneOffset.UTC);
+        return LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo"));
     }
 
     private UUID unit(Tenant t, String name) {
@@ -231,7 +231,7 @@ class StudentListIT extends OrganizationBase {
         JsonNode list = body(get("", ca));
         assertThat(names(list)).containsExactly("Mesmo Nome");
         assertThat(list.get("items").get(0).get("registeredUnit").get("id").asText()).isEqualTo(a.unitId().toString());
-        assertThat(names(body(get("?unitId=" + b.unitId(), ca)))).isEmpty();
+        assertThat(get("?unitId=" + b.unitId(), ca).getStatus()).isEqualTo(404); // R19: unidade de outra organização é 404
         assertThat(get("?ageRangeId=" + range(b, "Adulto"), ca).getStatus()).isEqualTo(404);
 
         try (Connection app = DriverManager.getConnection(POSTGRES.getJdbcUrl(), "ctcore_app", "synthetic_runtime"); Statement sql = app.createStatement()) {

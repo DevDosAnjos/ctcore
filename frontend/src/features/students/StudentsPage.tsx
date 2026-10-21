@@ -54,6 +54,24 @@ const allColumns = (t: TFunction, search: string): Record<"name" | OptionalColum
   age: { key: "age", label: t("students.columns.age"), render: (r) => t("students.age", { count: r.age }) },
   ageRange: { key: "ageRange", label: t("students.columns.ageRange"), render: (r) => r.ageRange?.name ?? t("format.empty") },
   createdAt: { key: "createdAt", label: t("students.columns.createdAt"), render: (r) => formatDate(r.createdAt) },
+  modalities: {
+    key: "modalities",
+    label: t("students.columns.modalities"),
+    render: (r) =>
+      r.modalities.length === 0 ? (
+        t("format.empty")
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {r.modalities.map((m) => (
+            <li key={m.id} className="break-words">
+              {t("students.modalityLine", { modality: m.modality.name, unit: m.unit.name, class: m.primaryClass.name })}
+              {m.level && <span className="ml-1 text-muted-foreground">{m.level.name}</span>}
+            </li>
+          ))}
+        </ul>
+      ),
+  },
+  status: { key: "status", label: t("students.columns.status"), render: (r) => t(`students.statuses.${r.status}`) },
 });
 
 function Content({ accountId }: { accountId: string }) {
@@ -85,7 +103,7 @@ function Content({ accountId }: { accountId: string }) {
         columns={columns}
         fetchPage={fetchStudents}
         rowKey={(r) => r.id}
-        filterKeys={["unitId", "ageRangeId", "seal"]}
+        filterKeys={["unitId", "ageRangeId", "seal", "modalityId", "classId", "levelId", "status"]}
         filters={(p) => <StudentFilters {...p} />}
       />
       {id && <StudentRecordPanel id={id} onClose={() => navigate(`/alunos${search}`)} onChanged={() => setVersion((v) => v + 1)} />}

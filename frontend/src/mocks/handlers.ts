@@ -84,6 +84,7 @@ export const resetMockSession = () => {
   teacherResends = 0;
   mockStudents = initialStudents();
   guardianResends = 0;
+  mockEnrollments = {};
   studentLog = {};
   for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
   guardianCpfs["00000000-0000-0000-0000-000000000801"] = "98765432100";
@@ -675,6 +676,32 @@ const initialStudents = (): StudentDetail[] => [
 ];
 let mockStudents = initialStudents();
 let guardianResends = 0;
+// RN-MAT-01, 02, 03, 19 (#63): matrícula em memória, com as mesmas recusas do servidor (400, 403 fora do alcance, 404, 409 e 422).
+type MockEnrollmentModality = { id: string; unitId: string; modalityId: string; primaryClassId: string; otherClassIds: string[]; planId: string; nextPlanId: string | null; dueDay: number; status: "ACTIVE" | "ENDED"; startedAt: string; endedAt: string | null };
+type MockEnrollment = { id: string; enrolledAt: string; reopenedAt: string | null; modalities: MockEnrollmentModality[] };
+let mockEnrollments: Record<string, MockEnrollment> = {};
+const MOCK_DUE_DAYS = [1, 5, 10, 15];
+const rule = (field: string, message: string) => error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.", [{ field, message }]);
+const enrollmentStatus = (studentId: string) => {
+  const e = mockEnrollments[studentId];
+  return !e ? "NONE" : e.modalities.some((m) => m.status === "ACTIVE") ? "ACTIVE" : "FORMER";
+};
+const enrollmentView = (studentId: string) => {
+  const e = mockEnrollments[studentId];
+  if (!e) return { id: null, status: "NONE", enrolledAt: null, reopenedAt: null, modalities: [] };
+  const named = (id: string, name: string) => ({ id, name });
+  const className = (id: string) => named(id, mockClasses.find((c) => c.id === id)?.name ?? "");
+  const planName = (id: string) => named(id, mockPlans.find((p) => p.id === id)?.name ?? "");
+  return {
+    id: e.id, status: enrollmentStatus(studentId), enrolledAt: e.enrolledAt, reopenedAt: e.reopenedAt,
+    modalities: e.modalities.map((m) => ({
+      id: m.id, unit: named(m.unitId, units.find((u) => u.id === m.unitId)?.name ?? ""), modality: named(m.modalityId, modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? ""),
+      primaryClass: className(m.primaryClassId), otherClasses: m.otherClassIds.map(className), plan: planName(m.planId), nextPlan: m.nextPlanId ? planName(m.nextPlanId) : null,
+      dueDay: m.dueDay, status: m.status, startedAt: m.startedAt, endedAt: m.endedAt, canEdit: activeRole() === "COORDINATOR" || m.unitId === ADMIN_UNIT,
+    })),
+  };
+};
+type ModalityBody = { unitId?: string; modalityId?: string; primaryClassId?: string; otherClassIds?: string[] | null; planId?: string; dueDay?: number | null };
 // Histórico do aluno (RF-ALU-03), em memória: o servidor lê a auditoria; aqui as rotas de responsável acrescentam a linha.
 let studentLog: Record<string, { action: string; at: string; actor: string | null; actorProfile: string | null; reason: string | null }[]> = {};
 const logStudent = (id: string, action: string, reason: string | null) => {
@@ -693,11 +720,51 @@ const studentAccess = () => {
 const studentFor = (id: string) => {
   const denied = studentAccess();
   if (denied) return denied;
-  const found = mockStudents.find((s) => s.id === id && (activeRole() === "COORDINATOR" || s.registeredUnitId === ADMIN_UNIT));
+  const found = mockStudents.find((s) => s.id === id && studentInReach(s));
   return found ?? error(404, "NOT_FOUND", "Não encontrado.");
 };
+// RN-ALU-07 (D11, #63): o Administrador alcança o aluno com modalidade (ativa ou encerrada) na sua unidade; sem nenhuma, vale a unidade de cadastro.
+const studentInUnit = (s: StudentDetail, unitId: string) => {
+  const rows = mockEnrollments[s.id]?.modalities ?? [];
+  return rows.length > 0 ? rows.some((m) => m.unitId === unitId) : s.registeredUnitId === unitId;
+};
+const studentInReach = (s: StudentDetail) => activeRole() === "COORDINATOR" || studentInUnit(s, ADMIN_UNIT);
+// R16 (#63): o Professor do simulado é o TEACHER_ANA; alcança o aluno com modalidade ativa em turma ativa dele (titular ou auxiliar, principal ou outro horário).
+// As chaves valem na unidade da turma.
+const teacherUnitsOf = (studentId: string) => {
+  const mine = new Map(mockClasses.filter((c) => c.status === "ACTIVE" && (c.head === TEACHER_ANA || c.assistants.includes(TEACHER_ANA))).map((c) => [c.id, c.unitId]));
+  const units = new Set<string>();
+  for (const m of mockEnrollments[studentId]?.modalities ?? []) {
+    if (m.status !== "ACTIVE") continue;
+    for (const id of [m.primaryClassId, ...m.otherClassIds]) if (mine.has(id)) units.add(mine.get(id)!);
+  }
+  return units;
+};
+const teacherKeyIn = (unitId: string, key: "studentRecord" | "studentContacts") => unitDetail(unitId).settings.teacherPermissions[key];
+const hasActiveModality = (studentId: string) => enrollmentStatus(studentId) === "ACTIVE";
+// Modalidade ativa do aluno que quem chama pode alterar: Administrador só a da sua unidade (403), modalidade inexistente ou encerrada, 404.
+const modalityRowFor = (studentId: string, rowId: string) => {
+  const found = studentFor(studentId);
+  if (found instanceof Response) return found;
+  const row = mockEnrollments[found.id]?.modalities.find((m) => m.id === rowId && m.status === "ACTIVE");
+  if (!row) return error(404, "NOT_FOUND", "Não encontrado.");
+  if (activeRole() !== "COORDINATOR" && row.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+  return { student: found, row };
+};
+// Turma principal e outros horários ativos da unidade e da modalidade, diferentes entre si (422); turma inexistente, 404.
+const checkClasses = (unitId: string, modalityId: string, primaryId: string, otherIds: string[]) => {
+  const klass = mockClasses.find((c) => c.id === primaryId);
+  if (!klass) return error(404, "NOT_FOUND", "Não encontrado.");
+  if (klass.unitId !== unitId || klass.modalityId !== modalityId || klass.status !== "ACTIVE") return rule("primaryClassId", "turma inativa ou de outra unidade ou modalidade");
+  for (const other of otherIds) {
+    const c = mockClasses.find((x) => x.id === other);
+    if (!c) return error(404, "NOT_FOUND", "Não encontrado.");
+    if (other === primaryId || c.unitId !== unitId || c.modalityId !== modalityId || c.status !== "ACTIVE") return rule("otherClassIds", "turma inativa, de outra unidade ou modalidade, ou igual à principal");
+  }
+  return null;
+};
 // RF-ALU-02: selos pelos mesmos critérios do servidor; paga o próprio adulto ou o responsável financeiro do menor (RN-ALU-09, RN-ALU-10).
-const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY"];
+const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW"];
 const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const guardian = s.minor ? s.guardians.find((g) => g.financial) : undefined;
   const hasCpf = s.minor ? Boolean(guardian && guardianCpfs[guardian.guardianId]) : Boolean(s.cpf);
@@ -707,7 +774,11 @@ const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const birth = new Date(s.birthDate);
   const leapDay = birth.getUTCMonth() === 1 && birth.getUTCDate() === 29 && now.getMonth() === 1 && now.getDate() === 28 && now.getFullYear() % 4 !== 0;
   const birthday = (birth.getUTCMonth() === now.getMonth() && birth.getUTCDate() === now.getDate()) || leapDay;
-  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : birthday));
+  // RF-ALU-02, D8: Novo até 30 dias da matrícula mais recente (matrícula ou reabertura).
+  const enrollment = mockEnrollments[s.id];
+  const latest = enrollment ? Math.max(Date.parse(enrollment.enrolledAt), enrollment.reopenedAt ? Date.parse(enrollment.reopenedAt) : 0) : null;
+  const isNew = latest !== null && Math.floor((now.getTime() - latest) / 86_400_000) <= 30;
+  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : isNew));
 };
 const ageOf = (birth: string) => {
   const b = new Date(birth);
@@ -722,7 +793,11 @@ const studentRowOf = (s: StudentDetail): StudentRow => {
     id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age, minor: s.minor,
     ageRange: own ? { id: own.id, name: own.name } : null,
     registeredUnit: { id: s.registeredUnitId, name: units.find((u) => u.id === s.registeredUnitId)?.name ?? "" },
-    createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s),
+    createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s), status: enrollmentStatus(s.id),
+    modalities: (mockEnrollments[s.id]?.modalities ?? []).filter((m) => m.status === "ACTIVE").map((m) => ({
+      id: m.id, unit: { id: m.unitId, name: units.find((u) => u.id === m.unitId)?.name ?? "" }, modality: { id: m.modalityId, name: modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? "" },
+      primaryClass: { id: m.primaryClassId, name: mockClasses.find((c) => c.id === m.primaryClassId)?.name ?? "" }, level: null,
+    })),
   };
 };
 const isMinor = (birthDate: string) => {
@@ -2249,7 +2324,9 @@ export const routes: Route[] = [
       if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
       if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
       if (p.get("sort") !== null && p.get("sort") !== "name") bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
-      for (const k of ["unitId", "ageRangeId"]) if (p.get(k) !== null && !uuid.test(p.get(k)!)) bad.push({ field: k, message: "id inválido" });
+      for (const k of ["unitId", "ageRangeId", "modalityId", "classId", "levelId"]) if (p.get(k) !== null && !uuid.test(p.get(k)!)) bad.push({ field: k, message: "id inválido" });
+      const quick = p.get("status");
+      if (quick !== null && quick !== "ACTIVE" && quick !== "FORMER") bad.push({ field: "status", message: "inválido" });
       if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
       const seal = p.get("seal");
       if (seal !== null && !SEALS.includes(seal as StudentSeal)) return studentBad("seal", "selo inválido");
@@ -2257,15 +2334,28 @@ export const routes: Route[] = [
       const range = rangeId ? ageRanges.find((r) => r.id === rangeId) : null;
       if (rangeId && !range) return error(404, "NOT_FOUND", "Não encontrado.");
       const unitId = p.get("unitId");
+      const classId = p.get("classId");
+      const modalityId = p.get("modalityId");
+      // R19: unidade ou turma que não existe é 404.
+      if ((unitId && !units.some((u) => u.id === unitId)) || (classId && !mockClasses.some((c) => c.id === classId))) return error(404, "NOT_FOUND", "Não encontrado.");
+      const none = { active: 0, former: 0 };
+      if (role === "ADMINISTRATOR" && unitId && unitId !== ADMIN_UNIT) return HttpResponse.json({ items: [], page, size, total: 0, counts: none });
       const q = teacherKey((p.get("q") ?? "").trim());
-      const found = mockStudents
-        .filter((s) => role === "COORDINATOR" || s.registeredUnitId === ADMIN_UNIT)
-        .filter((s) => teacherKey(s.name).includes(q) && (!unitId || s.registeredUnitId === unitId))
+      const inScope = mockStudents.filter((s) => (role === "COORDINATOR" || studentInUnit(s, ADMIN_UNIT)) && (!unitId || studentInUnit(s, unitId)));
+      const counts = { active: inScope.filter((s) => enrollmentStatus(s.id) === "ACTIVE").length, former: inScope.filter((s) => enrollmentStatus(s.id) === "FORMER").length };
+      // Modalidade e turma valem na mesma linha ativa (a turma é principal ou outro horário); o nível não existe até a graduação (D13).
+      const sameRow = (s: StudentDetail) =>
+        (mockEnrollments[s.id]?.modalities ?? []).some((m) => m.status === "ACTIVE" && (!modalityId || m.modalityId === modalityId) && (!classId || m.primaryClassId === classId || m.otherClassIds.includes(classId)));
+      const found = inScope
+        .filter((s) => teacherKey(s.name).includes(q))
         .filter((s) => !range || covers(range, ageOf(s.birthDate)))
         .filter((s) => !seal || sealsOf(s).includes(seal as StudentSeal))
+        .filter((s) => (!modalityId && !classId) || sameRow(s))
+        .filter(() => !p.get("levelId"))
+        .filter((s) => !quick || enrollmentStatus(s.id) === quick)
         .sort((a, b) => teacherKey(a.name).localeCompare(teacherKey(b.name)) || a.id.localeCompare(b.id));
       const items = found.slice((page - 1) * size, page * size).map(studentRowOf);
-      return HttpResponse.json({ items, page, size, total: found.length });
+      return HttpResponse.json({ items, page, size, total: found.length, counts });
     },
   },
   {
@@ -2320,22 +2410,50 @@ export const routes: Route[] = [
     },
   },
   {
-    // RF-ALU-06: aniversariantes de hoje. Administrador (unidade dele); Professor 200 vazio até a matrícula (#63); Coordenador e portal 403.
+    // R22: lista simples de turma ou aula. Professor: só turma ou aula dele (404 fora); gestão: alcance de unidade; Aluno e portal 403.
+    method: "get",
+    path: "/students/simple",
+    resolver: ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
+      const p = new URL(request.url).searchParams;
+      const lessonId = p.get("lessonId");
+      let classId = p.get("classId");
+      if ((classId === null) === (lessonId === null)) return studentBad(classId === null ? "classId" : "lessonId", "informe a turma ou a aula, só uma");
+      if (lessonId) {
+        const adhoc = mockAdhoc.find((a) => a.id === lessonId);
+        if (adhoc) return role === "TEACHER" && adhoc.teacherId !== TEACHER_ANA ? error(404, "NOT_FOUND", "Não encontrado.") : HttpResponse.json([]);
+        classId = /^(.+)-\d{4}-\d{2}-\d{2}-\d{2}:\d{2}$/.exec(lessonId)?.[1] ?? null;
+      }
+      const klass = mockClasses.find((c) => c.id === classId && c.status === "ACTIVE");
+      if (!klass) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (role === "TEACHER" && klass.head !== TEACHER_ANA && !klass.assistants.includes(TEACHER_ANA)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (role === "ADMINISTRATOR" && klass.unitId !== ADMIN_UNIT) return error(404, "NOT_FOUND", "Não encontrado.");
+      const items = mockStudents
+        .filter((s) => (mockEnrollments[s.id]?.modalities ?? []).some((m) => m.status === "ACTIVE" && (m.primaryClassId === klass.id || m.otherClassIds.includes(klass.id))))
+        .sort((a, b) => teacherKey(a.name).localeCompare(teacherKey(b.name)) || a.id.localeCompare(b.id))
+        .map((s) => ({ id: s.id, name: s.name, photoUrl: s.photoUrl, belt: null, blocked: false }));
+      return HttpResponse.json(items);
+    },
+  },
+  {
+    // RF-ALU-06, R17: aniversariantes de hoje com modalidade ativa. Administrador (unidade dele); Professor (turmas dele, contato pela chave na unidade da turma); Coordenador e portal 403.
     method: "get",
     path: "/students/birthdays",
     resolver: () => {
       if (!loggedIn) return unauthenticated();
       const role = activeRole();
-      if (role === "TEACHER") return HttpResponse.json([]);
-      if (role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      if (role !== "ADMINISTRATOR" && role !== "TEACHER") return error(403, "FORBIDDEN", "Sem permissão.");
       const list = mockStudents
-        .filter((s) => s.registeredUnitId === ADMIN_UNIT && sealsOf(s).includes("BIRTHDAY_TODAY"))
+        .filter((s) => (role === "TEACHER" ? teacherUnitsOf(s.id).size > 0 : studentInUnit(s, ADMIN_UNIT) && hasActiveModality(s.id)) && sealsOf(s).includes("BIRTHDAY_TODAY"))
         .sort((a, b) => a.name.localeCompare(b.name))
         .map((s) => {
           const row = studentRowOf(s);
           const own = s.phone ? { name: s.name, phone: s.phone, guardian: false } : undefined;
           const g = s.guardians.find((x) => x.financial && x.phone) ?? s.guardians.find((x) => x.phone);
-          const contact = own ?? (g ? { name: g.name, phone: g.phone, guardian: true } : undefined);
+          const allowed = role !== "TEACHER" || [...teacherUnitsOf(s.id)].some((u) => teacherKeyIn(u, "studentContacts"));
+          const contact = allowed ? (own ?? (g ? { name: g.name, phone: g.phone, guardian: true } : undefined)) : undefined;
           return {
             id: s.id, name: s.name, photoUrl: s.photoUrl, age: row.age, ageRange: row.ageRange, registeredUnit: row.registeredUnit,
             contactName: contact?.name ?? null, contactPhone: contact?.phone ?? null, contactIsGuardian: contact?.guardian ?? false,
@@ -2345,16 +2463,161 @@ export const routes: Route[] = [
     },
   },
   {
-    // RN-ALU-06: só id, nome e foto do aluno com esse CPF, de qualquer unidade.
+    // RN-ALU-06, R8: só id, nome, foto e situação da matrícula do aluno com esse CPF ou e-mail (um dos dois), de qualquer unidade.
     method: "get",
     path: "/students/lookup",
     resolver: ({ request }) => {
       const denied = studentAccess();
       if (denied) return denied;
-      const cpf = onlyDigits(new URL(request.url).searchParams.get("cpf") ?? "");
-      if (!isValidCpf(cpf)) return studentBad("cpf", "CPF inválido");
-      const found = mockStudents.find((s) => s.cpf === cpf);
-      return found ? HttpResponse.json({ id: found.id, name: found.name, photoUrl: found.photoUrl }) : error(404, "NOT_FOUND", "Não encontrado.");
+      const p = new URL(request.url).searchParams;
+      const rawCpf = p.get("cpf"), rawEmail = p.get("email")?.trim() || null;
+      if (Boolean(rawCpf) === Boolean(rawEmail)) return studentBad(rawCpf ? "email" : "cpf", "informe o CPF ou o e-mail, só um dos dois");
+      let found: StudentDetail | undefined;
+      if (rawCpf) {
+        const cpf = onlyDigits(rawCpf);
+        if (!isValidCpf(cpf)) return studentBad("cpf", "CPF inválido");
+        found = mockStudents.find((s) => s.cpf === cpf);
+      } else found = mockStudents.find((s) => s.email?.toLowerCase() === rawEmail!.toLowerCase());
+      return found ? HttpResponse.json({ id: found.id, name: found.name, photoUrl: found.photoUrl, enrollmentStatus: enrollmentStatus(found.id) }) : error(404, "NOT_FOUND", "Não encontrado.");
+    },
+  },
+  {
+    // RN-MAT-01, 02, 03, 04, 19: matricula, acrescenta modalidade ou reabre a matrícula do ex-aluno; tudo ou nada.
+    method: "post",
+    path: "/students/{id}/modalities",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { modalities?: ModalityBody[] }) ?? {};
+      const asked = body.modalities;
+      if (!Array.isArray(asked) || asked.length === 0) return studentBad("modalities", "obrigatório");
+      for (const m of asked) for (const k of ["unitId", "modalityId", "primaryClassId", "planId"] as const) if (!m?.[k]) return studentBad(k, "obrigatório");
+      const current = mockEnrollments[found.id];
+      const active = current?.modalities.filter((m) => m.status === "ACTIVE") ?? [];
+      const kinds = new Set(active.map((m) => m.modalityId));
+      for (const m of asked) {
+        if (kinds.has(m.modalityId!)) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "modalityId", message: "o aluno já tem esta modalidade ativa" }]);
+        kinds.add(m.modalityId!);
+      }
+      if (active.length + asked.length > 10) return rule("modalities", "no máximo 10 modalidades ativas");
+      const dueByUnit = new Map(active.map((m) => [m.unitId, m.dueDay]));
+      const rows: MockEnrollmentModality[] = [];
+      for (const m of asked) {
+        if (activeRole() !== "COORDINATOR" && m.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+        const unit = units.find((u) => u.id === m.unitId);
+        const klass = mockClasses.find((c) => c.id === m.primaryClassId);
+        const plan = mockPlans.find((p) => p.id === m.planId);
+        if (!unit || !klass || !plan) return error(404, "NOT_FOUND", "Não encontrado.");
+        if (klass.unitId !== m.unitId || klass.modalityId !== m.modalityId || klass.status !== "ACTIVE") return rule("primaryClassId", "turma inativa ou de outra unidade ou modalidade");
+        for (const other of m.otherClassIds ?? []) {
+          const c = mockClasses.find((x) => x.id === other);
+          if (!c) return error(404, "NOT_FOUND", "Não encontrado.");
+          if (other === m.primaryClassId || c.unitId !== m.unitId || c.modalityId !== m.modalityId || c.status !== "ACTIVE") return rule("otherClassIds", "turma inativa, de outra unidade ou modalidade, ou igual à principal");
+        }
+        if (plan.unitId !== m.unitId || modalityCatalog[plan.modalityIndex].id !== m.modalityId || plan.status !== "ACTIVE") return rule("planId", "plano inativo ou de outra unidade ou modalidade");
+        const inherited = dueByUnit.get(m.unitId!);
+        if (inherited !== undefined) {
+          if (m.dueDay != null && m.dueDay !== inherited) return rule("dueDay", `o aluno já paga nesta unidade no dia ${inherited}`);
+        } else if (m.dueDay == null) return studentBad("dueDay", "obrigatório");
+        else if (!MOCK_DUE_DAYS.includes(m.dueDay)) return rule("dueDay", "dia não permitido pela unidade");
+        const dueDay = inherited ?? m.dueDay!;
+        dueByUnit.set(m.unitId!, dueDay);
+        rows.push({ id: crypto.randomUUID(), unitId: m.unitId!, modalityId: m.modalityId!, primaryClassId: m.primaryClassId!, otherClassIds: [...new Set(m.otherClassIds ?? [])], planId: m.planId!, nextPlanId: null, dueDay, status: "ACTIVE", startedAt: new Date().toISOString(), endedAt: null });
+      }
+      const now = new Date().toISOString();
+      if (!current) {
+        mockEnrollments[found.id] = { id: crypto.randomUUID(), enrolledAt: now, reopenedAt: null, modalities: rows };
+        logStudent(found.id, "student.enrolled", null);
+      } else {
+        if (active.length === 0) {
+          current.reopenedAt = now;
+          logStudent(found.id, "student.enrollment_reopened", null);
+        }
+        current.modalities.push(...rows);
+      }
+      for (let i = 0; i < rows.length; i++) logStudent(found.id, "student.modality_added", null);
+      return HttpResponse.json(enrollmentView(found.id), { status: 201 });
+    },
+  },
+  {
+    // RN-MAT-01: sem matrícula, 200 com situação NONE e lista vazia; `canEdit` por unidade.
+    method: "get",
+    path: "/students/{id}/enrollment",
+    resolver: ({ params }) => {
+      const found = studentFor(params.id as string);
+      return found instanceof Response ? found : HttpResponse.json(enrollmentView(found.id));
+    },
+  },
+  {
+    // RN-MAT-15, R9: troca a turma principal e os outros horários; vale na hora. Administrador só na sua unidade (RN-ALU-07).
+    method: "put",
+    path: "/students/{id}/modalities/{modalityRowId}/class",
+    resolver: async ({ request, params }) => {
+      const found = modalityRowFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { primaryClassId?: string; otherClassIds?: string[] | null }) ?? {};
+      if (!body.primaryClassId) return studentBad("primaryClassId", "obrigatório");
+      const m = found.row;
+      const check = checkClasses(m.unitId, m.modalityId, body.primaryClassId, body.otherClassIds ?? []);
+      if (check) return check;
+      m.primaryClassId = body.primaryClassId;
+      m.otherClassIds = [...new Set(body.otherClassIds ?? [])];
+      logStudent(found.student.id, "student.class_changed", null);
+      return HttpResponse.json(enrollmentView(found.student.id));
+    },
+  },
+  {
+    // RN-MAT-15, D10, R10: o plano novo fica agendado em nextPlan; pedir o atual limpa; o atual sem agendamento é 422.
+    method: "put",
+    path: "/students/{id}/modalities/{modalityRowId}/plan",
+    resolver: async ({ request, params }) => {
+      const found = modalityRowFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { planId?: string }) ?? {};
+      if (!body.planId) return studentBad("planId", "obrigatório");
+      const m = found.row;
+      const current = body.planId === m.planId;
+      if (current && !m.nextPlanId) return rule("planId", "já é o plano atual");
+      const plan = mockPlans.find((p) => p.id === body.planId);
+      if (!plan) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (plan.unitId !== m.unitId || modalityCatalog[plan.modalityIndex].id !== m.modalityId || plan.status !== "ACTIVE") return rule("planId", "plano inativo ou de outra unidade ou modalidade");
+      m.nextPlanId = current ? null : body.planId;
+      logStudent(found.student.id, "student.plan_changed", null);
+      return HttpResponse.json(enrollmentView(found.student.id));
+    },
+  },
+  {
+    // RN-MAT-20, RN-ORG-12, R11: leva a mesma linha para outra unidade; o Administrador precisa de alcance na origem e no destino (D12).
+    method: "post",
+    path: "/students/{id}/modalities/{modalityRowId}/transfer",
+    resolver: async ({ request, params }) => {
+      const found = modalityRowFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as ModalityBody) ?? {};
+      for (const k of ["unitId", "primaryClassId", "planId"] as const) if (!body[k]) return studentBad(k, "obrigatório");
+      const m = found.row;
+      if (!units.some((u) => u.id === body.unitId)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (activeRole() !== "COORDINATOR" && body.unitId !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (!units.find((u) => u.id === body.unitId)!.active) return rule("unitId", "unidade desativada");
+      if (body.unitId === m.unitId) return rule("unitId", "a modalidade já está nesta unidade");
+      const check = checkClasses(body.unitId!, m.modalityId, body.primaryClassId!, body.otherClassIds ?? []);
+      if (check) return check;
+      const plan = mockPlans.find((p) => p.id === body.planId);
+      if (!plan) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (plan.unitId !== body.unitId || modalityCatalog[plan.modalityIndex].id !== m.modalityId || plan.status !== "ACTIVE") return rule("planId", "plano inativo ou de outra unidade ou modalidade");
+      const inherited = mockEnrollments[found.student.id].modalities.find((x) => x.id !== m.id && x.status === "ACTIVE" && x.unitId === body.unitId)?.dueDay;
+      if (inherited !== undefined) {
+        if (body.dueDay != null && body.dueDay !== inherited) return rule("dueDay", `o aluno já paga nesta unidade no dia ${inherited}`);
+      } else if (body.dueDay == null) return studentBad("dueDay", "obrigatório");
+      else if (!MOCK_DUE_DAYS.includes(body.dueDay)) return rule("dueDay", "dia não permitido pela unidade");
+      m.unitId = body.unitId!;
+      m.primaryClassId = body.primaryClassId!;
+      m.otherClassIds = [...new Set(body.otherClassIds ?? [])];
+      m.planId = body.planId!;
+      m.nextPlanId = null;
+      m.dueDay = inherited ?? body.dueDay!;
+      logStudent(found.student.id, "student.modality_transferred", null);
+      return HttpResponse.json(enrollmentView(found.student.id));
     },
   },
   {
@@ -2432,10 +2695,24 @@ export const routes: Route[] = [
     },
   },
   {
-    // RF-ALU-03: ficha. Coordenador e Administrador (alcance como no detalhe); Professor e portal 403.
+    // RF-ALU-03, R16: ficha. Coordenador e Administrador (alcance como no detalhe); Professor só de aluno de turma dele, com as chaves na unidade da turma; portal 403.
     method: "get",
     path: "/students/{id}/record",
     resolver: ({ params }) => {
+      if (loggedIn && activeRole() === "TEACHER") {
+        const found = mockStudents.find((x) => x.id === params.id);
+        if (!teacherKeyIn(ADMIN_UNIT, "studentRecord") && ![...units].some((u) => teacherKeyIn(u.id, "studentRecord"))) return error(403, "FORBIDDEN", "Sem permissão.");
+        const classUnits = found ? teacherUnitsOf(found.id) : new Set<string>();
+        if (!found || classUnits.size === 0) return error(404, "NOT_FOUND", "Não encontrado.");
+        if (![...classUnits].some((u) => teacherKeyIn(u, "studentRecord"))) return error(403, "FORBIDDEN", "Sem permissão.");
+        const contacts = [...classUnits].some((u) => teacherKeyIn(u, "studentContacts"));
+        const row = studentRowOf(found);
+        return HttpResponse.json({
+          id: found.id, name: found.name, photoUrl: found.photoUrl, age: row.age, minor: found.minor, ageRange: row.ageRange, registeredUnit: row.registeredUnit,
+          ...(contacts ? { contact: { phone: found.phone, email: found.email, emailProblem: found.emailProblem }, emergency: { name: found.emergencyName, relationship: found.emergencyRelationship, phone: found.emergencyPhone } } : {}),
+          guardians: found.guardians.map((g) => ({ guardianId: g.guardianId, name: g.name, ...(contacts ? { email: g.email, phone: g.phone, emailProblem: g.emailProblem } : {}) })),
+        });
+      }
       const s = studentFor(params.id as string);
       if (s instanceof Response) return s;
       const row = studentRowOf(s);

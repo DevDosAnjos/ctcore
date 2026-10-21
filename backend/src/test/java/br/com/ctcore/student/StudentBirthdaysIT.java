@@ -1,7 +1,6 @@
 package br.com.ctcore.student;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 
 import br.com.ctcore.identity.AccountPrincipal;
@@ -28,14 +27,11 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 class StudentBirthdaysIT extends OrganizationBase {
     @Autowired ObjectMapper json;
     @MockitoSpyBean Clock clock;
-    @MockitoSpyBean StudentRecords records;
     private static final LocalDate TODAY = LocalDate.of(2025, 3, 15);
 
     @AfterEach
     void clean() {
-        adminJdbc().update("delete from student_guardian");
-        adminJdbc().update("delete from guardian");
-        adminJdbc().update("delete from student");
+        EnrollmentFixtures.clean(adminJdbc());
         String mine = "(select id from account where email like '%.example')";
         adminJdbc().update("delete from account_invite where account_id in " + mine);
         adminJdbc().update("delete from account_session where account_id in " + mine);
@@ -65,6 +61,18 @@ class StudentBirthdaysIT extends OrganizationBase {
     }
 
     private UUID student(Tenant t, UUID unit, String name, LocalDate birth, String phone) {
+        return student(t, unit, name, birth, phone, null);
+    }
+
+    /** Aluno com modalidade ativa na unidade, na turma do professor dado (ou de um professor qualquer). */
+    private UUID student(Tenant t, UUID unit, String name, LocalDate birth, String phone, UUID teacher) {
+        UUID id = bare(t, unit, name, birth, phone);
+        EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), id, unit, "ACTIVE", 0, teacher);
+        return id;
+    }
+
+    /** Aluno só cadastrado, sem matrícula. */
+    private UUID bare(Tenant t, UUID unit, String name, LocalDate birth, String phone) {
         UUID id = UUID.randomUUID();
         adminJdbc().update("insert into student (id, organization_id, registered_unit_id, name, name_key, birth_date, cpf, email, phone, postal_code, street, number, "
                 + "district, city, state, emergency_name, emergency_relationship, emergency_phone) values (?, ?, ?, ?, ?, ?, null, 'segredo@ficticia.example', ?, "
@@ -138,19 +146,38 @@ class StudentBirthdaysIT extends OrganizationBase {
     }
 
     @Test
-    @DisplayName("CA4: Professor recebe 200 e lista vazia até a matrícula; o corte passa por teacherReach")
+    @DisplayName("CA4, CA26 (R16, R17): Professor vê só os aniversariantes de turma ativa dele, com matrícula ativa; o contato vale pela chave na unidade da turma")
     void teacher() throws Exception {
         Tenant t = tenant();
         today(TODAY);
-        UUID mine = student(t, t.unitId(), "Da Turma", LocalDate.of(1990, 3, 15), "11987654321");
-        student(t, t.unitId(), "De Fora", LocalDate.of(1990, 3, 15), "11987654322");
         var teacher = who(t, Role.TEACHER);
-        assertThat(names(ok(teacher))).isEmpty();
-        doReturn(true).when(records).teacherReach(any(), org.mockito.ArgumentMatchers.eq(mine));
+        adminJdbc().update("insert into account (id, email, status) values (?, ?, 'ACTIVE')", teacher.accountId(), teacher.accountId() + "@prof.example");
+        UUID me = EnrollmentFixtures.teacher(adminJdbc(), t.orgId(), teacher.accountId());
+        UUID mine = student(t, t.unitId(), "Da Turma", LocalDate.of(1990, 3, 15), "11987654321", me);
+        student(t, t.unitId(), "De Fora", LocalDate.of(1990, 3, 15), "11987654322");
+        UUID former = student(t, t.unitId(), "Ex da Turma", LocalDate.of(1990, 3, 15), "11987654323", me);
+        adminJdbc().update("update enrollment_modality set status = 'ENDED', ended_at = now() where student_id = ?", former);
+        assertThat(mine).isNotNull();
         assertThat(names(ok(teacher))).containsExactly("Da Turma");
         assertThat(ok(teacher).get(0).get("contactPhone").asText()).isEqualTo("11987654321");
         adminJdbc().update("update unit_settings set teacher_permissions = '{true,true,false,true,true}' where unit_id = ?", t.unitId());
         assertThat(ok(teacher).get(0).get("contactPhone").isNull()).isTrue();
+        // Turma inativa tira o aluno do alcance dele.
+        adminJdbc().update("update training_class set status = 'INACTIVE' where head_teacher_id = ?", me);
+        assertThat(names(ok(teacher))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("CA26 (R17): aniversariante sem modalidade ativa não entra, nem para o Administrador")
+    void onlyActive() throws Exception {
+        Tenant t = tenant();
+        today(TODAY);
+        UUID none = bare(t, t.unitId(), "Sem Matrícula", LocalDate.of(1990, 3, 15), null);
+        student(t, t.unitId(), "Matriculado", LocalDate.of(1990, 3, 15), null);
+        UUID ended = student(t, t.unitId(), "Encerrado", LocalDate.of(1990, 3, 15), null);
+        adminJdbc().update("update enrollment_modality set status = 'ENDED', ended_at = now() where student_id = ?", ended);
+        assertThat(none).isNotNull();
+        assertThat(names(ok(who(t, Role.ADMINISTRATOR)))).containsExactly("Matriculado");
     }
 
     @Test

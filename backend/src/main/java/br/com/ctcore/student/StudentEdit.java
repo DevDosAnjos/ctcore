@@ -60,7 +60,8 @@ public class StudentEdit {
         if (in == null) throw new ApiValidationException("name", "obrigatório");
         var c = registration.personal(new StudentRegistration.Input(null, in.name(), in.birthDate(), in.postalCode(), in.street(), in.number(),
                 in.complement(), in.district(), in.city(), in.state(), in.cpf(), in.email(), in.phone(), in.gender(), in.referral(), in.emergencyName(),
-                in.emergencyRelationship(), in.emergencyPhone(), in.confirmDuplicate(), null));
+                in.emergencyRelationship(), in.emergencyPhone(), in.confirmDuplicate(), null),
+                transactions.execute(() -> students.studentZone(who.organizationId(), id)));
         try {
             return transactions.execute(() -> apply(who, id, c, ip));
         } catch (DuplicateKeyException e) {

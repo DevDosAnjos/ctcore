@@ -230,7 +230,7 @@ public class StudentGuardians {
             if (!(Boolean) guardian[2]) notify[0] = (String) guardian[1];
             int left = jdbc.sql("select count(*) from student_guardian where organization_id = :org and guardian_id = :g").param("org", who.organizationId())
                     .param("g", guardianId).query(Integer.class).single();
-            if (left == 0) endAccess(who.organizationId(), accountId);
+            if (left == 0) endAccess(who.organizationId(), accountId, studentId);
             audit.record(new AuditEntry(actor(who), "student.guardian_unlinked", "student", studentId.toString(), null, null,
                     Map.of("guardianId", guardianId.toString()), reason, ip));
             return students.detail(who, studentId);
@@ -240,13 +240,13 @@ public class StudentGuardians {
     }
 
     /** RN-RSP-05: sem aluno nenhum na organização, o vínculo GUARDIAN termina e o convite pendente é cancelado. */
-    private void endAccess(UUID org, UUID accountId) {
+    private void endAccess(UUID org, UUID accountId, UUID studentId) {
         var now = java.time.OffsetDateTime.ofInstant(clock.instant(), java.time.ZoneOffset.UTC);
         jdbc.sql("update account_invite set canceled_at = :now where organization_id = :org and used_at is null and canceled_at is null "
                 + "and link_id in (select id from account_link where account_id = :a and organization_id = :org and role = 'GUARDIAN')")
                 .param("now", now).param("org", org).param("a", accountId).update();
         jdbc.sql("update account_link set status = 'ENDED', ends_on = :d where account_id = :a and organization_id = :org and role = 'GUARDIAN' "
-                + "and status in ('PENDING', 'ACTIVE')").param("d", LocalDate.now(clock)).param("a", accountId).param("org", org).update();
+                + "and status in ('PENDING', 'ACTIVE')").param("d", LocalDate.ofInstant(clock.instant(), students.studentZone(org, studentId))).param("a", accountId).param("org", org).update();
     }
 
     public void resendInvite(AccountPrincipal who, UUID studentId, UUID guardianId, String ip) {

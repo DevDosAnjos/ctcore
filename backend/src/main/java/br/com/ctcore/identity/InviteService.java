@@ -63,6 +63,13 @@ public class InviteService {
         return OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
     }
 
+    /** S8, R28: o dia de hoje é o do fuso da unidade (a de cadastro do aluno); UTC sem unidade. */
+    private java.time.ZoneId unitZone(UUID organizationId, Set<UUID> unitIds) {
+        if (unitIds.isEmpty()) return ZoneOffset.UTC;
+        return orgTx.provision(organizationId, () -> jdbc.sql("select timezone from unit where organization_id = :org and id in (:ids) order by id limit 1")
+                .param("org", organizationId).param("ids", unitIds).query(String.class).optional().map(java.time.ZoneId::of).orElse(ZoneOffset.UTC));
+    }
+
     /** Creates the pending link (and the account, if the e-mail is new) and sends the invite. */
     public Issued invite(Inviter by, UUID organizationId, String email, String name, Role role, Set<UUID> units, LocalDate birthDate) {
         return invite(by, organizationId, email, name, role, units, birthDate, false);
@@ -79,7 +86,7 @@ public class InviteService {
         if (teacherAccess ? !InviteRules.teacherAccess(by, unitIds) : !InviteRules.allowed(by, role, unitIds)) {
             throw new AccessDeniedException("Invite not allowed for this role");
         }
-        if (role == Role.STUDENT && !InviteRules.adult(birthDate, now().toLocalDate())) {
+        if (role == Role.STUDENT && !InviteRules.adult(birthDate, LocalDate.ofInstant(clock.instant(), unitZone(organizationId, unitIds)))) {
             throw new IdentityException(Code.MINOR_HAS_NO_ACCOUNT, null);
         }
         Issued issued = orgTx.provision(organizationId, () -> {

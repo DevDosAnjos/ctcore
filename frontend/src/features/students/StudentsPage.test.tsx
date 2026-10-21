@@ -28,9 +28,13 @@ const student = (over: Partial<StudentRow>): StudentRow => ({
   registeredUnit: { id: "u1", name: "Centro" },
   createdAt: "2026-01-10T12:00:00Z",
   seals: [],
+  status: "NONE",
+  modalities: [],
   ...over,
 });
-const all = [student({ seals: ["INCOMPLETE_REGISTRATION", "BIRTHDAY_TODAY"] }), student({ id: "s2", name: "João Pereira", birthDate: "1990-03-10", age: 36, minor: false, ageRange: null, registeredUnit: { id: "u2", name: "Norte" } })];
+const bjj = { id: "mod1", unit: { id: "u1", name: "Centro" }, modality: { id: "m1", name: "Jiu-Jitsu" }, primaryClass: { id: "k1", name: "Turma Noite" }, level: null };
+const judo = { id: "mod2", unit: { id: "u2", name: "Norte" }, modality: { id: "m3", name: "Judô" }, primaryClass: { id: "k2", name: "Turma Manhã" }, level: null };
+const all = [student({ seals: ["INCOMPLETE_REGISTRATION", "BIRTHDAY_TODAY"], status: "ACTIVE", modalities: [bjj, judo] }), student({ id: "s2", name: "João Pereira", birthDate: "1990-03-10", age: 36, minor: false, ageRange: null, registeredUnit: { id: "u2", name: "Norte" } })];
 
 let calls: URLSearchParams[];
 
@@ -42,13 +46,16 @@ function setup(role = "COORDINATOR", list?: () => Response | Promise<Response>, 
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
     http.get("/api/v1/units/reachable", () => HttpResponse.json({ allUnits: true, units: [{ id: "u1", name: "Centro", shortName: "c" }, { id: "u2", name: "Norte", shortName: "n" }] })),
     http.get("/api/v1/age-ranges", () => HttpResponse.json({ canManage: false, items: [{ id: "r1", name: "Infantil", minAge: 4, maxAge: 12 }, { id: "r2", name: "Adulto", minAge: 18, maxAge: null }] })),
+    http.get("/api/v1/modalities", () => HttpResponse.json([{ id: "m1", name: "Jiu-Jitsu", active: true }, { id: "m2", name: "Boxe", active: false }, { id: "m3", name: "Judô", active: true }])),
+    http.get("/api/v1/classes", () => HttpResponse.json({ items: [{ id: "k1", name: "Turma Noite" }, { id: "k2", name: "Turma Manhã" }], page: 1, size: 100, total: 2 })),
+    http.get("/api/v1/modalities/:id/graduation", () => HttpResponse.json({ enabled: true, requireOriginProof: false, canManage: false, levels: [{ id: "l1", name: "Azul", color: "#0000CD", secondaryColor: null, maxDegree: 4, minAge: 16, maxAge: null, kids: false }] })),
     http.get("/api/v1/students", ({ request }) => {
       const p = new URL(request.url).searchParams;
       calls.push(p);
       if (list) return list();
       const q = (p.get("q") ?? "").toLowerCase();
       const items = all.filter((s) => s.name.toLowerCase().includes(q));
-      return HttpResponse.json({ items, page: 1, size: 25, total: items.length });
+      return HttpResponse.json({ items, page: 1, size: 25, total: items.length, counts: { active: 3, former: 1 } });
     }),
   );
   return render(
@@ -77,7 +84,8 @@ describe("StudentsPage", () => {
     expect(within(row).getByText("Infantil")).toBeInTheDocument();
     expect(within(row).getByText("10/01/2026")).toBeInTheDocument();
     const other = screen.getByText("João Pereira").closest("tr")!;
-    expect(within(other).getByText("—")).toBeInTheDocument();
+    // Faixa e modalidades vazias.
+    expect(within(other).getAllByText("—")).toHaveLength(2);
     expect(calls.at(-1)!.get("page")).toBe("1");
     expect(calls.at(-1)!.get("size")).toBe("25");
     expect(calls.at(-1)!.get("sort")).toBe("name");
@@ -118,11 +126,70 @@ describe("StudentsPage", () => {
     expect(badges("Aniversário hoje")).toHaveLength(1);
     expect(badges("E-mail com problema")).toHaveLength(0);
     const seal = screen.getByRole("combobox", { name: "Selo" });
-    expect(within(seal).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todos os selos", "Cadastro incompleto", "E-mail com problema", "Aniversário hoje"]);
+    expect(within(seal).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todos os selos", "Cadastro incompleto", "E-mail com problema", "Aniversário hoje", "Novo"]);
     await user.selectOptions(seal, "EMAIL_PROBLEM");
     await waitFor(() => expect(calls.at(-1)!.get("seal")).toBe("EMAIL_PROBLEM"));
     await user.click(await screen.findByRole("button", { name: "Limpar filtros" }));
     await waitFor(() => expect(calls.at(-1)!.get("seal")).toBeNull());
+  });
+
+  it("CA27: a linha mostra todas as modalidades ativas com unidade e turma principal e a situação; sem matrícula, traço e Sem matrícula", async () => {
+    setup();
+    const row = (await screen.findByText("Ana Souza")).closest("tr")!;
+    expect(within(row).getByText("Jiu-Jitsu · Centro · Turma Noite")).toBeInTheDocument();
+    expect(within(row).getByText("Judô · Norte · Turma Manhã")).toBeInTheDocument();
+    expect(within(row).getByText("Ativo")).toBeInTheDocument();
+    expect(within(screen.getByText("João Pereira").closest("tr")!).getByText("Sem matrícula")).toBeInTheDocument();
+  });
+
+  it("CA27: selo Novo aparece como texto junto ao nome e filtra por selo", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR", () => HttpResponse.json({ items: [student({ seals: ["NEW"] })], page: 1, size: 25, total: 1, counts: { active: 1, former: 0 } }));
+    await screen.findByText("Ana Souza");
+    expect(screen.getAllByText("Novo").some((e) => e.tagName !== "OPTION")).toBe(true);
+    await user.selectOptions(screen.getByRole("combobox", { name: "Selo" }), "NEW");
+    await waitFor(() => expect(calls.at(-1)!.get("seal")).toBe("NEW"));
+  });
+
+  it("CA28: filtros de modalidade, turma e nível refazem a consulta e combinam; o nível só abre com a modalidade e vem da graduação dela", async () => {
+    const user = userEvent.setup();
+    setup();
+    await screen.findByText("Ana Souza");
+    const modality = screen.getByRole("combobox", { name: "Modalidade" });
+    await waitFor(() => expect(within(modality).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todas as modalidades", "Jiu-Jitsu", "Judô"]));
+    const klass = screen.getByRole("combobox", { name: "Turma" });
+    await waitFor(() => expect(within(klass).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todas as turmas", "Turma Noite", "Turma Manhã"]));
+    const level = screen.getByRole("combobox", { name: "Nível" });
+    expect(level).toBeDisabled();
+    await user.selectOptions(modality, "m1");
+    await waitFor(() => expect(calls.at(-1)!.get("modalityId")).toBe("m1"));
+    await waitFor(() => expect(level).toBeEnabled());
+    await waitFor(() => expect(within(level).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todos os níveis", "Azul"]));
+    await user.selectOptions(level, "l1");
+    await waitFor(() => expect(calls.at(-1)!.get("levelId")).toBe("l1"));
+    await user.selectOptions(klass, "k1");
+    await waitFor(() => expect(calls.at(-1)!.get("classId")).toBe("k1"));
+    expect(calls.at(-1)!.get("modalityId")).toBe("m1");
+    expect(calls.at(-1)!.get("levelId")).toBe("l1");
+    // Trocar a modalidade limpa o nível.
+    await user.selectOptions(modality, "m3");
+    await waitFor(() => expect(calls.at(-1)!.get("modalityId")).toBe("m3"));
+    expect(calls.at(-1)!.get("levelId")).toBeNull();
+  });
+
+  it("CA29: filtros rápidos Ativos e Ex-alunos mostram a contagem do servidor, filtram e se desligam com o segundo clique", async () => {
+    const user = userEvent.setup();
+    setup();
+    const active = await screen.findByRole("button", { name: "Ativos (3)" });
+    const former = screen.getByRole("button", { name: "Ex-alunos (1)" });
+    expect(active).toHaveAttribute("aria-pressed", "false");
+    await user.click(active);
+    await waitFor(() => expect(calls.at(-1)!.get("status")).toBe("ACTIVE"));
+    expect(screen.getByRole("button", { name: "Ativos (3)" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(former);
+    await waitFor(() => expect(calls.at(-1)!.get("status")).toBe("FORMER"));
+    await user.click(screen.getByRole("button", { name: "Ex-alunos (1)" }));
+    await waitFor(() => expect(calls.at(-1)!.get("status")).toBeNull());
   });
 
   it("CA9: vazio sem alunos; outro texto com Limpar filtros quando o filtro não acha ninguém", async () => {
@@ -180,7 +247,7 @@ describe("StudentsPage", () => {
     localStorage.setItem("ctcore.studentColumns.a", JSON.stringify(["unit"]));
     setup("COORDINATOR", undefined, "b");
     await screen.findByText("Ana Souza");
-    for (const name of ["Unidade", "Idade", "Faixa etária", "Cadastrado em"]) expect(screen.getByRole("columnheader", { name })).toBeInTheDocument();
+    for (const name of ["Modalidades", "Situação", "Unidade", "Idade", "Faixa etária", "Cadastrado em"]) expect(screen.getByRole("columnheader", { name })).toBeInTheDocument();
   });
 
   it("CA8: sem armazenamento disponível a tela abre com todas as colunas e a escolha vale na página", async () => {

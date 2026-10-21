@@ -33,13 +33,17 @@ class StudentController {
     private final StudentGuardians guardians;
     private final StudentRecords records;
     private final StudentEdit edit;
+    private final Enrollments enrollments;
+    private final StudentSimple simple;
 
     record FinancialBody(Boolean financial) {}
 
     record ReasonBody(String reason) {}
 
     StudentController(Students students, StudentRegistration registration, StudentGuardians guardians, StudentRecords records,
-            StudentEdit edit) {
+            StudentEdit edit, Enrollments enrollments, StudentSimple simple) {
+        this.simple = simple;
+        this.enrollments = enrollments;
         this.edit = edit;
         this.records = records;
         this.guardians = guardians;
@@ -48,12 +52,21 @@ class StudentController {
     }
 
     @GetMapping
-    PageResponse<Students.Row> list(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q,
+    Students.StudentList list(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID unitId, @RequestParam(required = false) UUID ageRangeId, @RequestParam(required = false) String seal,
-            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) UUID modalityId, @RequestParam(required = false) UUID classId, @RequestParam(required = false) UUID levelId,
+            @RequestParam(required = false) String status, @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size, @RequestParam(required = false) String sort) {
         String field = "name".equals(sort) ? "name,asc" : sort;
-        return students.list(who, q, unitId, ageRangeId, seal, PageRequest.of(page, size, field, Set.of("name")));
+        return students.list(who, new Students.Filter(q, unitId, ageRangeId, seal, modalityId, classId, levelId, status),
+                PageRequest.of(page, size, field, Set.of("name")));
+    }
+
+    /** R22: lista simples de uma turma ou aula, para o Professor e para a gestão. */
+    @GetMapping("/simple")
+    java.util.List<StudentSimple.Item> simple(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) UUID classId,
+            @RequestParam(required = false) UUID lessonId) {
+        return simple.list(who, classId, lessonId);
     }
 
     @PostMapping
@@ -68,8 +81,8 @@ class StudentController {
     }
 
     @GetMapping("/lookup")
-    Students.Ref lookup(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String cpf) {
-        return students.lookup(who, cpf);
+    Students.Lookup lookup(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String cpf, @RequestParam(required = false) String email) {
+        return students.lookup(who, cpf, email);
     }
 
     @GetMapping("/{id}")
@@ -105,6 +118,36 @@ class StudentController {
     PageResponse<StudentRecords.HistoryEntry> history(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size) {
         return records.history(who, id, PageRequest.of(page, size, null, Set.of()));
+    }
+
+    @PostMapping("/{id}/modalities")
+    @ResponseStatus(HttpStatus.CREATED)
+    Enrollments.Enrollment addModalities(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody Enrollments.AddInput body,
+            HttpServletRequest request) {
+        return enrollments.add(who, id, body, request.getRemoteAddr());
+    }
+
+    @PutMapping("/{id}/modalities/{modalityRowId}/class")
+    Enrollments.Enrollment changeClass(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable("modalityRowId") UUID rowId,
+            @RequestBody Enrollments.ClassInput body, HttpServletRequest request) {
+        return enrollments.changeClass(who, id, rowId, body, request.getRemoteAddr());
+    }
+
+    @PutMapping("/{id}/modalities/{modalityRowId}/plan")
+    Enrollments.Enrollment changePlan(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable("modalityRowId") UUID rowId,
+            @RequestBody Enrollments.PlanInput body, HttpServletRequest request) {
+        return enrollments.changePlan(who, id, rowId, body, request.getRemoteAddr());
+    }
+
+    @PostMapping("/{id}/modalities/{modalityRowId}/transfer")
+    Enrollments.Enrollment transfer(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable("modalityRowId") UUID rowId,
+            @RequestBody Enrollments.TransferInput body, HttpServletRequest request) {
+        return enrollments.transfer(who, id, rowId, body, request.getRemoteAddr());
+    }
+
+    @GetMapping("/{id}/enrollment")
+    Enrollments.Enrollment enrollment(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
+        return enrollments.get(who, id);
     }
 
     @PostMapping("/{id}/guardians")

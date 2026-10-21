@@ -344,7 +344,9 @@
       "unit": "Unidade",
       "age": "Idade",
       "ageRange": "Faixa etária",
-      "createdAt": "Cadastrado em"
+      "createdAt": "Cadastrado em",
+      "modalities": "Modalidades",
+      "status": "Situação"
     },
     "age_one": "{{count}} ano",
     "age_other": "{{count}} anos",
@@ -354,12 +356,19 @@
       "ageRange": "Faixa etária",
       "allAgeRanges": "Todas as faixas",
       "seal": "Selo",
-      "allSeals": "Todos os selos"
+      "allSeals": "Todos os selos",
+      "modality": "Modalidade",
+      "allModalities": "Todas as modalidades",
+      "class": "Turma",
+      "allClasses": "Todas as turmas",
+      "level": "Nível",
+      "allLevels": "Todos os níveis"
     },
     "seals": {
       "INCOMPLETE_REGISTRATION": "Cadastro incompleto",
       "EMAIL_PROBLEM": "E-mail com problema",
-      "BIRTHDAY_TODAY": "Aniversário hoje"
+      "BIRTHDAY_TODAY": "Aniversário hoje",
+      "NEW": "Novo"
     },
     "edit": {
       "button": "Editar dados",
@@ -444,12 +453,63 @@
       "notFound": "Aluno não encontrado.",
       "notFoundText": "Este aluno não existe ou não está ao seu alcance.",
       "empty": {
-        "enrollment": "As modalidades, as turmas e o plano do aluno aparecem aqui quando a matrícula estiver disponível.",
         "financial": "As cobranças, os pagamentos e os recibos do aluno aparecem aqui quando as cobranças estiverem disponíveis.",
         "graduations": "A linha do tempo de graduação aparece aqui quando a graduação do aluno estiver disponível.",
         "title": "Ainda não há o que mostrar"
       },
+      "enrollment": {
+        "emptyTitle": "Sem matrícula",
+        "emptyText": "Este aluno ainda não tem modalidade. A matrícula começa pela tela de nova matrícula.",
+        "choose": "Escolha",
+        "otherClasses": "Outros horários",
+        "ended": "Encerrada",
+        "active": "Ativa",
+        "unit": "Unidade",
+        "classLabel": "Turma",
+        "planLabel": "Plano",
+        "nextPlan": "A partir da próxima cobrança: {{plan}}",
+        "dueDay": "Vencimento",
+        "dueDayValue": "Dia {{day}}",
+        "otherClassesLine": "Outros horários: {{names}}",
+        "actions": {
+          "class": "Trocar turma",
+          "plan": "Trocar plano",
+          "transfer": "Transferir",
+          "end": "Encerrar",
+          "endSoon": "Disponível em breve"
+        },
+        "readOnly": "Modalidade de outra unidade: só leitura.",
+        "errors": {
+          "403": "Você não tem permissão para alterar esta modalidade.",
+          "404": "Esta modalidade não existe mais.",
+          "generic": "Não conseguimos concluir. Nada foi alterado."
+        },
+        "class": {
+          "title": "Trocar turma de {{modality}}",
+          "effect": "A troca vale na hora.",
+          "primary": "Turma principal",
+          "submit": "Trocar turma"
+        },
+        "plan": {
+          "title": "Trocar plano de {{modality}}",
+          "effect": "O plano novo vale a partir da próxima cobrança; até lá, o plano atual continua.",
+          "current": "Plano atual: {{plan}}",
+          "next": "Plano novo",
+          "submit": "Trocar plano"
+        },
+        "transfer": {
+          "title": "Transferir {{modality}} para outra unidade",
+          "effect": "A modalidade sai de {{unit}}. O histórico e a graduação são mantidos; as cobranças já geradas ficam na unidade de origem.",
+          "unit": "Unidade de destino",
+          "plan": "Plano na unidade nova",
+          "dueDay": "Dia de vencimento (1 a 28)",
+          "inheritedDay": "O vencimento será o dia {{day}}, o mesmo das outras modalidades do aluno nesta unidade.",
+          "submit": "Transferir"
+        }
+      },
       "summary": {
+        "modalities": "Modalidades",
+        "noModalities": "Nenhuma modalidade ativa.",
         "contact": "Contato",
         "phone": "Celular",
         "email": "E-mail",
@@ -516,6 +576,24 @@
         "prev": "Anterior",
         "next": "Próxima"
       }
+    },
+    "simple": {
+      "title": "Alunos da aula",
+      "emptyTitle": "Nenhum aluno ativo",
+      "emptyText": "Esta turma ainda não tem alunos com modalidade ativa.",
+      "blocked": "Bloqueado"
+    },
+    "modalityLine": "{{modality}} · {{unit}} · {{class}}",
+    "statuses": {
+      "NONE": "Sem matrícula",
+      "ACTIVE": "Ativo",
+      "FORMER": "Ex-aluno"
+    },
+    "quick": {
+      "label": "Situação do aluno",
+      "ACTIVE": "Ativos",
+      "FORMER": "Ex-alunos",
+      "withCount": "{{label}} ({{count}})"
     }
   },
   "teachers": {
