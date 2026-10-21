@@ -18,7 +18,7 @@ Transformar uma pessoa em aluno: modalidades, turma, plano, vencimento, termo e 
 
 ### Matrícula
 
-- **RN-MAT-01.** Uma matrícula por aluno na organização, feita pela gestão. Ela pode cobrir várias modalidades e unidades, até 10 modalidades ativas.
+- **RN-MAT-01.** Uma matrícula por aluno na organização, feita pela gestão. Ela pode cobrir várias modalidades e unidades, até 10 modalidades ativas. O aluno tem no máximo uma matrícula ativa por modalidade na organização, em uma unidade só; a transferência leva a modalidade para outra unidade. Treinar a mesma modalidade em mais de uma unidade é assunto do plano, não de matrícula duplicada.
 - **RN-MAT-02.** Cada modalidade da matrícula tem unidade, turma principal, outros horários (opcional), plano e, se houver, um benefício.
 - **RN-MAT-03.** O dia de vencimento é escolhido entre os dias permitidos da unidade e vale para todas as modalidades do aluno naquela unidade.
 - **RN-MAT-04.** Ao concluir a matrícula o aluno já fica Ativo.
@@ -40,7 +40,7 @@ Transformar uma pessoa em aluno: modalidades, turma, plano, vencimento, termo e 
 
 - **RN-MAT-15.** Troca de turma vale na hora. Troca de plano vale a partir da próxima cobrança gerada.
 - **RN-MAT-16.** Pedidos pelo portal (troca de turma, nova modalidade, troca de plano) nunca são aprovados sozinhos. Ficam no "Precisa de atenção" e expiram em 30 dias sem resposta, com aviso ao aluno. Aprovar abre o fluxo correspondente na gestão já preenchido.
-- **RN-MAT-17.** Encerrar uma modalidade pela gestão exige motivo da lista (mudança de cidade, financeiro, horário, lesão, insatisfação, outro) com observação opcional. Para de gerar cobrança. As já geradas continuam devidas, e o Administrador decide manter ou cancelar cada uma, com motivo.
+- **RN-MAT-17.** Encerrar uma modalidade pela gestão exige motivo da lista (mudança de cidade, financeiro, horário, lesão, insatisfação, outro) com observação opcional. Para de gerar cobrança. As já geradas continuam devidas, e o Administrador decide manter ou cancelar cada uma, com motivo. Encerrar a modalidade encerra o benefício ativo dela. Enquanto não houver cobrança (Sprint 08), a janela mostra a lista de cobranças em aberto vazia; a decisão por cobrança entra com o painel da cobrança.
 - **RN-MAT-18.** "Solicitar encerramento" pelo portal, com motivo: a modalidade fica "Encerramento solicitado" e a gestão tem 7 dias para conversar e encerrar. Sem ação, o sistema encerra com a data do pedido. Nenhuma cobrança vence depois do pedido; as anteriores continuam devidas.
 - **RN-MAT-19.** Retorno de ex-aluno: reabre a mesma matrícula, achada por CPF ou e-mail, com histórico e graduação. Primeiro mês cheio; se a unidade cobra taxa de matrícula, ela é cobrada de novo, com isenção possível. Débito antigo aparece para o Administrador decidir. Se os dados foram anonimizados, é cadastro novo.
 - **RN-MAT-20.** Transferência de modalidade entre unidades segue RN-ORG-12.

@@ -18,7 +18,7 @@ Organizar as turmas da unidade e as aulas que nascem delas. Sem presença nem fr
 ### Turmas
 
 - **RN-TUR-01.** O nome da turma é único na unidade enquanto ativa. Duas turmas podem ter a mesma modalidade e horário se o nome for diferente. A modalidade da turma tem de estar oferecida pela unidade (RF-MOD-03), e a unidade não muda depois que a turma é criada.
-- **RN-TUR-02.** Capacidade é opcional e só avisa: acima dela a turma aparece "Acima da capacidade (31/30)", sem impedir matrícula. O teto técnico é 200 alunos por turma.
+- **RN-TUR-02.** Capacidade é opcional e só avisa: acima dela a turma aparece "Acima da capacidade (31/30)", sem impedir matrícula. O aviso também aparece quando a matrícula em andamento faria a turma passar da capacidade. O teto técnico é 200 alunos por turma.
 - **RN-TUR-03.** Turma com histórico (aulas passadas ou alunos) não é excluída, só desativada. Desativar exige que nenhum aluno a tenha como turma principal e é feito no painel da turma. A turma desativada continua listada e consultável, sai das escolhas de matrícula e de agenda e não é reativada nem editada (a edição devolve conflito).
 - **RN-TUR-04.** O aluno tem uma turma principal por modalidade e pode ter outros horários (outras turmas da mesma modalidade na unidade) em que treina.
 - **RN-TUR-05.** O professor titular é obrigatório. Auxiliares são opcionais e veem a turma como o titular. Titular e auxiliares têm de ser professores ativos da unidade da turma e ensinar a modalidade da turma, isto é, ter essa modalidade em "modalidades que ensina" (RN-PRO-09). Professor inativo ou que não ensina a modalidade não aparece nas escolhas, e o servidor o recusa (400 com o campo); a turma cujo titular ficou inativo ou deixou de ensinar a modalidade exige troca ao editar.
