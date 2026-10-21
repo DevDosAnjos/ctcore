@@ -73,7 +73,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 62 | RF-ALU-06 · Aniversariantes do dia | issue #62 | Sprint 06 | — | agente | feito |
 | 63 | Matrícula no servidor: modalidades, transferência e retorno | issue #63 | Sprint 07 | — | agente | feito |
 | 64 | RF-BEN-01 · Tabela de benefícios | issue #64 | Sprint 07 | — | agente | feito |
-| 65 | RF-BEN-02 · Conceder benefício | issue #65 | Sprint 07 | — | agente | a fazer |
+| 65 | RF-BEN-02 · Conceder benefício | issue #65 | Sprint 07 | — | agente | feito |
 | 66 | RF-BEN-03 · Encerrar benefício | issue #66 | Sprint 07 | — | agente | a fazer |
 | 67 | RF-MAT-01 · Nova matrícula em etapas | issue #67 | Sprint 07 | — | agente | a fazer |
 | 68 | RF-MAT-02 · Avisos de faixa etária e capacidade na matrícula | issue #68 | Sprint 07 | — | agente | a fazer |

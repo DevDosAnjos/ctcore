@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { GrantBenefitDialog } from "@/features/benefits/GrantBenefitDialog";
 import { ChangeClassDialog } from "./ChangeClassDialog";
 import { ChangePlanDialog } from "./ChangePlanDialog";
 import { TransferDialog } from "./TransferDialog";
@@ -9,7 +10,7 @@ import type { useEnrollment } from "./useStudentRecord";
 import type { Enrollment, EnrollmentModality } from "./types";
 
 const ACTIONS = ["class", "plan", "transfer"] as const;
-type Action = { kind: "class" | "plan" | "transfer"; row: EnrollmentModality };
+type Action = { kind: "class" | "plan" | "transfer" | "benefit"; row: EnrollmentModality };
 
 function Line({ label, value }: { label: string; value: string }) {
   return (
@@ -20,7 +21,7 @@ function Line({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ModalityCard({ row, onAction }: { row: EnrollmentModality; onAction: (a: Action) => void }) {
+function ModalityCard({ row, onAction, canGrant }: { row: EnrollmentModality; onAction: (a: Action) => void; canGrant: boolean }) {
   const { t } = useTranslation();
   const k = "students.record.enrollment.";
   const hint = useId();
@@ -48,6 +49,11 @@ function ModalityCard({ row, onAction }: { row: EnrollmentModality; onAction: (a
                 {t(`${k}actions.${kind}`)}
               </Button>
             ))}
+          {row.canEdit && canGrant && (
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => onAction({ kind: "benefit", row })}>
+              {t(`${k}actions.benefit`)}
+            </Button>
+          )}
           {row.canEdit && (
             <>
               <Button type="button" variant="outline" className="min-h-11" disabled aria-describedby={hint}>
@@ -65,7 +71,7 @@ function ModalityCard({ row, onAction }: { row: EnrollmentModality; onAction: (a
 }
 
 // RF-ALU-03 (R23): matrícula e modalidades do aluno, com as trocas por modalidade (só nas que a pessoa pode alterar). O servidor decide `canEdit`; a barreira é dele.
-export function RecordEnrollment({ studentId, enrollment, onChanged }: { studentId: string; enrollment: ReturnType<typeof useEnrollment>; onChanged: () => void }) {
+export function RecordEnrollment({ studentId, studentName, enrollment, canGrant = false, onChanged }: { studentId: string; studentName: string; enrollment: ReturnType<typeof useEnrollment>; canGrant?: boolean; onChanged: () => void }) {
   const { t } = useTranslation();
   const [action, setAction] = useState<Action>();
   const { status, data, reload } = enrollment;
@@ -82,11 +88,18 @@ export function RecordEnrollment({ studentId, enrollment, onChanged }: { student
     <>
       <ul className="flex flex-col gap-3">
         {data.modalities.map((row) => (
-          <ModalityCard key={row.id} row={row} onAction={setAction} />
+          <ModalityCard key={row.id} row={row} onAction={setAction} canGrant={canGrant} />
         ))}
       </ul>
       {action?.kind === "class" && <ChangeClassDialog {...props} row={action.row} />}
       {action?.kind === "plan" && <ChangePlanDialog {...props} row={action.row} />}
+      {action?.kind === "benefit" && (
+        <GrantBenefitDialog
+          fixed={{ studentId, studentName, modalityRowId: action.row.id, modalityName: action.row.modality.name }}
+          onClose={props.onClose}
+          onDone={done}
+        />
+      )}
       {action?.kind === "transfer" && <TransferDialog {...props} enrollment={data as Enrollment} row={action.row} />}
     </>
   );

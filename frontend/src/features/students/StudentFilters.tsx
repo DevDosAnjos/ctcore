@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useGraduation } from "@/features/modalities/useGraduation";
 import { useStudentFilterOptions } from "./useStudents";
 
-const SEALS = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW"];
+const SEALS = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP"];
 const QUICK = ["ACTIVE", "FORMER"] as const;
 
 type Props = { get: (k: string) => string; set: (k: string, v: string) => void; counts?: Record<string, number> };

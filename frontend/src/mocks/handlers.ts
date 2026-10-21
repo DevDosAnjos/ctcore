@@ -77,6 +77,7 @@ export const resetMockSession = () => {
   mockTeachers = initialTeachers();
   mockClasses = initialClasses();
   mockPlans = initialPlans();
+  benefitRows = initialBenefits();
   lessonEdits.clear();
   mockAdhoc = [];
   mockNoClassDays = [];
@@ -227,7 +228,16 @@ const benefitRow = ({ planIndex, student, ...b }: (typeof mockBenefits)[number])
     monthlyValueCents: Math.max(0, plan.valueCents - discount),
   };
 };
-const visibleBenefits = (role: string | undefined) => mockBenefits.map(benefitRow).filter((b) => role === "COORDINATOR" || b.unit.id === ADMIN_UNIT);
+// RF-BEN-02: em memória; `rowId` liga o benefício concedido à modalidade da matrícula (não sai na resposta).
+type MockBenefit = ReturnType<typeof benefitRow> & { rowId: string | null };
+const initialBenefits = (): MockBenefit[] => mockBenefits.map((b) => ({ ...benefitRow(b), rowId: null }));
+let benefitRows = initialBenefits();
+const publicBenefit = (b: MockBenefit) => {
+  const { id, student, unit, modality, type, value, reason, decidedBy, grantedBy, validUntil, status, high, monthlyValueCents } = b;
+  return { id, student, unit, modality, type, value, reason, decidedBy, grantedBy, validUntil, status, high, monthlyValueCents };
+};
+const visibleBenefits = (role: string | undefined) =>
+  benefitRows.filter((b) => role === "COORDINATOR" || b.unit.id === ADMIN_UNIT).map(publicBenefit);
 // RF-PLA-03: escrita de planos; Coordenador e Administrador (só a unidade dele); demais 403. Unidade e modalidade não mudam ao editar.
 type PlanBody = { unitId?: string; modalityId?: string; name?: string; valueCents?: unknown; weeklyFrequency?: unknown; validOtherUnits?: boolean; unpaidCharges?: string; paidFutureDifference?: boolean };
 const planBad = (field: string, message = "inválido") => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
@@ -792,7 +802,7 @@ const checkClasses = (unitId: string, modalityId: string, primaryId: string, oth
   return null;
 };
 // RF-ALU-02: selos pelos mesmos critérios do servidor; paga o próprio adulto ou o responsável financeiro do menor (RN-ALU-09, RN-ALU-10).
-const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW"];
+const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP"];
 const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const guardian = s.minor ? s.guardians.find((g) => g.financial) : undefined;
   const hasCpf = s.minor ? Boolean(guardian && guardianCpfs[guardian.guardianId]) : Boolean(s.cpf);
@@ -806,7 +816,36 @@ const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const enrollment = mockEnrollments[s.id];
   const latest = enrollment ? Math.max(Date.parse(enrollment.enrolledAt), enrollment.reopenedAt ? Date.parse(enrollment.reopenedAt) : 0) : null;
   const isNew = latest !== null && Math.floor((now.getTime() - latest) / 86_400_000) <= 30;
-  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : isNew));
+  // RF-BEN-02, D10: Bolsista = bolsa percentual ativa (não vencida) numa modalidade ativa.
+  const scholarship = benefitRows.some((b) => b.student.id === s.id && b.type === "PERCENT" && b.status === "ACTIVE" && (mockEnrollments[s.id]?.modalities ?? []).some((m) => m.id === b.rowId && m.status === "ACTIVE"));
+  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : seal === "SCHOLARSHIP" ? scholarship : isNew));
+};
+// RF-BEN-02: validação e alvo da concessão (mesma ordem do servidor: 401/403, 400, 404, 403 fora do alcance, 400 de validade).
+type BenefitBody = { studentId?: string; modalityRowId?: string; type?: string; value?: unknown; reason?: string; decidedBy?: string; validUntil?: string | null; replaceExisting?: boolean };
+const benefitDiscount = (type: string, value: number, planCents: number) => (type === "PERCENT" ? Math.floor((planCents * value + 50) / 100) : value);
+const benefitEffectiveFrom = (dueDay: number) => {
+  const limit = new Date();
+  limit.setDate(limit.getDate() + 10);
+  const month = new Date(limit.getFullYear(), limit.getMonth() + (dueDay > limit.getDate() ? 0 : 1), 1);
+  return `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
+};
+const benefitTarget = async (body: BenefitBody, full: boolean) => {
+  const denied = planAccess();
+  if (denied) return denied;
+  const type = String(body.type ?? "").toUpperCase();
+  if (type !== "PERCENT" && type !== "AMOUNT") return planBad("type", "PERCENT ou AMOUNT");
+  const value = body.value;
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > (type === "PERCENT" ? 100 : 99_999_999)) return planBad("value", type === "PERCENT" ? "inteiro de 1 a 100" : "inteiro de 1 a 99999999 centavos");
+  const reason = (body.reason ?? "").trim();
+  const decidedBy = (body.decidedBy ?? "").trim();
+  if (full && (reason.length < 2 || reason.length > 200)) return planBad("reason", "de 2 a 200 caracteres");
+  if (full && (decidedBy.length < 2 || decidedBy.length > 80)) return planBad("decidedBy", "de 2 a 80 caracteres");
+  const found = modalityRowFor(body.studentId ?? "", body.modalityRowId ?? "");
+  if (found instanceof Response) return found;
+  const plan = mockPlans.find((p) => p.id === found.row.planId);
+  if (!plan) return error(404, "NOT_FOUND", "Não encontrado.");
+  if (full && body.validUntil && body.validUntil < new Date().toISOString().slice(0, 10)) return planBad("validUntil", "de hoje em diante");
+  return { student: found.student, row: found.row, plan, type, value, reason, decidedBy };
 };
 const ageOf = (birth: string) => {
   const b = new Date(birth);
@@ -1625,6 +1664,46 @@ export const routes: Route[] = [
         .filter((b) => p.get("high") !== "true" || b.high)
         .sort((a, b) => a.student.name.localeCompare(b.student.name));
       return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-BEN-02: resumo antes de conceder; não grava.
+    method: "post",
+    path: "/benefits/preview",
+    resolver: async ({ request }) => {
+      const t = await benefitTarget((await request.json()) as BenefitBody, false);
+      if (t instanceof Response) return t;
+      const current = benefitRows.find((b) => b.rowId === t.row.id && b.status !== "ENDED");
+      return HttpResponse.json({
+        plan: { id: t.plan.id, name: t.plan.name, valueCents: t.plan.valueCents },
+        current: current ? publicBenefit(current) : null,
+        newMonthlyValueCents: Math.max(0, t.plan.valueCents - benefitDiscount(t.type, t.value, t.plan.valueCents)),
+        effectiveFrom: benefitEffectiveFrom(t.row.dueDay),
+        replaces: Boolean(current),
+        high: t.type === "PERCENT" ? t.value > 50 : t.value * 2 > t.plan.valueCents,
+      });
+    },
+  },
+  {
+    // RF-BEN-02: concede; havendo ativo, só com replaceExisting (senão 409); o atual vira ENDED.
+    method: "post",
+    path: "/benefits",
+    resolver: async ({ request }) => {
+      const body = (await request.json()) as BenefitBody;
+      const t = await benefitTarget(body, true);
+      if (t instanceof Response) return t;
+      const current = benefitRows.find((b) => b.rowId === t.row.id && b.status !== "ENDED");
+      if (current && body.replaceExisting !== true) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "replaceExisting", message: "a modalidade já tem um benefício ativo" }]);
+      if (current) current.status = "ENDED";
+      const unit = units.find((u) => u.id === t.row.unitId);
+      const row: MockBenefit = {
+        id: crypto.randomUUID(), rowId: t.row.id, student: { id: t.student.id, name: t.student.name }, unit: { id: t.row.unitId, name: unit?.name ?? "" },
+        modality: modalityCatalog.find((c) => c.id === t.row.modalityId) ?? modalityCatalog[0], type: t.type, value: t.value, reason: t.reason, decidedBy: t.decidedBy,
+        grantedBy: session.account.name, validUntil: body.validUntil ?? null, status: "ACTIVE",
+        high: t.type === "PERCENT" ? t.value > 50 : t.value * 2 > t.plan.valueCents, monthlyValueCents: Math.max(0, t.plan.valueCents - benefitDiscount(t.type, t.value, t.plan.valueCents)),
+      };
+      benefitRows.push(row);
+      return HttpResponse.json(publicBenefit(row), { status: 201 });
     },
   },
   {

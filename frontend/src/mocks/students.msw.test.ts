@@ -170,7 +170,7 @@ describe("lista de alunos x OpenAPI (RF-ALU-01, CA11)", () => {
     await login("ana@exemplo.com");
     const rows = async (qs = "") => (await (await send("GET", `/students${qs}`)).json()).items as { name: string; seals: string[] }[];
     expect(openapi.paths["/students"].get.parameters.some((p: { name: string }) => p.name === "seal")).toBe(true);
-    expect(openapi.components.schemas.StudentSeal.enum).toEqual(["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW"]);
+    expect(openapi.components.schemas.StudentSeal.enum).toEqual(["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP"]);
     expect((await rows()).map((r) => r.seals)).toEqual([["INCOMPLETE_REGISTRATION"], []]);
     expect((await rows("?seal=INCOMPLETE_REGISTRATION")).map((r) => r.name)).toEqual(["Aluno Adulto Fictício"]);
     expect(await rows("?seal=EMAIL_PROBLEM")).toEqual([]);

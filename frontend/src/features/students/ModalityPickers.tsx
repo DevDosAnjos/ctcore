@@ -5,7 +5,6 @@ import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { useResource } from "./useStudentRecord";
-import type { Enrollment } from "./types";
 
 export interface Choice {
   id: string;
@@ -93,7 +92,7 @@ export function ModalityDialog({
   retry: () => void;
   submitLabel: string;
   canSubmit: boolean;
-  work: () => Promise<Enrollment>;
+  work: () => Promise<unknown>;
   onClose: () => void;
   onDone: () => void;
   children: (errors: Record<string, string>) => ReactNode;

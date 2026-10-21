@@ -56,7 +56,7 @@ final class EnrollmentFixtures {
     }
 
     static void clean(JdbcTemplate db) {
-        for (String table : new String[] {"enrollment_modality_class", "enrollment_modality", "enrollment", "student_guardian", "guardian", "student", "plan",
+        for (String table : new String[] {"benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "student_guardian", "guardian", "student", "plan",
                 "training_class_assistant", "training_class_schedule", "training_class", "teacher_unit", "teacher_modality", "teacher", "unit_modality",
                 "organization_modality"}) {
             db.update("delete from " + table);

@@ -368,7 +368,8 @@
       "INCOMPLETE_REGISTRATION": "Cadastro incompleto",
       "EMAIL_PROBLEM": "E-mail com problema",
       "BIRTHDAY_TODAY": "Aniversário hoje",
-      "NEW": "Novo"
+      "NEW": "Novo",
+      "SCHOLARSHIP": "Bolsista"
     },
     "edit": {
       "button": "Editar dados",
@@ -475,6 +476,7 @@
           "class": "Trocar turma",
           "plan": "Trocar plano",
           "transfer": "Transferir",
+          "benefit": "Conceder benefício",
           "end": "Encerrar",
           "endSoon": "Disponível em breve"
         },
@@ -482,6 +484,7 @@
         "errors": {
           "403": "Você não tem permissão para alterar esta modalidade.",
           "404": "Esta modalidade não existe mais.",
+          "409": "O benefício ativo da modalidade mudou. Confira o resumo e tente de novo.",
           "generic": "Não conseguimos concluir. Nada foi alterado."
         },
         "class": {
@@ -1108,6 +1111,36 @@
     "percent": "{{value}}%",
     "highBadge": "Benefício alto",
     "noDeadline": "Sem prazo",
+    "grant": {
+      "button": "Conceder benefício",
+      "title": "Conceder benefício",
+      "titleFor": "Conceder benefício em {{modality}}",
+      "effect": "O benefício vale a partir do mês indicado no resumo. Cobranças já geradas não mudam.",
+      "fixed": "{{student}} · {{modality}}",
+      "search": "Buscar aluno por nome",
+      "noStudent": "Nenhum aluno encontrado.",
+      "student": "Aluno",
+      "modality": "Modalidade",
+      "noModalityTitle": "Sem modalidade ativa",
+      "noModalityText": "Este aluno não tem modalidade ativa em que você possa conceder benefício.",
+      "type": "Tipo",
+      "percent": "Percentual (1 a 100)",
+      "amount": "Valor do desconto",
+      "reason": "Motivo",
+      "decidedBy": "Decidido por",
+      "validUntil": "Válido até (opcional)",
+      "submit": "Conceder",
+      "summary": {
+        "title": "Resumo do benefício",
+        "plan": "Plano: {{plan}} ({{value}})",
+        "percent": "Benefício: bolsa de {{value}}%",
+        "amount": "Benefício: desconto de {{value}}",
+        "monthly": "Nova mensalidade: {{value}}",
+        "from": "Vale a partir de {{month}}",
+        "zero": "Esta modalidade não vai gerar mensalidade. O aluno segue Ativo.",
+        "replaces": "Atenção: o benefício ativo atual ({{current}}) será encerrado e substituído por este."
+      }
+    },
     "columns": {
       "student": "Aluno",
       "modality": "Modalidade",

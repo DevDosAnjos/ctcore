@@ -281,4 +281,51 @@ class StudentSealsIT extends OrganizationBase {
         adminJdbc().update("update unit set timezone = 'Asia/Tokyo' where id = ?", t.unitId());
         assertThat(seals(body("", c), "Trinta Dias")).isEmpty();
     }
+
+    private void benefit(Tenant t, UUID row, String type, long value, String validUntil, String status) {
+        UUID account = UUID.randomUUID();
+        adminJdbc().update("insert into account (id, email, name, status) values (?, ?, 'Gestora', 'ACTIVE')", account, "sch-" + account + ".example");
+        adminJdbc().update("insert into benefit (id, organization_id, enrollment_modality_id, student_id, unit_id, type, value, reason, decided_by, granted_by_account_id, "
+                + "valid_until, status, ended_at) select ?, em.organization_id, em.id, em.student_id, em.unit_id, ?, ?, 'Motivo', 'Mestre', ?, "
+                + (validUntil == null ? "null" : "date '" + validUntil + "'") + ", ?, case when ? = 'ENDED' then now() end from enrollment_modality em where em.id = ?",
+                UUID.randomUUID(), type, value, account, status, status, row);
+    }
+
+    @Test
+    @DisplayName("CA12 (RF-BEN-02, D10): Bolsista só com bolsa percentual ativa e dentro da validade; vencida, encerrada, desconto em reais e sem benefício não; lista, ficha e filtro")
+    void scholarshipSeal() throws Exception {
+        Tenant t = tenant();
+        var c = who(t, Role.COORDINATOR);
+        today(LocalDate.of(2025, 6, 30));
+        String[] names = {"Com Bolsa", "Bolsa Hoje", "Bolsa Vencida", "Bolsa Encerrada", "So Desconto", "Sem Beneficio"};
+        UUID[] ids = new UUID[names.length];
+        UUID[] rows = new UUID[names.length];
+        for (int i = 0; i < names.length; i++) {
+            ids[i] = adult(t, names[i], "1111111111" + i, "s" + i + "@ficticia.example");
+            rows[i] = EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), ids[i], t.unitId(), "ACTIVE", 0, null).row();
+        }
+        benefit(t, rows[0], "PERCENT", 30, null, "ACTIVE");
+        benefit(t, rows[1], "PERCENT", 100, "2025-06-30", "ACTIVE");
+        benefit(t, rows[2], "PERCENT", 30, "2025-06-29", "ACTIVE");
+        benefit(t, rows[3], "PERCENT", 30, null, "ENDED");
+        benefit(t, rows[4], "AMOUNT", 5000, null, "ACTIVE");
+        JsonNode b = body("", c);
+        assertThat(seals(b, "Com Bolsa")).contains("SCHOLARSHIP");
+        assertThat(seals(b, "Bolsa Hoje")).contains("SCHOLARSHIP");
+        for (String n : new String[] {"Bolsa Vencida", "Bolsa Encerrada", "So Desconto", "Sem Beneficio"}) assertThat(seals(b, n)).as(n).doesNotContain("SCHOLARSHIP");
+        assertThat(names(body("?seal=SCHOLARSHIP", c))).containsExactly("Bolsa Hoje", "Com Bolsa");
+        var record = call(MockMvcRequestBuilders.get("/api/v1/students/" + ids[0] + "/record"), c).getResponse();
+        assertThat(json.readTree(record.getContentAsString()).get("seals").toString()).contains("SCHOLARSHIP");
+        // Administrador só enxerga o alcance dele
+        UUID other = UUID.randomUUID();
+        adminJdbc().update("insert into unit (id, organization_id, name, short_name) values (?, ?, 'Outra', ?)", other, t.orgId(), "o" + other.toString().substring(0, 12));
+        assertThat(names(body("?seal=SCHOLARSHIP", who(t, Role.ADMINISTRATOR)))).containsExactly("Bolsa Hoje", "Com Bolsa");
+        adminJdbc().update("update student set registered_unit_id = ? where id = ?", other, ids[0]);
+        adminJdbc().update("update enrollment_modality set unit_id = ? where student_id = ?", other, ids[0]);
+        adminJdbc().update("update benefit set unit_id = ? where student_id = ?", other, ids[0]);
+        assertThat(names(body("?seal=SCHOLARSHIP", who(t, Role.ADMINISTRATOR)))).containsExactly("Bolsa Hoje");
+        // modalidade encerrada tira o selo
+        adminJdbc().update("update enrollment_modality set status = 'ENDED', ended_at = now() where student_id = ?", ids[1]);
+        assertThat(names(body("?seal=SCHOLARSHIP", c))).containsExactly("Com Bolsa");
+    }
 }
