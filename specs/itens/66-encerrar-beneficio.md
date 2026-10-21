@@ -107,6 +107,16 @@ Achados:
 - sugestão, especificação/dono — a ficha do aluno (`RecordEnrollment`) segue sem a ação "Encerrar" (R10/CA10 citam a ficha); decidir se `GET /students/{id}/enrollment` passa a expor `activeBenefit` em item próprio.
 - sugestão, código — `TeacherDeactivation` encerra os benefícios do professor sem checar alcance do Administrador; é o comportamento pedido (R9), apenas registrar.
 
+### Rodada 2 — OK — 2026-10-21, estado 709bf54b8aa166a921dc3c6649f9a3a9daa884f0
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA12 | PASSOU (mantido da rodada 1) | desde o estado da rodada 1 só mudou `EnrollmentChangesIT.clean` (teste), `specs/backlog.md` e este arquivo; nenhum código de produção |
+
+Comandos: `./backend/mvnw -f backend/pom.xml verify -Dit.test='StaffUsersInviteIT,StaffUsersDeactivateIT,EnrollmentChangesIT,BenefitEndIT,TeacherDeactivationIT'` → 140 testes rápidos e 26 de integração, 0 falhas, BUILD SUCCESS. Regressão completa e front não reexecutados (nada mudou no front nem em produção); mantidos da rodada 1 e do relato da correção da entrega.
+Achados:
+- sugestão, código — `EnrollmentChangesIT.clean` apaga por `email like '%.example'`, coerente com as linhas vizinhas; sem ação.
+
 ## Entrega
 
 - Encerra benefício ativo com motivo por `POST /benefits/{id}/end` (auditoria `benefit.ended`, isolamento por organização e perfil, concorrência 200 + 409); o desconto de professor (`teacherId`, V35) encerra junto com a inativação do professor, na mesma transação.
@@ -114,3 +124,6 @@ Achados:
 - Verificação: `verify` do back-end (506 testes, JaCoCo ok); lint, typecheck, build, `test:cov` (902 testes) e e2e (32) verdes.
 - Notas de versão: não existe arquivo; linha: "Encerrar benefício com motivo; desconto de professor encerra ao inativar o professor".
 - Limitação: a ação "Encerrar" na ficha do aluno não foi feita (`GET /students/{id}/enrollment` não expõe o benefício ativo); decisão do dono sobre expor `activeBenefit` em item próprio.
+
+### Correção da entrega
+- `backend` do PR #307 reprovou: `EnrollmentChangesIT.clean` falhava (`account_invite`/`account_session` ainda apontando para contas `*.example` deixadas por `StaffUsers*IT` na ordem do CI); limpeza do teste incompleta, sem relação com a regra do item — arquivos: `backend/src/test/java/br/com/ctcore/student/EnrollmentChangesIT.java` (apaga `account_invite`, `account_session`, `password_reset` antes de `account`, como `EmailProblemsIT`) — prova: `verify -Dit.test='StaffUsersInviteIT,StaffUsersDeactivateIT,EnrollmentChangesIT,BenefitEndIT'` → 20 testes, 0 falhas (reproduzia 4 erros antes); `./backend/mvnw -f backend/pom.xml verify` → 506 testes, 0 falhas, cobertura ok.
