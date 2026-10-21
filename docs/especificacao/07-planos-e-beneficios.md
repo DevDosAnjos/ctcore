@@ -31,7 +31,7 @@ Definir quanto cada modalidade custa em cada unidade e os benefícios individuai
 - **RN-BEN-05.** Com bolsa de 100%, a modalidade não gera mensalidade, mas o aluno segue Ativo e conta na assinatura.
 - **RN-BEN-06.** Benefício acima de 50% (ou desconto acima de metade do plano) notifica o Coordenador e aparece no filtro "Benefícios altos". Não precisa de aprovação.
 - **RN-BEN-07.** Desconto em reais nunca deixa a mensalidade negativa: o valor mínimo é zero.
-- **RN-BEN-08.** Desconto de professor é um benefício comum. Se já houver bolsa, o Administrador escolhe qual fica.
+- **RN-BEN-08.** Desconto de professor é um benefício comum. Ao dar um benefício a quem já tem outro na modalidade, a janela pede a confirmação de substituir: confirmar deixa o novo e cancelar mantém o atual.
 - **RN-BEN-09.** Desconto de família (irmãos) também é o benefício comum, dado em cada matrícula. Não existe cobrança por família.
 
 ## Requisitos
