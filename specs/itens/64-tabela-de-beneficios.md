@@ -112,6 +112,18 @@ Achados:
 - sugestão, código, `Benefits.java` — a bolsa é arredondada em meio centavo para cima (desvio 3 já declarado); registrar na especificação da cobrança (Sprint 08) para o arredondamento ficar único.
 - sugestão, código, `BenefitsPage` — layout do canvas inacessível e 360 px só em jsdom; o dono confere no PR.
 
+### Rodada 2 — OK — 2026-10-21, estado 66a8a24baf8b07a248ef4dd2e9d0d3ab2d6ccbd3
+
+Mudança desde a rodada 1: só `SeedDataIT.cleanTeachers` (limpeza de contas e vínculos) e a especificação; nenhum código de produto. CA1 a CA12 mantidos da rodada 1 (produto inalterado); CA1 a CA9 reexecutados pelos ITs abaixo.
+
+Comandos:
+- `verify -Dit.test=BenefitListIT,SeedDataIT,EnrollmentChangesIT,PlanSummaryIT -Dtest=BenefitsTest` → BUILD SUCCESS, 31 testes, 0 falhas.
+- `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 492 testes, JaCoCo ok.
+- Front-end não reexecutado (nenhum arquivo de front mudou).
+Achados:
+- A falha do CI (`EnrollmentChangesIT.clean` por FK `account_link`) está corrigida; a causa descrita é coerente com o diff.
+- sugestão, código, `SeedDataIT.cleanTeachers` — a lista de tabelas é frágil; tabela nova com FK para `account` quebra de novo. Considerar um helper de limpeza comum aos ITs.
+
 ## Entrega
 
 - Tabela de benefícios (RF-BEN-01): migração `V34__benefit`, rota de listagem com filtros (tipo, modalidade, status, alto, unidade, busca), validações de limites e valor da mensalidade com benefício, contagens no resumo de planos, semente `15-beneficios.sql`, contrato no OpenAPI e tela `BenefitsPage` com os quatro estados.
@@ -119,3 +131,6 @@ Achados:
 - Decisões: a bolsa arredonda meio centavo para cima (registrar na cobrança da Sprint 08); `Plans.benefits` não chama `Benefits` para evitar ciclo de beans; item de menu "Benefícios" passou a disponível.
 - Limitações: axe a 360 px só em jsdom; o layout do canvas fica para conferência do dono no PR.
 - Verificações do PR (#305): `backend` falhou no CI (4 erros, 492 testes): `EnrollmentChangesIT.clean:38` não apaga `account where email like '%.example'` por violar `account_link_account_id_fkey` (linhas de `account_link` deixadas por outro IT, provavelmente `BenefitListIT` ou a semente; dependente da ordem de execução). Local passou. Demais verificações verdes. Corrigir a limpeza no teste que deixa `account_link`.
+
+### Correção da entrega
+- Falha do CI em `EnrollmentChangesIT.clean` (FK `account_link_account_id_fkey`): o `SeedDataIT` deixava contas e vínculos do seed (`*.example`) depois de cada teste, e o `EnrollmentChangesIT` não conseguia apagar `account` quando rodava depois dele — arquivos: `backend/src/test/java/br/com/ctcore/db/SeedDataIT.java` (`cleanTeachers` agora também apaga `email_message`, `account_device`, sessões, convites, `account_link_unit`, `account_link` e `account`) — prova: `verify -Dit.test=SeedDataIT,EnrollmentChangesIT,BenefitListIT` (ordem que falhou no CI: BenefitListIT, SeedDataIT, EnrollmentChangesIT) → 26 testes verdes; `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 492 testes, 0 falhas.

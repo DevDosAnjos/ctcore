@@ -48,7 +48,8 @@ class SeedDataIT extends PostgresIT {
     // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
     @org.junit.jupiter.api.AfterEach
     void cleanTeachers() {
-        for (String table : new String[]{"benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher"}) {
+        for (String table : new String[]{"benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
+                "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite", "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
     }
