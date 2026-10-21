@@ -137,3 +137,20 @@ Achados:
 
 ### Falha do CI após a correção (commit 7ab16b9)
 - `backend` falhou de novo no PR #305: `EnrollmentChangesIT` (4 erros: `changesPlan`, `changesClass`, `transfers`, `reachAndProfiles`) no `clean`, `delete from account where email like '%.example'` viola `account_link_account_id_fkey`. A limpeza do `SeedDataIT` não bastou: outro IT deixa `account_link` de contas `*.example`. Correção sugerida: o próprio `EnrollmentChangesIT.clean` apagar `account_link_unit` e `account_link` antes de `account` (ou helper comum de limpeza). Demais verificações verdes.
+
+## Construção (continuação)
+
+### Correção da entrega
+- Segunda falha do CI (`EnrollmentChangesIT.clean`, FK `account_link_account_id_fkey`): o `clean` agora apaga `account_link_unit` e `account_link` das contas `*.example` antes de `account` — arquivos: `backend/src/test/java/br/com/ctcore/student/EnrollmentChangesIT.java` — prova: `verify -Dit.test=BenefitListIT,SeedDataIT,EnrollmentChangesIT,PlanSummaryIT -Dtest=BenefitsTest` → 31 testes verdes; `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 492 testes, 0 falhas.
+- Front-end não reexecutado (nenhum arquivo de front mudou).
+
+### Rodada 3 — OK — 2026-10-21, estado c38d05e4d40c1d99679b1b92f83ea29e7987301a
+
+Mudança desde a rodada 2: só `EnrollmentChangesIT.clean` (apaga `account_link_unit` e `account_link` das contas `*.example` antes de `account`) e a especificação; nenhum código de produto. CA1 a CA12 mantidos das rodadas 1 e 2.
+
+Comandos:
+- `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 492 testes, 0 falhas, JaCoCo ok.
+- Front-end não reexecutado (nenhum arquivo de front mudou).
+Achados:
+- A segunda falha do CI (`EnrollmentChangesIT.clean`, FK `account_link_account_id_fkey`) está tratada no diff: o teste agora remove os vínculos antes das contas, independentemente da ordem dos ITs. Não reproduzido o CI remoto; a ordem local passa.
+- sugestão, código, `EnrollmentChangesIT.clean` / `SeedDataIT.cleanTeachers` — limpezas duplicadas e frágeis; considerar helper comum.
