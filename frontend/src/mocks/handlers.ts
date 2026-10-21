@@ -200,6 +200,34 @@ const planRow = ({ modalityIndex, unitName, unitId, ...x }: MockPlan) => ({
   studentsUsing: 0,
   status: x.status,
 });
+// RF-BEN-01: benefícios fictícios (RN-BEN-06: alto = bolsa acima de 50% ou desconto acima de metade do plano); três na unidade do Administrador.
+const mockBenefits = [
+  { id: "00000000-0000-0000-0000-000000000701", student: "Ana Souza", planIndex: 0, type: "PERCENT", value: 30, reason: "Aluno de projeto social", decidedBy: "Mestre Fictício", validUntil: null as string | null, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000702", student: "Bruno Lima", planIndex: 1, type: "AMOUNT", value: 12000, reason: "Situação financeira da família", decidedBy: "Direção Fictícia", validUntil: null, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000703", student: "Carla Dias", planIndex: 2, type: "PERCENT", value: 20, reason: "Promoção de matrícula", decidedBy: "Direção Fictícia", validUntil: "2026-01-31", status: "EXPIRED" },
+  { id: "00000000-0000-0000-0000-000000000704", student: "Davi Rocha", planIndex: 2, type: "PERCENT", value: 60, reason: "Atleta da equipe", decidedBy: "Mestre Fictício", validUntil: null, status: "ACTIVE" },
+  { id: "00000000-0000-0000-0000-000000000705", student: "Eva Melo", planIndex: 0, type: "PERCENT", value: 10, reason: "Convênio encerrado", decidedBy: "Direção Fictícia", validUntil: null, status: "ENDED" },
+];
+const benefitRow = ({ planIndex, student, ...b }: (typeof mockBenefits)[number]) => {
+  const plan = initialPlans()[planIndex];
+  const discount = b.type === "PERCENT" ? Math.round((plan.valueCents * b.value) / 100) : b.value;
+  return {
+    id: b.id,
+    student: { id: `s-${b.id}`, name: student },
+    unit: { id: plan.unitId, name: plan.unitName },
+    modality: modalityCatalog[plan.modalityIndex],
+    type: b.type,
+    value: b.value,
+    reason: b.reason,
+    decidedBy: b.decidedBy,
+    grantedBy: "Gestora Fictícia",
+    validUntil: b.validUntil,
+    status: b.status,
+    high: b.type === "PERCENT" ? b.value > 50 : b.value * 2 > plan.valueCents,
+    monthlyValueCents: Math.max(0, plan.valueCents - discount),
+  };
+};
+const visibleBenefits = (role: string | undefined) => mockBenefits.map(benefitRow).filter((b) => role === "COORDINATOR" || b.unit.id === ADMIN_UNIT);
 // RF-PLA-03: escrita de planos; Coordenador e Administrador (só a unidade dele); demais 403. Unidade e modalidade não mudam ao editar.
 type PlanBody = { unitId?: string; modalityId?: string; name?: string; valueCents?: unknown; weeklyFrequency?: unknown; validOtherUnits?: boolean; unpaidCharges?: string; paidFutureDifference?: boolean };
 const planBad = (field: string, message = "inválido") => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
@@ -1569,6 +1597,37 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-BEN-01: tabela de benefícios paginada; Coordenador (todas as unidades) e Administrador (só a dele); demais 403.
+    method: "get",
+    path: "/benefits",
+    resolver: ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      const role = activeRole();
+      if (role !== "COORDINATOR" && role !== "ADMINISTRATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const p = new URL(request.url).searchParams;
+      const type = p.get("type");
+      const status = p.get("status");
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const bad: { field: string; message: string }[] = [];
+      if (type !== null && !["PERCENT", "AMOUNT"].includes(type)) bad.push({ field: "type", message: "valor inválido" });
+      if (status !== null && !["ACTIVE", "EXPIRED", "ENDED"].includes(status)) bad.push({ field: "status", message: "valor inválido" });
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const modalityId = p.get("modalityId");
+      const unitId = p.get("unitId");
+      const found = visibleBenefits(role)
+        .filter((b) => teacherKey(b.student.name).includes(q) && (!type || b.type === type) && (!status || b.status === status))
+        .filter((b) => !modalityId || b.modality.id === modalityId)
+        .filter((b) => !unitId || b.unit.id === unitId)
+        .filter((b) => p.get("high") !== "true" || b.high)
+        .sort((a, b) => a.student.name.localeCompare(b.student.name));
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
     // RF-PLA-02: tabela de planos paginada; Coordenador (todas as unidades) e Administrador (só a dele); demais 403.
     method: "get",
     path: "/plans",
@@ -1619,7 +1678,10 @@ export const routes: Route[] = [
           minValueCents: values.length ? Math.min(...values) : null,
           maxValueCents: values.length ? Math.max(...values) : null,
         },
-        benefits: { active: 0, high: 0 },
+        benefits: (() => {
+          const live = visibleBenefits(role).filter((b) => b.status === "ACTIVE" && (!unitId || b.unit.id === unitId));
+          return { active: live.length, high: live.filter((b) => b.high).length };
+        })(),
       });
     },
   },

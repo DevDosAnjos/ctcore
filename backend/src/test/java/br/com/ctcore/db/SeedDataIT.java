@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -48,7 +48,8 @@ class SeedDataIT extends PostgresIT {
     // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
     @org.junit.jupiter.api.AfterEach
     void cleanTeachers() {
-        for (String table : new String[]{"enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher"}) {
+        for (String table : new String[]{"benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
+                "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite", "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
     }
@@ -233,6 +234,15 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from enrollment_modality where status = 'ACTIVE'", Integer.class)).isEqualTo(4);
         assertThat(jdbc.queryForObject("select count(*) from enrollment_modality where status = 'ENDED'", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from student s where not exists (select 1 from enrollment e where e.student_id = s.id)", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("RF-BEN-01, #64: seed cria 5 benefícios (4 ativos, 1 encerrado) sem duplicar")
+    void benefitsSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from benefit where status = 'ACTIVE'", Integer.class)).isEqualTo(4);
+        assertThat(jdbc.queryForObject("select count(*) from benefit where status = 'ENDED'", Integer.class)).isEqualTo(1);
     }
 
     @Test

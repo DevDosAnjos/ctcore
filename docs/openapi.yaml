@@ -1477,6 +1477,32 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /benefits:
+    get:
+      summary: Tabela de benefícios da organização do vínculo ativo (RF-BEN-01). Coordenador e Administrador.
+      description: |
+        Ordenada por nome do aluno e modalidade. O Coordenador vê todas as unidades; o Administrador, as das matrículas dele (`unitId` fora do
+        alcance devolve lista vazia). Professor, Aluno e Responsável recebem 403. `status` é calculado: `EXPIRED` quando ativo com validade anterior
+        a hoje no fuso da unidade. `high` (RN-BEN-06): bolsa acima de 50% ou desconto acima de metade do plano. `value` é percentual inteiro (1 a 100)
+        em `PERCENT` e centavos em `AMOUNT`; `monthlyValueCents` nunca é negativo (RN-BEN-07). `q` ignora acento e maiúsculas; os filtros combinam (E).
+        Só leitura: não grava auditoria.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, schema: { type: string } }
+        - { name: type, in: query, required: false, schema: { type: string, enum: [PERCENT, AMOUNT] } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, EXPIRED, ENDED] } }
+        - { name: high, in: query, required: false, schema: { type: boolean } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de benefícios.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BenefitList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /plans:
     get:
       summary: Tabela de planos da organização do vínculo ativo (RF-PLA-02). Coordenador e Administrador.
@@ -1524,7 +1550,7 @@ paths:
       summary: Resumo de planos e benefícios (RF-PLA-01). Coordenador e Administrador.
       description: |
         `plans` traz `active`, `inactive`, `studentsUsing` e a faixa de valores (`minValueCents`, `maxValueCents`, só dos planos ativos; nulos sem plano
-        ativo); `benefits` traz `active` e `high`. `studentsUsing` e `benefits` valem 0 até a Sprint 07. O Coordenador vê todas as unidades ou a de
+        ativo); `benefits` traz `active` e `high`. `studentsUsing` vale 0 até a matrícula alimentar a contagem; `benefits` conta os benefícios ativos não vencidos e, entre eles, os altos (RF-BEN-01). O Coordenador vê todas as unidades ou a de
         `unitId`; o Administrador, as dele (`unitId` fora do alcance devolve resumo zerado). Professor, Aluno e Responsável recebem 403. Só leitura:
         não grava auditoria.
       security: [{ sessionCookie: [] }]
@@ -2833,6 +2859,29 @@ components:
         validOtherUnits: { type: boolean }
         studentsUsing: { type: integer }
         status: { type: string, enum: [ACTIVE, INACTIVE] }
+    BenefitRow:
+      type: object
+      required: [id, student, unit, modality, type, value, reason, decidedBy, grantedBy, validUntil, status, high, monthlyValueCents]
+      properties:
+        id: { type: string, format: uuid }
+        student: { $ref: '#/components/schemas/ClassRef' }
+        unit: { $ref: '#/components/schemas/ClassRef' }
+        modality: { $ref: '#/components/schemas/ClassRef' }
+        type: { type: string, enum: [PERCENT, AMOUNT] }
+        value: { type: integer, format: int64, description: 'Percentual inteiro de 1 a 100 em PERCENT; centavos em AMOUNT.' }
+        reason: { type: string }
+        decidedBy: { type: string }
+        grantedBy: { type: string, nullable: true, description: Nome da conta que lançou. }
+        validUntil: { type: string, format: date, nullable: true, description: Nulo é sem prazo; vale até o fim do dia. }
+        status: { type: string, enum: [ACTIVE, EXPIRED, ENDED] }
+        high: { type: boolean }
+        monthlyValueCents: { type: integer, format: int64 }
+    BenefitList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/BenefitRow' } }
     PlanList:
       allOf:
         - $ref: '#/components/schemas/Page'
