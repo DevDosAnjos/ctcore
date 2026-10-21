@@ -118,3 +118,4 @@ Achados:
 - Verificação: `verify` do back-end (492 testes, JaCoCo ok) e, no front-end, lint, typecheck, build, `test:cov` e `e2e` (32) verdes; rodada 1 da verificação OK.
 - Decisões: a bolsa arredonda meio centavo para cima (registrar na cobrança da Sprint 08); `Plans.benefits` não chama `Benefits` para evitar ciclo de beans; item de menu "Benefícios" passou a disponível.
 - Limitações: axe a 360 px só em jsdom; o layout do canvas fica para conferência do dono no PR.
+- Verificações do PR (#305): `backend` falhou no CI (4 erros, 492 testes): `EnrollmentChangesIT.clean:38` não apaga `account where email like '%.example'` por violar `account_link_account_id_fkey` (linhas de `account_link` deixadas por outro IT, provavelmente `BenefitListIT` ou a semente; dependente da ordem de execução). Local passou. Demais verificações verdes. Corrigir a limpeza no teste que deixa `account_link`.
