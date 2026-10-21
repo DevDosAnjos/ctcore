@@ -13,7 +13,9 @@ import br.com.ctcore.permission.Permissions;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -62,9 +64,15 @@ public class StudentRecords {
         if (teacher ? effective.get(Permission.STUDENT_RECORD) == Access.NONE : effective.get(Permission.STUDENT_MANAGE) == Access.NONE) {
             throw new AccessDeniedException("Permission denied");
         }
-        boolean contacts = !teacher || effective.get(Permission.STUDENT_CONTACTS) != Access.NONE;
         return transactions.execute(() -> {
-            if (teacher && !teacherReach(who, id)) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+            boolean contacts = true;
+            if (teacher) {
+                // R16: aluno de turma ativa dele (404 se não for) e as chaves conferidas na unidade da turma (403 se desligadas lá).
+                Set<UUID> units = teacherUnits(who, id);
+                if (units.isEmpty()) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+                if (units.stream().noneMatch(u -> permissions.grant(who, Permission.STUDENT_RECORD, u) != Access.NONE)) throw new AccessDeniedException("Permission denied");
+                contacts = contactsIn(who, units);
+            }
             // Administrador fora do alcance: o mesmo 404 de aluno inexistente (RN-ALU-07).
             var detail = students.detail(who, id);
             var row = students.row(who.organizationId(), id).orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
@@ -79,13 +87,33 @@ public class StudentRecords {
         if (!teacher && who.role() != Role.ADMINISTRATOR) throw new AccessDeniedException("Permission denied");
         var effective = permissions.effective(who);
         if (effective.get(teacher ? Permission.STUDENT_VIEW : Permission.STUDENT_MANAGE) == Access.NONE) throw new AccessDeniedException("Permission denied");
-        boolean contacts = !teacher || effective.get(Permission.STUDENT_CONTACTS) != Access.NONE;
-        return transactions.execute(() -> students.birthdays(who, contacts, teacher ? id -> teacherReach(who, id) : null));
+        return transactions.execute(() -> {
+            if (!teacher) return students.birthdays(who, true, null);
+            // O contato do Professor vale pela chave na unidade da turma do aluno (R16).
+            return students.birthdays(who, true, id -> teacherReach(who, id)).stream()
+                    .map(b -> contactsIn(who, teacherUnits(who, b.id())) ? b
+                            : new Students.Birthday(b.id(), b.name(), b.photoUrl(), b.age(), b.ageRange(), b.registeredUnit(), null, null, false)).toList();
+        });
     }
 
-    /** O único ponto que a matrícula (#63) troca: hoje não há "aluno das suas turmas", então nenhum aluno é alcançável pelo Professor. */
+    /** R16: o aluno está em turma ativa do Professor (titular ou auxiliar) com a modalidade ativa ligada a ela (principal ou outro horário). */
     boolean teacherReach(AccountPrincipal who, UUID studentId) {
-        return false;
+        return !teacherUnits(who, studentId).isEmpty();
+    }
+
+    /** Unidades das turmas ativas do Professor em que o aluno tem modalidade ativa; roda na transação da organização. */
+    Set<UUID> teacherUnits(AccountPrincipal who, UUID studentId) {
+        return new HashSet<>(jdbc.sql("select distinct c.unit_id from teacher t join training_class c on c.organization_id = t.organization_id and c.status = 'ACTIVE' "
+                + "and (c.head_teacher_id = t.id or exists (select 1 from training_class_assistant a where a.organization_id = c.organization_id "
+                + "and a.class_id = c.id and a.teacher_id = t.id)) "
+                + "join enrollment_modality m on m.organization_id = c.organization_id and m.student_id = :student and m.status = 'ACTIVE' "
+                + "and (m.primary_class_id = c.id or exists (select 1 from enrollment_modality_class o where o.organization_id = m.organization_id "
+                + "and o.modality_row_id = m.id and o.class_id = c.id)) where t.organization_id = :org and t.account_id = :account")
+                .param("org", who.organizationId()).param("account", who.accountId()).param("student", studentId).query(UUID.class).list());
+    }
+
+    private boolean contactsIn(AccountPrincipal who, Set<UUID> units) {
+        return units.stream().anyMatch(u -> permissions.grant(who, Permission.STUDENT_CONTACTS, u) != Access.NONE);
     }
 
     /** R4: o corte de campos do Professor; {@code contacts} liga telefone, e-mail e emergência (ver contatos). */

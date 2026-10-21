@@ -32,13 +32,32 @@ describe("aniversariantes do dia x OpenAPI (RF-ALU-06)", () => {
       district: "Centro", city: "Rio", state: "rj", cpf: "111.444.777-35", email: "p@alfa.test", phone: "(21) 91234-5678",
     });
     expect(created.status).toBe(201);
+    const born = await created.json();
+    // R17: sem modalidade ativa o aniversariante não entra.
+    expect(await (await send("GET", "/students/birthdays")).json()).toEqual([]);
+    const enrolled = await send("POST", `/students/${born.id}/modalities`, {
+      modalities: [{ unitId: "00000000-0000-0000-0000-000000000021", modalityId: "00000000-0000-0000-0000-000000000103", primaryClassId: "00000000-0000-0000-0000-000000000601", planId: "00000000-0000-0000-0000-000000000602", dueDay: 5 }],
+    });
+    expect(enrolled.status).toBe(201);
     const list = await (await send("GET", "/students/birthdays")).json();
     expect(list).toHaveLength(1);
     const schema = openapi.components.schemas.StudentBirthday;
     for (const key of schema.required) expect(list[0]).toHaveProperty(key);
     expect(Object.keys(list[0]).every((k) => k in schema.properties)).toBe(true);
     expect(list[0]).toMatchObject({ name: "Parabens Hoje", contactPhone: "21912345678", contactIsGuardian: false });
+    // Professor: só aluno de turma dele (a Ana é titular da turma 601), com o contato pela chave na unidade da turma.
     await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
-    expect(await (await send("GET", "/students/birthdays")).json()).toEqual([]);
+    const mine = await (await send("GET", "/students/birthdays")).json();
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ name: "Parabens Hoje", contactPhone: "21912345678" });
+    await login("ana@exemplo.com");
+    const unit = await (await send("GET", "/units/00000000-0000-0000-0000-000000000021")).json();
+    const saved = await fetch("/api/v1/units/00000000-0000-0000-0000-000000000021", {
+      method: "PUT", headers: { ...json, "If-Match": String(unit.version) },
+      body: JSON.stringify({ ...unit, settings: { ...unit.settings, teacherPermissions: { ...unit.settings.teacherPermissions, studentContacts: false } } }),
+    });
+    expect(saved.status).toBe(200);
+    await login("varios@exemplo.com", "00000000-0000-0000-0000-000000000013");
+    expect((await (await send("GET", "/students/birthdays")).json())[0]).toMatchObject({ name: "Parabens Hoje", contactPhone: null });
   });
 });

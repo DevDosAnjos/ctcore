@@ -11,7 +11,7 @@ public interface UnitDeactivationBlockers {
 
     int activeClasses(UUID unitId);
 
-    /** Turmas ativas vêm do banco; alunos ativos valem 0 até a matrícula existir (Sprint 07). */
+    /** Turmas ativas e alunos distintos com modalidade ativa na unidade (#63, R13). */
     @Component
     class Jdbc implements UnitDeactivationBlockers {
         private final JdbcClient jdbc;
@@ -22,7 +22,8 @@ public interface UnitDeactivationBlockers {
 
         @Override
         public int activeStudents(UUID unitId) {
-            return 0;
+            return jdbc.sql("select count(distinct student_id) from enrollment_modality where unit_id = :id and status = 'ACTIVE'")
+                    .param("id", unitId).query(Integer.class).single();
         }
 
         @Override

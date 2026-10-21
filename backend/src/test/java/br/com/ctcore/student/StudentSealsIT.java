@@ -30,6 +30,7 @@ class StudentSealsIT extends OrganizationBase {
 
     @AfterEach
     void clean() {
+        EnrollmentFixtures.clean(adminJdbc());
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
         adminJdbc().update("delete from student");
@@ -94,15 +95,20 @@ class StudentSealsIT extends OrganizationBase {
         return out;
     }
 
+    private void enrolled(Tenant t, UUID student) {
+        EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), student, t.unitId(), "ACTIVE", 0, null);
+        adminJdbc().update("update enrollment set enrolled_at = ?::timestamptz where student_id = ?", "2020-01-01T00:00:00Z", student);
+    }
+
     @Test
     @DisplayName("RF-ALU-02, RF-ALU-06: a data de referência é a do fuso da unidade; às 23h30 em Brasília (02h30 UTC) vale o dia de Brasília, e em Tóquio o de Tóquio")
     void referenceDateIsTheUnitDate() throws Exception {
         Tenant t = tenant();
         var coordinator = who(t, Role.COORDINATOR);
         var admin = who(t, Role.ADMINISTRATOR);
-        student(t, "Hoje em Brasilia", LocalDate.of(1990, 3, 15), "11111111111", "a@ficticia.example", false);
-        student(t, "Hoje em Toquio", LocalDate.of(1990, 3, 16), "22222222222", "b@ficticia.example", false);
-        student(t, "Vespera dos 18", LocalDate.of(2007, 3, 16), "33333333333", "c@ficticia.example", false);
+        enrolled(t, student(t, "Hoje em Brasilia", LocalDate.of(1990, 3, 15), "11111111111", "a@ficticia.example", false));
+        enrolled(t, student(t, "Hoje em Toquio", LocalDate.of(1990, 3, 16), "22222222222", "b@ficticia.example", false));
+        enrolled(t, student(t, "Vespera dos 18", LocalDate.of(2007, 3, 16), "33333333333", "c@ficticia.example", false));
         // 15/03/2025 23:30 em Brasília = 16/03 02:30 UTC = 16/03 11:30 em Tóquio
         doReturn(LocalDate.of(2025, 3, 16).atTime(2, 30).toInstant(ZoneOffset.UTC)).when(clock).instant();
 
@@ -236,5 +242,43 @@ class StudentSealsIT extends OrganizationBase {
             assertThat(get("?seal=EMAIL_PROBLEM", who(a, role)).getStatus()).as(role.name()).isEqualTo(403);
         }
         assertThat(get("?seal=EMAIL_PROBLEM", null).getStatus()).isEqualTo(401);
+    }
+
+    private void enrolled(Tenant t, UUID student, String enrolledAt, String reopenedAt) {
+        adminJdbc().update("insert into enrollment (id, organization_id, student_id, enrolled_at, reopened_at) values (?, ?, ?, ?::timestamptz, ?::timestamptz)",
+                UUID.randomUUID(), t.orgId(), student, enrolledAt, reopenedAt);
+    }
+
+    @Test
+    @DisplayName("CA30 (R21, D8): o selo Novo vale até 30 dias da matrícula (dia 30 incluso, 31 fora), no fuso da unidade, volta com a reabertura e aparece na lista, na ficha e no filtro")
+    void newSeal() throws Exception {
+        Tenant t = tenant();
+        var c = who(t, Role.COORDINATOR);
+        today(LocalDate.of(2025, 6, 30));
+        UUID day30 = adult(t, "Trinta Dias", "11111111111", "a@ficticia.example"), day31 = adult(t, "Trinta e Um", "22222222222", "b@ficticia.example"),
+                fresh = adult(t, "Recente", "33333333333", "c@ficticia.example"), back = adult(t, "Voltou", "44444444444", "d@ficticia.example"),
+                never = adult(t, "Sem Matricula", "55555555555", "e@ficticia.example");
+        enrolled(t, day30, "2025-05-31T12:00:00-03:00", null);
+        enrolled(t, day31, "2025-05-30T12:00:00-03:00", null);
+        enrolled(t, fresh, "2025-06-30T08:00:00-03:00", null);
+        enrolled(t, back, "2024-01-10T12:00:00-03:00", "2025-06-10T12:00:00-03:00");
+        assertThat(never).isNotNull();
+        JsonNode b = body("", c);
+        assertThat(seals(b, "Trinta Dias")).containsExactly("NEW");
+        assertThat(seals(b, "Trinta e Um")).isEmpty();
+        assertThat(seals(b, "Recente")).containsExactly("NEW");
+        assertThat(seals(b, "Voltou")).containsExactly("NEW");
+        assertThat(seals(b, "Sem Matricula")).isEmpty();
+        assertThat(names(body("?seal=NEW", c))).containsExactly("Recente", "Trinta Dias", "Voltou");
+        var record = call(MockMvcRequestBuilders.get("/api/v1/students/" + day30 + "/record"), c).getResponse();
+        assertThat(json.readTree(record.getContentAsString()).get("seals").toString()).contains("NEW");
+
+        // 23h30 em Brasília (02h30 UTC do dia seguinte): a conta usa o dia da unidade, que ainda é 30/06; 31/05 00h30 em Brasília é o dia 30.
+        doReturn(LocalDate.of(2025, 7, 1).atTime(2, 30).toInstant(ZoneOffset.UTC)).when(clock).instant();
+        adminJdbc().update("update enrollment set enrolled_at = '2025-05-31T00:30:00-03:00' where student_id = ?", day30);
+        assertThat(seals(body("", c), "Trinta Dias")).containsExactly("NEW");
+        // Em Tóquio já é 01/07: o mesmo instante de matrícula (31/05 12h30 em Tóquio) fica a 31 dias.
+        adminJdbc().update("update unit set timezone = 'Asia/Tokyo' where id = ?", t.unitId());
+        assertThat(seals(body("", c), "Trinta Dias")).isEmpty();
     }
 }

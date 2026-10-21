@@ -8,7 +8,7 @@ import { GuardianLinkDialog } from "./GuardianLinkDialog";
 import type { StudentRecord, StudentRecordGuardian } from "./types";
 
 // RN-RSP-02, RN-RSP-05: lista os responsáveis e usa as rotas de #54. Recusa do servidor aparece aqui, sem fechar o painel; ao concluir, a ficha é recarregada.
-export function RecordGuardians({ record, onChanged }: { record: StudentRecord; onChanged: () => void }) {
+export function RecordGuardians({ record, onChanged, canManage = false }: { record: StudentRecord; onChanged: () => void; canManage?: boolean }) {
   const { t } = useTranslation();
   const k = "students.record.guardians.";
   const [notice, setNotice] = useState<string | null>(null);
@@ -54,6 +54,7 @@ export function RecordGuardians({ record, onChanged }: { record: StudentRecord; 
                 {g.financial && <span className="rounded-md border px-2 py-0.5 text-sm">{t(`${k}financial`)}</span>}
                 {g.access && <span className="rounded-md border px-2 py-0.5 text-sm">{t(g.access === "ACTIVE" ? `${k}accessActive` : `${k}accessPending`)}</span>}
               </div>
+              {canManage && (
               <div className="flex flex-wrap gap-2">
                 {g.access === "PENDING" && (
                   <Button variant="outline" className="min-h-11" onClick={() => run(() => api(`${base}/${g.guardianId}/invite`, { method: "POST" }), t(`${k}resent`, { name: g.name }))}>
@@ -69,15 +70,18 @@ export function RecordGuardians({ record, onChanged }: { record: StudentRecord; 
                   {t(`${k}unlink`)}
                 </Button>
               </div>
+              )}
             </li>
           ))}
         </ul>
       )}
-      <div>
-        <Button className="min-h-11" onClick={() => setLinking(true)}>
-          {t(`${k}link`)}
-        </Button>
-      </div>
+      {canManage && (
+        <div>
+          <Button className="min-h-11" onClick={() => setLinking(true)}>
+            {t(`${k}link`)}
+          </Button>
+        </div>
+      )}
       {unlinking && (
         <ConfirmDialog
           open

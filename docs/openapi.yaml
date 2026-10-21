@@ -401,7 +401,7 @@ paths:
       summary: Lista as unidades da organização do vínculo ativo (RF-ORG-02). Só o Coordenador.
       description: |
         A organização é sempre a do vínculo ativo. Sem paginação (no máximo 10 unidades, RN-ORG-05). `administrators` traz só os
-        Administradores com vínculo ativo na unidade. `activeStudents` é 0 até existir o cadastro de alunos.
+        Administradores com vínculo ativo na unidade. `activeStudents` conta alunos distintos com modalidade ativa na unidade (RN-ORG-11).
         Administrador, Professor e portal recebem 403.
       security: [{ sessionCookie: [] }]
       responses:
@@ -532,7 +532,7 @@ paths:
       summary: O que impede desativar a unidade (RF-ORG-07). Só o Coordenador.
       description: |
         `canDeactivate` é verdadeiro só sem alunos com modalidade ativa, sem turmas ativas e havendo outra unidade ativa
-        (`lastActiveUnit` falso). `activeStudents` e `activeClasses` são 0 até existirem matrícula e turmas.
+        (`lastActiveUnit` falso). `activeStudents` (alunos distintos com modalidade ativa na unidade) e `activeClasses` vêm do banco.
         Unidade de outra organização ou inexistente responde 404.
       security: [{ sessionCookie: [] }]
       parameters:
@@ -860,7 +860,7 @@ paths:
         Só leitura, sem auditoria. O Coordenador abre qualquer aula da organização; o Administrador, as de unidade dele (outra: 404). O Professor
         abre as aulas das turmas dele (titular ou auxiliar) e, como substituto de outra turma (RN-PRO-06), só do início ao fim do dia da aula no fuso
         da unidade; fora disso, 404. Aluno e Responsável recebem 403; aula inexistente ou de outra organização, 404. `head` (titular) só vem na
-        substituição. `activeStudents` e `trialClasses` valem 0 até as Sprints 07 e 18. `canEdit`, `canCancel` e `canViewClass` são dicas.
+        substituição. `activeStudents` conta os alunos ativos da turma da aula (principal ou outro horário); `trialClasses` vale 0 até a Sprint 18. `canEdit`, `canCancel` e `canViewClass` são dicas.
       security: [{ sessionCookie: [] }]
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -1029,7 +1029,7 @@ paths:
         Ordenada por nome e depois id (`sort=name`). O Coordenador vê todas as unidades; o Administrador, as dele (`unitId` fora do alcance
         devolve lista vazia). Professor, Aluno e Responsável recebem 403. Sem `status` traz `ACTIVE` e `INACTIVE`. `q` ignora acento e
         maiúsculas; `teacherId` casa titular e auxiliar; `weekday` vai de 1 (segunda) a 7 (domingo); os filtros combinam (E).
-        `activeStudents` vale 0 até existir matrícula; `overCapacity` só avisa (RN-TUR-02). A resposta não traz link do grupo nem contato.
+        `activeStudents` conta alunos distintos com modalidade ativa na turma, principal ou outro horário; `overCapacity` só avisa (RN-TUR-02). A resposta não traz link do grupo nem contato.
       security: [{ sessionCookie: [] }]
       parameters:
         - { name: q, in: query, required: false, schema: { type: string } }
@@ -1627,8 +1627,8 @@ paths:
     get:
       summary: Lista paginada de alunos da organização do vínculo ativo (RF-ALU-01). Coordenador e Administrador.
       description: |
-        Ordenada por nome (sem acento nem caixa) e depois id (`sort=name`). O Coordenador vê todos; o Administrador só os de `registeredUnitId`
-        dentro das suas unidades (RN-ALU-07, até a matrícula; D2); `unitId` fora do alcance dele devolve lista vazia. Professor, Aluno e
+        Ordenada por nome (sem acento nem caixa) e depois id (`sort=name`). O Coordenador vê todos; o Administrador só os alunos
+        dentro das suas unidades (RN-ALU-07: o aluno com modalidade, ativa ou encerrada, numa unidade do alcance; sem nenhuma, a unidade de cadastro); `unitId` fora do alcance dele devolve lista vazia; `unitId` ou `classId` que não existe na organização, 404. A linha traz `status` e as `modalities` ativas (RF-ALU-01); `counts` traz as contagens de `status=ACTIVE` e `status=FORMER`. Professor, Aluno e
         Responsável recebem 403. `q` ignora acento e maiúsculas; `ageRangeId` devolve quem tem hoje idade dentro da faixa (`minAge` até `maxAge`,
         sem teto quando nulo); faixa de outra organização, 404. Os filtros combinam (E). `ageRange` da linha é a faixa de maior `minAge` que cobre a
         idade, ou nulo. `photoUrl` é uma URL temporária assinada. `seals` são os selos calculados na leitura (RF-ALU-02), em ordem fixa; `seal` filtra por
@@ -1639,6 +1639,10 @@ paths:
         - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: ageRangeId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: seal, in: query, required: false, schema: { $ref: '#/components/schemas/StudentSeal' } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid }, description: Quem tem esta modalidade ativa. }
+        - { name: classId, in: query, required: false, schema: { type: string, format: uuid }, description: "Quem tem a turma como principal ou outro horário numa modalidade ativa; turma inexistente ou de outra organização dá 404." }
+        - { name: levelId, in: query, required: false, schema: { type: string, format: uuid }, description: Nível de graduação; aceito e sem resultado até a graduação. }
+        - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, FORMER] }, description: Filtro rápido Ativos ou Ex-alunos. }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/Size' }
         - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
@@ -1681,7 +1685,7 @@ paths:
       summary: Aniversariantes de hoje (RF-ALU-06). Administrador e Professor.
       description: >-
         Alunos que fazem aniversário hoje (29/02 vale em 28/02 nos anos não bissextos), por nome, sem paginação. Administrador vê as unidades do
-        alcance dele; Professor, só os das suas turmas (hoje nenhum, até a matrícula). O contato do Professor só vem com "ver contatos". Só lê; não audita.
+        alcance dele; Só quem tem modalidade ativa; o Professor, só os de turma ativa dele. O contato do Professor só vem com "ver contatos" ligado na unidade da turma do aluno. Só lê; não audita.
       security: [{ sessionCookie: [] }]
       responses:
         '200':
@@ -1691,15 +1695,36 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
   /students/lookup:
     get:
-      summary: Busca o aluno pelo CPF (RN-ALU-06). Coordenador e Administrador.
-      description: Devolve só `id`, `name` e `photoUrl` do aluno da organização com esse CPF, de qualquer unidade; nenhum outro dado.
+      summary: Busca o aluno pelo CPF ou pelo e-mail (RN-ALU-06, RN-MAT-19). Coordenador e Administrador.
+      description: Informe `cpf` ou `email`, só um dos dois (nenhum ou os dois, 400). Devolve só `id`, `name`, `photoUrl` e `enrollmentStatus` (`NONE`, `ACTIVE`, `FORMER`) do aluno da organização, de qualquer unidade; nenhum outro dado.
       security: [{ sessionCookie: [] }]
       parameters:
-        - { name: cpf, in: query, required: true, schema: { type: string }, description: CPF com ou sem máscara. }
+        - { name: cpf, in: query, required: false, schema: { type: string }, description: CPF com ou sem máscara. }
+        - { name: email, in: query, required: false, schema: { type: string }, description: E-mail do aluno. }
       responses:
         '200':
           description: Aluno encontrado.
-          content: { application/json: { schema: { $ref: '#/components/schemas/StudentRef' } } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/StudentLookup' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/simple:
+    get:
+      summary: Lista simples dos alunos de uma turma ou aula (R22). Professor, Coordenador e Administrador.
+      description: >-
+        Informe `classId` ou `lessonId`, só um dos dois (senão 400). Devolve os alunos ativos da turma (principal ou outro horário), por nome, só com
+        `id`, `name`, `photoUrl`, `belt` e `blocked`: nunca CPF, contato, valores nem selos. O Professor vê a lista da turma em que é titular ou auxiliar e da
+        aula dele, sem depender das chaves do Professor; turma ou aula de outro, 404. A gestão vê as turmas das unidades do alcance (Administrador fora do alcance, 404).
+        Aluno e Responsável recebem 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: classId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: lessonId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Lista simples.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/StudentSimple' } } } }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -1788,7 +1813,7 @@ paths:
       summary: Ficha do aluno (RF-ALU-03). Coordenador e Administrador; Professor com a chave "ver ficha do aluno".
       description: |
         Administrador só alcança o aluno do seu alcance (RN-ALU-07); fora dele, 404. Professor sem a chave em nenhuma unidade dele recebe
-        403; com a chave, só abre aluno das suas turmas (até a matrícula, #63, nenhum: 404). A ficha do Professor omite `birthDate`, `seals`,
+        403; com a chave, só abre aluno de turma ativa dele, titular ou auxiliar, com a modalidade ativa ligada à turma (outro aluno: 404); as chaves valem na unidade da turma (desligada lá: 403). A ficha do Professor omite `birthDate`, `seals`,
         `cpf`, `address` e, nos responsáveis, `financial` e `access`; `contact`, `emergency` e o telefone e e-mail dos responsáveis só com
         "ver contatos".
       security: [{ sessionCookie: [] }]
@@ -1815,6 +1840,130 @@ paths:
           description: Página do histórico.
           content: { application/json: { schema: { $ref: '#/components/schemas/StudentHistoryList' } } }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/modalities:
+    post:
+      summary: Matricula o aluno em uma ou mais modalidades (RN-MAT-01, 02, 03, 04, 19). Coordenador e Administrador.
+      description: |
+        Cria a matrícula se o aluno não tem, acrescenta modalidades se tem, ou reabre a mesma matrícula do ex-aluno (todas as modalidades
+        encerradas; `reopenedAt` passa a valer). Tudo ou nada. Cada modalidade exige unidade ativa e no alcance de quem chama (403 fora dele),
+        modalidade ativa e oferecida pela unidade, turma principal ativa da unidade e da modalidade, `otherClassIds` opcional (turmas ativas da
+        mesma unidade e modalidade, diferentes da principal), plano ativo da unidade e da modalidade e `dueDay` entre os dias da unidade; na unidade
+        onde o aluno já tem modalidade ativa o dia é o dela (omitido, herda; diferente, 422). Até 10 modalidades ativas (422 em `modalities`); a mesma
+        modalidade ativa duas vezes, 409; turma, plano ou unidade de outra organização, 404. Grava `student.enrolled` ou `student.enrollment_reopened` e
+        `student.modality_added`, sem CPF, e-mail nem telefone.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentAdd' } } }
+      responses:
+        '201':
+          description: A matrícula do aluno.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Enrollment' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: O aluno já tem esta modalidade ativa (CONFLICT).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '422':
+          description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/modalities/{modalityRowId}/class:
+    put:
+      summary: Troca a turma principal e os outros horários de uma modalidade (RN-MAT-15). Coordenador e Administrador.
+      description: |
+        Vale na hora: a leitura seguinte já mostra a turma nova. Os outros horários enviados substituem os anteriores. As turmas seguem as regras da
+        matrícula (ativas, da unidade e da modalidade da linha, outros horários diferentes da principal; 422). O Administrador só altera modalidade da
+        sua unidade (403 nas demais, RN-ALU-07). Modalidade encerrada, de outro aluno ou de outra organização, 404. Grava `student.class_changed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentClassChange' } } }
+      responses:
+        '200':
+          description: A matrícula atualizada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Enrollment' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada muda.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/modalities/{modalityRowId}/plan:
+    put:
+      summary: Agenda a troca de plano de uma modalidade (RN-MAT-15). Coordenador e Administrador.
+      description: |
+        O plano novo fica em `nextPlan` e vale a partir da próxima cobrança gerada; `plan` não muda até lá. Trocar de novo antes substitui o
+        agendamento; pedir o plano atual limpa o agendamento; pedir o plano atual sem agendamento, 422. O plano deve ser ativo, da unidade e da
+        modalidade da linha (422). Administrador só na sua unidade (403). Grava `student.plan_changed`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentPlanChange' } } }
+      responses:
+        '200':
+          description: A matrícula atualizada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Enrollment' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada muda.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/modalities/{modalityRowId}/transfer:
+    post:
+      summary: Transfere uma modalidade para outra unidade da organização (RN-MAT-20, RN-ORG-12). Coordenador e Administrador.
+      description: |
+        Mantém a mesma linha (histórico, graduação e data de início) com a unidade, a turma principal, os outros horários, o plano e o vencimento
+        da unidade nova; o plano agendado é descartado. O dia de vencimento segue a regra da matrícula na unidade nova (herda o dia se o aluno já
+        tem outra modalidade ativa lá). Unidade igual à atual, inativa, turma, plano ou vencimento da unidade antiga, 422; unidade de outra
+        organização, 404. O Administrador precisa de alcance na origem e no destino (403). Cobranças já geradas ficam na unidade de origem.
+        Grava `student.modality_transferred` com origem e destino.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentTransfer' } } }
+      responses:
+        '200':
+          description: A matrícula atualizada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Enrollment' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada muda.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/enrollment:
+    get:
+      summary: Matrícula do aluno com as modalidades (RN-MAT-01, 02). Coordenador e Administrador.
+      description: |
+        Aluno sem matrícula: 200 com `status` `NONE` e lista vazia. `status` é calculado das modalidades: `ACTIVE` (ao menos uma ativa) ou `FORMER`.
+        `canEdit` diz se quem chama altera a modalidade (Administrador só a das suas unidades).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: A matrícula.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Enrollment' } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -3086,11 +3235,11 @@ components:
         confirmDuplicate: { type: boolean, description: Confirma a edição apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
     StudentSeal:
       type: string
-      description: Selo calculado (RF-ALU-02). Termo pendente, Bolsista e Novo entram com termo, benefício e matrícula (Sprint 07 em diante).
-      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY]
+      description: Selo calculado (RF-ALU-02). `NEW` vale até 30 dias da matrícula mais recente (`enrolledAt` ou `reopenedAt`), no fuso da unidade de cadastro. Termo pendente e Bolsista entram com termo e benefício.
+      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW]
     StudentRow:
       type: object
-      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals]
+      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, modalities]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -3113,6 +3262,29 @@ components:
             id: { type: string, format: uuid }
             name: { type: string }
         createdAt: { type: string, format: date-time }
+        status: { type: string, enum: [NONE, ACTIVE, FORMER], description: "Situação calculada das modalidades: NONE (Sem matrícula), ACTIVE (Ativo) ou FORMER (Ex-aluno)." }
+        modalities:
+          type: array
+          description: Modalidades ativas do aluno, por modalidade. Vazia sem matrícula ou para ex-aluno.
+          items: { $ref: '#/components/schemas/StudentRowModality' }
+    StudentRowModality:
+      type: object
+      required: [id, unit, modality, primaryClass, level]
+      properties:
+        id: { type: string, format: uuid }
+        unit: { $ref: '#/components/schemas/EnrollmentNamed' }
+        modality: { $ref: '#/components/schemas/EnrollmentNamed' }
+        primaryClass: { $ref: '#/components/schemas/EnrollmentNamed' }
+        level: { type: object, nullable: true, description: Nível de graduação; nulo até a graduação do aluno., required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+    StudentSimple:
+      type: object
+      required: [id, name, photoUrl, belt, blocked]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        belt: { type: string, nullable: true, description: Faixa; nula até a graduação. }
+        blocked: { type: boolean, description: Sempre falso até a inativação. }
     StudentBirthday:
       type: object
       required: [id, name, photoUrl, age, ageRange, registeredUnit, contactName, contactPhone, contactIsGuardian]
@@ -3141,8 +3313,16 @@ components:
       allOf:
         - $ref: '#/components/schemas/Page'
         - type: object
+          required: [counts]
           properties:
             items: { type: array, items: { $ref: '#/components/schemas/StudentRow' } }
+            counts:
+              type: object
+              required: [active, former]
+              description: Contagens dos filtros rápidos Ativos e Ex-alunos, sobre o alcance de quem chama e o filtro de unidade, sem o filtro rápido nem os demais filtros.
+              properties:
+                active: { type: integer, minimum: 0 }
+                former: { type: integer, minimum: 0 }
     StudentRef:
       type: object
       required: [id, name, photoUrl]
@@ -3150,6 +3330,80 @@ components:
         id: { type: string, format: uuid }
         name: { type: string }
         photoUrl: { type: string, nullable: true }
+    StudentLookup:
+      type: object
+      required: [id, name, photoUrl, enrollmentStatus]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        enrollmentStatus: { type: string, enum: [NONE, ACTIVE, FORMER] }
+    EnrollmentModalityInput:
+      type: object
+      required: [unitId, modalityId, primaryClassId, planId]
+      properties:
+        unitId: { type: string, format: uuid }
+        modalityId: { type: string, format: uuid }
+        primaryClassId: { type: string, format: uuid }
+        otherClassIds: { type: array, items: { type: string, format: uuid } }
+        planId: { type: string, format: uuid }
+        dueDay: { type: integer, minimum: 1, maximum: 28, nullable: true, description: Obrigatório na primeira modalidade da unidade; depois herda o dia. }
+    EnrollmentAdd:
+      type: object
+      required: [modalities]
+      properties:
+        modalities: { type: array, minItems: 1, items: { $ref: '#/components/schemas/EnrollmentModalityInput' } }
+    EnrollmentClassChange:
+      type: object
+      required: [primaryClassId]
+      properties:
+        primaryClassId: { type: string, format: uuid }
+        otherClassIds: { type: array, items: { type: string, format: uuid }, description: Substitui os outros horários; vazio ou ausente remove todos. }
+    EnrollmentPlanChange:
+      type: object
+      required: [planId]
+      properties:
+        planId: { type: string, format: uuid }
+    EnrollmentTransfer:
+      type: object
+      required: [unitId, primaryClassId, planId]
+      properties:
+        unitId: { type: string, format: uuid }
+        primaryClassId: { type: string, format: uuid }
+        otherClassIds: { type: array, items: { type: string, format: uuid } }
+        planId: { type: string, format: uuid }
+        dueDay: { type: integer, minimum: 1, maximum: 28, nullable: true, description: Obrigatório se o aluno não tem outra modalidade ativa na unidade nova; senão herda o dia. }
+    EnrollmentNamed:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    EnrollmentModality:
+      type: object
+      required: [id, unit, modality, primaryClass, otherClasses, plan, nextPlan, dueDay, status, startedAt, endedAt, canEdit]
+      properties:
+        id: { type: string, format: uuid }
+        unit: { $ref: '#/components/schemas/EnrollmentNamed' }
+        modality: { $ref: '#/components/schemas/EnrollmentNamed' }
+        primaryClass: { $ref: '#/components/schemas/EnrollmentNamed' }
+        otherClasses: { type: array, items: { $ref: '#/components/schemas/EnrollmentNamed' } }
+        plan: { $ref: '#/components/schemas/EnrollmentNamed' }
+        nextPlan: { allOf: [{ $ref: '#/components/schemas/EnrollmentNamed' }], nullable: true }
+        dueDay: { type: integer }
+        status: { type: string, enum: [ACTIVE, ENDED] }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time, nullable: true }
+        canEdit: { type: boolean }
+    Enrollment:
+      type: object
+      required: [id, status, enrolledAt, reopenedAt, modalities]
+      properties:
+        id: { type: string, format: uuid, nullable: true }
+        status: { type: string, enum: [NONE, ACTIVE, FORMER] }
+        enrolledAt: { type: string, format: date-time, nullable: true }
+        reopenedAt: { type: string, format: date-time, nullable: true }
+        modalities: { type: array, items: { $ref: '#/components/schemas/EnrollmentModality' } }
     StudentGuardianRow:
       type: object
       required: [guardianId, name, email, phone, financial, access, emailProblem]

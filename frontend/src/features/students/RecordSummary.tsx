@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
 import { formatPhone } from "@/components/fields/masks";
 import { formatDate } from "@/lib/format";
-import type { StudentRecord } from "./types";
+import type { EnrollmentModality, StudentRecord } from "./types";
 
 function Line({ label, value }: { label: string; value: string | null | undefined }) {
   const { t } = useTranslation();
@@ -15,7 +15,8 @@ function Line({ label, value }: { label: string; value: string | null | undefine
 }
 
 // Resumo: o que existe hoje (contato, responsáveis, emergência); situação, modalidades e pendências chegam com a matrícula e as cobranças (D1).
-export function RecordSummary({ record }: { record: StudentRecord }) {
+export function RecordSummary({ record, modalities }: { record: StudentRecord; modalities?: EnrollmentModality[] }) {
+  const active = (modalities ?? []).filter((m) => m.status === "ACTIVE");
   const { t } = useTranslation();
   const k = "students.record.summary.";
   return (
@@ -25,6 +26,21 @@ export function RecordSummary({ record }: { record: StudentRecord }) {
         <Line label={t(`${k}ageRange`)} value={record.ageRange?.name} />
         {record.birthDate && <Line label={t(`${k}birthDate`)} value={formatDate(record.birthDate)} />}
       </dl>
+      {modalities && (
+        <Card title={t(`${k}modalities`)}>
+          {active.length === 0 ? (
+            <p className="text-muted-foreground">{t(`${k}noModalities`)}</p>
+          ) : (
+            <ul className="flex flex-col gap-1">
+              {active.map((m) => (
+                <li key={m.id} className="break-words">
+                  {t("students.modalityLine", { modality: m.modality.name, unit: m.unit.name, class: m.primaryClass.name })}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
       {record.contact && (
         <Card title={t(`${k}contact`)}>
           <dl className="flex flex-col gap-1">

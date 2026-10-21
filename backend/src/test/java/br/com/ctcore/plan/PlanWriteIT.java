@@ -119,7 +119,7 @@ class PlanWriteIT extends OrganizationBase {
         var h = adminJdbc().queryForList("select value_cents, starts_on from plan_value_history where plan_id = ?", UUID.fromString(b.get("id").asText()));
         assertThat(h).hasSize(1);
         assertThat(h.get(0).get("value_cents")).isEqualTo(15000L);
-        assertThat(h.get(0).get("starts_on").toString()).isEqualTo(LocalDate.now().toString());
+        assertThat(h.get(0).get("starts_on").toString()).isEqualTo(LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")).toString());
         assertThat(audits(t, "plan.created")).isEqualTo(1);
         String after = adminJdbc().queryForObject("select after_data::text from audit_log where organization_id = ? and action = 'plan.created'", String.class, t.orgId());
         assertThat(after).contains("Mensal 2x", "15000").doesNotContain("password", "token", "card");

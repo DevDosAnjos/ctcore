@@ -51,7 +51,7 @@ class StudentRecordIT extends OrganizationBase {
         adminJdbc().update("insert into student (id, organization_id, registered_unit_id, name, name_key, birth_date, cpf, email, phone, postal_code, street, number, "
                 + "district, city, state, emergency_name, emergency_relationship, emergency_phone) values (?, ?, ?, ?, ?, ?, ?, 'aluno@ficticia.example', "
                 + "'11987654321', '01001000', 'Rua Um', '1', 'Centro', 'São Paulo', 'SP', 'Contato Um', 'Mãe', '11911112222')",
-                id, t.orgId(), unit, name, Modalities.normalize(name), LocalDate.now(ZoneOffset.UTC).minusYears(age), "%011d".formatted(++cpfSeq));
+                id, t.orgId(), unit, name, Modalities.normalize(name), LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")).minusYears(age), "%011d".formatted(++cpfSeq));
         return id;
     }
 
@@ -84,7 +84,7 @@ class StudentRecordIT extends OrganizationBase {
         assertThat(r.get("name").asText()).isEqualTo("Menor Ficha");
         assertThat(r.get("age").asInt()).isEqualTo(10);
         assertThat(r.get("minor").asBoolean()).isTrue();
-        assertThat(r.get("birthDate").asText()).isEqualTo(LocalDate.now(ZoneOffset.UTC).minusYears(10).toString());
+        assertThat(r.get("birthDate").asText()).isEqualTo(LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")).minusYears(10).toString());
         assertThat(r.get("registeredUnit").get("id").asText()).isEqualTo(t.unitId().toString());
         assertThat(r.get("ageRange").get("name").asText()).isEqualTo("Infantil");
         assertThat(r.get("contact").get("phone").asText()).isEqualTo("11987654321");
