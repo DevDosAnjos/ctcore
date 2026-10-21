@@ -196,3 +196,15 @@ export interface Enrollment {
   reopenedAt: string | null;
   modalities: EnrollmentModality[];
 }
+
+// Espelha ModalityEndInput e EndPreview do OpenAPI (RF-MAT-03, RN-MAT-17).
+export type EndReason = "CITY_CHANGE" | "FINANCIAL" | "SCHEDULE" | "INJURY" | "DISSATISFACTION" | "OTHER";
+export interface OpenCharge {
+  id: string;
+  dueOn: string;
+  amountCents: number;
+  status: string;
+}
+export interface EndPreview {
+  openCharges: OpenCharge[];
+}

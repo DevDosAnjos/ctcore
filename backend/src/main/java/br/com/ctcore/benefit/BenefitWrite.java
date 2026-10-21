@@ -213,6 +213,14 @@ public class BenefitWrite {
         }
     }
 
+    /** Dentro de uma transação da organização: encerra o benefício ativo da modalidade encerrada (RN-MAT-17, RN-BEN-01). */
+    public void endModalityBenefits(AccountPrincipal who, UUID modalityRowId, String ip) {
+        for (var b : jdbc.sql("select id, unit_id from benefit where organization_id = :org and enrollment_modality_id = :row and status = 'ACTIVE' order by id for update")
+                .param("org", who.organizationId()).param("row", modalityRowId).query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class))).list()) {
+            endLocked(who, b.getKey(), b.getValue(), "Modalidade encerrada", ip);
+        }
+    }
+
     private void endLocked(AccountPrincipal who, UUID id, UUID unit, String reason, String ip) {
         int n = jdbc.sql("update benefit set status = 'ENDED', ended_at = :now, end_reason = :why where organization_id = :org and id = :id and status = 'ACTIVE'")
                 .param("now", OffsetDateTime.now(clock)).param("why", reason).param("org", who.organizationId()).param("id", id).update();

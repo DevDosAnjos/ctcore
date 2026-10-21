@@ -7,6 +7,7 @@ import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.audit.AuditActor;
 import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
+import br.com.ctcore.benefit.BenefitWrite;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.permission.Access;
@@ -54,10 +55,12 @@ public class Enrollments {
     private final Students students;
     private final Permissions permissions;
     private final AuditService audit;
+    private final BenefitWrite benefitWrite;
     private final Clock clock;
 
     public Enrollments(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Students students, Permissions permissions, AuditService audit,
-            Clock clock) {
+            BenefitWrite benefitWrite, Clock clock) {
+        this.benefitWrite = benefitWrite;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.students = students;
@@ -370,6 +373,46 @@ public class Enrollments {
             replaceOthers(org, rowId, r.others);
             audit.record(new AuditEntry(actor(who), "student.modality_transferred", "student", studentId.toString(), in.unitId(), before, after, null, ip));
             return read(who, studentId);
+        });
+    }
+
+    public record EndInput(String reason, String note) {}
+
+    /** RN-MAT-17 (D2): cobranças em aberto da modalidade; a lista vem vazia até as cobranças existirem (Sprint 08). */
+    public record EndPreview(List<Object> openCharges) {}
+
+    private static final Set<String> END_REASONS = Set.of("CITY_CHANGE", "FINANCIAL", "SCHEDULE", "INJURY", "DISSATISFACTION", "OTHER");
+
+    /** RN-MAT-17, RN-BEN-01 (R1 a R5, R8): encerra a modalidade ativa, libera a vaga e encerra o benefício dela; a linha fica. */
+    public Enrollment end(AccountPrincipal who, UUID studentId, UUID rowId, EndInput in, String ip) {
+        String reason = in == null || in.reason() == null ? "" : in.reason();
+        if (!END_REASONS.contains(reason)) throw new ApiValidationException("reason", "um dos motivos da lista");
+        String note = in.note() == null ? null : in.note().strip();
+        if (note != null && note.length() > 500) throw new ApiValidationException("note", "até 500 caracteres");
+        String savedNote = note == null || note.isEmpty() ? null : note;
+        return transactions.execute(() -> {
+            Row row = lockRow(who, studentId, rowId);
+            UUID org = who.organizationId();
+            jdbc.sql("update enrollment_modality set status = 'ENDED', ended_at = :now, end_reason = :why, end_note = :note where organization_id = :org and id = :id")
+                    .param("now", OffsetDateTime.now(clock)).param("why", reason).param("note", savedNote).param("org", org).param("id", rowId).update();
+            benefitWrite.endModalityBenefits(who, rowId, ip);
+            Map<String, Object> before = new LinkedHashMap<>(), after = new LinkedHashMap<>();
+            before.put("modalityRowId", rowId.toString());
+            before.put("status", "ACTIVE");
+            after.put("modalityRowId", rowId.toString());
+            after.put("status", "ENDED");
+            after.put("reason", reason);
+            after.put("hasNote", savedNote != null);
+            audit.record(new AuditEntry(actor(who), "student.modality_ended", "student", studentId.toString(), row.unitId(), before, after, null, ip));
+            return read(who, studentId);
+        });
+    }
+
+    /** RN-MAT-17 (R6): leitura do que a janela de encerramento mostra; não grava nem audita. */
+    public EndPreview endPreview(AccountPrincipal who, UUID studentId, UUID rowId) {
+        return transactions.execute(() -> {
+            lockRow(who, studentId, rowId);
+            return new EndPreview(List.of());
         });
     }
 

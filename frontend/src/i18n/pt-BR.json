@@ -477,13 +477,12 @@
           "plan": "Trocar plano",
           "transfer": "Transferir",
           "benefit": "Conceder benefício",
-          "end": "Encerrar",
-          "endSoon": "Disponível em breve"
+          "end": "Encerrar"
         },
         "readOnly": "Modalidade de outra unidade: só leitura.",
         "errors": {
           "403": "Você não tem permissão para alterar esta modalidade.",
-          "404": "Esta modalidade não existe mais.",
+          "404": "Esta modalidade não existe mais ou já foi encerrada.",
           "409": "O benefício ativo da modalidade mudou. Confira o resumo e tente de novo.",
           "generic": "Não conseguimos concluir. Nada foi alterado."
         },
@@ -499,6 +498,25 @@
           "current": "Plano atual: {{plan}}",
           "next": "Plano novo",
           "submit": "Trocar plano"
+        },
+        "end": {
+          "title": "Encerrar modalidade",
+          "effect": "A modalidade para de gerar cobrança, a vaga na turma é liberada e o benefício ativo dela encerra. O histórico fica.",
+          "who": "{{student}} · {{modality}} ({{unit}})",
+          "charges": "Cobranças em aberto",
+          "noCharges": "Nenhuma cobrança em aberto",
+          "chargeLine": "{{due}} · {{amount}} · {{status}}",
+          "reason": "Motivo",
+          "reasons": {
+            "CITY_CHANGE": "Mudança de cidade",
+            "FINANCIAL": "Motivo financeiro",
+            "SCHEDULE": "Horário",
+            "INJURY": "Lesão",
+            "DISSATISFACTION": "Insatisfação",
+            "OTHER": "Outro"
+          },
+          "note": "Observação (opcional)",
+          "submit": "Encerrar modalidade"
         },
         "transfer": {
           "title": "Transferir {{modality}} para outra unidade",

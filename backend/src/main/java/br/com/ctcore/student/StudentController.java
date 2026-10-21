@@ -149,6 +149,17 @@ class StudentController {
         return enrollments.transfer(who, id, rowId, body, request.getRemoteAddr());
     }
 
+    @PostMapping("/{id}/modalities/{modalityRowId}/end")
+    Enrollments.Enrollment endModality(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable("modalityRowId") UUID rowId,
+            @RequestBody Enrollments.EndInput body, HttpServletRequest request) {
+        return enrollments.end(who, id, rowId, body, request.getRemoteAddr());
+    }
+
+    @GetMapping("/{id}/modalities/{modalityRowId}/end-preview")
+    Enrollments.EndPreview endPreview(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable("modalityRowId") UUID rowId) {
+        return enrollments.endPreview(who, id, rowId);
+    }
+
     @PostMapping("/{id}/enrollment/preview")
     EnrollmentConclusion.Preview previewEnrollment(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id,
             @RequestBody EnrollmentConclusion.Request body) {

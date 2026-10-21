@@ -2040,6 +2040,43 @@ paths:
         '422':
           description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada muda.
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/modalities/{modalityRowId}/end:
+    post:
+      summary: Encerra uma modalidade ativa do aluno (RF-MAT-03, RN-MAT-17). Coordenador e Administrador.
+      description: |
+        Exige `STUDENT_MANAGE` na unidade da modalidade (403). A linha fica com `status` `ENDED`, `ended_at`, motivo e observação; a vaga da turma
+        é liberada e o benefício ativo da modalidade encerra junto ("Modalidade encerrada"). Motivo fora da lista ou observação com mais de 500
+        caracteres, 400. Aluno ou modalidade inexistente, de outra organização ou já encerrada, 404. Grava `student.modality_ended` (sem a observação).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ModalityEndInput' } } }
+      responses:
+        '200':
+          description: A matrícula atualizada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Enrollment' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /students/{id}/modalities/{modalityRowId}/end-preview:
+    get:
+      summary: Cobranças em aberto da modalidade, para a janela de encerramento (RF-MAT-03). Coordenador e Administrador.
+      description: "Leitura, sem gravar nem auditar. Mesmas regras de acesso do encerramento (403, 404)."
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: As cobranças em aberto.
+          content: { application/json: { schema: { $ref: '#/components/schemas/EndPreview' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /students/{id}/enrollment/preview:
     post:
       summary: Prévia da nova matrícula (RF-MAT-01, RN-MAT-03, 05, 07). Coordenador e Administrador.
@@ -3636,6 +3673,27 @@ components:
         otherClassIds: { type: array, items: { type: string, format: uuid } }
         planId: { type: string, format: uuid }
         dueDay: { type: integer, minimum: 1, maximum: 28, nullable: true, description: Obrigatório se o aluno não tem outra modalidade ativa na unidade nova; senão herda o dia. }
+    ModalityEndInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, enum: [CITY_CHANGE, FINANCIAL, SCHEDULE, INJURY, DISSATISFACTION, OTHER] }
+        note: { type: string, maxLength: 500, nullable: true, description: "Texto livre, sem espaços nas pontas; vazia vira ausente. Não vai para a auditoria." }
+    EndPreview:
+      type: object
+      required: [openCharges]
+      properties:
+        openCharges:
+          type: array
+          description: Cobranças em aberto da modalidade; vazia até as cobranças existirem (Sprint 08).
+          items:
+            type: object
+            required: [id, dueOn, amountCents, status]
+            properties:
+              id: { type: string, format: uuid }
+              dueOn: { type: string, format: date }
+              amountCents: { type: integer, format: int64 }
+              status: { type: string }
     EnrollmentNamed:
       type: object
       required: [id, name]

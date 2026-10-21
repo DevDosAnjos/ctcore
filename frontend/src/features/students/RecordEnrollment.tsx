@@ -1,17 +1,18 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { GrantBenefitDialog } from "@/features/benefits/GrantBenefitDialog";
 import { ChangeClassDialog } from "./ChangeClassDialog";
 import { ChangePlanDialog } from "./ChangePlanDialog";
+import { EndModalityDialog } from "./EndModalityDialog";
 import { NewEnrollmentLink } from "./NewEnrollmentLink";
 import { TransferDialog } from "./TransferDialog";
 import type { useEnrollment } from "./useStudentRecord";
 import type { Enrollment, EnrollmentModality } from "./types";
 
-const ACTIONS = ["class", "plan", "transfer"] as const;
-type Action = { kind: "class" | "plan" | "transfer" | "benefit"; row: EnrollmentModality };
+const ACTIONS = ["class", "plan", "transfer", "end"] as const;
+type Action = { kind: "class" | "plan" | "transfer" | "end" | "benefit"; row: EnrollmentModality };
 
 function Line({ label, value }: { label: string; value: string }) {
   return (
@@ -25,7 +26,6 @@ function Line({ label, value }: { label: string; value: string }) {
 function ModalityCard({ row, onAction, canGrant }: { row: EnrollmentModality; onAction: (a: Action) => void; canGrant: boolean }) {
   const { t } = useTranslation();
   const k = "students.record.enrollment.";
-  const hint = useId();
   const active = row.status === "ACTIVE";
   return (
     <li className="flex flex-col gap-2 rounded-md border p-3">
@@ -54,16 +54,6 @@ function ModalityCard({ row, onAction, canGrant }: { row: EnrollmentModality; on
             <Button type="button" variant="outline" className="min-h-11" onClick={() => onAction({ kind: "benefit", row })}>
               {t(`${k}actions.benefit`)}
             </Button>
-          )}
-          {row.canEdit && (
-            <>
-              <Button type="button" variant="outline" className="min-h-11" disabled aria-describedby={hint}>
-                {t(`${k}actions.end`)}
-              </Button>
-              <span id={hint} className="self-center text-sm text-muted-foreground">
-                {t(`${k}actions.endSoon`)}
-              </span>
-            </>
           )}
         </div>
       )}
@@ -103,6 +93,7 @@ export function RecordEnrollment({ studentId, studentName, enrollment, canGrant 
         />
       )}
       {action?.kind === "transfer" && <TransferDialog {...props} enrollment={data as Enrollment} row={action.row} />}
+      {action?.kind === "end" && <EndModalityDialog {...props} studentName={studentName} row={action.row} />}
     </>
   );
 }
