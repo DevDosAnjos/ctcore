@@ -229,7 +229,7 @@ const benefitRow = ({ planIndex, student, ...b }: (typeof mockBenefits)[number])
   };
 };
 // RF-BEN-02: em memória; `rowId` liga o benefício concedido à modalidade da matrícula (não sai na resposta).
-type MockBenefit = ReturnType<typeof benefitRow> & { rowId: string | null };
+type MockBenefit = ReturnType<typeof benefitRow> & { rowId: string | null; teacherId?: string };
 const initialBenefits = (): MockBenefit[] => mockBenefits.map((b) => ({ ...benefitRow(b), rowId: null }));
 let benefitRows = initialBenefits();
 const publicBenefit = (b: MockBenefit) => {
@@ -821,7 +821,7 @@ const sealsOf = (s: StudentDetail): StudentSeal[] => {
   return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : seal === "SCHOLARSHIP" ? scholarship : isNew));
 };
 // RF-BEN-02: validação e alvo da concessão (mesma ordem do servidor: 401/403, 400, 404, 403 fora do alcance, 400 de validade).
-type BenefitBody = { studentId?: string; modalityRowId?: string; type?: string; value?: unknown; reason?: string; decidedBy?: string; validUntil?: string | null; replaceExisting?: boolean };
+type BenefitBody = { studentId?: string; modalityRowId?: string; type?: string; value?: unknown; reason?: string; decidedBy?: string; validUntil?: string | null; replaceExisting?: boolean; teacherId?: string };
 const benefitDiscount = (type: string, value: number, planCents: number) => (type === "PERCENT" ? Math.floor((planCents * value + 50) / 100) : value);
 const benefitEffectiveFrom = (dueDay: number) => {
   const limit = new Date();
@@ -1692,6 +1692,7 @@ export const routes: Route[] = [
       const body = (await request.json()) as BenefitBody;
       const t = await benefitTarget(body, true);
       if (t instanceof Response) return t;
+      if (body.teacherId && !mockTeachers.some((x) => x.id === body.teacherId && x.status === "ACTIVE")) return error(404, "NOT_FOUND", "Não encontrado.");
       const current = benefitRows.find((b) => b.rowId === t.row.id && b.status !== "ENDED");
       if (current && body.replaceExisting !== true) return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.", [{ field: "replaceExisting", message: "a modalidade já tem um benefício ativo" }]);
       if (current) current.status = "ENDED";
@@ -1699,11 +1700,28 @@ export const routes: Route[] = [
       const row: MockBenefit = {
         id: crypto.randomUUID(), rowId: t.row.id, student: { id: t.student.id, name: t.student.name }, unit: { id: t.row.unitId, name: unit?.name ?? "" },
         modality: modalityCatalog.find((c) => c.id === t.row.modalityId) ?? modalityCatalog[0], type: t.type, value: t.value, reason: t.reason, decidedBy: t.decidedBy,
-        grantedBy: session.account.name, validUntil: body.validUntil ?? null, status: "ACTIVE",
+        grantedBy: session.account.name, validUntil: body.validUntil ?? null, status: "ACTIVE", teacherId: body.teacherId,
         high: t.type === "PERCENT" ? t.value > 50 : t.value * 2 > t.plan.valueCents, monthlyValueCents: Math.max(0, t.plan.valueCents - benefitDiscount(t.type, t.value, t.plan.valueCents)),
       };
       benefitRows.push(row);
       return HttpResponse.json(publicBenefit(row), { status: 201 });
+    },
+  },
+  {
+    // RF-BEN-03: encerra (vencido também); já encerrado 409; Administrador só na unidade dele (403); motivo de 2 a 200 caracteres.
+    method: "post",
+    path: "/benefits/{id}/end",
+    resolver: async ({ params, request }) => {
+      const denied = planAccess();
+      if (denied) return denied;
+      const reason = (((await request.json().catch(() => ({}))) as { reason?: string }).reason ?? "").trim();
+      if (reason.length < 2 || reason.length > 200) return planBad("reason", "de 2 a 200 caracteres");
+      const found = benefitRows.find((b) => b.id === params.id);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (activeRole() !== "COORDINATOR" && found.unit.id !== ADMIN_UNIT) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (found.status === "ENDED") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
+      found.status = "ENDED";
+      return HttpResponse.json(publicBenefit(found));
     },
   },
   {
@@ -2334,6 +2352,7 @@ export const routes: Route[] = [
       if (!teacherInReach(found)) return error(403, "FORBIDDEN", "Sem permissão.");
       if (found.status === "INACTIVE") return error(409, "CONFLICT", "Os dados entram em conflito com algo que já existe.");
       found.status = "INACTIVE";
+      benefitRows.filter((b) => b.teacherId === found.id && b.status !== "ENDED").forEach((b) => (b.status = "ENDED"));
       if (found.access === "PENDING" || found.access === "ACTIVE") found.access = "ENDED";
       return HttpResponse.json(teacherDetail(found));
     },

@@ -1525,6 +1525,28 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /benefits/{id}/end:
+    post:
+      summary: Encerra o benefício (RF-BEN-03). Coordenador e Administrador.
+      description: |
+        Define `status` `ENDED` com `ended_at` agora e `end_reason` o motivo (`reason` de 2 a 200 caracteres); só a linha do benefício muda e o
+        encerramento vale a partir da próxima cobrança gerada. Benefício vencido pode ser encerrado; já encerrado: 409. Grava `benefit.ended`.
+        O Administrador só encerra em unidade dele (senão 403); inexistente ou de outra organização: 404. Dois pedidos simultâneos: um 200 e um 409.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BenefitEndInput' } } }
+      responses:
+        '200':
+          description: Benefício encerrado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BenefitRow' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /benefits/preview:
     post:
       summary: Resumo antes de conceder o benefício (RF-BEN-02). Coordenador e Administrador.
@@ -2935,6 +2957,12 @@ components:
             decidedBy: { type: string, minLength: 2, maxLength: 80 }
             validUntil: { type: string, format: date, nullable: true, description: 'Nulo é sem prazo; senão hoje ou depois, no fuso da unidade.' }
             replaceExisting: { type: boolean, description: 'Confirma encerrar o benefício ativo da modalidade (D3). Sem isso, havendo ativo, 409.' }
+            teacherId: { type: string, format: uuid, nullable: true, description: 'Marca o benefício como desconto de professor (RN-PRO-08); professor ativo da organização, senão 404. Inativar o professor encerra o benefício.' }
+    BenefitEndInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 2, maxLength: 200 }
     BenefitPreview:
       type: object
       required: [plan, current, newMonthlyValueCents, effectiveFrom, replaces, high]

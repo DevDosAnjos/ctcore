@@ -23,7 +23,11 @@ export interface GrantBody {
   decidedBy: string;
   validUntil: string | null;
   replaceExisting: boolean;
+  teacherId?: string;
 }
+
+export const endBenefit = (id: string, reason: string) =>
+  api<BenefitRow>(`/benefits/${id}/end`, { method: "POST", body: { reason } });
 
 export const grantBenefit = (body: GrantBody) =>
   api<BenefitRow>("/benefits", { method: "POST", body });

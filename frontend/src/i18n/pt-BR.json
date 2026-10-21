@@ -1129,6 +1129,8 @@
       "reason": "Motivo",
       "decidedBy": "Decidido por",
       "validUntil": "Válido até (opcional)",
+      "teacher": "Desconto de professor (opcional)",
+      "noTeacher": "Não é desconto de professor",
       "submit": "Conceder",
       "summary": {
         "title": "Resumo do benefício",
@@ -1141,6 +1143,17 @@
         "replaces": "Atenção: o benefício ativo atual ({{current}}) será encerrado e substituído por este."
       }
     },
+    "end": {
+      "button": "Encerrar",
+      "title": "Encerrar benefício",
+      "summary": "{{student}} · {{modality}}",
+      "effect": "O encerramento vale a partir da próxima cobrança gerada. Cobranças já geradas não mudam.",
+      "reason": "Motivo do encerramento",
+      "submit": "Encerrar benefício",
+      "sending": "Encerrando...",
+      "goneTitle": "Benefício já encerrado",
+      "goneText": "Outra pessoa já encerrou este benefício. Nada foi alterado."
+    },
     "columns": {
       "student": "Aluno",
       "modality": "Modalidade",
@@ -1149,7 +1162,8 @@
       "reason": "Motivo",
       "decidedBy": "Decidido por",
       "validUntil": "Validade",
-      "status": "Situação"
+      "status": "Situação",
+      "actions": "Ações"
     },
     "types": { "PERCENT": "Bolsa (%)", "AMOUNT": "Desconto (R$)" },
     "statuses": { "ACTIVE": "Ativo", "EXPIRED": "Vencido", "ENDED": "Encerrado" },

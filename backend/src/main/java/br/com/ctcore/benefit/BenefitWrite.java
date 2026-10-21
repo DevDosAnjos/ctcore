@@ -38,7 +38,9 @@ public class BenefitWrite {
     static final String REPLACED = "Substituído por novo benefício";
 
     public record Input(UUID studentId, UUID modalityRowId, String type, BigDecimal value, String reason, String decidedBy, LocalDate validUntil,
-            Boolean replaceExisting) {}
+            Boolean replaceExisting, UUID teacherId) {}
+
+    public record EndInput(String reason) {}
 
     public record PreviewInput(UUID studentId, UUID modalityRowId, String type, BigDecimal value) {}
 
@@ -151,6 +153,10 @@ public class BenefitWrite {
             if (in.validUntil() != null && in.validUntil().isBefore(today(t.zone()))) {
                 throw new ApiValidationException("validUntil", "de hoje em diante");
             }
+            if (in.teacherId() != null && jdbc.sql("select count(*) from teacher where organization_id = :org and id = :id and status = 'ACTIVE'")
+                    .param("org", org).param("id", in.teacherId()).query(Integer.class).single() == 0) {
+                throw missing();
+            }
             UUID id = UUID.randomUUID();
             var current = benefits.findActive(org, in.modalityRowId());
             if (current.isPresent()) {
@@ -168,10 +174,10 @@ public class BenefitWrite {
                 audit.record(new AuditEntry(actor(who), "benefit.ended", "benefit", old.id().toString(), t.unitId(), before, after, null, ip));
             }
             jdbc.sql("insert into benefit (id, organization_id, enrollment_modality_id, student_id, unit_id, type, value, reason, decided_by, "
-                    + "granted_by_account_id, valid_until, status) values (:id, :org, :row, :student, :unit, :type, :value, :reason, :by, :granted, :until, 'ACTIVE')")
+                    + "granted_by_account_id, valid_until, status, teacher_id) values (:id, :org, :row, :student, :unit, :type, :value, :reason, :by, :granted, :until, 'ACTIVE', :teacher)")
                     .param("id", id).param("org", org).param("row", in.modalityRowId()).param("student", in.studentId()).param("unit", t.unitId())
                     .param("type", type).param("value", value).param("reason", reason).param("by", decidedBy).param("granted", who.accountId())
-                    .param("until", in.validUntil()).update();
+                    .param("until", in.validUntil()).param("teacher", in.teacherId()).update();
             Map<String, Object> after = new LinkedHashMap<>();
             after.put("studentId", in.studentId().toString());
             after.put("modalityRowId", in.modalityRowId().toString());
@@ -183,6 +189,36 @@ public class BenefitWrite {
             audit.record(new AuditEntry(actor(who), "benefit.granted", "benefit", id.toString(), t.unitId(), null, after, null, ip));
             return benefits.find(org, id).orElseThrow();
         });
+    }
+
+    /** RF-BEN-03: encerra o benefício (vencido também); vale a partir da próxima cobrança gerada (Sprint 08). */
+    public Benefits.Row end(AccountPrincipal who, UUID id, EndInput in, String ip) {
+        plans.requireAccess(who);
+        String reason = text("reason", in == null ? null : in.reason(), 2, 200);
+        return transactions.execute(() -> {
+            UUID org = who.organizationId();
+            UUID unit = jdbc.sql("select unit_id from benefit where organization_id = :org and id = :id for update").param("org", org).param("id", id)
+                    .query(UUID.class).optional().orElseThrow(BenefitWrite::missing);
+            if (who.role() == Role.ADMINISTRATOR && (who.units() == null || !who.units().contains(unit))) throw new AccessDeniedException("Unit out of reach");
+            endLocked(who, id, unit, reason, ip);
+            return benefits.find(org, id).orElseThrow();
+        });
+    }
+
+    /** Dentro de uma transação da organização: encerra os benefícios ativos do professor (RN-PRO-08). */
+    public void endTeacherBenefits(AccountPrincipal who, UUID teacherId, String ip) {
+        for (var b : jdbc.sql("select id, unit_id from benefit where organization_id = :org and teacher_id = :t and status = 'ACTIVE' order by id for update")
+                .param("org", who.organizationId()).param("t", teacherId).query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class))).list()) {
+            endLocked(who, b.getKey(), b.getValue(), "Professor inativado", ip);
+        }
+    }
+
+    private void endLocked(AccountPrincipal who, UUID id, UUID unit, String reason, String ip) {
+        int n = jdbc.sql("update benefit set status = 'ENDED', ended_at = :now, end_reason = :why where organization_id = :org and id = :id and status = 'ACTIVE'")
+                .param("now", OffsetDateTime.now(clock)).param("why", reason).param("org", who.organizationId()).param("id", id).update();
+        if (n == 0) throw new ApiStatusException(ErrorCode.CONFLICT);
+        audit.record(new AuditEntry(actor(who), "benefit.ended", "benefit", id.toString(), unit, Map.of("status", "ACTIVE"),
+                Map.of("status", "ENDED", "endReason", reason), null, ip));
     }
 
     private static AuditActor actor(AccountPrincipal who) {

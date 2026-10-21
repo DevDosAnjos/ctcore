@@ -88,6 +88,8 @@ export function GrantBenefitDialog({
   const [reason, setReason] = useState("");
   const [decidedBy, setDecidedBy] = useState("");
   const [validUntil, setValidUntil] = useState("");
+  const [teacherId, setTeacherId] = useState("");
+  const teachers = useResource<{ items: { id: string; name: string }[] }>("/teachers?status=ACTIVE&size=100&sort=name,asc");
   const { students, enrollment } = useStudentModalities(
     query,
     fixed ? "" : studentId,
@@ -132,6 +134,7 @@ export function GrantBenefitDialog({
           decidedBy: decidedBy.trim(),
           validUntil: validUntil || null,
           replaceExisting: preview.data?.replaces ?? false,
+          ...(teacherId ? { teacherId } : {}),
         })
       }
       onClose={onClose}
@@ -304,6 +307,20 @@ export function GrantBenefitDialog({
               />
             )}
           </Field>
+          {teachers.status === "ready" && (teachers.data?.items.length ?? 0) > 0 && (
+            <Field label={t(`${k}teacher`)} error={errors.teacherId}>
+              {(id) => (
+                <select id={id} className={input} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+                  <option value="">{t(`${k}noTeacher`)}</option>
+                  {teachers.data!.items.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          )}
           {errors.replaceExisting && (
             <p role="alert" className="text-sm text-destructive">
               {errors.replaceExisting}
