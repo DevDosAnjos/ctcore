@@ -1326,6 +1326,44 @@
       "save": "Salvar"
     }
   },
+  "terms": {
+    "title": "Termos",
+    "intro": "Cada publicação cria uma versão que não muda mais; o aceite do aluno aponta a versão exata.",
+    "tabs": "Tipo de termo",
+    "kinds": {
+      "ENROLLMENT": "Termo de matrícula",
+      "IMAGE_USE": "Termo de uso de imagem"
+    },
+    "current": {
+      "title": "Texto atual",
+      "model": "Ainda não há versão publicada: vale o texto padrão da plataforma.",
+      "published": "Versão atual: {{version}}, publicada em {{date}} por {{by}}."
+    },
+    "editor": {
+      "label": "Texto do termo"
+    },
+    "reaccept": {
+      "legend": "Quem precisa aceitar esta versão",
+      "newOnly": "Só para novos alunos",
+      "everyone": "Todos aceitam de novo no próximo acesso"
+    },
+    "publish": "Publicar nova versão",
+    "published": "Nova versão publicada.",
+    "errors": {
+      "invalid": "O texto precisa ter de 20 a 20000 caracteres e ser diferente do atual. Nada foi publicado.",
+      "conflict": "Outra pessoa publicou uma versão agora há pouco. A tela foi atualizada; confira e publique de novo. Nada foi alterado.",
+      "generic": "Não foi possível publicar. Nada foi alterado. Tente de novo."
+    },
+    "history": {
+      "title": "Histórico de versões",
+      "empty": "Nenhuma versão publicada ainda",
+      "emptyText": "O texto padrão da plataforma está no editor. Publique para criar a versão 1.",
+      "version": "Versão {{version}}",
+      "reacceptAll": "Todos aceitam de novo",
+      "reacceptNew": "Só novos alunos",
+      "read": "Ler o texto"
+    }
+  },
   "ageRanges": {
     "title": "Faixas etárias",
     "intro": "As faixas organizam turmas, aulas experimentais e o diretório. A idade de cada aluno continua calculada pelo nascimento.",
@@ -1636,6 +1674,7 @@
       "organizationSettings": "Configurações da organização",
       "modalities": "Modalidades",
       "ageRanges": "Faixas etárias",
+      "terms": "Termos",
       "staffUsers": "Usuários da gestão",
       "units": "Unidades",
       "subscription": "Assinatura e faturas",

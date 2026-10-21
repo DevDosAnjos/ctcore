@@ -740,6 +740,46 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /organization/terms/{kind}:
+    get:
+      summary: Termo de matrícula ou de uso de imagem da organização, com a versão atual e o histórico (RF-MAT-05). Coordenador e Administrador.
+      description: |
+        `kind` é `ENROLLMENT` (termo de matrícula) ou `IMAGE_USE` (uso de imagem); outro valor, 404. Sem publicação, `current` é o texto padrão
+        da plataforma como versão 0 (`reaccept` falso, sem data nem autor) e `versions` vem vazia. `versions` traz as versões publicadas,
+        da mais nova para a mais antiga, com o texto de cada uma. `canManage` é verdadeiro só para o Coordenador. Professor, Aluno e Responsável recebem 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: kind, in: path, required: true, schema: { $ref: '#/components/schemas/TermsKind' } }
+      responses:
+        '200':
+          description: Versão atual e histórico.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TermsView' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /organization/terms/{kind}/versions:
+    post:
+      summary: Publica uma nova versão do termo (RF-MAT-05, RN-MAT-14). Só o Coordenador.
+      description: |
+        `body` de 20 a 20000 caracteres depois de aparar as pontas e diferente do texto atual; `reaccept` obrigatório: verdadeiro, todos aceitam de novo
+        no próximo acesso; falso, vale só para novos alunos. A versão é a anterior mais um (a primeira é 1), numerada por organização e por tipo,
+        e não muda mais: não há rota de alterar nem de apagar. Duas publicações simultâneas do mesmo tipo: uma 201 e uma 409 `TERMS_VERSION_CONFLICT`.
+        Grava `terms.published` na auditoria, sem o texto.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: kind, in: path, required: true, schema: { $ref: '#/components/schemas/TermsKind' } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TermsPublishInput' } } }
+      responses:
+        '201':
+          description: A versão publicada, já atual.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TermsVersion' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /age-ranges:
     get:
       summary: Faixas etárias da organização do vínculo ativo (RF-MOD-04, RN-MOD-07). Coordenador e Administrador.
@@ -2553,6 +2593,7 @@ components:
             - REQUEST_ALREADY_OPEN
             - ALREADY_IN_CATALOG
             - AGE_RANGE_NAME_TAKEN
+            - TERMS_VERSION_CONFLICT
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
             - HAS_PRIMARY_STUDENTS
@@ -2709,6 +2750,31 @@ components:
       properties:
         canManage: { type: boolean }
         items: { type: array, items: { $ref: '#/components/schemas/AgeRange' } }
+    TermsKind:
+      type: string
+      enum: [ENROLLMENT, IMAGE_USE]
+    TermsVersion:
+      type: object
+      required: [version, body, reaccept, publishedAt, publishedBy]
+      properties:
+        version: { type: integer, minimum: 0, description: '0 é o texto padrão da plataforma, sem publicação.' }
+        body: { type: string }
+        reaccept: { type: boolean, description: Verdadeiro quando todos aceitam de novo no próximo acesso. }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        publishedBy: { type: string, nullable: true }
+    TermsView:
+      type: object
+      required: [canManage, current, versions]
+      properties:
+        canManage: { type: boolean }
+        current: { $ref: '#/components/schemas/TermsVersion' }
+        versions: { type: array, items: { $ref: '#/components/schemas/TermsVersion' } }
+    TermsPublishInput:
+      type: object
+      required: [body, reaccept]
+      properties:
+        body: { type: string, minLength: 20, maxLength: 20000 }
+        reaccept: { type: boolean }
     TeacherRow:
       type: object
       required: [id, name, photoUrl, modalities, units, classCount, status, directoryConsent, access]

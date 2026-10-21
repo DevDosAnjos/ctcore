@@ -97,6 +97,7 @@ export const resetMockSession = () => {
   graduations.clear();
   modalityRequests = [];
   ageRanges = initialAgeRanges();
+  termsVersions = { ENROLLMENT: [], IMAGE_USE: [] };
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -162,6 +163,15 @@ const initialAgeRanges = (): MockAgeRange[] => [
   { id: crypto.randomUUID(), name: "Adulto", minAge: 18, maxAge: null },
 ];
 let ageRanges = initialAgeRanges();
+// Termos da organização (RF-MAT-05), em memória: sem publicação vale o texto padrão como versão 0. Texto igual ao atual ou fora de 20 a 20000 é 400.
+type MockTermsVersion = { version: number; body: string; reaccept: boolean; publishedAt: string | null; publishedBy: string | null };
+const TERMS_TEMPLATES: Record<string, string> = {
+  ENROLLMENT: "TERMO DE MATRÍCULA\n\nAo matricular-se, o aluno declara conhecer e aceitar o regulamento da academia.",
+  IMAGE_USE: "TERMO DE USO DE IMAGEM\n\nO aluno autoriza o uso de fotos e vídeos das aulas nos canais da academia.",
+};
+let termsVersions: Record<string, MockTermsVersion[]> = { ENROLLMENT: [], IMAGE_USE: [] };
+const termsCurrent = (kind: string): MockTermsVersion =>
+  termsVersions[kind][0] ?? { version: 0, body: TERMS_TEMPLATES[kind], reaccept: false, publishedAt: null, publishedBy: null };
 const sortedAgeRanges = () => [...ageRanges].sort((a, b) => a.minAge - b.minAge || a.name.localeCompare(b.name));
 const checkAgeRange = (body: AgeRangeInput, id: string | null): MockAgeRange | Response => {
   const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
@@ -1498,6 +1508,35 @@ export const routes: Route[] = [
       }
       const created = { id: crypto.randomUUID(), name, note, status: "OPEN", createdAt: new Date().toISOString() };
       modalityRequests = [created, ...modalityRequests];
+      return HttpResponse.json(created, { status: 201 });
+    },
+  },
+  {
+    method: "get",
+    path: "/organization/terms/{kind}",
+    resolver: ({ params }) => {
+      const denied = organizationAccess(false);
+      if (denied) return denied;
+      const kind = params.kind as string;
+      if (!(kind in TERMS_TEMPLATES)) return error(404, "NOT_FOUND", "Não encontrado.");
+      return HttpResponse.json({ canManage: activeRole() === "COORDINATOR", current: termsCurrent(kind), versions: termsVersions[kind] });
+    },
+  },
+  {
+    method: "post",
+    path: "/organization/terms/{kind}/versions",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const kind = params.kind as string;
+      if (!(kind in TERMS_TEMPLATES)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const input = (await request.json()) as { body?: string; reaccept?: boolean };
+      const text = input.body?.trim() ?? "";
+      if (text.length < 20 || text.length > 20000) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "body", message: "de 20 a 20000 caracteres" }]);
+      if (typeof input.reaccept !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "reaccept", message: "obrigatório" }]);
+      if (text === termsCurrent(kind).body.trim()) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "body", message: "igual ao texto atual" }]);
+      const created = { version: termsCurrent(kind).version + 1, body: text, reaccept: input.reaccept, publishedAt: new Date().toISOString(), publishedBy: current.account.name };
+      termsVersions[kind] = [created, ...termsVersions[kind]];
       return HttpResponse.json(created, { status: 201 });
     },
   },

@@ -51,6 +51,7 @@ export const menuCatalog: CatalogGroup[] = [
       item("organizationSettings", "ORGANIZATION_SETTINGS", "/configuracoes/organizacao", true),
       item("modalities", "ORGANIZATION_SETTINGS", "/configuracoes/modalidades", true),
       item("ageRanges", "ORGANIZATION_SETTINGS", "/configuracoes/faixas-etarias", true),
+      item("terms", "ORGANIZATION_SETTINGS", "/configuracoes/termos", true),
       item("staffUsers", "STAFF_USERS", "/configuracoes/usuarios", true),
       item("units", "UNITS", "/configuracoes/unidades", true),
       item("subscription", "SUBSCRIPTION", "/configuracoes/assinatura"),
