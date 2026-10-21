@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -45,5 +46,11 @@ class BenefitController {
     @ResponseStatus(HttpStatus.CREATED)
     Benefits.Row grant(@AuthenticationPrincipal AccountPrincipal who, @RequestBody BenefitWrite.Input body, HttpServletRequest request) {
         return write.grant(who, body, request.getRemoteAddr());
+    }
+
+    @PostMapping("/{id}/end")
+    Benefits.Row end(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody(required = false) BenefitWrite.EndInput body,
+            HttpServletRequest request) {
+        return write.end(who, id, body, request.getRemoteAddr());
     }
 }

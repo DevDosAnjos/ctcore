@@ -8,12 +8,13 @@ import type { Column } from "@/components/query/DataTable";
 import { formatMoney } from "@/components/fields/masks";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { BenefitFilters } from "./BenefitFilters";
+import { EndBenefitDialog } from "./EndBenefitDialog";
 import { GrantBenefitDialog } from "./GrantBenefitDialog";
 import { fetchBenefits, type BenefitRow } from "./useBenefits";
 
 const badge = (text: string) => <span className="rounded-md border px-2 py-0.5 text-sm">{text}</span>;
 
-const columns = (t: TFunction): Column<BenefitRow>[] => [
+const columns = (t: TFunction, onEnd?: (r: BenefitRow) => void): Column<BenefitRow>[] => [
   {
     key: "student",
     label: t("benefits.columns.student"),
@@ -48,14 +49,29 @@ const columns = (t: TFunction): Column<BenefitRow>[] => [
     label: t("benefits.columns.status"),
     render: (r) => (r.status === "ACTIVE" ? t("benefits.statuses.ACTIVE") : badge(t(`benefits.statuses.${r.status}`))),
   },
+  ...(onEnd
+    ? [
+        {
+          key: "actions",
+          label: t("benefits.columns.actions"),
+          render: (r: BenefitRow) =>
+            r.status === "ACTIVE" ? (
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => onEnd(r)}>
+                {t("benefits.end.button")}
+              </Button>
+            ) : null,
+        },
+      ]
+    : []),
 ];
 
-// RF-BEN-01 e RF-BEN-02: tabela de benefícios com "Conceder benefício" (encerrar é de outro item). A barreira de dados é o servidor.
+// RF-BEN-01 e RF-BEN-02: tabela de benefícios com "Conceder benefício" e "Encerrar" (RF-BEN-03). A barreira de dados é o servidor.
 function Content() {
   const { t } = useTranslation();
   const { permissions } = usePermissions();
   const canGrant = !!permissions && permissions.BENEFITS !== "NONE";
   const [granting, setGranting] = useState(false);
+  const [ending, setEnding] = useState<BenefitRow>();
   const [version, setVersion] = useState(0);
   return (
     <div className="flex flex-col gap-4">
@@ -69,7 +85,8 @@ function Content() {
       </div>
       <p className="text-muted-foreground">{t("benefits.intro")}</p>
       {granting && <GrantBenefitDialog onClose={() => setGranting(false)} onDone={() => setVersion((n) => n + 1)} />}
-      <QueryPage key={version} columns={columns(t)} fetchPage={fetchBenefits} rowKey={(r) => r.id} filterKeys={["type", "modalityId", "unitId", "status", "high"]} filters={(p) => <BenefitFilters {...p} />} />
+      {ending && <EndBenefitDialog benefit={ending} onClose={() => setEnding(undefined)} onDone={() => setVersion((n) => n + 1)} />}
+      <QueryPage key={version} columns={columns(t, canGrant ? setEnding : undefined)} fetchPage={fetchBenefits} rowKey={(r) => r.id} filterKeys={["type", "modalityId", "unitId", "status", "high"]} filters={(p) => <BenefitFilters {...p} />} />
     </div>
   );
 }

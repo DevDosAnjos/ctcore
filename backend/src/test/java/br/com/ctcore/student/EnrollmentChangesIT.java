@@ -35,6 +35,9 @@ class EnrollmentChangesIT extends OrganizationBase {
                 "training_class_schedule", "training_class", "teacher_unit", "teacher_modality", "teacher", "unit_modality", "organization_modality"}) {
             adminJdbc().update("delete from " + table);
         }
+        for (String table : new String[] {"account_invite", "account_session", "password_reset"}) {
+            adminJdbc().update("delete from " + table + " where account_id in (select id from account where email like '%.example')");
+        }
         adminJdbc().update("delete from account_link_unit where link_id in (select id from account_link where account_id in (select id from account where email like '%.example'))");
         adminJdbc().update("delete from account_link where account_id in (select id from account where email like '%.example')");
         adminJdbc().update("delete from account where email like '%.example'");

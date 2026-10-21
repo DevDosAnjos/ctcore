@@ -84,9 +84,30 @@ describe("BenefitsPage (RF-BEN-01)", () => {
     expect(within(expired).getByText("Benefício alto")).toBeInTheDocument();
     expect(within(screen.getByText("Carla Dias").closest("tr")!).getByText("Encerrado")).toBeInTheDocument();
     expect(calls.at(-1)!.get("size")).toBe("25");
-    // RF-BEN-02: a tabela ganha "Conceder benefício"; encerrar é de outro item (#66).
+    // RF-BEN-02 e RF-BEN-03: "Conceder benefício" e "Encerrar" só na linha ativa (não no vencido nem no encerrado).
     expect(screen.getByRole("button", { name: "Conceder benefício" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /encerrar/i })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Encerrar" })).toHaveLength(1);
+    expect(within(row).getByRole("button", { name: "Encerrar" })).toBeInTheDocument();
+  });
+
+  it("CA10: Encerrar abre a janela, envia o motivo e recarrega a tabela", async () => {
+    const user = userEvent.setup();
+    const posted: unknown[] = [];
+    server.use(
+      http.post("/api/v1/benefits/b1/end", async ({ request }) => {
+        posted.push(await request.json());
+        return HttpResponse.json({ ...all[0], status: "ENDED" });
+      }),
+    );
+    setup();
+    await user.click(await screen.findByRole("button", { name: "Encerrar" }));
+    expect(screen.getByText("Ana Souza · Judô")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Motivo do encerramento"), "Mudou de cidade");
+    const before = calls.length;
+    await user.click(screen.getByRole("button", { name: "Encerrar benefício" }));
+    await waitFor(() => expect(posted).toEqual([{ reason: "Mudou de cidade" }]));
+    await waitFor(() => expect(calls.length).toBeGreaterThan(before));
+    expect(screen.queryByLabelText("Motivo do encerramento")).toBeNull();
   });
 
   it("CA10: escolher um filtro refaz a consulta só com ele; Benefícios altos envia high; sem resultado mostra Limpar filtros", async () => {

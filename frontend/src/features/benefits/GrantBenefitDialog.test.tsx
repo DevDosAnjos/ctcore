@@ -164,3 +164,17 @@ describe("janela Conceder benefício (RF-BEN-02, CA13, CA14)", () => {
     expect(await axeViolations(document.body)).toEqual([]);
   });
 });
+
+describe("desconto de professor (RN-PRO-08)", () => {
+  it("o campo opcional lista professores ativos e envia o teacherId escolhido", async () => {
+    const user = userEvent.setup();
+    server.use(http.get("/api/v1/teachers", () => HttpResponse.json({ items: [{ id: "t1", name: "Mestre João" }], page: 1, size: 100, total: 1 })));
+    setup();
+    await user.selectOptions(await screen.findByLabelText("Desconto de professor (opcional)"), "t1");
+    await fill(user);
+    await screen.findByText("Nova mensalidade: R$ 105,00");
+    await user.click(screen.getByRole("button", { name: "Conceder" }));
+    await waitFor(() => expect(granted).toHaveLength(1));
+    expect(granted[0]).toMatchObject({ teacherId: "t1" });
+  });
+});
