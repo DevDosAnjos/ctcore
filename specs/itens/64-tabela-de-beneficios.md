@@ -134,3 +134,6 @@ Achados:
 
 ### Correção da entrega
 - Falha do CI em `EnrollmentChangesIT.clean` (FK `account_link_account_id_fkey`): o `SeedDataIT` deixava contas e vínculos do seed (`*.example`) depois de cada teste, e o `EnrollmentChangesIT` não conseguia apagar `account` quando rodava depois dele — arquivos: `backend/src/test/java/br/com/ctcore/db/SeedDataIT.java` (`cleanTeachers` agora também apaga `email_message`, `account_device`, sessões, convites, `account_link_unit`, `account_link` e `account`) — prova: `verify -Dit.test=SeedDataIT,EnrollmentChangesIT,BenefitListIT` (ordem que falhou no CI: BenefitListIT, SeedDataIT, EnrollmentChangesIT) → 26 testes verdes; `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 492 testes, 0 falhas.
+
+### Falha do CI após a correção (commit 7ab16b9)
+- `backend` falhou de novo no PR #305: `EnrollmentChangesIT` (4 erros: `changesPlan`, `changesClass`, `transfers`, `reachAndProfiles`) no `clean`, `delete from account where email like '%.example'` viola `account_link_account_id_fkey`. A limpeza do `SeedDataIT` não bastou: outro IT deixa `account_link` de contas `*.example`. Correção sugerida: o próprio `EnrollmentChangesIT.clean` apagar `account_link_unit` e `account_link` antes de `account` (ou helper comum de limpeza). Demais verificações verdes.
