@@ -77,7 +77,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 66 | RF-BEN-03 · Encerrar benefício | issue #66 | Sprint 07 | — | agente | feito |
 | 67 | RF-MAT-01 · Nova matrícula em etapas | issue #67 | Sprint 07 | — | agente | feito |
 | 68 | RF-MAT-02 · Avisos de faixa etária e capacidade na matrícula | issue #68 | Sprint 07 | — | agente | feito |
-| 69 | RF-MAT-03 · Encerrar modalidade | issue #69 | Sprint 07 | — | agente | a fazer |
+| 69 | RF-MAT-03 · Encerrar modalidade | issue #69 | Sprint 07 | — | agente | feito |
 | 70 | RF-MAT-05 · Configurações › Termos | issue #70 | Sprint 07 | — | agente | a fazer |
 | 71 | Geração de cobranças e primeira cobrança no servidor | issue #71 | Sprint 08 | — | agente | a fazer |
 | 72 | RF-COB-01 · Financeiro › Cobranças (lista) | issue #72 | Sprint 08 | — | agente | a fazer |

@@ -930,6 +930,7 @@ const teacherUnitsOf = (studentId: string) => {
 };
 const teacherKeyIn = (unitId: string, key: "studentRecord" | "studentContacts") => unitDetail(unitId).settings.teacherPermissions[key];
 const hasActiveModality = (studentId: string) => enrollmentStatus(studentId) === "ACTIVE";
+const END_REASONS = ["CITY_CHANGE", "FINANCIAL", "SCHEDULE", "INJURY", "DISSATISFACTION", "OTHER"];
 // Modalidade ativa do aluno que quem chama pode alterar: Administrador só a da sua unidade (403), modalidade inexistente ou encerrada, 404.
 const modalityRowFor = (studentId: string, rowId: string) => {
   const found = studentFor(studentId);
@@ -2977,6 +2978,31 @@ export const routes: Route[] = [
       m.dueDay = inherited ?? body.dueDay!;
       logStudent(found.student.id, "student.modality_transferred", null);
       return HttpResponse.json(enrollmentView(found.student.id));
+    },
+  },
+  {
+    // RN-MAT-17, R1 a R3: encerra a modalidade ativa com motivo da lista e observação opcional (até 500); a linha fica.
+    method: "post",
+    path: "/students/{id}/modalities/{modalityRowId}/end",
+    resolver: async ({ request, params }) => {
+      const found = modalityRowFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { reason?: string; note?: string | null }) ?? {};
+      if (!body.reason || !END_REASONS.includes(body.reason)) return studentBad("reason", "um dos motivos da lista");
+      if ((body.note ?? "").trim().length > 500) return studentBad("note", "até 500 caracteres");
+      found.row.status = "ENDED";
+      found.row.endedAt = new Date().toISOString();
+      logStudent(found.student.id, "student.modality_ended", null);
+      return HttpResponse.json(enrollmentView(found.student.id));
+    },
+  },
+  {
+    // RN-MAT-17, R6 (D2): cobranças em aberto da modalidade; vazia até as cobranças existirem (Sprint 08).
+    method: "get",
+    path: "/students/{id}/modalities/{modalityRowId}/end-preview",
+    resolver: ({ params }) => {
+      const found = modalityRowFor(params.id as string, params.modalityRowId as string);
+      return found instanceof Response ? found : HttpResponse.json({ openCharges: [] });
     },
   },
   {

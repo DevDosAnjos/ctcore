@@ -63,6 +63,16 @@ describe("aba Matrícula e modalidades (R23, R27, CA33)", () => {
     expect(screen.getByRole("link", { name: "Nova matrícula" })).toHaveAttribute("href", "/alunos/nova-matricula?aluno=s1");
   });
 
+  it("RF-MAT-03: Encerrar só aparece na modalidade que a pessoa pode alterar, habilitado e sem aviso de em breve, e abre a janela", async () => {
+    const user = userEvent.setup();
+    show(result("ready", enrollmentOf([modalityRow(), modalityRow({ id: "m2", canEdit: false })])));
+    expect(screen.getAllByRole("button", { name: "Encerrar" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Encerrar" })).toBeEnabled();
+    expect(screen.queryByText(/em breve/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Encerrar" }));
+    expect(await screen.findByRole("dialog", { name: "Encerrar modalidade" })).toBeInTheDocument();
+  });
+
   it.each([
     ["claro", false],
     ["escuro", true],

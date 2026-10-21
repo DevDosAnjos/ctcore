@@ -182,7 +182,7 @@ describe("ficha do aluno (RF-ALU-03)", () => {
     expect(within(dialog).getAllByText("Sem matrícula")).toHaveLength(2);
   });
 
-  it("CA33: a aba Matrícula mostra a modalidade com plano, vencimento e ações; Encerrar desligada com a dica", async () => {
+  it("CA33: a aba Matrícula mostra a modalidade com plano, vencimento e ações; Encerrar habilitado", async () => {
     const user = userEvent.setup();
     setup("/alunos/s1");
     const dialog = await panel();
@@ -192,8 +192,8 @@ describe("ficha do aluno (RF-ALU-03)", () => {
     expect(within(dialog).getByText("Dia 5")).toBeInTheDocument();
     expect(within(dialog).getByText("Outros horários: Turma Noite")).toBeInTheDocument();
     for (const name of ["Trocar turma", "Trocar plano", "Transferir"]) expect(within(dialog).getByRole("button", { name })).toBeEnabled();
-    expect(within(dialog).getByRole("button", { name: "Encerrar" })).toBeDisabled();
-    expect(within(dialog).getByText("Disponível em breve")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Encerrar" })).toBeEnabled();
+    expect(within(dialog).queryByText("Disponível em breve")).toBeNull();
   });
 
   it("CA33: modalidade de outra unidade e plano agendado: sem ações, só leitura", async () => {
