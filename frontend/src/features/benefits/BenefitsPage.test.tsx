@@ -84,7 +84,9 @@ describe("BenefitsPage (RF-BEN-01)", () => {
     expect(within(expired).getByText("Benefício alto")).toBeInTheDocument();
     expect(within(screen.getByText("Carla Dias").closest("tr")!).getByText("Encerrado")).toBeInTheDocument();
     expect(calls.at(-1)!.get("size")).toBe("25");
-    expect(screen.queryByRole("button", { name: /conceder|encerrar/i })).toBeNull();
+    // RF-BEN-02: a tabela ganha "Conceder benefício"; encerrar é de outro item (#66).
+    expect(screen.getByRole("button", { name: "Conceder benefício" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /encerrar/i })).toBeNull();
   });
 
   it("CA10: escolher um filtro refaz a consulta só com ele; Benefícios altos envia high; sem resultado mostra Limpar filtros", async () => {

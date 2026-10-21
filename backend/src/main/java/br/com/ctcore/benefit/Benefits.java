@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.context.annotation.Lazy;
@@ -38,6 +39,10 @@ public class Benefits {
     public static final String HIGH_SQL = "((b.type = 'PERCENT' and b.value > 50) or (b.type = 'AMOUNT' and b.value * 2 > p.value_cents))";
     public static final String FROM_SQL = "benefit b join enrollment_modality em on em.id = b.enrollment_modality_id join plan p on p.id = em.plan_id "
             + "join unit u on u.id = b.unit_id";
+    private static final String FULL_FROM = FROM_SQL + " join student s on s.id = b.student_id join modality m on m.id = em.modality_id "
+            + "join account a on a.id = b.granted_by_account_id";
+    private static final String SELECT = "select b.id, s.id, s.name, u.id, u.name, m.id, m.name, b.type, b.value, b.reason, b.decided_by, a.name, b.valid_until, "
+            + STATUS_SQL + ", " + HIGH_SQL + ", p.value_cents";
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
@@ -86,20 +91,31 @@ public class Benefits {
             params.put("status", status);
         }
         if (Boolean.TRUE.equals(f.high())) where.append(" and ").append(HIGH_SQL);
-        String from = FROM_SQL + " join student s on s.id = b.student_id join modality m on m.id = em.modality_id join account a on a.id = b.granted_by_account_id";
         return transactions.execute(() -> {
-            long total = jdbc.sql("select count(*) from " + from + " where " + where).params(params).query(Long.class).single();
-            List<Row> rows = jdbc.sql("select b.id, s.id, s.name, u.id, u.name, m.id, m.name, b.type, b.value, b.reason, b.decided_by, a.name, b.valid_until, "
-                    + STATUS_SQL + ", " + HIGH_SQL + ", p.value_cents from " + from + " where " + where
-                    + " order by s.name_key, m.name, b.id limit :limit offset :offset")
-                    .params(params).param("limit", page.size()).param("offset", page.offset())
-                    .query((rs, n) -> new Row(rs.getObject(1, UUID.class), new Ref(rs.getObject(2, UUID.class), rs.getString(3)),
-                            new Ref(rs.getObject(4, UUID.class), rs.getString(5)), new Ref(rs.getObject(6, UUID.class), rs.getString(7)),
-                            rs.getString(8), rs.getLong(9), rs.getString(10), rs.getString(11), rs.getString(12), rs.getObject(13, LocalDate.class),
-                            rs.getString(14), rs.getBoolean(15), monthlyValueCents(rs.getString(8), rs.getLong(9), rs.getLong(16))))
-                    .list();
+            long total = jdbc.sql("select count(*) from " + FULL_FROM + " where " + where).params(params).query(Long.class).single();
+            List<Row> rows = jdbc.sql(SELECT + " from " + FULL_FROM + " where " + where + " order by s.name_key, m.name, b.id limit :limit offset :offset")
+                    .params(params).param("limit", page.size()).param("offset", page.offset()).query(Benefits::mapRow).list();
             return PageResponse.of(rows, page, total);
         });
+    }
+
+    /** Uma linha pelo id (dentro de uma transação da organização); vazio se não existe nela. */
+    Optional<Row> find(UUID organizationId, UUID id) {
+        return jdbc.sql(SELECT + " from " + FULL_FROM + " where b.organization_id = :org and b.id = :id").param("org", organizationId).param("id", id)
+                .query(Benefits::mapRow).optional();
+    }
+
+    /** O benefício com status ACTIVE da modalidade da matrícula (o vencido não encerrado também ocupa o lugar). */
+    Optional<Row> findActive(UUID organizationId, UUID modalityRowId) {
+        return jdbc.sql(SELECT + " from " + FULL_FROM + " where b.organization_id = :org and b.enrollment_modality_id = :row and b.status = 'ACTIVE'")
+                .param("org", organizationId).param("row", modalityRowId).query(Benefits::mapRow).optional();
+    }
+
+    private static Row mapRow(java.sql.ResultSet rs, int n) throws java.sql.SQLException {
+        return new Row(rs.getObject(1, UUID.class), new Ref(rs.getObject(2, UUID.class), rs.getString(3)),
+                new Ref(rs.getObject(4, UUID.class), rs.getString(5)), new Ref(rs.getObject(6, UUID.class), rs.getString(7)),
+                rs.getString(8), rs.getLong(9), rs.getString(10), rs.getString(11), rs.getString(12), rs.getObject(13, LocalDate.class),
+                rs.getString(14), rs.getBoolean(15), monthlyValueCents(rs.getString(8), rs.getLong(9), rs.getLong(16)));
     }
 
     private static String enumValue(String field, String raw, Set<String> allowed) {

@@ -80,7 +80,7 @@ export interface StudentInput {
 }
 
 // Espelha StudentRow e StudentList do OpenAPI (RF-ALU-01). CPF, e-mail, telefone, endereço e emergência nunca vêm na lista.
-export type StudentSeal = "INCOMPLETE_REGISTRATION" | "EMAIL_PROBLEM" | "BIRTHDAY_TODAY" | "NEW";
+export type StudentSeal = "INCOMPLETE_REGISTRATION" | "EMAIL_PROBLEM" | "BIRTHDAY_TODAY" | "NEW" | "SCHOLARSHIP";
 export type EnrollmentStatus = "NONE" | "ACTIVE" | "FORMER";
 // Modalidade ativa na linha da lista (StudentRowModality); o nível é nulo até a graduação do aluno (D13).
 export interface StudentRowModality {

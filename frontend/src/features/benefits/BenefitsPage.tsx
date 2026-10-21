@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/features/permissions/usePermissions";
 import type { TFunction } from "i18next";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
 import { formatMoney } from "@/components/fields/masks";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { BenefitFilters } from "./BenefitFilters";
+import { GrantBenefitDialog } from "./GrantBenefitDialog";
 import { fetchBenefits, type BenefitRow } from "./useBenefits";
 
 const badge = (text: string) => <span className="rounded-md border px-2 py-0.5 text-sm">{text}</span>;
@@ -46,14 +50,26 @@ const columns = (t: TFunction): Column<BenefitRow>[] => [
   },
 ];
 
-// RF-BEN-01: tabela de benefícios, só leitura (conceder e encerrar são de outros itens). A barreira de dados é o servidor.
+// RF-BEN-01 e RF-BEN-02: tabela de benefícios com "Conceder benefício" (encerrar é de outro item). A barreira de dados é o servidor.
 function Content() {
   const { t } = useTranslation();
+  const { permissions } = usePermissions();
+  const canGrant = !!permissions && permissions.BENEFITS !== "NONE";
+  const [granting, setGranting] = useState(false);
+  const [version, setVersion] = useState(0);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("benefits.title")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">{t("benefits.title")}</h1>
+        {canGrant && (
+          <Button className="min-h-11" onClick={() => setGranting(true)}>
+            {t("benefits.grant.button")}
+          </Button>
+        )}
+      </div>
       <p className="text-muted-foreground">{t("benefits.intro")}</p>
-      <QueryPage columns={columns(t)} fetchPage={fetchBenefits} rowKey={(r) => r.id} filterKeys={["type", "modalityId", "unitId", "status", "high"]} filters={(p) => <BenefitFilters {...p} />} />
+      {granting && <GrantBenefitDialog onClose={() => setGranting(false)} onDone={() => setVersion((n) => n + 1)} />}
+      <QueryPage key={version} columns={columns(t)} fetchPage={fetchBenefits} rowKey={(r) => r.id} filterKeys={["type", "modalityId", "unitId", "status", "high"]} filters={(p) => <BenefitFilters {...p} />} />
     </div>
   );
 }

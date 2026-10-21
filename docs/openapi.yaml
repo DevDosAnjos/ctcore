@@ -1503,6 +1503,47 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      summary: Concede o benefício a uma modalidade da matrícula (RF-BEN-02). Coordenador e Administrador.
+      description: |
+        Grava o benefício `ACTIVE` na modalidade ativa do aluno. `type` `PERCENT` (inteiro de 1 a 100) ou `AMOUNT` (centavos inteiros de 1 a 99999999);
+        `reason` de 2 a 200 e `decidedBy` de 2 a 80 caracteres; `validUntil` nulo ou de hoje em diante no fuso da unidade. O lançador é a conta da
+        sessão (campos extras são ignorados). Havendo benefício ativo na modalidade, só com `replaceExisting` verdadeiro: o atual é encerrado
+        ("Substituído por novo benefício") na mesma transação; senão 409 e nada muda. Grava `benefit.granted` (e `benefit.ended`). O Administrador
+        só concede em unidade dele (senão 403); aluno ou modalidade inexistente, encerrada, de outro aluno ou de outra organização: 404.
+        Não altera cobrança.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BenefitInput' } } }
+      responses:
+        '201':
+          description: Benefício concedido.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BenefitRow' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /benefits/preview:
+    post:
+      summary: Resumo antes de conceder o benefício (RF-BEN-02). Coordenador e Administrador.
+      description: |
+        Recebe `studentId`, `modalityRowId`, `type` e `value` (mesmas regras de `POST /benefits`) e devolve o plano da modalidade, o benefício ativo
+        atual (nulo se não há), a nova mensalidade (nunca negativa), o mês `AAAA-MM` em que vale (primeiro vencimento depois de hoje + 10 dias, no
+        fuso da unidade), `replaces` e `high`. Não grava nem audita. Mesmas permissões, alcance e 404 da concessão.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/BenefitPreviewInput' } } }
+      responses:
+        '200':
+          description: Resumo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/BenefitPreview' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /plans:
     get:
       summary: Tabela de planos da organização do vínculo ativo (RF-PLA-02). Coordenador e Administrador.
@@ -2876,6 +2917,40 @@ components:
         status: { type: string, enum: [ACTIVE, EXPIRED, ENDED] }
         high: { type: boolean }
         monthlyValueCents: { type: integer, format: int64 }
+    BenefitPreviewInput:
+      type: object
+      required: [studentId, modalityRowId, type, value]
+      properties:
+        studentId: { type: string, format: uuid }
+        modalityRowId: { type: string, format: uuid, description: Id da modalidade da matrícula (`ModalityView.id`). }
+        type: { type: string, enum: [PERCENT, AMOUNT] }
+        value: { type: integer, format: int64, description: 'Percentual inteiro de 1 a 100 em PERCENT; centavos de 1 a 99999999 em AMOUNT.' }
+    BenefitInput:
+      allOf:
+        - $ref: '#/components/schemas/BenefitPreviewInput'
+        - type: object
+          required: [reason, decidedBy]
+          properties:
+            reason: { type: string, minLength: 2, maxLength: 200 }
+            decidedBy: { type: string, minLength: 2, maxLength: 80 }
+            validUntil: { type: string, format: date, nullable: true, description: 'Nulo é sem prazo; senão hoje ou depois, no fuso da unidade.' }
+            replaceExisting: { type: boolean, description: 'Confirma encerrar o benefício ativo da modalidade (D3). Sem isso, havendo ativo, 409.' }
+    BenefitPreview:
+      type: object
+      required: [plan, current, newMonthlyValueCents, effectiveFrom, replaces, high]
+      properties:
+        plan:
+          type: object
+          required: [id, name, valueCents]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            valueCents: { type: integer, format: int64 }
+        current: { allOf: [{ $ref: '#/components/schemas/BenefitRow' }], nullable: true, description: 'Benefício ativo da modalidade, se houver.' }
+        newMonthlyValueCents: { type: integer, format: int64 }
+        effectiveFrom: { type: string, pattern: '^\d{4}-\d{2}$', description: Mês da primeira cobrança ainda não gerada. }
+        replaces: { type: boolean }
+        high: { type: boolean }
     BenefitList:
       allOf:
         - $ref: '#/components/schemas/Page'
@@ -3284,8 +3359,8 @@ components:
         confirmDuplicate: { type: boolean, description: Confirma a edição apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
     StudentSeal:
       type: string
-      description: Selo calculado (RF-ALU-02). `NEW` vale até 30 dias da matrícula mais recente (`enrolledAt` ou `reopenedAt`), no fuso da unidade de cadastro. Termo pendente e Bolsista entram com termo e benefício.
-      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW]
+      description: "Selo calculado (RF-ALU-02). `NEW` vale até 30 dias da matrícula mais recente (`enrolledAt` ou `reopenedAt`), no fuso da unidade de cadastro. `SCHOLARSHIP` (Bolsista, RF-BEN-02): benefício `PERCENT` ativo e dentro da validade numa modalidade ativa. Termo pendente entra com o termo."
+      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW, SCHOLARSHIP]
     StudentRow:
       type: object
       required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, modalities]

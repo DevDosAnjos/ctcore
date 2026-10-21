@@ -226,7 +226,7 @@ public class Students {
         String age = AGE;
         List<Row> found = jdbc.sql("select s.id, s.name, s.photo, s.birth_date, " + age + ", r.id, r.name, u.id, u.name, s.created_at, "
                 + sealPredicate(StudentSeal.INCOMPLETE_REGISTRATION, age) + ", " + sealPredicate(StudentSeal.EMAIL_PROBLEM, age) + ", "
-                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + ", " + sealPredicate(StudentSeal.NEW, age) + ", u.timezone, " + STATUS + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
+                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + ", " + sealPredicate(StudentSeal.NEW, age) + ", " + sealPredicate(StudentSeal.SCHOLARSHIP, age) + ", u.timezone, " + STATUS + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
                 + "left join lateral (select a.id, a.name from age_range a where a.organization_id = s.organization_id and a.min_age <= " + age
                 + " and (a.max_age is null or a.max_age >= " + age + ") order by a.min_age desc, a.name_key limit 1) r on true "
                 + "where " + where + " " + tail)
@@ -235,8 +235,8 @@ public class Students {
                     LocalDate birth = rs.getObject(4, LocalDate.class);
                     UUID rangeId = rs.getObject(6, UUID.class);
                     return new Row(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)), birth, rs.getInt(5),
-                            !InviteRules.adult(birth, today(rs.getString(15))), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
-                            new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs), rs.getString(16),
+                            !InviteRules.adult(birth, today(rs.getString(16))), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
+                            new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs), rs.getString(17),
                             List.of());
                 }).list();
         if (found.isEmpty()) return found;
@@ -314,6 +314,10 @@ public class Students {
             // RF-ALU-02, D8: até 30 dias (dia 30 incluso) da matrícula mais recente, contados no fuso da unidade de cadastro.
             case NEW -> "exists (select 1 from enrollment e where e.organization_id = s.organization_id and e.student_id = s.id "
                     + "and (greatest(e.enrolled_at, coalesce(e.reopened_at, e.enrolled_at)) at time zone u.timezone)::date >= " + TODAY + " - 30)";
+            // RF-BEN-02, D10: bolsa (percentual) ativa e dentro da validade, numa modalidade ativa; desconto em reais não conta.
+            case SCHOLARSHIP -> "exists (select 1 from benefit b join enrollment_modality em on em.organization_id = b.organization_id and em.id = b.enrollment_modality_id "
+                    + "where b.organization_id = s.organization_id and b.student_id = s.id and b.type = 'PERCENT' and b.status = 'ACTIVE' and em.status = 'ACTIVE' "
+                    + "and (b.valid_until is null or b.valid_until >= " + TODAY + "))";
         };
     }
 

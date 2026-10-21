@@ -10,10 +10,10 @@ import type { Enrollment } from "./types";
 type Result = Parameters<typeof RecordEnrollment>[0]["enrollment"];
 const reload = vi.fn();
 const result = (status: Result["status"], data?: Enrollment): Result => ({ status, data, reload });
-const show = (enrollment: Result) =>
+const show = (enrollment: Result, canGrant = false) =>
   render(
     <ThemeProvider>
-      <RecordEnrollment studentId="s1" enrollment={enrollment} onChanged={() => {}} />
+      <RecordEnrollment studentId="s1" studentName="Aluno Teste" canGrant={canGrant} enrollment={enrollment} onChanged={() => {}} />
     </ThemeProvider>,
   );
 
@@ -31,6 +31,18 @@ describe("aba Matrícula e modalidades (R23, R27, CA33)", () => {
     show(result("error"));
     await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(reload).toHaveBeenCalled();
+  });
+
+  it("RF-BEN-02: Conceder benefício só aparece com permissão de benefícios e abre a janela da modalidade", async () => {
+    const user = userEvent.setup();
+    const data = enrollmentOf([modalityRow(), modalityRow({ id: "m2", canEdit: false })]);
+    const without = show(result("ready", data));
+    expect(screen.queryByRole("button", { name: "Conceder benefício" })).toBeNull();
+    without.unmount();
+    show(result("ready", data), true);
+    expect(screen.getAllByRole("button", { name: "Conceder benefício" })).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Conceder benefício" }));
+    expect(await screen.findByRole("dialog", { name: "Conceder benefício em Jiu-Jitsu" })).toBeInTheDocument();
   });
 
   it("sem matrícula mostra o estado vazio explicativo", () => {

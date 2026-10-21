@@ -124,7 +124,7 @@ function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
       <Tabs tab={tab} tabs={canEdit ? TABS : TEACHER_TABS} onChange={setTab} />
       <div role="tabpanel" id={`record-panel-${tab}`} aria-labelledby={`record-tab-${tab}`}>
         {tab === "summary" && <RecordSummary record={data} modalities={enrollment.data?.modalities} />}
-        {tab === "enrollment" && <RecordEnrollment studentId={id} enrollment={enrollment} onChanged={() => onChanged?.()} />}
+        {tab === "enrollment" && <RecordEnrollment studentId={id} studentName={data.name} canGrant={!!permissions && permissions.BENEFITS !== "NONE"} enrollment={enrollment} onChanged={() => { reload(); onChanged?.(); }} />}
         {LATER.includes(tab) && <EmptyState title={t("students.record.empty.title")} text={t(`students.record.empty.${tab}`)} />}
         {tab === "guardians" && <RecordGuardians record={data} onChanged={reload} canManage={canEdit} />}
         {tab === "history" && <RecordHistory id={id} />}
