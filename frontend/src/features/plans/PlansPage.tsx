@@ -59,8 +59,8 @@ function Content() {
             title={t("plans.benefits.title")}
             heading="h2"
             actions={
-              <Button className="min-h-11" disabled>
-                {t("plans.benefits.view")}
+              <Button asChild className="min-h-11">
+                <Link to="/beneficios">{t("plans.benefits.view")}</Link>
               </Button>
             }
           >

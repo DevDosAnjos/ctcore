@@ -37,7 +37,7 @@ export const menuCatalog: CatalogGroup[] = [
     items: [
       item("collections", "COLLECTIONS", "/cobrancas"),
       item("plans", "PLANS", "/planos", true),
-      item("benefits", "BENEFITS", "/beneficios"),
+      item("benefits", "BENEFITS", "/beneficios", true),
     ],
   },
   {

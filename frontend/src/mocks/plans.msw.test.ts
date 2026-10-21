@@ -24,7 +24,7 @@ describe("resumo de planos x OpenAPI (RF-PLA-01, CA10)", () => {
     expect(Object.keys(data.plans).sort()).toEqual([...schema.properties.plans.required].sort());
     expect(Object.keys(data.benefits).sort()).toEqual([...schema.properties.benefits.required].sort());
     expect(data.plans).toEqual({ active: 3, inactive: 1, studentsUsing: 0, minValueCents: 15000, maxValueCents: 30000 });
-    expect(data.benefits).toEqual({ active: 0, high: 0 });
+    expect(data.benefits).toEqual({ active: 3, high: 2 });
     const other = await (await summary("?unitId=00000000-0000-0000-0000-000000000022")).json();
     expect(other.plans).toMatchObject({ active: 1, inactive: 0, minValueCents: 30000, maxValueCents: 30000 });
     const none = await (await summary("?unitId=00000000-0000-0000-0000-0000000000ff")).json();

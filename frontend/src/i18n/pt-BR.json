@@ -1101,6 +1101,37 @@
       "view": "Ver benefícios"
     }
   },
+  "benefits": {
+    "title": "Benefícios",
+    "intro": "Bolsas e descontos dos alunos, com o motivo, quem decidiu, a validade e a situação de cada um.",
+    "unit": "Unidade {{name}}",
+    "percent": "{{value}}%",
+    "highBadge": "Benefício alto",
+    "noDeadline": "Sem prazo",
+    "columns": {
+      "student": "Aluno",
+      "modality": "Modalidade",
+      "type": "Tipo",
+      "value": "Valor",
+      "reason": "Motivo",
+      "decidedBy": "Decidido por",
+      "validUntil": "Validade",
+      "status": "Situação"
+    },
+    "types": { "PERCENT": "Bolsa (%)", "AMOUNT": "Desconto (R$)" },
+    "statuses": { "ACTIVE": "Ativo", "EXPIRED": "Vencido", "ENDED": "Encerrado" },
+    "filters": {
+      "type": "Tipo",
+      "allTypes": "Todos os tipos",
+      "modality": "Modalidade",
+      "allModalities": "Todas as modalidades",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "status": "Situação",
+      "allStatuses": "Todas as situações",
+      "high": "Benefícios altos"
+    }
+  },
   "classes": {
     "title": "Turmas",
     "intro": "Turmas das suas unidades, com os dias, os horários, o professor e a situação de cada uma.",
