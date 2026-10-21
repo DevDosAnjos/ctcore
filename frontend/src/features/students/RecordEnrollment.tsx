@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GrantBenefitDialog } from "@/features/benefits/GrantBenefitDialog";
 import { ChangeClassDialog } from "./ChangeClassDialog";
 import { ChangePlanDialog } from "./ChangePlanDialog";
+import { NewEnrollmentLink } from "./NewEnrollmentLink";
 import { TransferDialog } from "./TransferDialog";
 import type { useEnrollment } from "./useStudentRecord";
 import type { Enrollment, EnrollmentModality } from "./types";
@@ -78,7 +79,7 @@ export function RecordEnrollment({ studentId, studentName, enrollment, canGrant 
   if (status === "loading" || status === "idle") return <LoadingState />;
   if (status === "forbidden") return <ForbiddenState />;
   if (status === "error" || status === "notFound" || !data) return <ErrorState onRetry={reload} />;
-  if (data.modalities.length === 0) return <EmptyState title={t("students.record.enrollment.emptyTitle")} text={t("students.record.enrollment.emptyText")} />;
+  if (data.modalities.length === 0) return <EmptyState title={t("students.record.enrollment.emptyTitle")} text={t("students.record.enrollment.emptyText")} action={<NewEnrollmentLink studentId={studentId} />} />;
   const done = () => {
     reload();
     onChanged();
@@ -86,6 +87,7 @@ export function RecordEnrollment({ studentId, studentName, enrollment, canGrant 
   const props = { studentId, onClose: () => setAction(undefined), onDone: done };
   return (
     <>
+      {data.status === "FORMER" && <NewEnrollmentLink studentId={studentId} />}
       <ul className="flex flex-col gap-3">
         {data.modalities.map((row) => (
           <ModalityCard key={row.id} row={row} onAction={setAction} canGrant={canGrant} />

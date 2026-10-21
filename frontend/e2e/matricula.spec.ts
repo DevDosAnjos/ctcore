@@ -78,3 +78,51 @@ test("@critical Coordenador troca a turma e transfere a modalidade pela ficha", 
   await expect(panel.getByText("Unidade Leste")).toBeVisible();
   await expect(panel.getByText("Dia 10")).toBeVisible();
 });
+
+// RF-MAT-01 (#67): nova matrícula em cinco etapas, do aluno já cadastrado ao aluno ativo.
+test("@critical Coordenador conclui a nova matrícula em cinco etapas", async ({ page }) => {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill("ana@exemplo.com");
+  await page.getByLabel("Senha").fill("segredo123");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+
+  await call(page, "PUT", `/modalities/${JIU_JITSU}/activation`, { active: true });
+  await call(page, "PUT", `/units/${CENTRO}/modalities/${JIU_JITSU}`, { offered: true });
+
+  // CA24: a 360 px nenhuma etapa estoura na horizontal.
+  await page.setViewportSize({ width: 360, height: 740 });
+  const noOverflow = async () => expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
+
+  await open(page, "/alunos/nova-matricula");
+  await expect(page.getByText("Etapa 1 de 5")).toBeVisible();
+  await noOverflow();
+  await page.getByLabel("CPF do aluno").fill("52998224725");
+  await page.getByRole("button", { name: "Buscar" }).click();
+  await expect(page.getByText("Matrícula nova")).toBeVisible();
+  await page.getByRole("button", { name: "É este aluno, continuar" }).click();
+
+  await expect(page.getByText("Etapa 2 de 5")).toBeVisible();
+  await noOverflow();
+  await page.getByLabel("Unidade", { exact: true }).selectOption({ label: "Unidade Centro" });
+  await page.getByLabel("Modalidade", { exact: true }).selectOption({ label: "Jiu-Jitsu" });
+  await page.getByLabel("Turma principal").selectOption({ label: "Jiu-Jitsu Adulto" });
+  await page.getByLabel("Plano", { exact: true }).selectOption({ label: "Jiu-Jitsu Livre" });
+  await page.getByRole("button", { name: "Avançar" }).click();
+
+  await expect(page.getByText("Etapa 3 de 5")).toBeVisible();
+  await noOverflow();
+  await page.getByLabel("Dia de vencimento").selectOption({ label: "Dia 5" });
+  await page.getByRole("button", { name: "Avançar" }).click();
+
+  await expect(page.getByText("Etapa 4 de 5")).toBeVisible();
+  await expect(page.getByText("Mensalidade: R$ 200,00")).toBeVisible();
+  await noOverflow();
+  await page.getByRole("button", { name: "Concluir matrícula" }).click();
+
+  await expect(page.getByText("Aluno Ativo")).toBeVisible();
+  await noOverflow();
+  await expect(page.getByRole("button", { name: "Registrar pagamento agora" })).toBeDisabled();
+  await page.getByRole("button", { name: "Aluno paga pelo portal" }).click();
+  await expect(page.getByRole("dialog", { name: "Ficha do aluno" })).toBeVisible();
+});

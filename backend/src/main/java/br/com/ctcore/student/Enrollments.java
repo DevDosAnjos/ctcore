@@ -77,8 +77,17 @@ public class Enrollments {
     /** R3: grava as modalidades pedidas (cria a matrícula, acrescenta ou reabre), tudo ou nada. */
     public Enrollment add(AccountPrincipal who, UUID studentId, AddInput in, String ip) {
         students.requireAccess(who);
-        if (in == null || in.modalities() == null || in.modalities().isEmpty()) throw new ApiValidationException("modalities", "obrigatório");
-        for (ModalityInput m : in.modalities()) {
+        checkInputs(in == null ? null : in.modalities());
+        return transactions.execute(() -> {
+            addLocked(who, studentId, in.modalities(), ip);
+            return read(who, studentId);
+        });
+    }
+
+    /** Formato do pedido: campos obrigatórios e dia de vencimento de 1 a 28 (400). */
+    static void checkInputs(List<ModalityInput> inputs) {
+        if (inputs == null || inputs.isEmpty()) throw new ApiValidationException("modalities", "obrigatório");
+        for (ModalityInput m : inputs) {
             if (m == null) throw new ApiValidationException("modalities", "obrigatório");
             if (m.unitId() == null) throw new ApiValidationException("unitId", "obrigatório");
             if (m.modalityId() == null) throw new ApiValidationException("modalityId", "obrigatório");
@@ -86,17 +95,20 @@ public class Enrollments {
             if (m.planId() == null) throw new ApiValidationException("planId", "obrigatório");
             if (m.dueDay() != null && (m.dueDay() < 1 || m.dueDay() > 28)) throw new ApiValidationException("dueDay", "de 1 a 28");
         }
-        return transactions.execute(() -> {
-            // Trava o aluno: o limite de 10 e a matrícula única valem sob concorrência (como student_guardian_limit).
-            jdbc.sql("select id from student where organization_id = :org and id = :id for update").param("org", who.organizationId()).param("id", studentId)
-                    .query(UUID.class).optional().orElseThrow(Enrollments::missing);
-            students.detail(who, studentId);
-            doAdd(who, studentId, in.modalities(), ip);
-            return read(who, studentId);
-        });
     }
 
-    private void doAdd(AccountPrincipal who, UUID studentId, List<ModalityInput> inputs, String ip) {
+    /** O que {@link #addLocked} gravou: as linhas de modalidade na ordem do pedido e se a matrícula é nova ou reaberta. */
+    record Added(UUID enrollmentId, boolean created, boolean reopened, List<UUID> rowIds) {}
+
+    /** Dentro de uma transação da organização: trava o aluno (o limite de 10 e a matrícula única valem sob concorrência) e grava as modalidades. */
+    Added addLocked(AccountPrincipal who, UUID studentId, List<ModalityInput> inputs, String ip) {
+        jdbc.sql("select id from student where organization_id = :org and id = :id for update").param("org", who.organizationId()).param("id", studentId)
+                .query(UUID.class).optional().orElseThrow(Enrollments::missing);
+        students.detail(who, studentId);
+        return doAdd(who, studentId, inputs, ip);
+    }
+
+    private Added doAdd(AccountPrincipal who, UUID studentId, List<ModalityInput> inputs, String ip) {
         UUID org = who.organizationId();
         var existing = jdbc.sql("select id from enrollment where organization_id = :org and student_id = :s").param("org", org)
                 .param("s", studentId).query((rs, n) -> rs.getObject(1, UUID.class)).optional();
@@ -146,9 +158,11 @@ public class Enrollments {
             audit.record(new AuditEntry(actor(who), existing.isEmpty() ? "student.enrolled" : "student.enrollment_reopened", "student", studentId.toString(),
                     registered, null, after, null, ip));
         }
+        List<UUID> rowIds = new ArrayList<>();
         for (Resolved r : resolved) {
             ModalityInput m = r.input;
             UUID rowId = UUID.randomUUID();
+            rowIds.add(rowId);
             jdbc.sql("insert into enrollment_modality (id, organization_id, enrollment_id, student_id, unit_id, modality_id, primary_class_id, plan_id, "
                     + "due_day, status, started_at) values (:id, :org, :e, :s, :unit, :mod, :class, :plan, :due, 'ACTIVE', :now)").param("id", rowId)
                     .param("org", org).param("e", enrollmentId).param("s", studentId).param("unit", m.unitId()).param("mod", m.modalityId())
@@ -166,6 +180,7 @@ public class Enrollments {
             after.put("dueDay", r.dueDay);
             audit.record(new AuditEntry(actor(who), "student.modality_added", "student", studentId.toString(), m.unitId(), null, after, null, ip));
         }
+        return new Added(enrollmentId, existing.isEmpty(), reopened, rowIds);
     }
 
     private record Resolved(ModalityInput input, int dueDay, Set<UUID> others) {}

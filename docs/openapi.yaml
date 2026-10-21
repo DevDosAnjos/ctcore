@@ -2040,6 +2040,97 @@ paths:
         '422':
           description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada muda.
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/enrollment/preview:
+    post:
+      summary: Prévia da nova matrícula (RF-MAT-01, RN-MAT-03, 05, 07). Coordenador e Administrador.
+      description: |
+        Calcula o resumo sem gravar nada (nenhuma matrícula, benefício, início de matrícula nem auditoria). Por modalidade: valor do plano, desconto do
+        benefício e mensalidade. Por unidade: dia de vencimento, data da primeira cobrança (hoje no fuso da unidade, com 5 dias de tolerância), taxa de
+        matrícula (0 se a unidade não cobra, se o aluno já teve modalidade ali sem ser retorno, ou se isentada), total da primeira cobrança e data
+        da segunda cobrança (sugerida ou a escolhida). Exige `STUDENT_MANAGE` em cada unidade (403); aluno, unidade, turma ou plano de outra
+        organização, 404. Isenção sem motivo de 3 a 200 caracteres ou em unidade sem taxa, 422 `feeExemptReason`; segunda cobrança fora de 15 a 60 dias
+        da matrícula, 422 `secondDueOn`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentConclusionRequest' } } }
+      responses:
+        '200':
+          description: O resumo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentPreview' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/enrollment/conclude:
+    post:
+      summary: Conclui a nova matrícula (RF-MAT-01, RN-MAT-04, 08, 09, 12). Coordenador e Administrador.
+      description: |
+        Grava tudo ou nada: as modalidades (mesmas regras de `POST /students/{id}/modalities`), o benefício de cada modalidade que trouxer `benefit`
+        (mesmas regras de `POST /benefits`), a graduação de origem (`origin`, só em modalidade com graduação ligada; com a exigência de comprovante
+        ligada, `origin.proofKey` é obrigatório, 422; nível de outra modalidade, grau acima do máximo ou data futura, 422), e por unidade a taxa
+        a cobrar ou a isenção com motivo e a data da segunda cobrança (`enrollment_start`, para a Sprint 08; nenhuma cobrança nasce aqui). Ao concluir
+        o aluno está Ativo. O aluno adulto com e-mail e sem conta ativa recebe o convite do portal depois do commit (`inviteStatus` `SENT`, ou
+        `FAILED` se o envio falhou, sem desfazer a matrícula); menor não recebe convite próprio (`MINOR`); conta ativa (`EXISTING_ACCOUNT`) e sem
+        e-mail (`NO_EMAIL`) também não. `termPending` é sempre `true`: o aceite do termo é da #85. Repetir a conclusão: 409 pela modalidade já ativa,
+        sem mudar nada. Grava `student.enrolled` (ou `student.enrollment_reopened`), `student.modality_added`, `benefit.granted`,
+        `student.origin_graduation_registered` e `enrollment.fee_exempted`, sem CPF, e-mail nem chave de arquivo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentConclusionRequest' } } }
+      responses:
+        '201':
+          description: A matrícula, o resumo e o estado do convite.
+          content: { application/json: { schema: { $ref: '#/components/schemas/EnrollmentConcluded' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: O aluno já tem uma das modalidades ativas (CONFLICT).
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '422':
+          description: Regra de negócio recusa o pedido (UNPROCESSABLE); `fields` traz o campo. Nada é gravado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /students/{id}/enrollment/origin-proof:
+    post:
+      summary: Envia o comprovante da graduação de origem (RN-GRA-09, RN-MAT-09). Coordenador e Administrador.
+      description: |
+        Campo `file` com JPG, PNG, WebP ou PDF de até 5 MB, conferido pelo conteúdo (422 no campo `file`). Guarda o arquivo na pasta da organização
+        com nome gerado no servidor e devolve `proofKey`, que a conclusão referencia; a conclusão só aceita chave do mesmo aluno e da mesma organização.
+        Aluno fora do alcance ou de outra organização, 404. Grava `student.origin_proof_uploaded`, sem a chave.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Comprovante guardado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OriginProofStored' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '422':
+          description: Tipo ou tamanho recusado (UNPROCESSABLE), campo `file`.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
   /students/{id}/enrollment:
     get:
       summary: Matrícula do aluno com as modalidades (RN-MAT-01, 02). Coordenador e Administrador.
@@ -3556,6 +3647,95 @@ components:
         enrolledAt: { type: string, format: date-time, nullable: true }
         reopenedAt: { type: string, format: date-time, nullable: true }
         modalities: { type: array, items: { $ref: '#/components/schemas/EnrollmentModality' } }
+    EnrollmentBenefitInput:
+      type: object
+      required: [type, value, reason, decidedBy]
+      properties:
+        type: { type: string, enum: [PERCENT, AMOUNT] }
+        value: { type: integer, description: Percentual de 1 a 100 ou centavos. }
+        reason: { type: string }
+        decidedBy: { type: string }
+        validUntil: { type: string, format: date, nullable: true }
+        teacherId: { type: string, format: uuid, nullable: true }
+    EnrollmentOriginInput:
+      type: object
+      required: [levelId, degree]
+      properties:
+        levelId: { type: string, format: uuid }
+        degree: { type: integer, minimum: 0 }
+        achievedOn: { type: string, format: date, nullable: true }
+        proofKey: { type: string, nullable: true }
+    EnrollmentConclusionModality:
+      type: object
+      required: [unitId, modalityId, primaryClassId, planId]
+      properties:
+        unitId: { type: string, format: uuid }
+        modalityId: { type: string, format: uuid }
+        primaryClassId: { type: string, format: uuid }
+        otherClassIds: { type: array, items: { type: string, format: uuid } }
+        planId: { type: string, format: uuid }
+        dueDay: { type: integer, minimum: 1, maximum: 28, nullable: true }
+        benefit: { allOf: [{ $ref: '#/components/schemas/EnrollmentBenefitInput' }], nullable: true }
+        origin: { allOf: [{ $ref: '#/components/schemas/EnrollmentOriginInput' }], nullable: true }
+    EnrollmentConclusionUnit:
+      type: object
+      required: [unitId]
+      properties:
+        unitId: { type: string, format: uuid }
+        feeExempt: { type: boolean, nullable: true }
+        feeExemptReason: { type: string, nullable: true }
+        secondDueOn: { type: string, format: date, nullable: true }
+    EnrollmentConclusionRequest:
+      type: object
+      required: [modalities]
+      properties:
+        modalities: { type: array, minItems: 1, items: { $ref: '#/components/schemas/EnrollmentConclusionModality' } }
+        units: { type: array, items: { $ref: '#/components/schemas/EnrollmentConclusionUnit' } }
+    EnrollmentPreviewModality:
+      type: object
+      required: [unitId, modalityId, planId, planName, planCents, discountCents, monthlyCents]
+      properties:
+        unitId: { type: string, format: uuid }
+        modalityId: { type: string, format: uuid }
+        planId: { type: string, format: uuid }
+        planName: { type: string }
+        planCents: { type: integer, format: int64 }
+        discountCents: { type: integer, format: int64 }
+        monthlyCents: { type: integer, format: int64 }
+    EnrollmentPreviewUnit:
+      type: object
+      required: [unitId, unitName, dueDay, firstDueOn, toleranceDays, feeCents, feeExempt, feeExemptReason, firstChargeCents, secondDueOn, suggestedSecondDueOn]
+      properties:
+        unitId: { type: string, format: uuid }
+        unitName: { type: string }
+        dueDay: { type: integer }
+        firstDueOn: { type: string, format: date }
+        toleranceDays: { type: integer }
+        feeCents: { type: integer, format: int64, description: "Taxa a cobrar, já sem a isenção." }
+        feeExempt: { type: boolean }
+        feeExemptReason: { type: string, nullable: true }
+        firstChargeCents: { type: integer, format: int64 }
+        secondDueOn: { type: string, format: date }
+        suggestedSecondDueOn: { type: string, format: date }
+    EnrollmentPreview:
+      type: object
+      required: [modalities, units]
+      properties:
+        modalities: { type: array, items: { $ref: '#/components/schemas/EnrollmentPreviewModality' } }
+        units: { type: array, items: { $ref: '#/components/schemas/EnrollmentPreviewUnit' } }
+    EnrollmentConcluded:
+      type: object
+      required: [enrollment, summary, termPending, inviteStatus]
+      properties:
+        enrollment: { $ref: '#/components/schemas/Enrollment' }
+        summary: { $ref: '#/components/schemas/EnrollmentPreview' }
+        termPending: { type: boolean }
+        inviteStatus: { type: string, enum: [SENT, FAILED, MINOR, EXISTING_ACCOUNT, NO_EMAIL] }
+    OriginProofStored:
+      type: object
+      required: [proofKey]
+      properties:
+        proofKey: { type: string }
     StudentGuardianRow:
       type: object
       required: [guardianId, name, email, phone, financial, access, emailProblem]

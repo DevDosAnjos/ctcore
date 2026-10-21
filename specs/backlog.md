@@ -75,7 +75,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 64 | RF-BEN-01 · Tabela de benefícios | issue #64 | Sprint 07 | — | agente | feito |
 | 65 | RF-BEN-02 · Conceder benefício | issue #65 | Sprint 07 | — | agente | feito |
 | 66 | RF-BEN-03 · Encerrar benefício | issue #66 | Sprint 07 | — | agente | feito |
-| 67 | RF-MAT-01 · Nova matrícula em etapas | issue #67 | Sprint 07 | — | agente | a fazer |
+| 67 | RF-MAT-01 · Nova matrícula em etapas | issue #67 | Sprint 07 | — | agente | feito |
 | 68 | RF-MAT-02 · Avisos de faixa etária e capacidade na matrícula | issue #68 | Sprint 07 | — | agente | a fazer |
 | 69 | RF-MAT-03 · Encerrar modalidade | issue #69 | Sprint 07 | — | agente | a fazer |
 | 70 | RF-MAT-05 · Configurações › Termos | issue #70 | Sprint 07 | — | agente | a fazer |
@@ -209,11 +209,11 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Pendências para o dono
 
-Último número usado: P1. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
+Último número usado: P2. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
 
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
-| — | nenhuma (P1 respondida pelo dono em 19/10/2026: opção recomendada, já implementada na #45) | — | — | — |
+| P2 | Com a #67, `student_graduation` aponta para `graduation_level`: salvar a graduação da modalidade sem um nível já usado por graduação de aluno (origem) falha na chave estrangeira (a resposta é a de conflito de dados, sem texto próprio). A #105/#106 decidem a mensagem (ex.: "nível em uso por N alunos"). | Tratar na #105, junto da tela de graduações do aluno. | nenhum | Salvar o sistema de graduação continua valendo; só a exclusão de nível em uso é recusada. |
 
 ## Encaixes para as próximas sprints
 
