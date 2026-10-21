@@ -108,6 +108,24 @@ describe("assistente Nova matrícula (RF-MAT-01, #67)", () => {
     expect(screen.queryByText("Etapa 2 de 5")).toBeNull();
   });
 
+  it("RF-MAT-02 CA5: turma fora da faixa e cheia mostra os dois avisos e não bloqueia avançar; trocar a turma remove os avisos", async () => {
+    const user = userEvent.setup();
+    await setup("COORDINATOR", `/alunos/nova-matricula?aluno=${ADULT_ID}`);
+    server.use(
+      http.get("/api/v1/students/:id/enrollment/class-warnings", ({ request }) =>
+        HttpResponse.json(
+          new URL(request.url).searchParams.get("classId") === "00000000-0000-0000-0000-000000000601"
+            ? { studentAge: 10, ageRange: { id: "r", name: "Adulto", minAge: 18, maxAge: null }, ageOutOfRange: true, capacity: 2, activeStudents: 2, overCapacity: true }
+            : { studentAge: 10, ageRange: null, ageOutOfRange: false, capacity: null, activeStudents: 0, overCapacity: false },
+        ),
+      ),
+    );
+    await fillModality(user);
+    expect(await screen.findByText(/fora da faixa etária da turma Jiu-Jitsu Adulto/)).toBeInTheDocument();
+    expect(screen.getByText(/acima da capacidade/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Avançar" })).toBeEnabled();
+  });
+
   it("CA20: a 11ª modalidade não pode ser adicionada", async () => {
     const user = userEvent.setup();
     await setup("COORDINATOR", `/alunos/nova-matricula?aluno=${ADULT_ID}`);

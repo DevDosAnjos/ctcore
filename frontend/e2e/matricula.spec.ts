@@ -90,6 +90,10 @@ test("@critical Coordenador conclui a nova matrícula em cinco etapas", async ({
   await call(page, "PUT", `/modalities/${JIU_JITSU}/activation`, { active: true });
   await call(page, "PUT", `/units/${CENTRO}/modalities/${JIU_JITSU}`, { offered: true });
 
+  // RF-MAT-02 (#68): turma de faixa Infantil (aluno adulto fora dela) e capacidade 1.
+  const { items: faixas } = (await call(page, "GET", "/age-ranges")) as { items: { id: string; name: string }[] };
+  await call(page, "POST", "/classes", { ...classBody(CENTRO, "Jiu-Jitsu Infantil", 5), ageRangeId: faixas.find((f) => f.name === "Infantil")!.id, capacity: 1 });
+
   // CA24: a 360 px nenhuma etapa estoura na horizontal.
   await page.setViewportSize({ width: 360, height: 740 });
   const noOverflow = async () => expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
@@ -106,7 +110,14 @@ test("@critical Coordenador conclui a nova matrícula em cinco etapas", async ({
   await noOverflow();
   await page.getByLabel("Unidade", { exact: true }).selectOption({ label: "Unidade Centro" });
   await page.getByLabel("Modalidade", { exact: true }).selectOption({ label: "Jiu-Jitsu" });
+  // CA5 e CA9 (#68): aviso de faixa etária sem bloquear e sem estourar a 360 px; trocar de turma remove o aviso.
+  await page.getByLabel("Turma principal").selectOption({ label: "Jiu-Jitsu Infantil" });
+  await expect(page.getByRole("status").filter({ hasText: "fora da faixa" })).toBeVisible();
+  await page.getByLabel("Plano", { exact: true }).selectOption({ label: "Jiu-Jitsu Livre" });
+  await expect(page.getByRole("button", { name: "Avançar" })).toBeEnabled();
+  await noOverflow();
   await page.getByLabel("Turma principal").selectOption({ label: "Jiu-Jitsu Adulto" });
+  await expect(page.getByRole("status").filter({ hasText: "fora da faixa" })).toHaveCount(0);
   await page.getByLabel("Plano", { exact: true }).selectOption({ label: "Jiu-Jitsu Livre" });
   await page.getByRole("button", { name: "Avançar" }).click();
 
