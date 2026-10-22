@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
 import {
@@ -184,11 +184,12 @@ describe("LessonPanelPage", () => {
     let fail = true;
     setup();
     server.use(
-      http.get("/api/v1/agenda/lessons/:id", () =>
-        fail
+      http.get("/api/v1/agenda/lessons/:id", async () => {
+        await delay(100);
+        return fail
           ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 })
-          : HttpResponse.json(detail()),
-      ),
+          : HttpResponse.json(detail());
+      }),
     );
     expect(await screen.findByText("Carregando...")).toBeInTheDocument();
     const retry = await screen.findByRole("button", { name: "Tentar de novo" });
