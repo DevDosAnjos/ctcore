@@ -1,5 +1,6 @@
 package br.com.ctcore.billing;
 
+import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.identity.AccountPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -18,9 +19,22 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class ChargeController {
     private final MonthlyGeneration generation;
+    private final Charges charges;
 
-    ChargeController(MonthlyGeneration generation) {
+    ChargeController(MonthlyGeneration generation, Charges charges) {
         this.generation = generation;
+        this.charges = charges;
+    }
+
+    /** RF-COB-01: a lista de cobranças; só leitura. */
+    @GetMapping("/api/v1/charges")
+    Charges.ChargeList list(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q, @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) String quick, @RequestParam(required = false) String from, @RequestParam(required = false) String to,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String type, @RequestParam(required = false) UUID modalityId,
+            @RequestParam(required = false) UUID classId, @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort) {
+        return charges.list(who, new Charges.Filter(q, unitId, quick, from, to, status, type, modalityId, classId),
+                PageRequest.of(page, size, sort, Charges.SORT_FIELDS));
     }
 
     @GetMapping("/api/v1/billing/generation-preview")

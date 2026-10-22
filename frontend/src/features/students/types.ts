@@ -111,13 +111,14 @@ export interface StudentRow {
   seals: StudentSeal[];
   status: EnrollmentStatus;
   modalities: StudentRowModality[];
+  financialStatus: "OVERDUE" | "CURRENT";
 }
 export interface StudentList {
   items: StudentRow[];
   page: number;
   size: number;
   total: number;
-  counts: { active: number; former: number };
+  counts: { active: number; former: number; overdue: number };
 }
 
 // Espelha StudentRecord e StudentHistoryEntry do OpenAPI (RF-ALU-03). Na ficha reduzida do Professor faltam birthDate, seals, cpf, address e, nos responsáveis, financial e access.

@@ -21,7 +21,7 @@ const session = (role: string): SessionView => ({
 });
 const row: StudentRow = {
   id: "s1", name: "Ana Souza", photoUrl: null, birthDate: "2014-05-02", age: 12, minor: true, ageRange: null,
-  registeredUnit: { id: "u1", name: "Centro" }, createdAt: "2026-01-10T12:00:00Z", seals: [], status: "NONE", modalities: [],
+  registeredUnit: { id: "u1", name: "Centro" }, createdAt: "2026-01-10T12:00:00Z", seals: [], status: "NONE", financialStatus: "CURRENT", modalities: [],
 };
 const detail = (over: Partial<StudentDetail> = {}): StudentDetail => ({
   id: "s1", registeredUnitId: "u1", name: "Ana Souza", birthDate: "2014-05-02", minor: true, postalCode: "01001000", street: "Rua Um", number: "1", complement: null, district: "Centro", city: "Rio", state: "RJ",

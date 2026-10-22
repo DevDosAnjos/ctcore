@@ -21,7 +21,7 @@ const session = (role = "COORDINATOR"): SessionView => ({
 });
 const row: StudentRow = {
   id: "s1", name: "Ana Souza", photoUrl: null, birthDate: "2014-05-02", age: 12, minor: true, ageRange: { id: "r1", name: "Infantil" },
-  registeredUnit: { id: "u1", name: "Centro" }, createdAt: "2026-01-10T12:00:00Z", seals: ["EMAIL_PROBLEM"], status: "NONE", modalities: [],
+  registeredUnit: { id: "u1", name: "Centro" }, createdAt: "2026-01-10T12:00:00Z", seals: ["EMAIL_PROBLEM"], status: "NONE", financialStatus: "CURRENT", modalities: [],
 };
 const guardian = (over: Partial<NonNullable<StudentRecord["guardians"]>[number]> = {}) => ({
   guardianId: "g1", name: "Marta Souza", email: "marta@alfa.test", phone: "21987654321", financial: true, access: "PENDING" as const, emailProblem: false, ...over,
