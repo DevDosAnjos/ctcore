@@ -1862,6 +1862,50 @@
   "charges": {
     "title": "Cobranças",
     "intro": "Cobranças das unidades ao seu alcance, com a situação calculada pela data da unidade.",
+    "creation": {
+      "open": "Nova cobrança avulsa",
+      "title": "Nova cobrança avulsa",
+      "effect": "Cria uma cobrança única (kimono, exame, seminário). Ela não conta como mensalidade e é paga como qualquer cobrança.",
+      "search": "Buscar aluno pelo nome (mínimo 2 letras)",
+      "student": "Aluno",
+      "noStudent": "Nenhum aluno encontrado.",
+      "unit": "Unidade",
+      "unitFixed": "Unidade: {{unit}}",
+      "noUnit": "Este aluno não tem matrícula em nenhuma unidade.",
+      "description": "Descrição",
+      "amount": "Valor",
+      "dueOn": "Vencimento",
+      "submit": "Criar cobrança",
+      "errors": {
+        "403": "Você não tem permissão para criar cobranças nesta unidade. Nada foi gravado.",
+        "404": "O aluno ou a unidade não existe ou não está ao seu alcance. Nada foi gravado.",
+        "409": "Este pedido já foi usado com outros dados. Feche a janela e abra de novo. Nada foi gravado.",
+        "422": "O aluno precisa ter matrícula na unidade e, sendo menor de 18 anos, um responsável financeiro. Nada foi gravado.",
+        "generic": "Não foi possível criar a cobrança. Tente de novo. Nada foi gravado."
+      }
+    },
+    "advance": {
+      "open": "Gerar próximas mensalidades",
+      "title": "Gerar próximas mensalidades",
+      "effect": "A geração automática pula os meses já gerados, então nada se repete. Tudo é criado de uma vez ou nada é criado.",
+      "modality": "Modalidade",
+      "noModalityTitle": "Sem modalidade ativa",
+      "noModalityText": "Este aluno não tem modalidade ativa que você possa alterar.",
+      "count": "Quantidade de mensalidades (1 a 12)",
+      "countHint": "Contadas a partir da próxima mensalidade ainda não gerada.",
+      "submit": "Gerar mensalidades",
+      "doneTitle": "Mensalidades geradas",
+      "done_one": "{{count}} mensalidade criada (de {{from}} a {{to}}).",
+      "done_other": "{{count}} mensalidades criadas (de {{from}} a {{to}}).",
+      "doneNone": "Nenhuma mensalidade nova: os meses já estavam gerados.",
+      "close": "Concluir",
+      "errors": {
+        "403": "Você não tem permissão para gerar mensalidades desta modalidade. Nada foi gravado.",
+        "404": "A modalidade não existe ou não está ao seu alcance. Nada foi gravado.",
+        "422": "A modalidade está encerrada ou tem valor final zero (por exemplo, bolsa de 100%), então não há mensalidade a gerar. Nada foi gravado.",
+        "generic": "Não foi possível gerar as mensalidades. Tente de novo. Nada foi gravado."
+      }
+    },
     "reference": "{{modality}} · {{month}}",
     "totals": "{{count}} cobranças somando {{amount}}",
     "columns": {

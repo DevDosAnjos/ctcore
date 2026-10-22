@@ -921,6 +921,33 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /students/{id}/charges:
+    post:
+      summary: Cria uma cobrança avulsa para o aluno (RN-COB-11). `COLLECTIONS` completo na unidade informada.
+      description: |
+        Tipo `ONE_OFF`, origem `MANUAL`, sem mês, modalidade nem plano. `unitId` é a unidade da cobrança e o aluno precisa ter matrícula nela (422).
+        O pagador é o próprio aluno adulto ou, para menor de 18 anos, o responsável financeiro (422 se não houver). `dueOn` não pode ser anterior a hoje no fuso da unidade.
+        Idempotente (RNF-12): `requestId` vira o id da cobrança; repetir o mesmo pedido devolve 200 com a cobrança já criada, sem duplicar nem auditar de novo;
+        o mesmo `requestId` com outros dados, ou já usado em outra organização, é 409. Grava `charge.created` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/OneOffInput' } } }
+      responses:
+        '200':
+          description: Repetição do mesmo `requestId`; a cobrança já criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChargeRow' } } }
+        '201':
+          description: A cobrança criada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChargeRow' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Aluno sem matrícula na unidade ou menor sem responsável financeiro (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /students/{id}/modalities/{modalityRowId}/charges/advance:
     post:
       summary: Gera as próximas N mensalidades de uma modalidade (RN-COB-06). `COLLECTIONS` completo na unidade da modalidade.
@@ -3057,6 +3084,15 @@ components:
       required: [count]
       properties:
         count: { type: integer, minimum: 1, maximum: 12 }
+    OneOffInput:
+      type: object
+      required: [unitId, description, amountCents, dueOn]
+      properties:
+        requestId: { type: string, format: uuid, description: 'Vira o id da cobrança; reenviar o mesmo pedido não duplica.' }
+        unitId: { type: string, format: uuid }
+        description: { type: string, minLength: 1, maxLength: 80, example: Kimono A2 }
+        amountCents: { type: integer, format: int64, minimum: 1, maximum: 10000000, example: 25000 }
+        dueOn: { type: string, format: date, description: 'Hoje ou depois, no fuso da unidade.' }
     ChargeCreated:
       type: object
       required: [id, modalityRowId, type, unitId, referenceMonth, dueOn, toleranceDays, amountCents]

@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -23,7 +24,10 @@ class ChargeController {
     private final Charges charges;
     private final ChargeActions actions;
 
-    ChargeController(MonthlyGeneration generation, Charges charges, ChargeActions actions) {
+    private final OneOffCharges oneOff;
+
+    ChargeController(MonthlyGeneration generation, Charges charges, ChargeActions actions, OneOffCharges oneOff) {
+        this.oneOff = oneOff;
         this.actions = actions;
         this.generation = generation;
         this.charges = charges;
@@ -69,6 +73,14 @@ class ChargeController {
     List<MonthlyGeneration.Created> advance(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable UUID modalityRowId,
             @RequestBody MonthlyGeneration.Advance input, HttpServletRequest request) {
         return generation.advance(who, id, modalityRowId, input, request.getRemoteAddr());
+    }
+
+    /** RN-COB-11: cobrança avulsa; 201 ao criar, 200 na repetição do mesmo requestId. */
+    @PostMapping("/api/v1/students/{id}/charges")
+    ResponseEntity<Charges.Row> createOneOff(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody OneOffCharges.Input input,
+            HttpServletRequest request) {
+        var result = oneOff.create(who, id, input, request.getRemoteAddr());
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.row());
     }
 
     @PatchMapping("/api/v1/students/{id}/modalities/{modalityRowId}/next-charge")

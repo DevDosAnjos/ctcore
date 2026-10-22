@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
@@ -9,6 +9,7 @@ import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
+import { enrollmentOf, modalityRow } from "@/features/students/enrollmentFixtures";
 import { SITUATIONS, type ChargeRow } from "./types";
 
 const session = (role: string): SessionView => ({
@@ -37,12 +38,12 @@ const counts = { overdue: 4, dueToday: 2, inReview: 1, paidMonth: 7 };
 
 let calls: URLSearchParams[];
 
-function setup(role = "COORDINATOR", list?: (p: URLSearchParams) => Response | Promise<Response>, path = "/cobrancas") {
+function setup(role = "COORDINATOR", list?: (p: URLSearchParams) => Response | Promise<Response>, path = "/cobrancas", permissions: Record<string, string> = mockPermissions(role)) {
   calls = [];
   window.history.replaceState(null, "", path);
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(role))),
-    http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
+    http.get("/api/v1/permissions", () => HttpResponse.json({ permissions })),
     http.get("/api/v1/units/reachable", () => HttpResponse.json({ allUnits: true, units: [{ id: "u1", name: "Centro", shortName: "c" }, { id: "u2", name: "Norte", shortName: "n" }] })),
     http.get("/api/v1/age-ranges", () => HttpResponse.json({ canManage: false, items: [] })),
     http.get("/api/v1/modalities", () => HttpResponse.json([{ id: "m1", name: "Jiu-Jitsu", active: true }])),
@@ -194,5 +195,42 @@ describe("ChargesPage (RF-COB-01)", () => {
       expect(await axeViolations(container)).toEqual([]);
       unmount();
     }
+  });
+});
+
+describe("botões de criação (RF-COB-07, CA10)", () => {
+  it("COLLECTIONS completo vê os dois botões; só leitura não vê nenhum", async () => {
+    const { unmount } = setup("ADMINISTRATOR");
+    await ready();
+    expect(await screen.findByRole("button", { name: "Nova cobrança avulsa" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gerar próximas mensalidades" })).toBeInTheDocument();
+    unmount();
+    setup("COORDINATOR", undefined, "/cobrancas", { ...mockPermissions("COORDINATOR"), COLLECTIONS: "READ" });
+    await ready();
+    await screen.findAllByText("Ana Souza");
+    expect(screen.queryByRole("button", { name: "Nova cobrança avulsa" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Gerar próximas mensalidades" })).toBeNull();
+  });
+
+  it("criar a avulsa fecha a janela e recarrega a lista", async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get("/api/v1/students", () => HttpResponse.json({ items: [{ id: "s1", name: "Ana Souza" }], page: 1, size: 25, total: 1 })),
+      http.get("/api/v1/students/s1/enrollment", () => HttpResponse.json(enrollmentOf([modalityRow()]))),
+      http.post("/api/v1/students/s1/charges", () => HttpResponse.json(charge({ id: "n1", type: "ONE_OFF" }), { status: 201 })),
+    );
+    setup("COORDINATOR");
+    await ready();
+    await screen.findAllByText("Ana Souza");
+    const before = calls.length;
+    await user.click(screen.getByRole("button", { name: "Nova cobrança avulsa" }));
+    await user.type(screen.getByLabelText("Buscar aluno pelo nome (mínimo 2 letras)"), "an");
+    await user.selectOptions(await screen.findByLabelText("Aluno"), "s1");
+    await user.type(await screen.findByLabelText("Descrição"), "Kimono");
+    await user.type(screen.getByLabelText("Valor"), "10000");
+    fireEvent.change(screen.getByLabelText("Vencimento"), { target: { value: "2099-01-10" } });
+    await user.click(screen.getByRole("button", { name: "Criar cobrança" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(calls.length).toBeGreaterThan(before));
   });
 });
