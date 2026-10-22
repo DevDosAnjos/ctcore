@@ -113,3 +113,22 @@ export interface GenerationPreview {
   previousMonthTotalCents: number;
   skipped: PreviewSkipped[];
 }
+
+// Espelha OneOffInput e ChargeCreated do OpenAPI (RN-COB-11, RN-COB-06).
+export interface OneOffInput {
+  requestId: string;
+  unitId: string;
+  description: string;
+  amountCents: number;
+  dueOn: string;
+}
+export interface ChargeCreated {
+  id: string;
+  modalityRowId: string;
+  type: "MONTHLY";
+  unitId: string;
+  referenceMonth: string;
+  dueOn: string;
+  toleranceDays: number;
+  amountCents: number;
+}

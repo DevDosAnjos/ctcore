@@ -6,11 +6,14 @@ import { QueryPage, type Page } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
 import { useQueryParams } from "@/components/query/useQueryParams";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { usePermissions } from "@/features/permissions/usePermissions";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { ChargeRow } from "./types";
 import { ChargeCard, OpenButton, StatusBadge, StudentCell } from "./ChargeCards";
 import { ChargeFilters } from "./ChargeFilters";
+import { AdvanceChargesDialog } from "./AdvanceChargesDialog";
 import { ChargePanel } from "./ChargePanel";
+import { OneOffChargeDialog } from "./OneOffChargeDialog";
 import { fetchCharges } from "./useCharges";
 
 const FILTER_KEYS = ["quick", "from", "to", "status", "type", "unitId", "modalityId", "classId"];
@@ -20,6 +23,10 @@ function Content() {
   // O painel vive no endereço (?cobranca=); depois de cancelar ou renegociar a lista é recarregada.
   const { get, set } = useQueryParams();
   const [version, setVersion] = useState(0);
+  const [creating, setCreating] = useState<"oneOff" | "advance" | null>(null);
+  // RF-COB-07: os botões só para quem tem cobranças completo; o servidor segue sendo a barreira.
+  const canCreate = usePermissions().permissions?.COLLECTIONS === "FULL";
+  const reload = () => setVersion((v) => v + 1);
   const open = (id: string) => set({ cobranca: id });
   const id = get("cobranca");
   const columns: Column<ChargeRow>[] = [
@@ -35,10 +42,20 @@ function Content() {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">{t("charges.title")}</h1>
       <p className="text-muted-foreground">{t("charges.intro")}</p>
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11">
           <Link to="/cobrancas/previa">{t("charges.preview.open")}</Link>
         </Button>
+        {canCreate && (
+          <>
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => setCreating("oneOff")}>
+              {t("charges.creation.open")}
+            </Button>
+            <Button type="button" variant="outline" className="min-h-11" onClick={() => setCreating("advance")}>
+              {t("charges.advance.open")}
+            </Button>
+          </>
+        )}
       </div>
       <QueryPage
         key={version}
@@ -52,7 +69,9 @@ function Content() {
           <p className="font-medium">{t("charges.totals", { count: page.counts?.totalCount ?? page.total, amount: formatCurrency(page.counts?.totalCents ?? 0) })}</p>
         )}
       />
-      {id && <ChargePanel id={id} onClose={() => set({ cobranca: "" })} onChanged={() => setVersion((v) => v + 1)} />}
+      {id && <ChargePanel id={id} onClose={() => set({ cobranca: "" })} onChanged={reload} />}
+      {creating === "oneOff" && <OneOffChargeDialog onClose={() => setCreating(null)} onDone={reload} />}
+      {creating === "advance" && <AdvanceChargesDialog onClose={() => setCreating(null)} onDone={reload} />}
     </div>
   );
 }

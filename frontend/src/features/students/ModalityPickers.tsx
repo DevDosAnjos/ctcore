@@ -84,6 +84,7 @@ export function ModalityDialog({
   work,
   onClose,
   onDone,
+  errorPrefix = "students.record.enrollment.errors.",
   children,
 }: {
   title: string;
@@ -95,6 +96,8 @@ export function ModalityDialog({
   work: () => Promise<unknown>;
   onClose: () => void;
   onDone: () => void;
+  /** Chaves pt-BR dos erros sem campo (por status e `generic`); o padrão é o das trocas de matrícula. */
+  errorPrefix?: string;
   children: (errors: Record<string, string>) => ReactNode;
 }) {
   const { t } = useTranslation();
@@ -115,7 +118,7 @@ export function ModalityDialog({
     } catch (err) {
       const failure = err instanceof ApiError ? err : null;
       if (failure?.fields.length) setErrors(Object.fromEntries(failure.fields.map((f) => [f.field.split(".").pop()!, f.message])));
-      else setForm(t(`students.record.enrollment.errors.${failure?.status ?? "generic"}`, { defaultValue: t("students.record.enrollment.errors.generic") }));
+      else setForm(t(`${errorPrefix}${failure?.status ?? "generic"}`, { defaultValue: t(`${errorPrefix}generic`) }));
     } finally {
       setBusy(false);
     }

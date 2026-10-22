@@ -764,7 +764,7 @@ const mockProofs = new Map<string, string>();
 const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; feeExemptReason: string | null; secondDueOn: string }[] = [];
 // RN-COB-12, RN-MAT-05 (#71): cobranças, pagamentos e recibos em memória (o simulado paga só no balcão, uma cobrança por vez).
 // RF-COB-02 (#73): cancelar e renegociar acrescentam as situações CANCELED e RENEGOTIATED, a parcela (INSTALLMENT) e os campos do painel.
-type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
+type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
 let mockCharges: MockCharge[] = [];
 let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null }[] = [];
 const chargeRowView = (c: MockCharge, today: string) => {
@@ -3325,6 +3325,37 @@ export const routes: Route[] = [
       });
       mockCharges.push(...made);
       return HttpResponse.json(made.map((c) => ({ ...chargeView(c), modalityRowId: row.id })), { status: 201 });
+    },
+  },
+  {
+    // RN-COB-11 (#76): cobrança avulsa; o requestId vira o id da cobrança (200 na repetição igual, 409 com outros dados). Fora da geração de mensalidades.
+    method: "post",
+    path: "/students/{id}/charges",
+    resolver: async ({ request, params }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const b = ((await request.json().catch(() => ({}))) as { requestId?: string; unitId?: string; description?: unknown; amountCents?: unknown; dueOn?: unknown }) ?? {};
+      const description = typeof b.description === "string" ? b.description.trim() : "";
+      const amount = b.amountCents;
+      const dueOn = typeof b.dueOn === "string" ? b.dueOn : "";
+      if (!b.unitId) return studentBad("unitId", "obrigatório");
+      if (description.length < 1 || description.length > 80) return studentBad("description", "de 1 a 80 caracteres");
+      if (!Number.isInteger(amount) || (amount as number) < 1 || (amount as number) > 10_000_000) return studentBad("amountCents", "de 1 a 10000000");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dueOn) || Number.isNaN(Date.parse(`${dueOn}T00:00:00Z`)) || isoDay(new Date(`${dueOn}T00:00:00Z`)) !== dueOn) return studentBad("dueOn", "use AAAA-MM-DD");
+      if (dueOn < isoDay(new Date())) return studentBad("dueOn", "não pode ser anterior a hoje");
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      if (!units.some((u) => u.id === b.unitId) || (activeRole() === "ADMINISTRATOR" && b.unitId !== ADMIN_UNIT)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const same = b.requestId ? mockCharges.find((c) => c.id === b.requestId) : undefined;
+      if (same) {
+        const equal = same.type === "ONE_OFF" && same.studentId === found.id && same.unitId === b.unitId && same.description === description && same.amountCents === amount && same.dueOn === dueOn;
+        return equal ? HttpResponse.json(chargeRowView(same, isoDay(new Date()))) : conflict();
+      }
+      if (!(mockEnrollments[found.id]?.modalities ?? []).some((m) => m.unitId === b.unitId) || (found.minor && !found.guardians.some((g) => g.financial)))
+        return error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.");
+      const c: MockCharge = { id: b.requestId ?? crypto.randomUUID(), type: "ONE_OFF", studentId: found.id, unitId: b.unitId, modalityRowId: null, referenceMonth: null, dueOn, toleranceDays: 0, amountCents: amount as number, status: "OPEN", description };
+      mockCharges.push(c);
+      return HttpResponse.json(chargeRowView(c, isoDay(new Date())), { status: 201 });
     },
   },
   {

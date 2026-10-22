@@ -55,7 +55,7 @@ function Field({
 const input = "min-h-11 w-full rounded-md border bg-background px-2";
 
 // Aluno por busca de nome (sem rota nova) e as modalidades ativas que a pessoa pode alterar, quando a janela não vem da ficha.
-function useStudentModalities(query: string, studentId: string) {
+export function useStudentModalities(query: string, studentId: string) {
   const students = useResource<StudentList>(
     query.trim().length >= 2
       ? `/students?q=${encodeURIComponent(query.trim())}&size=25&sort=name`
