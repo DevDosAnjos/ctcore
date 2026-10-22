@@ -41,6 +41,7 @@ let sent: { method: string; url: string; body?: Record<string, unknown> }[];
 let rows: PlanRow[];
 let listCalls: number;
 let impactCalls: string[];
+let impactCounts = { unpaidCharges: 2, paidFutureCharges: 1 };
 
 function setup(opts: { cross?: PlanOptions["crossUnitTraining"]; optionsResponse?: () => Response | Promise<Response>; post?: () => Response; activate?: () => Response } = {}) {
   sent = [];
@@ -60,7 +61,7 @@ function setup(opts: { cross?: PlanOptions["crossUnitTraining"]; optionsResponse
     http.get("/api/v1/plans/options", () => (opts.optionsResponse ? opts.optionsResponse() : HttpResponse.json(options(opts.cross)))),
     http.get("/api/v1/plans/p1/value-impact", ({ request }) => {
       impactCalls.push(new URL(request.url).searchParams.get("valueCents")!);
-      return HttpResponse.json({ studentsAffected: 0, effectiveFrom: "NEXT_CHARGE" });
+      return HttpResponse.json({ studentsAffected: 0, effectiveFrom: "NEXT_CHARGE", ...impactCounts });
     }),
     http.post("/api/v1/plans", async ({ request }) => {
       sent.push({ method: "POST", url: "/plans", body: (await request.json()) as Record<string, unknown> });
@@ -210,6 +211,21 @@ describe("PlanFormDialog (RF-PLA-03)", () => {
     await user.click(d.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(sent[0].body).toMatchObject({ valueCents: 18050, unpaidCharges: "ADJUST", paidFutureDifference: true });
+  });
+
+  it("CA29: sem cobranças afetadas a janela do plano não mostra as escolhas", async () => {
+    const user = userEvent.setup();
+    setup();
+    impactCounts = { unpaidCharges: 0, paidFutureCharges: 0 };
+    await user.click(await screen.findByRole("button", { name: "Editar o plano Mensal 2x" }));
+    const d = within(await dialog());
+    const value = await d.findByLabelText("Valor mensal (R$)");
+    await user.clear(value);
+    await user.type(value, "180");
+    const block = within(await d.findByRole("region", { name: "Efeito da mudança de valor" }));
+    expect(await block.findByText("Alunos afetados: 0")).toBeInTheDocument();
+    expect(block.queryByLabelText("Ajustar para o novo valor")).toBeNull();
+    expect(block.queryByLabelText("Cobrar a diferença em cobrança separada")).toBeNull();
   });
 
   it("CA14: com allowed ou denied a janela mostra a regra em texto e nenhum controle; com plan mostra o controle", async () => {

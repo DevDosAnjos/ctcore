@@ -85,7 +85,7 @@ describe("janela de plano x OpenAPI (RF-PLA-03, CA17)", () => {
     }
     expect(openapi.components.schemas.PlanInput.properties.valueCents.maximum).toBe(99999999);
     expect(Object.keys(openapi.components.schemas.PlanOptions.properties)).toEqual(["crossUnitTraining", "units"]);
-    expect(Object.keys(openapi.components.schemas.PlanValueImpact.properties)).toEqual(["studentsAffected", "effectiveFrom"]);
+    expect(Object.keys(openapi.components.schemas.PlanValueImpact.properties)).toEqual(["studentsAffected", "effectiveFrom", "unpaidCharges", "paidFutureCharges"]);
   });
 
   it("sem sessão 401; Professor 403; Administrador não cria em unidade alheia", async () => {
@@ -123,7 +123,7 @@ describe("janela de plano x OpenAPI (RF-PLA-03, CA17)", () => {
     expect((await send(`/${row.id}`, "PUT", input({ unpaidCharges: "X" }))).status).toBe(400);
 
     const impact = await fetch(`/api/v1/plans/${row.id}/value-impact?valueCents=18000`);
-    expect(await impact.json()).toEqual({ studentsAffected: 0, effectiveFrom: "NEXT_CHARGE" });
+    expect(await impact.json()).toEqual({ studentsAffected: 0, effectiveFrom: "NEXT_CHARGE", unpaidCharges: 0, paidFutureCharges: 0 });
     expect((await fetch(`/api/v1/plans/${row.id}/value-impact`)).status).toBe(400);
 
     expect((await (await send(`/${row.id}/deactivate`, "POST")).json()).status).toBe("INACTIVE");

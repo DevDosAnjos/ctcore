@@ -4,8 +4,8 @@ import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Matrícula direta no banco para os testes de leitura (alcance, contagens, ficha do Professor); sem passar pela API. */
-final class EnrollmentFixtures {
-    record Enrolled(UUID row, UUID klass, UUID plan, UUID teacher) {}
+public final class EnrollmentFixtures {
+    public record Enrolled(UUID row, UUID klass, UUID plan, UUID teacher) {}
 
     private EnrollmentFixtures() {}
 
@@ -31,7 +31,7 @@ final class EnrollmentFixtures {
     }
 
     /** Modalidade (ativa ou encerrada) do aluno na unidade, numa turma e plano novos; {@code teacher} nulo cria um professor sem conta. */
-    static Enrolled enroll(JdbcTemplate db, UUID org, UUID student, UUID unit, String status, int kind, UUID teacher) {
+    public static Enrolled enroll(JdbcTemplate db, UUID org, UUID student, UUID unit, String status, int kind, UUID teacher) {
         UUID modality = modality(db, org, kind);
         UUID head = teacher != null ? teacher : teacher(db, org, null);
         UUID klass = klass(db, org, unit, modality, head);
@@ -39,7 +39,7 @@ final class EnrollmentFixtures {
     }
 
     /** Como o outro, mas na turma dada e com outro horário opcional. */
-    static Enrolled enroll(JdbcTemplate db, UUID org, UUID student, UUID unit, String status, UUID modality, UUID klass, UUID other, UUID teacher) {
+    public static Enrolled enroll(JdbcTemplate db, UUID org, UUID student, UUID unit, String status, UUID modality, UUID klass, UUID other, UUID teacher) {
         UUID plan = UUID.randomUUID(), row = UUID.randomUUID();
         db.update("insert into plan (id, organization_id, unit_id, modality_id, name, name_key, value_cents, status) values (?, ?, ?, ?, ?, ?, 15000, 'ACTIVE')",
                 plan, org, unit, modality, "P" + plan, "p" + plan);
@@ -55,7 +55,7 @@ final class EnrollmentFixtures {
         return new Enrolled(row, klass, plan, teacher);
     }
 
-    static void clean(JdbcTemplate db) {
+    public static void clean(JdbcTemplate db) {
         for (String table : new String[] {"benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "student_guardian", "guardian", "student", "plan",
                 "training_class_assistant", "training_class_schedule", "training_class", "teacher_unit", "teacher_modality", "teacher", "unit_modality",
                 "organization_modality"}) {

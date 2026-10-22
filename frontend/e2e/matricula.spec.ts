@@ -12,13 +12,13 @@ async function open(page: Page, path: string) {
 }
 
 // API de teste: as mesmas rotas do contrato, no navegador (o simulado responde), para montar o cenário sem passar pelas telas que não são desta etapa.
-async function call(page: Page, method: string, path: string, body?: unknown) {
+async function call(page: Page, method: string, path: string, body?: unknown, ifMatch?: string) {
   const result = await page.evaluate(
-    async ([m, p, b]) => {
-      const response = await fetch(`/api/v1${p}`, { method: m as string, headers: { "Content-Type": "application/json" }, body: b ? JSON.stringify(b) : undefined });
+    async ([m, p, b, v]) => {
+      const response = await fetch(`/api/v1${p}`, { method: m as string, headers: { "Content-Type": "application/json", ...(v ? { "If-Match": v as string } : {}) }, body: b ? JSON.stringify(b) : undefined });
       return { status: response.status, body: await response.json().catch(() => null) };
     },
-    [method, path, body] as const,
+    [method, path, body, ifMatch] as const,
   );
   expect(result.status, `${method} ${path}`).toBeLessThan(300);
   return result.body;
@@ -133,7 +133,48 @@ test("@critical Coordenador conclui a nova matrícula em cinco etapas", async ({
 
   await expect(page.getByText("Aluno Ativo")).toBeVisible();
   await noOverflow();
-  await expect(page.getByRole("button", { name: "Registrar pagamento agora" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Registrar pagamento agora" })).toBeEnabled();
   await page.getByRole("button", { name: "Aluno paga pelo portal" }).click();
   await expect(page.getByRole("dialog", { name: "Ficha do aluno" })).toBeVisible();
+});
+
+// RN-MAT-05, RN-MAT-06, RN-COB-16 (#71): a matrícula cria a mensalidade e a taxa; a etapa 5 registra o pagamento da primeira e mostra o recibo.
+test("@critical Matrícula com primeira cobrança", async ({ page }) => {
+  await page.goto("/entrar");
+  await page.getByLabel("E-mail").fill("ana@exemplo.com");
+  await page.getByLabel("Senha").fill("segredo123");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
+
+  await call(page, "PUT", `/modalities/${JIU_JITSU}/activation`, { active: true });
+  await call(page, "PUT", `/units/${CENTRO}/modalities/${JIU_JITSU}`, { offered: true });
+  const unit = (await call(page, "GET", `/units/${CENTRO}`)) as { version: number; name: string; settings: Record<string, unknown> };
+  await call(page, "PUT", `/units/${CENTRO}`, { name: unit.name, settings: { ...unit.settings, enrollmentFeeEnabled: true, enrollmentFeeCents: 5000 } }, String(unit.version));
+
+  await page.setViewportSize({ width: 360, height: 740 });
+  await open(page, `/alunos/nova-matricula?aluno=${ALUNO_MENOR}`);
+  await expect(page.getByText("Etapa 2 de 5")).toBeVisible();
+  await page.getByLabel("Unidade", { exact: true }).selectOption({ label: "Unidade Centro" });
+  await page.getByLabel("Modalidade", { exact: true }).selectOption({ label: "Jiu-Jitsu" });
+  await page.getByLabel("Turma principal").selectOption({ label: "Jiu-Jitsu Adulto" });
+  await page.getByLabel("Plano", { exact: true }).selectOption({ label: "Jiu-Jitsu Livre" });
+  await page.getByRole("button", { name: "Avançar" }).click();
+  await page.getByLabel("Dia de vencimento").selectOption({ label: "Dia 5" });
+  await page.getByRole("button", { name: "Avançar" }).click();
+  await expect(page.getByText("Etapa 4 de 5")).toBeVisible();
+  await expect(page.getByText("Taxa de matrícula: R$ 50,00")).toBeVisible();
+  await page.getByRole("button", { name: "Concluir matrícula" }).click();
+
+  const charges = page.getByRole("list", { name: "Cobranças criadas" });
+  await expect(charges.getByText("Mensalidade: R$ 200,00")).toBeVisible();
+  await expect(charges.getByText("Taxa de matrícula: R$ 50,00")).toBeVisible();
+  await expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
+  await charges.getByRole("button", { name: "Registrar pagamento agora" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Registrar pagamento" });
+  await dialog.getByLabel("Meio de pagamento").selectOption({ label: "Dinheiro" });
+  await dialog.getByRole("button", { name: "Confirmar pagamento" }).click();
+  await expect(dialog.getByText("Recibo número 1")).toBeVisible();
+  await expect(dialog.getByText(/Código de conferência: [A-Z0-9]{16}/)).toBeVisible();
+  await dialog.getByRole("button", { name: "Fechar" }).first().click();
+  await expect(charges.getByText("Paga, recibo 1")).toBeVisible();
 });

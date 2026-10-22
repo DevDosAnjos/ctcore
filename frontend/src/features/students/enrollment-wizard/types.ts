@@ -56,9 +56,23 @@ export interface PreviewUnit {
   secondDueOn: string;
   suggestedSecondDueOn: string;
 }
+export interface OpenDebt {
+  count: number;
+  totalCents: number;
+}
 export interface EnrollmentPreview {
   modalities: PreviewModality[];
   units: PreviewUnit[];
+  openDebt: OpenDebt;
+}
+export interface EnrollmentCharge {
+  id: string;
+  type: "MONTHLY" | "ENROLLMENT_FEE";
+  unitId: string;
+  referenceMonth: string | null;
+  dueOn: string;
+  toleranceDays: number;
+  amountCents: number;
 }
 export type InviteStatus = "SENT" | "FAILED" | "MINOR" | "EXISTING_ACCOUNT" | "NO_EMAIL";
 export interface EnrollmentConcluded {
@@ -66,6 +80,7 @@ export interface EnrollmentConcluded {
   summary: EnrollmentPreview;
   termPending: boolean;
   inviteStatus: InviteStatus;
+  charges: EnrollmentCharge[];
 }
 
 // Rascunho do assistente: fica no componente (nada em armazenamento do navegador).

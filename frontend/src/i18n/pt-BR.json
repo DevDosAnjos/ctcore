@@ -1816,9 +1816,11 @@
       "firstDue": "Primeira cobrança em {{date}}, com {{days}} dias de tolerância",
       "fee": "Taxa de matrícula: {{value}}",
       "feeExempt": "Taxa de matrícula isentada: {{reason}}",
+      "feeNone": "Taxa de matrícula: não será cobrada",
+      "openDebt": "Débito anterior: {{count}} cobranças em aberto, {{value}}",
       "firstTotal": "Total da primeira cobrança: {{value}}",
       "secondDue": "Segunda cobrança em {{date}}",
-      "noCharge": "Nenhuma cobrança é criada agora: o resumo fica guardado para as cobranças.",
+      "noCharge": "A mensalidade da primeira cobrança e a taxa são criadas ao concluir.",
       "conclude": "Concluir matrícula"
     },
     "done": {
@@ -1831,9 +1833,34 @@
         "EXISTING_ACCOUNT": "Sem convite novo: o aluno já tem acesso ao portal.",
         "NO_EMAIL": "Sem convite: o aluno não tem e-mail cadastrado."
       },
+      "charges": "Cobranças criadas",
+      "noCharges": "Nenhuma cobrança foi criada: o valor final é zero.",
+      "forbidden": "Você não tem permissão para registrar pagamentos. O aluno paga pelo portal ou a coordenação registra depois.",
+      "monthly": "Mensalidade",
+      "fee": "Taxa de matrícula",
+      "chargeLine": "{{label}}: {{value}}, vence em {{date}} (tolerância de {{days}} dias)",
+      "paid": "Paga, recibo {{number}}",
       "payNow": "Registrar pagamento agora",
-      "payNowHint": "Disponível com as cobranças",
       "portal": "Aluno paga pelo portal"
+    }
+  },
+  "payments": {
+    "method": {
+      "CASH": "Dinheiro",
+      "PIX_KEY": "Pix pela chave",
+      "CARD_MACHINE": "Maquininha de cartão",
+      "TRANSFER": "Transferência"
+    },
+    "dialog": {
+      "title": "Registrar pagamento",
+      "charge": "{{label}}: {{value}}",
+      "method": "Meio de pagamento",
+      "confirm": "Confirmar pagamento",
+      "done": "Pagamento registrado.",
+      "receiptNumber": "Recibo número {{number}}",
+      "receiptCode": "Código de conferência: {{code}}",
+      "notPayable": "Esta cobrança não pode receber pagamento (já paga ou cancelada).",
+      "error": "Não foi possível registrar o pagamento. Nada foi gravado. Tente de novo."
     }
   },
   "common": {
