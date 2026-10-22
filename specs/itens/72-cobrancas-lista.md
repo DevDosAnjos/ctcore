@@ -140,3 +140,4 @@ Achados:
 - Verificado: `verify` do back-end (590 testes, JaCoCo ok) e `lint`, `typecheck`, `build`, `test:cov` (988 testes, 96,69% de linhas) e `e2e` (34 passados) do front-end, na rodada 1 da verificação.
 - Decisões: `QueryPage` ganhou os props opcionais `cards` e `footer`; `Students.photoUrl` ficou público para `Charges` reutilizar.
 - Limitações: contraste das cores de situação e conferência visual contra o canvas não medidos (jsdom); `e2e:full` não rodou. Achado de código aberto para a #73: `left join payment` pode duplicar linha se houver dois pagamentos confirmados.
+- Verificações do PR #315: `e2e` falhou em `e2e/recuperar-senha.spec.ts` (texto "Se esse e-mail tiver uma conta…" não visível, nas duas tentativas); `ci-gate` reprovou por isso. O `e2e` da base `3ab6fbb` passou. Não foi mexido: `CORRIGIR_CODIGO`.
