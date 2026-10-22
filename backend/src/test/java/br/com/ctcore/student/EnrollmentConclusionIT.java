@@ -38,7 +38,7 @@ class EnrollmentConclusionIT extends OrganizationBase {
     @AfterEach
     void clean() {
         Mockito.reset(mailer);
-        for (String table : new String[] {"student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment",
+        for (String table : new String[] {"receipt", "payment", "receipt_counter", "charge", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment",
                 "student_guardian", "guardian", "student", "plan", "graduation_level", "training_class_schedule", "training_class", "teacher_unit",
                 "teacher_modality", "teacher", "unit_modality", "organization_modality"}) {
             adminJdbc().update("delete from " + table);
@@ -150,7 +150,7 @@ class EnrollmentConclusionIT extends OrganizationBase {
 
     private int nothingWritten() {
         return count("select (select count(*) from enrollment) + (select count(*) from enrollment_modality) + (select count(*) from benefit) "
-                + "+ (select count(*) from enrollment_start) + (select count(*) from student_graduation)");
+                + "+ (select count(*) from enrollment_start) + (select count(*) from student_graduation) + (select count(*) from charge)");
     }
 
     private int audits(Tenant t, String action) {
@@ -430,6 +430,7 @@ class EnrollmentConclusionIT extends OrganizationBase {
         // menor: nenhum convite
         int before = count("select count(*) from email_message where template = 'INVITE'");
         var minor = student(t, null, LocalDate.now().minusYears(10));
+        br.com.ctcore.billing.BillingFixtures.guardian(adminJdbc(), t.orgId(), minor, true);
         assertThat(ok(post(minor, "conclude", body(modality(o, 10)), c), 201).get("inviteStatus").asText()).isEqualTo("MINOR");
         assertThat(count("select count(*) from email_message where template = 'INVITE'")).isEqualTo(before);
     }
@@ -476,6 +477,104 @@ class EnrollmentConclusionIT extends OrganizationBase {
             adminJdbc().update("update training_class set age_range_id = null where id = ?", o.klass());
             adminJdbc().update("delete from age_range where id = ?", range);
         }
+    }
+
+    private ObjectNode benefit(ObjectNode modality, String type, int value) {
+        modality.putObject("benefit").put("type", type).put("value", value).put("reason", "Bolsa").put("decidedBy", "Mestre");
+        return modality;
+    }
+
+    @Test
+    @DisplayName("CA18, CA19, CA23: a conclusão cria a mensalidade cheia e a taxa, devolve charges e audita sem dados pessoais; isenção e bolsa de 100% não cobram")
+    void firstCharges() throws Exception {
+        var t = tenant();
+        var o = offer(t, t.unitId(), 0);
+        var o2 = offer(t, t.unitId(), 1);
+        var c = coordinator(t);
+        adminJdbc().update("update unit_settings set enrollment_fee_enabled = true, enrollment_fee_cents = 5000 where unit_id = ?", t.unitId());
+        var s = adult(t);
+        var r = ok(post(s, "conclude", body(benefit(modality(o, 10), "PERCENT", 25), modality(o2, 10)), c), 201);
+        LocalDate today = today(t.unitId());
+        assertThat(r.get("charges")).hasSize(3);
+        assertThat(r.at("/charges/0/type").asText()).isEqualTo("MONTHLY");
+        assertThat(r.at("/charges/0/amountCents").asLong()).isEqualTo(15000);
+        assertThat(r.at("/charges/0/dueOn").asText()).isEqualTo(today.toString());
+        assertThat(r.at("/charges/0/referenceMonth").asText()).isEqualTo(today.withDayOfMonth(1).toString());
+        assertThat(r.at("/charges/0/toleranceDays").asInt()).isEqualTo(5);
+        assertThat(r.at("/charges/1/amountCents").asLong()).isEqualTo(20000);
+        assertThat(r.at("/charges/2/type").asText()).isEqualTo("ENROLLMENT_FEE");
+        assertThat(r.at("/charges/2/amountCents").asLong()).isEqualTo(5000);
+        assertThat(count("select count(*) from charge where student_id = ? and status = 'OPEN' and origin = 'ENROLLMENT'", s)).isEqualTo(3);
+        assertThat(count("select count(*) from charge c join enrollment_start e on e.id = c.enrollment_start_id where c.type = 'ENROLLMENT_FEE'")).isEqualTo(1);
+        assertThat(audits(t, "charge.created")).isEqualTo(3);
+        assertThat(count("select count(*) from audit_log where organization_id = ? and action = 'charge.created' and (after_data::text like '%cpf%' or after_data::text like '%@%')",
+                t.orgId())).isZero();
+
+        // isenção: nenhuma taxa; bolsa de 100%: nenhuma mensalidade
+        var exempt = body(benefit(modality(o, 10), "PERCENT", 100));
+        unitAsk(exempt, t.unitId()).put("feeExempt", true).put("feeExemptReason", "bolsa da turma");
+        var r2 = ok(post(adult(t), "conclude", exempt, c), 201);
+        assertThat(r2.get("charges")).isEmpty();
+    }
+
+    @Test
+    @DisplayName("CA23: erro ao criar a taxa desfaz a matrícula e a mensalidade")
+    void feeFailureUndoesEverything() throws Exception {
+        var t = tenant();
+        var o = offer(t, t.unitId(), 0);
+        adminJdbc().update("update unit_settings set enrollment_fee_enabled = true, enrollment_fee_cents = 5000 where unit_id = ?", t.unitId());
+        adminJdbc().execute("create function test_fee_fails() returns trigger language plpgsql as 'begin raise exception ''taxa forçada''; end'");
+        adminJdbc().execute("create trigger test_fee_fails before insert on charge for each row when (new.type = 'ENROLLMENT_FEE') execute function test_fee_fails()");
+        try {
+            assertThat(post(adult(t), "conclude", body(modality(o, 10)), coordinator(t)).getStatus()).isEqualTo(500);
+            assertThat(nothingWritten()).isZero();
+        } finally {
+            adminJdbc().execute("drop trigger test_fee_fails on charge");
+            adminJdbc().execute("drop function test_fee_fails()");
+        }
+    }
+
+    @Test
+    @DisplayName("CA21: taxa já cobrada (qualquer situação) ou isenta não se repete; ex-aluno paga de novo; taxa ligada depois cobra de quem só teve modalidade antes")
+    void feeHandled() throws Exception {
+        var t = tenant();
+        var o = offer(t, t.unitId(), 0);
+        var o2 = offer(t, t.unitId(), 1);
+        var o3 = offer(t, t.unitId(), 2);
+        var c = coordinator(t);
+        var s = adult(t);
+        ok(post(s, "conclude", body(modality(o, 10)), c), 201); // unidade sem taxa: nada tratado
+        adminJdbc().update("update unit_settings set enrollment_fee_enabled = true, enrollment_fee_cents = 5000 where unit_id = ?", t.unitId());
+        assertThat(ok(post(s, "preview", body(modality(o2, 10)), c), 200).at("/units/0/feeCents").asLong()).isEqualTo(5000);
+        var r = ok(post(s, "conclude", body(modality(o2, 10)), c), 201);
+        assertThat(r.get("charges")).hasSize(2); // mensalidade e taxa
+        adminJdbc().update("update charge set status = 'CANCELED' where type = 'ENROLLMENT_FEE'");
+        assertThat(ok(post(s, "preview", body(modality(o3, 10)), c), 200).at("/units/0/feeCents").asLong()).isZero(); // cancelada também conta
+        adminJdbc().update("update enrollment_modality set status = 'ENDED', ended_at = now()");
+        assertThat(ok(post(s, "preview", body(modality(o3, 10)), c), 200).at("/units/0/feeCents").asLong()).isEqualTo(5000); // retorno
+    }
+
+    @Test
+    @DisplayName("CA22: openDebt soma as cobranças em aberto do aluno nas unidades do pedido e só elas")
+    void openDebt() throws Exception {
+        var t = tenant();
+        var u2 = otherUnit(t);
+        var o = offer(t, t.unitId(), 0);
+        var c = coordinator(t);
+        var s = adult(t);
+        assertThat(ok(post(s, "preview", body(modality(o, 10)), c), 200).at("/openDebt/count").asInt()).isZero();
+        var row = EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), s, t.unitId(), "ENDED", 3, null).row();
+        var other = EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), s, u2, "ENDED", 4, null).row();
+        var billing = new Object[][] {{t.unitId(), row, "2026-01-01", 20000, "OPEN"}, {t.unitId(), row, "2026-02-01", 5000, "OPEN"},
+                {t.unitId(), row, "2026-03-01", 9900, "PAID"}, {t.unitId(), row, "2026-04-01", 9900, "CANCELED"}, {u2, other, "2026-01-01", 7000, "OPEN"}};
+        for (Object[] b : billing) {
+            br.com.ctcore.billing.BillingFixtures.charge(adminJdbc(), t.orgId(), (UUID) b[0], s, (UUID) b[1], LocalDate.parse((String) b[2]), null, ((Integer) b[3]).longValue(),
+                    (String) b[4]);
+        }
+        var debt = ok(post(s, "preview", body(modality(o, 10)), c), 200).get("openDebt");
+        assertThat(debt.get("count").asInt()).isEqualTo(2);
+        assertThat(debt.get("totalCents").asLong()).isEqualTo(25000);
+        assertThat(ok(post(s, "preview", body(modality(o, 10)), as(t, Role.ADMINISTRATOR, t.unitId())), 200).at("/openDebt/count").asInt()).isEqualTo(2);
     }
 
     @Test

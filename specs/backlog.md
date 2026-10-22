@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 07. O dono confirmou em 20/10/2026 que revisou a Sprint 06 (Alunos) e fez o PR dev→main (#302, merge). Só o dono libera a seguinte.
+Sprint liberada: Sprint 08. O dono confirmou em 21/10/2026 que revisou a Sprint 07 (Matrícula e benefícios) e fez o PR dev→main (#313, merge). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -79,7 +79,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 68 | RF-MAT-02 · Avisos de faixa etária e capacidade na matrícula | issue #68 | Sprint 07 | — | agente | feito |
 | 69 | RF-MAT-03 · Encerrar modalidade | issue #69 | Sprint 07 | — | agente | feito |
 | 70 | RF-MAT-05 · Configurações › Termos | issue #70 | Sprint 07 | — | agente | feito |
-| 71 | Geração de cobranças e primeira cobrança no servidor | issue #71 | Sprint 08 | — | agente | a fazer |
+| 71 | Geração de cobranças e primeira cobrança no servidor | issue #71 | Sprint 08 | — | agente | feito |
 | 72 | RF-COB-01 · Financeiro › Cobranças (lista) | issue #72 | Sprint 08 | — | agente | a fazer |
 | 73 | RF-COB-02 · Painel da cobrança | issue #73 | Sprint 08 | — | agente | a fazer |
 | 74 | RF-COB-03 · Prévia da geração de mensalidades | issue #74 | Sprint 08 | — | agente | a fazer |

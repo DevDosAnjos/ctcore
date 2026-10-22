@@ -213,16 +213,17 @@ describe("assistente Nova matrícula (RF-MAT-01, #67)", () => {
     await toBilling(user);
     await user.click(screen.getByRole("button", { name: "Avançar" }));
     expect(await screen.findByText("Mensalidade: R$ 200,00")).toBeInTheDocument();
-    expect(screen.getByText(/Nenhuma cobrança é criada agora/)).toBeInTheDocument();
+    expect(screen.getByText(/criadas ao concluir/)).toBeInTheDocument();
     server.use(
       http.post("/api/v1/students/:id/enrollment/conclude", async () => {
         await gate;
         return HttpResponse.json(
           {
             enrollment: { id: "e1", status: "ACTIVE", enrolledAt: "2026-10-21T12:00:00Z", reopenedAt: null, modalities: [] },
-            summary: { modalities: [], units: [] },
+            summary: { modalities: [], units: [], openDebt: { count: 0, totalCents: 0 } },
             termPending: true,
             inviteStatus: "MINOR",
+            charges: [],
           },
           { status: 201 },
         );
@@ -234,11 +235,101 @@ describe("assistente Nova matrícula (RF-MAT-01, #67)", () => {
     release();
     expect(await screen.findByText("Aluno Ativo")).toBeInTheDocument();
     expect(screen.getByText(/Sem convite: o aluno é menor/)).toBeInTheDocument();
-    const pay = screen.getByRole("button", { name: "Registrar pagamento agora" });
-    expect(pay).toBeDisabled();
-    expect(pay).toHaveAccessibleDescription("Disponível com as cobranças");
+    expect(screen.getByText("Nenhuma cobrança foi criada: o valor final é zero.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar pagamento agora" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Aluno paga pelo portal" }));
     await waitFor(() => expect(screen.queryByText("Aluno Ativo")).toBeNull());
+  });
+
+  it("CA28: a etapa 5 lista as cobranças, registra o pagamento no balcão e mostra número e código do recibo", async () => {
+    const user = userEvent.setup();
+    await login("ana@exemplo.com");
+    const version = String((await (await fetch("/api/v1/units/00000000-0000-0000-0000-000000000021")).json()).version);
+    const put = await fetch("/api/v1/units/00000000-0000-0000-0000-000000000021", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "If-Match": version },
+      body: JSON.stringify({
+        name: "Unidade Centro",
+        settings: {
+          dueDays: [1, 5, 10, 15],
+          enrollmentFeeEnabled: true,
+          enrollmentFeeCents: 5000,
+          feesCents: { cash: 0, pix: 0, bankSlip: 0, creditCard: 0, debitCard: 0, automaticDebit: 0, manualPix: 0, terminalCard: 0, transfer: 0 },
+          pixKey: null,
+          reminderDays: [3],
+          teacherPermissions: { announcements: true, agendaEdit: false, studentContacts: true, trialClasses: true, studentRecord: true },
+          directoryEnabled: true,
+          trialLinkEnabled: true,
+          selfRegistrationLinkEnabled: true,
+        },
+      }),
+    });
+    expect(put.status).toBe(200);
+    await toBilling(user);
+    await user.click(screen.getByRole("button", { name: "Avançar" }));
+    await screen.findByText("Mensalidade: R$ 200,00");
+    await user.click(screen.getByRole("button", { name: "Concluir matrícula" }));
+    expect(await screen.findByText("Aluno Ativo")).toBeInTheDocument();
+    const lines = within(await screen.findByRole("list", { name: "Cobranças criadas" })).getAllByRole("listitem");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toHaveTextContent("Mensalidade: R$ 200,00");
+    expect(lines[1]).toHaveTextContent("Taxa de matrícula: R$ 50,00");
+    expect(await axeViolations(document.body)).toEqual([]);
+    await user.click(within(lines[0]).getByRole("button", { name: "Registrar pagamento agora" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Registrar pagamento" }));
+    await user.selectOptions(dialog.getByLabelText("Meio de pagamento"), "Pix pela chave");
+    await user.click(dialog.getByRole("button", { name: "Confirmar pagamento" }));
+    expect(await dialog.findByText("Recibo número 1")).toBeInTheDocument();
+    const code = dialog.getByText(/Código de conferência: /).textContent!.split(": ")[1];
+    expect(code).toHaveLength(16);
+    await user.click(dialog.getAllByRole("button", { name: "Fechar" })[0]);
+    expect(within(screen.getByRole("list", { name: "Cobranças criadas" })).getAllByRole("listitem")[0]).toHaveTextContent("Paga, recibo 1");
+    expect((await fetch(`/api/v1/public/receipts/${code}`)).status).toBe(200);
+  });
+
+  it("CA28: erro 409 aparece na janela e mantém o botão; Professor sem COLLECTIONS não vê o botão", async () => {
+    const user = userEvent.setup();
+    await toBilling(user);
+    await user.click(screen.getByRole("button", { name: "Avançar" }));
+    await screen.findByText("Mensalidade: R$ 200,00");
+    await user.click(screen.getByRole("button", { name: "Concluir matrícula" }));
+    await user.click(await screen.findByRole("button", { name: "Registrar pagamento agora" }));
+    server.use(http.post("/api/v1/charges/:id/payments", () => HttpResponse.json({ code: "CHARGE_NOT_PAYABLE", message: "x", changed: false, fields: [], traceId: "t" }, { status: 409 })));
+    await user.click(await screen.findByRole("button", { name: "Confirmar pagamento" }));
+    expect(await screen.findByText(/não pode receber pagamento/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar pagamento" })).toBeEnabled();
+    server.use(http.post("/api/v1/charges/:id/payments", () => HttpResponse.json({ code: "INTERNAL_ERROR", message: "x", changed: false, fields: [], traceId: "t" }, { status: 500 })));
+    await user.click(screen.getByRole("button", { name: "Confirmar pagamento" }));
+    expect(await screen.findByText(/Não foi possível registrar o pagamento/)).toBeInTheDocument();
+  });
+
+  it("CA28: sem COLLECTIONS completo a etapa 5 mostra a mensagem e nenhum botão de pagamento", async () => {
+    const user = userEvent.setup();
+    await toBilling(user);
+    await user.click(screen.getByRole("button", { name: "Avançar" }));
+    await screen.findByText("Mensalidade: R$ 200,00");
+    server.use(http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: { COLLECTIONS: "NONE" } })));
+    await user.click(screen.getByRole("button", { name: "Concluir matrícula" }));
+    expect(await screen.findByText(/não tem permissão para registrar pagamentos/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Registrar pagamento agora" })).toBeNull();
+  });
+
+  it("CA29: o resumo mostra o débito anterior e a taxa que não será cobrada", async () => {
+    const user = userEvent.setup();
+    await toBilling(user);
+    server.use(
+      http.post("/api/v1/students/:id/enrollment/preview", () =>
+        HttpResponse.json({
+          modalities: [{ unitId: "u", modalityId: "m", planId: "p", planName: "Livre", planCents: 20000, discountCents: 0, monthlyCents: 20000 }],
+          units: [{ unitId: "u", unitName: "Centro", dueDay: 5, firstDueOn: "2026-10-21", toleranceDays: 5, feeCents: 0, feeExempt: false, feeExemptReason: null, firstChargeCents: 20000, secondDueOn: "2026-11-05", suggestedSecondDueOn: "2026-11-05" }],
+          openDebt: { count: 2, totalCents: 25000 },
+        }),
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: "Avançar" }));
+    expect(await screen.findByText("Débito anterior: 2 cobranças em aberto, R$ 250,00")).toBeInTheDocument();
+    expect(screen.getByText("Taxa de matrícula: não será cobrada")).toBeInTheDocument();
+    expect(screen.getByText(/com 5 dias de tolerância/)).toBeInTheDocument();
   });
 
   it("CA22: erro 422 volta à etapa do campo com a mensagem e preserva o que foi digitado", async () => {

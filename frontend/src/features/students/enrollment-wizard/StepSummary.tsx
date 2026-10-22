@@ -46,6 +46,11 @@ export function StepSummary({ studentId, request, onInvalid, onReady }: { studen
   const { preview } = state;
   return (
     <div className="flex flex-col gap-4">
+      {preview.openDebt.count > 0 && (
+        <p role="status" className="rounded-md border p-3 text-sm font-medium">
+          {t(`${k}openDebt`, { count: preview.openDebt.count, value: formatMoney(preview.openDebt.totalCents) })}
+        </p>
+      )}
       <section aria-label={t(`${k}modalities`)}>
         <h2 className="font-medium">{t(`${k}modalities`)}</h2>
         <ul className="flex flex-col gap-2">
@@ -66,7 +71,7 @@ export function StepSummary({ studentId, request, onInvalid, onReady }: { studen
             <p className="font-medium">{u.unitName}</p>
             <p>{t(`${k}dueDay`, { day: u.dueDay })}</p>
             <p>{t(`${k}firstDue`, { date: formatDate(u.firstDueOn), days: u.toleranceDays })}</p>
-            <p>{u.feeExempt ? t(`${k}feeExempt`, { reason: u.feeExemptReason }) : t(`${k}fee`, { value: formatMoney(u.feeCents) })}</p>
+            <p>{u.feeExempt ? t(`${k}feeExempt`, { reason: u.feeExemptReason }) : u.feeCents === 0 ? t(`${k}feeNone`) : t(`${k}fee`, { value: formatMoney(u.feeCents) })}</p>
             <p className="font-medium">{t(`${k}firstTotal`, { value: formatMoney(u.firstChargeCents) })}</p>
             <p>{t(`${k}secondDue`, { date: formatDate(u.secondDueOn) })}</p>
           </div>

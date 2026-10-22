@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -48,7 +48,7 @@ class SeedDataIT extends PostgresIT {
     // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
     @org.junit.jupiter.api.AfterEach
     void cleanTeachers() {
-        for (String table : new String[]{"terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
+        for (String table : new String[]{"receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
                 "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite", "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -252,6 +252,20 @@ class SeedDataIT extends PostgresIT {
         apply(jdbc, SEED_DIR);
         assertThat(jdbc.queryForObject("select count(*) from enrollment_start", Integer.class)).isEqualTo(3);
         assertThat(jdbc.queryForObject("select count(*) from student_graduation where origin", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("RN-COB, #71 CA31: seed cria 3 cobranças (2 em aberto, 1 paga com recibo) e o ponteiro sem duplicar; o recibo abre pela função pública")
+    void chargesSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from charge where status = 'OPEN'", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from charge where status = 'PAID'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from payment", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from receipt", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from enrollment_modality where next_charge_ref is not null", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForMap("select unit_name, number, reference, amount_cents, payer_initials from public_receipt('SEEDRECEIPT00001')"))
+                .containsEntry("number", 1).containsEntry("amount_cents", 15000L).containsEntry("reference", "Jiu-Jitsu · out/2026");
     }
 
     @Test

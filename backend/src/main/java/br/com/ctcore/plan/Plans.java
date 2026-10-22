@@ -6,6 +6,7 @@ import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.api.page.PageResponse;
 import br.com.ctcore.benefit.Benefits;
+import br.com.ctcore.billing.Repricing;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.modality.Modalities;
 import java.util.List;
@@ -49,11 +50,13 @@ public class Plans {
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
     private final Permissions permissions;
+    private final Repricing repricing;
 
-    public Plans(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions) {
+    public Plans(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, Repricing repricing) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.permissions = permissions;
+        this.repricing = repricing;
     }
 
     public void requireAccess(AccountPrincipal who) {
@@ -113,7 +116,7 @@ public class Plans {
                     .params(params).param("limit", page.size()).param("offset", page.offset())
                     .query((rs, n) -> new Row(rs.getObject(1, UUID.class), new Ref(rs.getObject(2, UUID.class), rs.getString(3)),
                             new Ref(rs.getObject(4, UUID.class), rs.getString(5)), rs.getString(6), rs.getLong(7), (Integer) rs.getObject(8),
-                            rs.getBoolean(9), studentsUsing(new Scope(who.organizationId(), Set.of(rs.getObject(2, UUID.class)))), rs.getString(10)))
+                            rs.getBoolean(9), repricing.students(rs.getObject(1, UUID.class)), rs.getString(10)))
                     .list();
             return PageResponse.of(rows, page, total);
         });
@@ -128,7 +131,7 @@ public class Plans {
                     .param("org", who.organizationId()).param("id", id)
                     .query((rs, n) -> new Row(rs.getObject(1, UUID.class), new Ref(rs.getObject(2, UUID.class), rs.getString(3)),
                             new Ref(rs.getObject(4, UUID.class), rs.getString(5)), rs.getString(6), rs.getLong(7), (Integer) rs.getObject(8),
-                            rs.getBoolean(9), studentsUsing(new Scope(who.organizationId(), Set.of(rs.getObject(2, UUID.class)))), rs.getString(10)))
+                            rs.getBoolean(9), repricing.students(rs.getObject(1, UUID.class)), rs.getString(10)))
                     .optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
             Set<UUID> reach = reach(who, r.unit().id());
             if (reach != null && reach.isEmpty()) throw new ApiStatusException(ErrorCode.NOT_FOUND);
@@ -136,13 +139,18 @@ public class Plans {
         });
     }
 
-    /** Ponto único (RN-PLA-04): a Sprint 07 troca por contagem real de alunos no plano. */
+    /** RN-PLA-04: alunos com modalidade ativa no plano. */
     int studentsAffected(UUID planId) {
-        return 0;
+        return repricing.students(planId);
     }
 
-    /** Ponto único (RN-PLA-05): a cobrança troca por reajuste real das cobranças não pagas e pagas futuras. Hoje não altera nada. */
-    void applyRepricing(UUID planId, long oldCents, long newCents, boolean adjustUnpaid, boolean chargePaidDifference) {
+    Repricing.Counts chargeCounts(UUID unitId, UUID planId) {
+        return repricing.counts(unitId, planId);
+    }
+
+    /** RN-PLA-05: reajuste das cobranças já geradas, na transação do valor novo. */
+    Repricing.Result applyRepricing(AccountPrincipal who, UUID unitId, UUID planId, long newCents, boolean adjustUnpaid, boolean chargePaidDifference) {
+        return repricing.apply(who.organizationId(), unitId, planId, newCents, adjustUnpaid, chargePaidDifference, who.accountId());
     }
 
     private PlanCounts counts(Scope scope) {
@@ -160,9 +168,17 @@ public class Plans {
                 studentsUsing(scope), (Long) rs.getObject(3), (Long) rs.getObject(4))).single());
     }
 
-    /** Ponto único: a Sprint 07 (matrícula) troca por contagem real. */
+    /** Alunos com modalidade ativa em algum plano do alcance. */
     int studentsUsing(Scope scope) {
-        return 0;
+        Map<String, Object> params = new HashMap<>();
+        params.put("org", scope.organizationId());
+        String filter = "";
+        if (scope.unitIds() != null) {
+            filter = " and p.unit_id in (:units)";
+            params.put("units", scope.unitIds());
+        }
+        return jdbc.sql("select count(distinct em.student_id) from enrollment_modality em join plan p on p.id = em.plan_id "
+                + "where em.organization_id = :org and em.status = 'ACTIVE'" + filter).params(params).query(Integer.class).single();
     }
 
     /** Benefícios ativos não vencidos e, entre eles, os altos (RN-BEN-06), no alcance da consulta. */

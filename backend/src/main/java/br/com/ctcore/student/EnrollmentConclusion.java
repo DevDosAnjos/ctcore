@@ -9,6 +9,7 @@ import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.benefit.BenefitWrite;
 import br.com.ctcore.benefit.Benefits;
+import br.com.ctcore.billing.FirstCharges;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.InviteRules.Inviter;
 import br.com.ctcore.identity.InviteService;
@@ -42,7 +43,7 @@ import org.springframework.stereotype.Service;
 /**
  * RF-MAT-01: a "Nova matrícula" no servidor. A prévia calcula o resumo sem gravar nada; a conclusão grava matrícula, benefício, graduação de origem
  * e o início da matrícula por unidade numa transação só (as outras classes entram nela, sem abrir transação isolada) e convida o aluno adulto
- * depois do commit. Não cria cobrança (Sprint 08, D3) e não registra aceite de termo (#85, D4).
+ * depois do commit. A primeira cobrança sai na mesma transação ({@link FirstCharges}); não registra aceite de termo (#85, D4).
  */
 @Service
 public class EnrollmentConclusion {
@@ -69,12 +70,15 @@ public class EnrollmentConclusion {
     public record UnitSummary(UUID unitId, String unitName, int dueDay, LocalDate firstDueOn, int toleranceDays, long feeCents, boolean feeExempt,
             String feeExemptReason, long firstChargeCents, LocalDate secondDueOn, LocalDate suggestedSecondDueOn) {}
 
-    public record Preview(List<ModalitySummary> modalities, List<UnitSummary> units) {}
+    /** RN-MAT-19: cobranças em aberto do aluno nas unidades do pedido, para o Administrador decidir (a decisão por cobrança é da #73). */
+    public record OpenDebt(int count, long totalCents) {}
+
+    public record Preview(List<ModalitySummary> modalities, List<UnitSummary> units, OpenDebt openDebt) {}
 
     /** {@code inviteStatus}: SENT, FAILED, MINOR (sem convite próprio), EXISTING_ACCOUNT (conta ativa) ou NO_EMAIL. */
-    public record Concluded(Enrollments.Enrollment enrollment, Preview summary, boolean termPending, String inviteStatus) {}
+    public record Concluded(Enrollments.Enrollment enrollment, Preview summary, boolean termPending, String inviteStatus, List<FirstCharges.Charge> charges) {}
 
-    private record Facts(boolean exists, int activeCount, Map<UUID, Integer> activeDue, Set<UUID> hadUnits) {
+    private record Facts(UUID studentId, boolean exists, int activeCount, Map<UUID, Integer> activeDue, Set<UUID> feeHandled) {
         boolean returning() {
             return exists && activeCount == 0;
         }
@@ -93,10 +97,11 @@ public class EnrollmentConclusion {
     private final OriginProof proofs;
     private final Clock clock;
     private final TrainingClasses classes;
+    private final FirstCharges firstCharges;
 
     public EnrollmentConclusion(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Students students, Enrollments enrollments,
             BenefitWrite benefits, Permissions permissions, AuditService audit, InviteService invites, OriginProof proofs, Clock clock,
-            TrainingClasses classes) {
+            TrainingClasses classes, FirstCharges firstCharges) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.students = students;
@@ -108,6 +113,7 @@ public class EnrollmentConclusion {
         this.proofs = proofs;
         this.clock = clock;
         this.classes = classes;
+        this.firstCharges = firstCharges;
     }
 
     private static ApiStatusException rule(String field, String message) {
@@ -125,9 +131,9 @@ public class EnrollmentConclusion {
         return candidate.isBefore(min) ? candidate.plusMonths(1) : candidate;
     }
 
-    /** RN-MAT-05: a taxa vale se a unidade a ligou e o aluno ainda não teve modalidade nela, ou se é retorno de ex-aluno (RN-MAT-19, D7). */
-    static long fee(boolean enabled, long cents, boolean hadInUnit, boolean returning) {
-        return enabled && (returning || !hadInUnit) ? cents : 0;
+    /** RN-MAT-05: a taxa vale se a unidade a ligou e o aluno ainda não tem taxa cobrada nem isenção nela, ou se é retorno de ex-aluno (RN-MAT-19, R21). */
+    static long fee(boolean enabled, long cents, boolean handled, boolean returning) {
+        return enabled && (returning || !handled) ? cents : 0;
     }
 
     private static List<Enrollments.ModalityInput> inputs(Request req) {
@@ -210,17 +216,22 @@ public class EnrollmentConclusion {
                 if (m.origin() != null) registerOrigin(who, studentId, m, unit, ip);
             }
             OffsetDateTime now = OffsetDateTime.now(clock);
-            for (UnitSummary u : summary.units()) startUnit(who, studentId, added.enrollmentId(), u, now, ip);
+            Map<UUID, FirstCharges.UnitTerms> terms = new LinkedHashMap<>();
+            for (UnitSummary u : summary.units()) {
+                UUID startId = startUnit(who, studentId, added.enrollmentId(), u, now, ip);
+                terms.put(u.unitId(), new FirstCharges.UnitTerms(u.unitId(), startId, u.firstDueOn(), u.toleranceDays(), u.feeCents(), u.secondDueOn()));
+            }
+            List<FirstCharges.Charge> charges = firstCharges.create(who, studentId, added.rowIds(), terms, ip);
             String invite = invite(who, student, mail);
-            return new Concluded(enrollments.get(who, studentId), summary, true, invite);
+            return new Concluded(enrollments.get(who, studentId), summary, true, invite, charges);
         });
         if (mail[1] == null) return done;
         try {
             invites.sendInvite(mail[0], mail[1]);
-            return new Concluded(done.enrollment(), done.summary(), true, "SENT");
+            return new Concluded(done.enrollment(), done.summary(), true, "SENT", done.charges());
         } catch (RuntimeException e) { // R8: a matrícula já está gravada; a falha fica no log (sem e-mail nem código)
             LOG.warn("Student invite e-mail was not sent after enrollment: {}", e.getClass().getSimpleName());
-            return new Concluded(done.enrollment(), done.summary(), true, "FAILED");
+            return new Concluded(done.enrollment(), done.summary(), true, "FAILED", done.charges());
         }
     }
 
@@ -239,19 +250,22 @@ public class EnrollmentConclusion {
         boolean exists = jdbc.sql("select count(*) from enrollment where organization_id = :org and student_id = :s").param("org", org).param("s", studentId)
                 .query(Integer.class).single() > 0;
         Map<UUID, Integer> activeDue = new HashMap<>();
-        Set<UUID> had = new HashSet<>();
         int[] active = {0};
         jdbc.sql("select unit_id, due_day, status from enrollment_modality where organization_id = :org and student_id = :s").param("org", org)
                 .param("s", studentId).query((rs, n) -> {
                     UUID unit = rs.getObject(1, UUID.class);
-                    had.add(unit);
                     if ("ACTIVE".equals(rs.getString(3))) {
                         active[0]++;
                         activeDue.put(unit, rs.getInt(2));
                     }
                     return 0;
                 }).list();
-        return new Facts(exists, active[0], activeDue, had);
+        // R21: taxa já tratada = cobrança de taxa do aluno na unidade (qualquer situação) ou isenção registrada no início da matrícula dela.
+        Set<UUID> handled = new HashSet<>(jdbc.sql("select unit_id from charge where organization_id = :org and student_id = :s and type = 'ENROLLMENT_FEE' "
+                + "union select es.unit_id from enrollment_start es join enrollment e on e.organization_id = es.organization_id and e.id = es.enrollment_id "
+                + "where es.organization_id = :org and e.student_id = :s and es.fee_exempt_reason is not null").param("org", org).param("s", studentId)
+                .query(UUID.class).list());
+        return new Facts(studentId, exists, active[0], activeDue, handled);
     }
 
     private UnitRow unit(UUID org, UUID id) {
@@ -302,7 +316,7 @@ public class EnrollmentConclusion {
         for (UnitRow unit : units.values()) {
             LocalDate today = LocalDate.ofInstant(clock.instant(), unit.zone());
             int due = dueDay(req, unit, facts);
-            long standard = fee(unit.feeEnabled(), unit.feeCents(), facts.hadUnits().contains(unit.id()), facts.returning());
+            long standard = fee(unit.feeEnabled(), unit.feeCents(), facts.feeHandled().contains(unit.id()), facts.returning());
             UnitRequest ask = asked.get(unit.id());
             long charged = standard;
             String reason = null;
@@ -325,7 +339,10 @@ public class EnrollmentConclusion {
             summaries.add(new UnitSummary(unit.id(), unit.name(), due, today, TOLERANCE_DAYS, charged, reason != null, reason,
                     monthlyByUnit.get(unit.id()) + charged, second, suggested));
         }
-        return new Preview(modalities, summaries);
+        var debt = jdbc.sql("select count(*), coalesce(sum(amount_cents), 0) from charge where organization_id = :org and student_id = :s and status = 'OPEN' "
+                + "and unit_id in (:units)").param("org", org).param("s", facts.studentId()).param("units", units.keySet())
+                .query((rs, n) -> new OpenDebt(rs.getInt(1), rs.getLong(2))).single();
+        return new Preview(modalities, summaries, debt);
     }
 
     /** RN-MAT-03: um dia de vencimento por unidade, entre os permitidos; quem já paga na unidade mantém o dia. */
@@ -379,16 +396,18 @@ public class EnrollmentConclusion {
         audit.record(new AuditEntry(actor(who), "student.origin_graduation_registered", "student", studentId.toString(), m.unitId(), null, after, null, ip));
     }
 
-    /** R5: guarda a taxa, a isenção e a segunda cobrança da unidade para a Sprint 08 gerar a cobrança. */
-    private void startUnit(AccountPrincipal who, UUID studentId, UUID enrollmentId, UnitSummary u, OffsetDateTime now, String ip) {
+    /** R5: guarda a taxa, a isenção e a segunda cobrança da unidade; devolve o id do início, a que a cobrança da taxa se liga. */
+    private UUID startUnit(AccountPrincipal who, UUID studentId, UUID enrollmentId, UnitSummary u, OffsetDateTime now, String ip) {
+        UUID id = UUID.randomUUID();
         jdbc.sql("insert into enrollment_start (id, organization_id, enrollment_id, unit_id, concluded_at, fee_cents, fee_exempt_reason, second_due_on) "
-                + "values (:id, :org, :e, :unit, :now, :fee, :reason, :second)").param("id", UUID.randomUUID()).param("org", who.organizationId())
+                + "values (:id, :org, :e, :unit, :now, :fee, :reason, :second)").param("id", id).param("org", who.organizationId())
                 .param("e", enrollmentId).param("unit", u.unitId()).param("now", now).param("fee", u.feeCents()).param("reason", u.feeExemptReason())
                 .param("second", u.secondDueOn()).update();
         if (u.feeExempt()) {
             audit.record(new AuditEntry(actor(who), "enrollment.fee_exempted", "student", studentId.toString(), u.unitId(), null,
                     Map.of("unitId", u.unitId().toString(), "reason", u.feeExemptReason()), null, ip));
         }
+        return id;
     }
 
     private static AuditActor actor(AccountPrincipal who) {

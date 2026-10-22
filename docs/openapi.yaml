@@ -780,6 +780,83 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /charges/{id}/payments:
+    post:
+      summary: Registra o pagamento no balcão do valor total de uma cobrança em aberto (RN-COB-12, RN-MAT-06). Coordenador e Administrador da unidade.
+      description: |
+        `method` é `CASH`, `PIX_KEY`, `CARD_MACHINE` ou `TRANSFER`; `paidAt` opcional (padrão agora, não pode ser futuro); `observation` opcional, até 200 caracteres.
+        `amountCents`, se vier, tem de ser igual ao da cobrança (senão 422): não há pagamento parcial. A cobrança passa a `PAID` e o recibo nasce na mesma
+        transação, com número sequencial da unidade e código de conferência. Segunda chamada, ou cobrança cancelada, renegociada, estornada ou em conferência:
+        409 `CHARGE_NOT_PAYABLE`. Cobrança de outra organização ou de unidade fora do alcance: 404. Grava `payment.registered` na auditoria, sem a observação.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PaymentInput' } } }
+      responses:
+        '201':
+          description: O pagamento e o recibo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/Payment' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'amountCents diferente do valor da cobrança (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /billing/generation-preview:
+    get:
+      summary: Prévia da geração de mensalidades (RF-COB-03, RN-COB-02). Coordenador e Administrador da unidade.
+      description: |
+        Devolve, sem gravar nada, o que a tarefa diária criaria até hoje mais `days` (1 a 60, padrão 10, no fuso da unidade): por dia de vencimento, a
+        quantidade e o total, cada linha com aluno, modalidade, plano, desconto e valor final; o total previsto; o total das mensalidades do mês anterior
+        ao primeiro vencimento previsto; e quem não será cobrado (`FULL_BENEFIT`). Unidade fora do alcance: prévia vazia. `days` fora de 1 a 60: 400.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: days, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 60, default: 10 } }
+      responses:
+        '200':
+          description: A prévia.
+          content: { application/json: { schema: { $ref: '#/components/schemas/GenerationPreview' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /students/{id}/modalities/{modalityRowId}/charges/advance:
+    post:
+      summary: Gera as próximas N mensalidades de uma modalidade (RN-COB-06). `COLLECTIONS` completo na unidade da modalidade.
+      description: |
+        `count` de 1 a 12. Gera a partir do ponteiro da modalidade, todas na mesma transação, e avança o ponteiro; a tarefa diária pula os meses já gerados.
+        Modalidade encerrada ou de valor final zero: 422. Grava `charge.advance_generated` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AdvanceInput' } } }
+      responses:
+        '201':
+          description: As mensalidades criadas.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ChargeCreated' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Modalidade encerrada ou de valor final zero (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /public/receipts/{code}:
+    get:
+      summary: Conferência pública do recibo (RN-COB-16). Rota pública, sem sessão.
+      description: |
+        Devolve só unidade, número, referência, valor, data e hora do pagamento e as iniciais de quem pagou. Não traz CPF, nome completo, e-mail, meio nem
+        identificadores internos. Código desconhecido ou malformado: 404. O link não expira.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: O recibo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PublicReceipt' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
   /age-ranges:
     get:
       summary: Faixas etárias da organização do vínculo ativo (RF-MOD-04, RN-MOD-07). Coordenador e Administrador.
@@ -2594,6 +2671,7 @@ components:
             - ALREADY_IN_CATALOG
             - AGE_RANGE_NAME_TAKEN
             - TERMS_VERSION_CONFLICT
+            - CHARGE_NOT_PAYABLE
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
             - HAS_PRIMARY_STUDENTS
@@ -2775,6 +2853,100 @@ components:
       properties:
         body: { type: string, minLength: 20, maxLength: 20000 }
         reaccept: { type: boolean }
+    PaymentInput:
+      type: object
+      required: [method]
+      properties:
+        method: { type: string, enum: [CASH, PIX_KEY, CARD_MACHINE, TRANSFER] }
+        paidAt: { type: string, format: date-time, description: 'Padrão agora; não pode ser futuro.' }
+        observation: { type: string, maxLength: 200 }
+        amountCents: { type: integer, format: int64, description: 'Se vier, tem de ser igual ao valor da cobrança (senão 422).' }
+    ReceiptRef:
+      type: object
+      required: [number, code]
+      properties:
+        number: { type: integer, minimum: 1, description: 'Sequencial da unidade, sem lacunas.' }
+        code: { type: string, minLength: 16, maxLength: 16, description: Código de conferência. }
+    Payment:
+      type: object
+      required: [id, chargeId, amountCents, method, paidAt, registeredBy, observation, receipt]
+      properties:
+        id: { type: string, format: uuid }
+        chargeId: { type: string, format: uuid }
+        amountCents: { type: integer, format: int64 }
+        method: { type: string, enum: [CASH, PIX_KEY, CARD_MACHINE, TRANSFER] }
+        paidAt: { type: string, format: date-time }
+        registeredBy: { type: string, format: uuid }
+        observation: { type: string, nullable: true }
+        receipt: { $ref: '#/components/schemas/ReceiptRef' }
+    PublicReceipt:
+      type: object
+      required: [unit, number, reference, amountCents, paidAt, payerInitials]
+      properties:
+        unit: { type: string }
+        number: { type: integer, minimum: 1 }
+        reference: { type: string, description: '"Jiu-Jitsu · nov/2026" na mensalidade; a descrição nos demais tipos.' }
+        amountCents: { type: integer, format: int64 }
+        paidAt: { type: string, format: date-time }
+        payerInitials: { type: string, example: M. S. }
+    AdvanceInput:
+      type: object
+      required: [count]
+      properties:
+        count: { type: integer, minimum: 1, maximum: 12 }
+    ChargeCreated:
+      type: object
+      required: [id, modalityRowId, type, unitId, referenceMonth, dueOn, toleranceDays, amountCents]
+      properties:
+        id: { type: string, format: uuid }
+        modalityRowId: { type: string, format: uuid }
+        type: { type: string, enum: [MONTHLY] }
+        unitId: { type: string, format: uuid }
+        referenceMonth: { type: string, format: date, description: Primeiro dia do mês de referência. }
+        dueOn: { type: string, format: date }
+        toleranceDays: { type: integer }
+        amountCents: { type: integer, format: int64 }
+    GenerationPreviewLine:
+      type: object
+      required: [studentId, student, modalityRowId, modality, plan, discountCents, amountCents, referenceMonth]
+      properties:
+        studentId: { type: string, format: uuid }
+        student: { type: string }
+        modalityRowId: { type: string, format: uuid }
+        modality: { type: string }
+        plan: { type: string }
+        discountCents: { type: integer, format: int64 }
+        amountCents: { type: integer, format: int64 }
+        referenceMonth: { type: string, format: date }
+    GenerationPreview:
+      type: object
+      required: [until, days, count, totalCents, previousMonthTotalCents, skipped]
+      properties:
+        until: { type: string, format: date }
+        days:
+          type: array
+          items:
+            type: object
+            required: [dueOn, count, totalCents, lines]
+            properties:
+              dueOn: { type: string, format: date }
+              count: { type: integer }
+              totalCents: { type: integer, format: int64 }
+              lines: { type: array, items: { $ref: '#/components/schemas/GenerationPreviewLine' } }
+        count: { type: integer }
+        totalCents: { type: integer, format: int64 }
+        previousMonthTotalCents: { type: integer, format: int64, description: 'Mensalidades (não canceladas) do mês anterior ao primeiro vencimento previsto.' }
+        skipped:
+          type: array
+          items:
+            type: object
+            required: [studentId, student, modality, referenceMonth, reason]
+            properties:
+              studentId: { type: string, format: uuid }
+              student: { type: string }
+              modality: { type: string }
+              referenceMonth: { type: string, format: date }
+              reason: { type: string, enum: [FULL_BENEFIT] }
     TeacherRow:
       type: object
       required: [id, name, photoUrl, modalities, units, classCount, status, directoryConsent, access]
@@ -3235,10 +3407,12 @@ components:
                 items: { $ref: '#/components/schemas/ClassRef' }
     PlanValueImpact:
       type: object
-      required: [studentsAffected, effectiveFrom]
+      required: [studentsAffected, effectiveFrom, unpaidCharges, paidFutureCharges]
       properties:
         studentsAffected: { type: integer, minimum: 0 }
         effectiveFrom: { type: string, enum: [NEXT_CHARGE] }
+        unpaidCharges: { type: integer, minimum: 0, description: "Mensalidades em aberto do plano com vencimento de hoje em diante (RN-PLA-05)." }
+        paidFutureCharges: { type: integer, minimum: 0, description: "Mensalidades pagas do plano com mês de referência depois do mês de hoje (RN-PLA-05)." }
     TeacherList:
       allOf:
         - $ref: '#/components/schemas/Page'
@@ -3871,16 +4045,37 @@ components:
         capacity: { type: integer, nullable: true }
         activeStudents: { type: integer, minimum: 0 }
         overCapacity: { type: boolean }
+    OpenDebt:
+      type: object
+      description: RN-MAT-19, cobranças em aberto do aluno nas unidades do pedido (a decisão por cobrança é da #73).
+      required: [count, totalCents]
+      properties:
+        count: { type: integer, minimum: 0 }
+        totalCents: { type: integer, format: int64, minimum: 0 }
     EnrollmentPreview:
       type: object
-      required: [modalities, units]
+      required: [modalities, units, openDebt]
       properties:
         modalities: { type: array, items: { $ref: '#/components/schemas/EnrollmentPreviewModality' } }
         units: { type: array, items: { $ref: '#/components/schemas/EnrollmentPreviewUnit' } }
+        openDebt: { $ref: '#/components/schemas/OpenDebt' }
+    EnrollmentCharge:
+      type: object
+      description: Cobrança criada pela conclusão da matrícula (RN-MAT-05).
+      required: [id, type, unitId, dueOn, toleranceDays, amountCents]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [MONTHLY, ENROLLMENT_FEE] }
+        unitId: { type: string, format: uuid }
+        referenceMonth: { type: string, format: date, nullable: true, description: Primeiro dia do mês de referência; nulo na taxa. }
+        dueOn: { type: string, format: date }
+        toleranceDays: { type: integer }
+        amountCents: { type: integer, format: int64 }
     EnrollmentConcluded:
       type: object
-      required: [enrollment, summary, termPending, inviteStatus]
+      required: [enrollment, summary, termPending, inviteStatus, charges]
       properties:
+        charges: { type: array, items: { $ref: '#/components/schemas/EnrollmentCharge' } }
         enrollment: { $ref: '#/components/schemas/Enrollment' }
         summary: { $ref: '#/components/schemas/EnrollmentPreview' }
         termPending: { type: boolean }

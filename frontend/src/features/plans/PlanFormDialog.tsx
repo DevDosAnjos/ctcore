@@ -186,24 +186,28 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
           {impact.status === "error" && <p role="alert" className="text-sm text-destructive">{t("plans.form.impact.error")}</p>}
           {impact.impact && <p>{t("plans.form.impact.students", { count: impact.impact.studentsAffected })}</p>}
           <p className="text-sm">{t("plans.form.impact.from")}</p>
-          <fieldset>
-            <legend className="text-sm font-medium">{t("plans.form.impact.unpaid")}</legend>
-            {(["KEEP", "ADJUST"] as const).map((v) => (
-              <label key={v} className="flex min-h-11 items-center gap-2">
-                <input type="radio" name="plan-unpaid" checked={unpaid === v} onChange={() => setUnpaid(v)} />
-                {t(v === "KEEP" ? "plans.form.impact.unpaidKeep" : "plans.form.impact.unpaidAdjust")}
-              </label>
-            ))}
-          </fieldset>
-          <fieldset>
-            <legend className="text-sm font-medium">{t("plans.form.impact.paid")}</legend>
-            {([false, true] as const).map((v) => (
-              <label key={String(v)} className="flex min-h-11 items-center gap-2">
-                <input type="radio" name="plan-paid" checked={paidDifference === v} onChange={() => setPaidDifference(v)} />
-                {t(v ? "plans.form.impact.paidCharge" : "plans.form.impact.paidNone")}
-              </label>
-            ))}
-          </fieldset>
+          {(impact.impact?.unpaidCharges ?? 0) > 0 && (
+            <fieldset>
+              <legend className="text-sm font-medium">{t("plans.form.impact.unpaid")}</legend>
+              {(["KEEP", "ADJUST"] as const).map((v) => (
+                <label key={v} className="flex min-h-11 items-center gap-2">
+                  <input type="radio" name="plan-unpaid" checked={unpaid === v} onChange={() => setUnpaid(v)} />
+                  {t(v === "KEEP" ? "plans.form.impact.unpaidKeep" : "plans.form.impact.unpaidAdjust")}
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {(impact.impact?.paidFutureCharges ?? 0) > 0 && (
+            <fieldset>
+              <legend className="text-sm font-medium">{t("plans.form.impact.paid")}</legend>
+              {([false, true] as const).map((v) => (
+                <label key={String(v)} className="flex min-h-11 items-center gap-2">
+                  <input type="radio" name="plan-paid" checked={paidDifference === v} onChange={() => setPaidDifference(v)} />
+                  {t(v ? "plans.form.impact.paidCharge" : "plans.form.impact.paidNone")}
+                </label>
+              ))}
+            </fieldset>
+          )}
         </section>
       )}
       {errors.form && (
