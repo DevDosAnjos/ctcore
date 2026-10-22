@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
@@ -90,7 +90,7 @@ describe("ChargePanel (RF-COB-02)", () => {
     expect(within(panel).getByText("Nenhum lembrete enviado")).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Cancelar cobrança" })).toBeEnabled();
     expect(within(panel).getByRole("button", { name: "Renegociar" })).toBeEnabled();
-    for (const [name, why] of [["Registrar pagamento", /janela de pagamento/], ["Enviar lembrete", /envio de lembretes/], ["Estornar", /estorno/]] as const) {
+    for (const [name, why] of [["Registrar pagamento", /cobranças em aberto/], ["Enviar lembrete", /envio de lembretes/], ["Estornar", /estorno/]] as const) {
       const button = within(panel).getByRole("button", { name });
       expect(button).toBeDisabled();
       expect(button).toHaveAccessibleDescription(why);
@@ -269,6 +269,66 @@ describe("ChargePanel (RF-COB-02)", () => {
       await user.click(screen.getByRole("button", { name: "Cancelar" }));
       await user.click(within(panel).getByRole("button", { name: "Cancelar cobrança" }));
       expect(await axeViolations(await screen.findByRole("dialog", { name: "Cancelar cobrança" }))).toEqual([]);
+      unmount();
+    }
+  });
+
+  it("CA12/CA13: cobrança aberta habilita Registrar pagamento; confirma com meio, observação e e-mail; mostra o recibo e recarrega ao fechar", async () => {
+    let paid = false;
+    setup({ detail: () => HttpResponse.json(paid ? paidDetail : detail({ actions: { ...detail().actions, registerPayment: true } })) });
+    server.use(
+      http.post("/api/v1/charges/c1/payments", async ({ request }) => {
+        posts.push({ url: "payments", body: await request.json() });
+        paid = true;
+        return HttpResponse.json({ id: "p1", chargeId: "c1", receipt: { number: 7, code: "ABCDEF0123456789" }, receiptEmail: "NO_ADDRESS" }, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    const panel = await openPanel(user);
+    const button = await within(panel).findByRole("button", { name: "Registrar pagamento" });
+    expect(button).toBeEnabled();
+    await user.click(button);
+    const dialog = within(await screen.findByRole("dialog", { name: "Registrar pagamento" }));
+    expect(dialog.getByLabelText("Valor")).toHaveValue("R$ 120,00");
+    expect(dialog.getByLabelText("Enviar recibo por e-mail")).toBeChecked();
+    await user.selectOptions(dialog.getByLabelText("Meio de pagamento"), "Pix pela chave");
+    await user.type(dialog.getByLabelText("Observação (opcional)"), "No balcão");
+    expect(dialog.getByText("9 de 200 caracteres")).toBeInTheDocument();
+    await user.click(dialog.getByRole("button", { name: "Confirmar pagamento" }));
+    expect(await dialog.findByText("Recibo número 7")).toBeInTheDocument();
+    expect(dialog.getByText(/não tem e-mail cadastrado/)).toBeInTheDocument();
+    expect(dialog.getByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", "/api/v1/public/receipts/ABCDEF0123456789/pdf");
+    expect(posts[0].body).toEqual({ method: "PIX_KEY", amountCents: 12000, sendReceipt: true, observation: "No balcão" });
+    await user.click(dialog.getAllByRole("button", { name: "Fechar" })[0]);
+    expect(await within(panel).findByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", "/api/v1/public/receipts/ABC123/pdf");
+    expect(within(panel).getByRole("button", { name: "Registrar pagamento" })).toBeDisabled();
+  });
+
+  it("R1/CA2: data futura não é enviada; 400, 409 e 422 mostram a mensagem e a janela segue aberta", async () => {
+    setup({ detail: () => HttpResponse.json(detail({ actions: { ...detail().actions, registerPayment: true } })) });
+    const user = userEvent.setup();
+    const panel = await openPanel(user);
+    await user.click(await within(panel).findByRole("button", { name: "Registrar pagamento" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "Registrar pagamento" }));
+    fireEvent.change(dialog.getByLabelText("Data do pagamento"), { target: { value: "2999-01-01" } });
+    await user.click(dialog.getByRole("button", { name: "Confirmar pagamento" }));
+    expect(await dialog.findByRole("alert")).toHaveTextContent(/não pode ser futura/);
+    fireEvent.change(dialog.getByLabelText("Data do pagamento"), { target: { value: "2026-01-02" } });
+    for (const [status, text] of [[400, /Confira a data/], [409, /não pode receber pagamento/], [422, /valor da cobrança mudou/]] as const) {
+      server.use(http.post("/api/v1/charges/c1/payments", () => HttpResponse.json({ code: "X", message: "x", changed: false, fields: [], traceId: "t" }, { status })));
+      await user.click(dialog.getByRole("button", { name: "Confirmar pagamento" }));
+      expect(await dialog.findByText(text)).toBeInTheDocument();
+    }
+  });
+
+  it("CA16: a janela de pagamento passa no axe nos dois temas", async () => {
+    for (const dark of [false, true]) {
+      setDevicePrefersDark(dark);
+      const { unmount } = setup({ detail: () => HttpResponse.json(detail({ actions: { ...detail().actions, registerPayment: true } })) });
+      const user = userEvent.setup();
+      const panel = await openPanel(user);
+      await user.click(await within(panel).findByRole("button", { name: "Registrar pagamento" }));
+      expect(await axeViolations(await screen.findByRole("dialog", { name: "Registrar pagamento" }))).toEqual([]);
       unmount();
     }
   });

@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { StatusBadge, useReference } from "./ChargeCards";
 import { CancelChargeDialog } from "./CancelChargeDialog";
+import { RegisterPaymentDialog } from "@/features/payments/RegisterPaymentDialog";
+import { receiptPdfUrl } from "@/features/payments/usePayment";
 import { RenegotiateDialog } from "./RenegotiateDialog";
 import type { ChargeDetail, ChargeRef } from "./types";
 import { useChargeDetail } from "./useChargeActions";
 
-const DISABLED = ["registerPayment", "sendReminder", "refund"] as const;
+const DISABLED = ["sendReminder", "refund"] as const;
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -36,7 +38,8 @@ function Refs({ refs }: { refs: ChargeRef[] }) {
 function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: boolean; onChanged: () => void }) {
   const { t } = useTranslation();
   const reference = useReference();
-  const [dialog, setDialog] = useState<"cancel" | "renegotiate">();
+  const [dialog, setDialog] = useState<"cancel" | "renegotiate" | "pay">();
+  const [paid, setPaid] = useState(false);
   const { charge, composition, actions } = d;
   const done = () => onChanged();
   return (
@@ -103,7 +106,14 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
                 <p className="text-muted-foreground">{t("charges.panel.registeredBy", { name: p.registeredBy?.name ?? t(`charges.panel.origins.${p.origin}`) })}</p>
                 {p.observation && <p className="break-words">{p.observation}</p>}
                 {p.status === "REFUNDED" && <p>{t("charges.status.REFUNDED")}</p>}
-                {p.receipt && <p>{t("charges.panel.receipt", { number: p.receipt.number, code: p.receipt.code })}</p>}
+                {p.receipt && (
+                  <p>
+                    {t("charges.panel.receipt", { number: p.receipt.number, code: p.receipt.code })}{" "}
+                    <a className="underline" href={receiptPdfUrl(p.receipt.code)} target="_blank" rel="noreferrer">
+                      {t("charges.panel.downloadReceipt")}
+                    </a>
+                  </p>
+                )}
               </li>
             ))}
           </ul>
@@ -132,6 +142,16 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
             </Button>
           )}
         </div>
+        <div className="flex flex-col">
+          <Button type="button" variant="outline" className="min-h-11 self-start" disabled={!actions.registerPayment} aria-describedby={actions.registerPayment ? undefined : "why-registerPayment"} onClick={() => setDialog("pay")}>
+            {t("charges.panel.registerPayment")}
+          </Button>
+          {!actions.registerPayment && (
+            <p id="why-registerPayment" className="text-sm text-muted-foreground">
+              {t("charges.panel.disabled.registerPayment")}
+            </p>
+          )}
+        </div>
         {DISABLED.map((k) => (
           <div key={k} className="flex flex-col">
             <Button type="button" variant="outline" className="min-h-11 self-start" disabled aria-describedby={`why-${k}`}>
@@ -145,6 +165,18 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
       </div>
 
       {dialog === "cancel" && <CancelChargeDialog charge={charge} onClose={() => setDialog(undefined)} onDone={done} />}
+      {dialog === "pay" && (
+        <RegisterPaymentDialog
+          chargeId={charge.id}
+          label={reference(charge)}
+          amountCents={charge.amountCents}
+          onPaid={() => setPaid(true)}
+          onClose={() => {
+            setDialog(undefined);
+            if (paid) done();
+          }}
+        />
+      )}
       {dialog === "renegotiate" && <RenegotiateDialog charges={[charge]} onClose={() => setDialog(undefined)} onDone={done} />}
     </div>
   );

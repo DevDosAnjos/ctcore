@@ -16,6 +16,9 @@ public interface FileStorage {
 
     void put(String name, byte[] content, String contentType);
 
+    /** Conteúdo do arquivo; NotFound se não existir na organização. */
+    byte[] get(String name);
+
     /** URL de leitura assinada e temporária; NotFound se o arquivo não existir na organização. */
     String readUrl(String name);
 

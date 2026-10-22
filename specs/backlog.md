@@ -85,7 +85,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 318 | Teste CA20 da aba Financeiro instável: medir e estabilizar | issue #318 | Sprint 08 | — | agente | feito |
 | 320 | Teste e2e de recuperação de senha instável: medir e estabilizar | issue #320 | Sprint 08 | — | agente | feito |
 | 74 | RF-COB-03 · Prévia da geração de mensalidades | issue #74 | Sprint 08 | — | agente | feito |
-| 75 | RF-COB-04 · Registrar pagamento no balcão | issue #75 | Sprint 08 | — | agente | a fazer |
+| 75 | RF-COB-04 · Registrar pagamento no balcão | issue #75 | Sprint 08 | — | agente | feito |
 | 76 | RF-COB-07 · Cobrança avulsa e gerar mensalidades adiantadas | issue #76 | Sprint 08 | — | agente | a fazer |
 | 77 | RF-COB-08 · Recebimentos do dia | issue #77 | Sprint 08 | — | agente | a fazer |
 | 78 | E-mails automáticos e preferências de envio | issue #78 | Sprint 09 | — | agente | a fazer |

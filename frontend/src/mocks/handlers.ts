@@ -766,7 +766,7 @@ const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; f
 // RF-COB-02 (#73): cancelar e renegociar acrescentam as situações CANCELED e RENEGOTIATED, a parcela (INSTALLMENT) e os campos do painel.
 type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
 let mockCharges: MockCharge[] = [];
-let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string }[] = [];
+let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null }[] = [];
 const chargeRowView = (c: MockCharge, today: string) => {
   const student = mockStudents.find((s) => s.id === c.studentId)!;
   const row = mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId);
@@ -775,7 +775,7 @@ const chargeRowView = (c: MockCharge, today: string) => {
     id: c.id, student: { id: student.id, name: student.name, photoUrl: student.photoUrl }, unit: { id: c.unitId, name: units.find((u) => u.id === c.unitId)?.name ?? "" }, type: c.type,
     modality: row ? { id: row.modalityId, name: modalityCatalog.find((m) => m.id === row.modalityId)?.name ?? "" } : null,
     referenceMonth: c.referenceMonth, description: c.description, amountCents: c.amountCents, dueOn: c.dueOn, status: chargeSituation(c, today),
-    payment: receipt ? { method: "CASH", paidAt: receipt.paidAt } : null,
+    payment: receipt ? { method: receipt.method ?? "CASH", paidAt: receipt.paidAt } : null,
   };
 };
 // RF-COB-02 (#73): motivo obrigatório, sem espaços nas pontas, até 200; devolve a mensagem de erro ou null.
@@ -806,9 +806,9 @@ const chargeDetail = (c: MockCharge) => {
     replacedBy: c.status === "RENEGOTIATED" ? mockCharges.filter((x) => x.renegotiationId === c.renegotiationId && x.originId).map(refOf) : [],
     reason: c.reason ?? null, canceledAt: c.canceledAt ?? null, canceledBy: c.canceledAt ? { id: session.account.id, name: session.account.name } : null,
     payments: receipt
-      ? [{ id: receipt.code, amountCents: receipt.amountCents, method: "CASH", origin: "MANAGEMENT", paidAt: receipt.paidAt, registeredBy: { id: session.account.id, name: session.account.name }, observation: null, status: "CONFIRMED", receipt: { number: receipt.number, code: receipt.code } }]
+      ? [{ id: receipt.code, amountCents: receipt.amountCents, method: receipt.method ?? "CASH", origin: "MANAGEMENT", paidAt: receipt.paidAt, registeredBy: { id: session.account.id, name: session.account.name }, observation: receipt.observation ?? null, status: "CONFIRMED", receipt: { number: receipt.number, code: receipt.code } }]
       : [],
-    reminders: [], actions: { cancel: open, renegotiate: open, registerPayment: false, sendReminder: false, refund: false },
+    reminders: [], actions: { cancel: open, renegotiate: open, registerPayment: open, sendReminder: false, refund: false },
   };
 };
 const cancelMock = (c: MockCharge, reason: string) => {
@@ -3117,7 +3117,7 @@ export const routes: Route[] = [
       if (denied) return denied;
       const charge = mockCharges.find((c) => c.id === params.id && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT));
       if (!charge) return error(404, "NOT_FOUND", "Não encontrado.");
-      const body = ((await request.json().catch(() => ({}))) as { method?: string; paidAt?: string; observation?: string; amountCents?: number }) ?? {};
+      const body = ((await request.json().catch(() => ({}))) as { method?: string; paidAt?: string; observation?: string; amountCents?: number; sendReceipt?: boolean }) ?? {};
       if (!["CASH", "PIX_KEY", "CARD_MACHINE", "TRANSFER"].includes(body.method ?? "")) return studentBad("method", "meio inválido");
       if (body.paidAt && Date.parse(body.paidAt) > Date.now()) return studentBad("paidAt", "não pode ser futuro");
       if ((body.observation ?? "").length > 200) return studentBad("observation", "até 200 caracteres");
@@ -3127,8 +3127,8 @@ export const routes: Route[] = [
       const number = mockReceipts.filter((r) => r.unitId === charge.unitId).length + 1;
       const code = crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase();
       charge.status = "PAID";
-      mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "" });
-      return HttpResponse.json({ id: crypto.randomUUID(), chargeId: charge.id, amountCents: charge.amountCents, method: body.method, paidAt, registeredBy: session.account.id, observation: body.observation ?? null, receipt: { number, code } }, { status: 201 });
+      mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "", method: body.method, observation: body.observation ?? null });
+      return HttpResponse.json({ id: crypto.randomUUID(), chargeId: charge.id, amountCents: charge.amountCents, method: body.method, paidAt, registeredBy: session.account.id, observation: body.observation ?? null, receipt: { number, code }, receiptEmail: body.sendReceipt ? "SENT" : "NOT_REQUESTED" }, { status: 201 });
     },
   },
   {
@@ -3212,6 +3212,15 @@ export const routes: Route[] = [
       const row = mockEnrollments[c.studentId]?.modalities.find((x) => x.id === c.modalityRowId);
       const reference = c.type === "MONTHLY" ? `${modalityCatalog.find((m) => m.id === row?.modalityId)?.name ?? ""} · ${c.referenceMonth!.slice(5, 7)}/${c.referenceMonth!.slice(0, 4)}` : c.description;
       return HttpResponse.json({ unit: units.find((u) => u.id === r.unitId)?.name ?? "", number: r.number, reference, amountCents: r.amountCents, paidAt: r.paidAt, payerInitials: initials(r.studentName) });
+    },
+  },
+  {
+    // RN-COB-16 (#75): PDF do recibo pelo código, sem sessão; código desconhecido é 404.
+    method: "get",
+    path: "/public/receipts/{code}/pdf",
+    resolver: ({ params }) => {
+      if (!mockReceipts.some((x) => x.code === params.code)) return error(404, "NOT_FOUND", "Não encontrado.");
+      return new HttpResponse("%PDF-1.4\n%%EOF\n", { headers: { "Content-Type": "application/pdf" } });
     },
   },
   {
