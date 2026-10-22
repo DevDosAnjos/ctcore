@@ -22,6 +22,7 @@ import { BirthdaysCard } from "@/features/students/BirthdaysCard";
 import { EnrollmentWizardPage } from "@/features/students/enrollment-wizard/EnrollmentWizardPage";
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { ChargesPage } from "@/features/charges/ChargesPage";
+import { ChargePreviewPage } from "@/features/charges/ChargePreviewPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
@@ -111,6 +112,7 @@ export function App() {
             <Route path="/alunos/nova-matricula" element={<EnrollmentWizardPage />} />
             <Route path="/alunos/:id?" element={<StudentsPage />} />
             <Route path="/cobrancas" element={<ChargesPage />} />
+            <Route path="/cobrancas/previa" element={<ChargePreviewPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

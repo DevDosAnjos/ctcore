@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
 import { QueryPage, type Page } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
 import { useQueryParams } from "@/components/query/useQueryParams";
@@ -33,6 +35,11 @@ function Content() {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">{t("charges.title")}</h1>
       <p className="text-muted-foreground">{t("charges.intro")}</p>
+      <div>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link to="/cobrancas/previa">{t("charges.preview.open")}</Link>
+        </Button>
+      </div>
       <QueryPage
         key={version}
         columns={columns}

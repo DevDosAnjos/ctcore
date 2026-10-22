@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -68,5 +69,17 @@ class ChargeController {
     List<MonthlyGeneration.Created> advance(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable UUID modalityRowId,
             @RequestBody MonthlyGeneration.Advance input, HttpServletRequest request) {
         return generation.advance(who, id, modalityRowId, input, request.getRemoteAddr());
+    }
+
+    @PatchMapping("/api/v1/students/{id}/modalities/{modalityRowId}/next-charge")
+    MonthlyGeneration.Adjusted changeNextDue(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable UUID modalityRowId,
+            @RequestBody MonthlyGeneration.ChangeDue input, HttpServletRequest request) {
+        return generation.changeNextDue(who, id, modalityRowId, input, request.getRemoteAddr());
+    }
+
+    @PostMapping("/api/v1/students/{id}/modalities/{modalityRowId}/next-charge/cancel")
+    MonthlyGeneration.Canceled cancelNext(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @PathVariable UUID modalityRowId,
+            @RequestBody MonthlyGeneration.CancelNext input, HttpServletRequest request) {
+        return generation.cancelNext(who, id, modalityRowId, input, actions, request.getRemoteAddr());
     }
 }

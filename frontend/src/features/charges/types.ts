@@ -79,3 +79,37 @@ export interface RenegotiateInput {
   installments: number;
   reason: string;
 }
+
+// Espelha GenerationPreview do OpenAPI (RF-COB-03). `adjustable`: só a próxima mensalidade de cada modalidade aceita troca de vencimento e cancelamento.
+export interface PreviewLine {
+  studentId: string;
+  student: string;
+  modalityRowId: string;
+  modality: string;
+  plan: string;
+  discountCents: number;
+  amountCents: number;
+  referenceMonth: string;
+  adjustable: boolean;
+}
+export interface PreviewDay {
+  dueOn: string;
+  count: number;
+  totalCents: number;
+  lines: PreviewLine[];
+}
+export interface PreviewSkipped {
+  studentId: string;
+  student: string;
+  modality: string;
+  referenceMonth: string;
+  reason: string;
+}
+export interface GenerationPreview {
+  until: string;
+  days: PreviewDay[];
+  count: number;
+  totalCents: number;
+  previousMonthTotalCents: number;
+  skipped: PreviewSkipped[];
+}
