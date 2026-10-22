@@ -166,10 +166,9 @@ jobs:
     steps:
       # Cada job exigido precisa de `success` ou `skipped` (pulado por pasta conta como verde);
       # falha, cancelamento ou qualquer outro estado reprova.
+      # Resultado vazio ou ausente também reprova (`.result` nulo não é success nem skipped).
       - env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          echo "$RESULTS"
-          for r in $RESULTS; do
-            case "$r" in success|skipped) ;; *) echo "resultado inesperado: $r"; exit 1 ;; esac
-          done
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")'
