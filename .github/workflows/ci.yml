@@ -93,7 +93,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4.2.0
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - run: npx playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps chromium
+        if: steps.pw-cache.outputs.cache-hit == 'true'
       # @critical em todo PR que muda frontend/; suíte completa no PR para main
       - run: npm run ${{ github.base_ref == 'main' && 'e2e:full' || 'e2e' }}
       - uses: actions/upload-artifact@v7.0.2
@@ -131,19 +141,19 @@ jobs:
 
   # Imagens só constroem (sem enviar): o Dockerfile não quebra sem ninguém ver (#11).
   image-backend:
-    needs: [changes, backend]
+    needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
       - run: docker build -t ctcore-backend backend
 
   image-frontend:
-    needs: [changes, frontend]
+    needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
       - run: docker build -t ctcore-frontend frontend
@@ -154,9 +164,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Pulado por pasta conta como verde; falha ou cancelamento reprova.
+      # Cada job exigido precisa de `success` ou `skipped` (pulado por pasta conta como verde);
+      # falha, cancelamento ou qualquer outro estado reprova.
+      # Resultado vazio ou ausente também reprova (`.result` nulo não é success nem skipped).
       - env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          echo "$RESULTS"
-          if echo "$RESULTS" | grep -Eq "failure|cancelled"; then exit 1; fi
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")'
