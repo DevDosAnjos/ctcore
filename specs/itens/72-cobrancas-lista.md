@@ -141,3 +141,8 @@ Achados:
 - Decisões: `QueryPage` ganhou os props opcionais `cards` e `footer`; `Students.photoUrl` ficou público para `Charges` reutilizar.
 - Limitações: contraste das cores de situação e conferência visual contra o canvas não medidos (jsdom); `e2e:full` não rodou. Achado de código aberto para a #73: `left join payment` pode duplicar linha se houver dois pagamentos confirmados.
 - Verificações do PR #315: `e2e` falhou em `e2e/recuperar-senha.spec.ts` (texto "Se esse e-mail tiver uma conta…" não visível, nas duas tentativas); `ci-gate` reprovou por isso. O `e2e` da base `3ab6fbb` passou. Não foi mexido: `CORRIGIR_CODIGO`.
+
+### Correção da entrega
+
+- Falha do `e2e` no PR #315 (`e2e/recuperar-senha.spec.ts`, execução 39720812784): o rastro do Playwright mostra "Informe o seu e-mail." na tela, ou seja, o envio saiu com o campo vazio e nenhum `POST /auth/password-reset` foi feito (tela de recuperação e handler MSW não fazem parte do diff do item; `ForgotPasswordPage.tsx` e o handler `/auth/password-reset` estão iguais à base `3ab6fbb`). Não é regressão do item: instável sob carga do CI, sem mudança de código — arquivos: nenhum — prova: `npx playwright test e2e/recuperar-senha.spec.ts --repeat-each=3` → 3 passados; `CI=1 npx playwright test` (suíte `@critical` inteira) → 34 passados; a nova execução do PR (39721861345) teve o job `e2e` verde.
+- Não tocado: o teste e a tela de recuperação de senha (fora do escopo; instabilidade registrada, sem enfraquecer teste).
