@@ -1963,6 +1963,48 @@
         "refund": "Disponível quando o estorno for entregue."
       }
     },
+    "preview": {
+      "open": "Prévia da geração",
+      "title": "Prévia da geração de mensalidades",
+      "intro": "O que a geração diária vai criar nos próximos dias, por dia de vencimento. Ajuste antes de gerar.",
+      "back": "Voltar às cobranças",
+      "unit": "Unidade",
+      "chooseUnit": "Escolha uma unidade",
+      "pickUnit": "Escolha uma unidade",
+      "pickUnitText": "A prévia é feita por unidade. Escolha uma na lista acima.",
+      "period": "Período",
+      "periodOption": "Próximos {{count}} dias",
+      "empty": "Nada a gerar nos próximos {{days}} dias",
+      "total": "Total previsto",
+      "count": "Mensalidades",
+      "diff": "Diferença para o mês anterior",
+      "discount": "desconto de {{amount}}",
+      "dayTitle": "Vence em {{date}} · {{count}} mensalidades · {{total}}",
+      "skipped": "Não serão cobrados",
+      "reasons": {
+        "FULL_BENEFIT": "Bolsa de 100%",
+        "OTHER": "Outro motivo"
+      },
+      "changeDue": {
+        "title": "Trocar vencimento",
+        "open": "Trocar vencimento de {{student}}",
+        "summary": "{{student}} · {{modality}}",
+        "effect": "Vale só para esta mensalidade, até {{max}}. A seguinte volta ao dia de vencimento do aluno.",
+        "field": "Novo vencimento",
+        "submit": "Trocar vencimento"
+      },
+      "cancel": {
+        "title": "Cancelar mensalidade",
+        "open": "Cancelar mensalidade de {{student}}",
+        "summary": "{{student}} · {{modality}} · {{amount}}",
+        "effect": "A mensalidade do mês fica cancelada e não será gerada. O motivo fica na auditoria.",
+        "submit": "Cancelar mensalidade"
+      },
+      "benefit": {
+        "title": "Aplicar benefício",
+        "open": "Aplicar benefício a {{student}}"
+      }
+    },
     "actions": {
       "reason": "Motivo",
       "conflict": "Esta cobrança já foi alterada por outra pessoa. Atualize o painel e confira a situação.",

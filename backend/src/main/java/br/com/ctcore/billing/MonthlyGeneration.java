@@ -50,7 +50,8 @@ public class MonthlyGeneration {
 
     public record Created(UUID id, UUID modalityRowId, String type, UUID unitId, LocalDate referenceMonth, LocalDate dueOn, int toleranceDays, long amountCents) {}
 
-    public record Line(UUID studentId, String student, UUID modalityRowId, String modality, String plan, long discountCents, long amountCents, LocalDate referenceMonth) {}
+    public record Line(UUID studentId, String student, UUID modalityRowId, String modality, String plan, long discountCents, long amountCents, LocalDate referenceMonth,
+            boolean adjustable) {}
 
     public record Day(LocalDate dueOn, int count, long totalCents, List<Line> lines) {}
 
@@ -59,6 +60,15 @@ public class MonthlyGeneration {
     public record Preview(LocalDate until, List<Day> days, int count, long totalCents, long previousMonthTotalCents, List<Skipped> skipped) {}
 
     public record Advance(Integer count) {}
+
+    public record ChangeDue(String dueOn) {}
+
+    public record Adjusted(LocalDate dueOn, LocalDate referenceMonth) {}
+
+    /** {@code referenceMonth} é opcional: o mês que a tela mostrou; se o ponteiro já andou, 409 (duas chamadas não cancelam dois meses). */
+    public record CancelNext(String reason, String referenceMonth) {}
+
+    public record Canceled(UUID chargeId, LocalDate referenceMonth) {}
 
     private record Row(UUID id, UUID studentId, String student, String modality, UUID planId, String planName, long planCents, UUID nextPlanId, String nextPlanName,
             long nextPlanCents, int dueDay, LocalDate ref, LocalDate dueOn, UUID benefitId, String benefitType, long benefitValue, LocalDate benefitUntil,
@@ -190,15 +200,17 @@ public class MonthlyGeneration {
             TreeMap<LocalDate, List<Line>> byDay = new TreeMap<>();
             List<Skipped> skipped = new ArrayList<>();
             LocalDate first = null;
+            java.util.Set<UUID> firstOfRow = new java.util.HashSet<>();
             long total = 0;
             for (Planned p : plan.items()) {
                 var v = p.value();
+                boolean adjustable = firstOfRow.add(p.row().id());
                 if (v.amountCents() == 0) {
                     skipped.add(new Skipped(p.row().studentId(), p.row().student(), p.row().modality(), p.ref(), "FULL_BENEFIT"));
                     continue;
                 }
                 byDay.computeIfAbsent(p.dueOn(), k -> new ArrayList<>()).add(new Line(p.row().studentId(), p.row().student(), p.row().id(), p.row().modality(),
-                        p.planName(), v.benefitCents(), v.amountCents(), p.ref()));
+                        p.planName(), v.benefitCents(), v.amountCents(), p.ref(), adjustable));
                 if (first == null || p.ref().isBefore(first)) first = p.ref();
                 total += v.amountCents();
             }
@@ -233,6 +245,82 @@ public class MonthlyGeneration {
             audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name()), "charge.advance_generated", "enrollment_modality",
                     rowId.toString(), unit, Map.of(), Map.of("count", created.size(), "chargeIds", created.stream().map(c -> c.id().toString()).toList()), null, ip));
             return created;
+        });
+    }
+
+    /** A primeira mensalidade ainda não gerada da modalidade, com a linha travada; 404 e 422 como em {@link #advance}. */
+    private record Next(UUID unit, Plan plan) {
+        Planned item() {
+            return plan.items().get(0);
+        }
+    }
+
+    private Next lockNext(AccountPrincipal who, UUID studentId, UUID rowId) {
+        var row = jdbc.sql("select unit_id, status from enrollment_modality where id = :id and student_id = :student and organization_id = :org")
+                .param("id", rowId).param("student", studentId).param("org", who.organizationId())
+                .query((rs, n) -> new Object[] {rs.getObject(1, UUID.class), rs.getString(2)}).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+        UUID unit = (UUID) row[0];
+        if (permissions.grant(who, Permission.COLLECTIONS, unit) != Access.FULL) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        if (!"ACTIVE".equals(row[1])) throw new ApiStatusException(ErrorCode.UNPROCESSABLE);
+        Plan plan = plan(who.organizationId(), unit, today(unit), LocalDate.MAX, 1, rowId, true);
+        if (plan.items().get(0).value().amountCents() == 0) throw new ApiStatusException(ErrorCode.UNPROCESSABLE);
+        return new Next(unit, plan);
+    }
+
+    private static AuditActor actor(AccountPrincipal who) {
+        return new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name());
+    }
+
+    /** RN-COB-02 (D3): troca o vencimento só da próxima mensalidade, dentro do seu mês de referência; a mesma data não muda nada. */
+    public Adjusted changeNextDue(AccountPrincipal who, UUID studentId, UUID rowId, ChangeDue in, String ip) {
+        if (permissions.effective(who).get(Permission.COLLECTIONS) == Access.NONE) throw new AccessDeniedException("Permission denied");
+        LocalDate to;
+        try {
+            to = LocalDate.parse(in == null ? null : in.dueOn());
+        } catch (java.time.format.DateTimeParseException | NullPointerException e) {
+            throw new ApiValidationException("dueOn", "data inválida");
+        }
+        return transactions.execute(() -> {
+            Next next = lockNext(who, studentId, rowId);
+            LocalDate ref = next.item().ref();
+            LocalDate from = next.item().dueOn();
+            if (to.isBefore(today(next.unit())) || to.isAfter(ref.withDayOfMonth(ref.lengthOfMonth()))) {
+                throw new ApiValidationException("dueOn", "de hoje ao fim do mês de referência");
+            }
+            if (!to.equals(from)) {
+                jdbc.sql("update enrollment_modality set next_charge_ref = :ref, next_charge_due_on = :due where id = :id").param("ref", ref).param("due", to).param("id", rowId).update();
+                audit.record(new AuditEntry(actor(who), "charge.next_due_changed", "enrollment_modality", rowId.toString(), next.unit(), Map.of("dueOn", from.toString()),
+                        Map.of("dueOn", to.toString(), "referenceMonth", ref.toString()), null, ip));
+            }
+            return new Adjusted(to, ref);
+        });
+    }
+
+    /** RN-COB-02, RN-COB-10 (D4): grava a mensalidade do mês como cancelada, com motivo, e avança o ponteiro. */
+    public Canceled cancelNext(AccountPrincipal who, UUID studentId, UUID rowId, CancelNext in, ChargeActions actions, String ip) {
+        if (permissions.effective(who).get(Permission.COLLECTIONS) == Access.NONE) throw new AccessDeniedException("Permission denied");
+        String reason = ChargeActions.reason(in == null ? null : in.reason());
+        LocalDate wanted = null;
+        if (in.referenceMonth() != null) {
+            try {
+                wanted = LocalDate.parse(in.referenceMonth()).withDayOfMonth(1);
+            } catch (java.time.format.DateTimeParseException e) {
+                throw new ApiValidationException("referenceMonth", "data inválida");
+            }
+        }
+        LocalDate expected = wanted;
+        return transactions.execute(() -> {
+            Next next = lockNext(who, studentId, rowId);
+            LocalDate ref = next.item().ref();
+            if (expected != null && !expected.equals(ref)) throw new ApiStatusException(ErrorCode.CONFLICT);
+            List<Created> created = new ArrayList<>();
+            apply(next.plan(), who.organizationId(), next.unit(), who.accountId(), "GENERATION", created);
+            if (created.isEmpty()) throw new ApiStatusException(ErrorCode.CONFLICT);
+            UUID chargeId = created.get(0).id();
+            actions.cancelLocked(who, chargeId, reason, ip);
+            audit.record(new AuditEntry(actor(who), "charge.generation_adjusted", "enrollment_modality", rowId.toString(), next.unit(), Map.of(),
+                    Map.of("action", "CANCELED", "referenceMonth", ref.toString(), "chargeId", chargeId.toString()), reason, ip));
+            return new Canceled(chargeId, ref);
         });
     }
 }

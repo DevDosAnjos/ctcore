@@ -135,4 +135,22 @@ class GenerationPreviewIT extends OrganizationBase {
         assertThat(preview(account(t, Role.COORDINATOR), other.unitId(), null).count()).isZero();
         assertThat(preview(admin, t.unitId(), null).until()).isEqualTo(LocalDate.parse("2026-10-15"));
     }
+
+    @Test
+    @DisplayName("CA9, CA11: só a primeira mensalidade de cada modalidade é ajustável; bolsa de 100% vem em skipped e a modalidade encerrada não aparece")
+    void marksAdjustable() {
+        var t = tenant();
+        var admin = account(t, Role.ADMINISTRATOR);
+        UUID a = row(t, 8, 20000), full = row(t, 9, 20000), ended = row(t, 10, 20000);
+        BillingFixtures.benefit(adminJdbc(), t.orgId(), t.unitId(), student(full), full, "PERCENT", 100, null, "ACTIVE");
+        adminJdbc().update("update enrollment_modality set status = 'ENDED', ended_at = now() where id = ?", ended);
+
+        var preview = preview(admin, t.unitId(), 60);
+
+        var lines = preview.days().stream().flatMap(d -> d.lines().stream()).toList();
+        assertThat(lines).hasSize(2).allMatch(l -> l.modalityRowId().equals(a));
+        assertThat(lines).extracting(MonthlyGeneration.Line::adjustable).containsExactly(true, false);
+        assertThat(preview.skipped()).extracting(MonthlyGeneration.Skipped::reason).contains("FULL_BENEFIT");
+        assertThat(preview.skipped()).noneMatch(s -> s.studentId().equals(student(ended)));
+    }
 }

@@ -942,6 +942,53 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { description: 'Modalidade encerrada ou de valor final zero (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /students/{id}/modalities/{modalityRowId}/next-charge:
+    patch:
+      summary: Troca o vencimento da próxima mensalidade ainda não gerada (RN-COB-02). `COLLECTIONS` completo na unidade da modalidade.
+      description: |
+        `dueOn` (AAAA-MM-DD) não pode ser anterior a hoje (fuso da unidade) nem passar do último dia do mês de referência: 400. Vale só para esta
+        mensalidade; a seguinte volta ao dia de vencimento do aluno. Enviar a mesma data não muda nada. Modalidade encerrada ou de valor final zero: 422.
+        Grava `charge.next_due_changed` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ChangeNextDueInput' } } }
+      responses:
+        '200':
+          description: A mensalidade ajustada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NextChargeAdjusted' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Modalidade encerrada ou de valor final zero (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /students/{id}/modalities/{modalityRowId}/next-charge/cancel:
+    post:
+      summary: Cancela a próxima mensalidade ainda não gerada (RN-COB-02, RN-COB-10). `COLLECTIONS` completo na unidade da modalidade.
+      description: |
+        Grava a cobrança do mês como `CANCELED` com o motivo (obrigatório, sem espaços nas pontas, até 200 caracteres) e avança o ponteiro; a geração
+        não a recria. `referenceMonth`, se enviado, é o mês que a tela mostrou: se o ponteiro já andou, 409 (duas chamadas não cancelam dois meses).
+        Modalidade encerrada ou de valor final zero: 422. Grava `charge.canceled` e `charge.generation_adjusted` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CancelNextInput' } } }
+      responses:
+        '200':
+          description: A cobrança cancelada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NextChargeCanceled' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Modalidade encerrada ou de valor final zero (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /public/receipts/{code}:
     get:
       summary: Conferência pública do recibo (RN-COB-16). Rota pública, sem sessão.
@@ -3005,9 +3052,32 @@ components:
         dueOn: { type: string, format: date }
         toleranceDays: { type: integer }
         amountCents: { type: integer, format: int64 }
+    ChangeNextDueInput:
+      type: object
+      required: [dueOn]
+      properties:
+        dueOn: { type: string, format: date }
+    NextChargeAdjusted:
+      type: object
+      required: [dueOn, referenceMonth]
+      properties:
+        dueOn: { type: string, format: date }
+        referenceMonth: { type: string, format: date }
+    CancelNextInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 200 }
+        referenceMonth: { type: string, format: date, description: 'Mês que a tela mostrou; se o ponteiro já andou, 409.' }
+    NextChargeCanceled:
+      type: object
+      required: [chargeId, referenceMonth]
+      properties:
+        chargeId: { type: string, format: uuid }
+        referenceMonth: { type: string, format: date }
     GenerationPreviewLine:
       type: object
-      required: [studentId, student, modalityRowId, modality, plan, discountCents, amountCents, referenceMonth]
+      required: [studentId, student, modalityRowId, modality, plan, discountCents, amountCents, referenceMonth, adjustable]
       properties:
         studentId: { type: string, format: uuid }
         student: { type: string }
@@ -3017,6 +3087,7 @@ components:
         discountCents: { type: integer, format: int64 }
         amountCents: { type: integer, format: int64 }
         referenceMonth: { type: string, format: date }
+        adjustable: { type: boolean, description: 'Verdadeiro só para a primeira mensalidade ainda não gerada da modalidade (a que o ponteiro aponta).' }
     GenerationPreview:
       type: object
       required: [until, days, count, totalCents, previousMonthTotalCents, skipped]

@@ -89,6 +89,7 @@ export const resetMockSession = () => {
   mockProofs.clear();
   mockStartedUnits.length = 0;
   mockCharges = [];
+  nextDueOverride.clear();
   mockReceipts = [];
   studentLog = {};
   for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
@@ -831,6 +832,31 @@ const chargeSituation = (c: MockCharge, today: string) => {
   return today > limit ? "OVERDUE" : c.dueOn === today ? "DUE_TODAY" : "PENDING";
 };
 const studentOverdue = (studentId: string) => mockCharges.some((c) => c.studentId === studentId && c.status === "OPEN" && chargeSituation(c, isoDay(new Date())) === "OVERDUE");
+// RF-COB-03 (#74): o simulado não guarda ponteiro de geração; a próxima mensalidade de uma modalidade é o mês seguinte à última cobrança dela
+// (ou o mês corrente) e a troca de vencimento fica em memória, por modalidade e mês.
+const nextDueOverride = new Map<string, string>();
+const monthDue = (ref: string, day: number) => `${ref.slice(0, 8)}${String(Math.min(day, new Date(Date.UTC(Number(ref.slice(0, 4)), Number(ref.slice(5, 7)), 0)).getUTCDate())).padStart(2, "0")}`;
+const nextMonth = (ref: string) => isoDay(new Date(Date.UTC(Number(ref.slice(0, 4)), Number(ref.slice(5, 7)), 1)));
+const nextRefOf = (row: MockEnrollmentModality) => {
+  const last = mockCharges.filter((c) => c.modalityRowId === row.id && c.type === "MONTHLY").map((c) => c.referenceMonth!).sort().pop();
+  return last ? nextMonth(last) : firstOfMonth(isoDay(new Date()));
+};
+const nextDueOf = (row: MockEnrollmentModality, ref: string) => nextDueOverride.get(`${row.id}:${ref}`) ?? monthDue(ref, row.dueDay);
+const rowMonthly = (row: MockEnrollmentModality) => {
+  const plan = mockPlans.find((p) => p.id === row.planId);
+  const b = benefitRows.find((x) => x.rowId === row.id && x.status === "ACTIVE");
+  const discount = plan && b ? benefitDiscount(b.type, b.value, plan.valueCents) : 0;
+  return { plan, discount, amount: plan ? Math.max(0, plan.valueCents - discount) : 0 };
+};
+// 404 fora do alcance, 422 modalidade encerrada ou de valor zero; devolve a linha e o mês da próxima mensalidade.
+const nextChargeFor = (studentId: string, rowId: string) => {
+  const found = studentFor(studentId);
+  if (found instanceof Response) return found;
+  const row = mockEnrollments[found.id]?.modalities.find((m) => m.id === rowId);
+  if (!row || (activeRole() !== "COORDINATOR" && row.unitId !== ADMIN_UNIT)) return error(404, "NOT_FOUND", "Não encontrado.");
+  if (row.status !== "ACTIVE" || rowMonthly(row).amount === 0) return rule("modalityRowId", "modalidade encerrada ou de valor zero");
+  return { row, ref: nextRefOf(row) };
+};
 const plusDays = (iso: string, days: number) => isoDay(new Date(Date.parse(`${iso}T12:00:00Z`) + days * 86_400_000));
 // RN-MAT-07: a primeira data com o dia de vencimento a pelo menos 15 dias da matrícula.
 const suggestSecond = (today: string, dueDay: number) => {
@@ -3189,7 +3215,7 @@ export const routes: Route[] = [
     },
   },
   {
-    // RF-COB-03 (#71): prévia da geração; só lê. O simulado não tem ponteiro de geração, então devolve a prévia vazia.
+    // RF-COB-03 (#71, #74): prévia da geração calculada das modalidades ativas do simulado; só lê. Unidade fora do alcance: prévia vazia.
     method: "get",
     path: "/billing/generation-preview",
     resolver: ({ request }) => {
@@ -3197,8 +3223,77 @@ export const routes: Route[] = [
       if (denied) return denied;
       const q = new URL(request.url).searchParams;
       const days = q.has("days") ? Number(q.get("days")) : 10;
+      const unitId = q.get("unitId");
+      if (!unitId) return studentBad("unitId", "obrigatório");
       if (!Number.isInteger(days) || days < 1 || days > 60) return studentBad("days", "de 1 a 60");
-      return HttpResponse.json({ until: plusDays(isoDay(new Date()), days), days: [], count: 0, totalCents: 0, previousMonthTotalCents: 0, skipped: [] });
+      const until = plusDays(isoDay(new Date()), days);
+      const reach = activeRole() === "COORDINATOR" || unitId === ADMIN_UNIT;
+      const byDay = new Map<string, { dueOn: string; count: number; totalCents: number; lines: unknown[] }>();
+      const skipped: unknown[] = [];
+      let firstDue = "";
+      for (const [studentId, e] of Object.entries(mockEnrollments)) {
+        const student = mockStudents.find((s) => s.id === studentId);
+        for (const row of e.modalities) {
+          if (!reach || !student || row.unitId !== unitId || row.status !== "ACTIVE") continue;
+          const { plan, discount, amount } = rowMonthly(row);
+          if (!plan) continue;
+          const modality = modalityCatalog.find((m) => m.id === row.modalityId)?.name ?? "";
+          let ref = nextRefOf(row);
+          if (amount === 0) {
+            skipped.push({ studentId, student: student.name, modality, referenceMonth: ref, reason: "FULL_BENEFIT" });
+            continue;
+          }
+          for (let first = true; nextDueOf(row, ref) <= until; first = false) {
+            const dueOn = nextDueOf(row, ref);
+            const day = byDay.get(dueOn) ?? { dueOn, count: 0, totalCents: 0, lines: [] };
+            day.lines.push({ studentId, student: student.name, modalityRowId: row.id, modality, plan: plan.name, discountCents: discount, amountCents: amount, referenceMonth: ref, adjustable: first });
+            day.count += 1;
+            day.totalCents += amount;
+            byDay.set(dueOn, day);
+            if (!firstDue || dueOn < firstDue) firstDue = dueOn;
+            ref = nextMonth(ref);
+          }
+        }
+      }
+      const list = [...byDay.values()].sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+      const prevRef = firstDue ? isoDay(new Date(Date.UTC(Number(firstDue.slice(0, 4)), Number(firstDue.slice(5, 7)) - 2, 1))) : "";
+      const previousMonthTotalCents = mockCharges.filter((c) => c.type === "MONTHLY" && c.unitId === unitId && c.status !== "CANCELED" && c.referenceMonth === prevRef).reduce((t, c) => t + c.amountCents, 0);
+      return HttpResponse.json({ until, days: list, count: list.reduce((t, d) => t + d.count, 0), totalCents: list.reduce((t, d) => t + d.totalCents, 0), previousMonthTotalCents, skipped });
+    },
+  },
+  {
+    // RN-COB-02 (#74): troca o vencimento da próxima mensalidade; de hoje até o fim do mês de referência.
+    method: "patch",
+    path: "/students/{id}/modalities/{modalityRowId}/next-charge",
+    resolver: async ({ request, params }) => {
+      const found = nextChargeFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const dueOn = ((await request.json().catch(() => ({}))) as { dueOn?: unknown }).dueOn;
+      const valid = typeof dueOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dueOn) && !Number.isNaN(Date.parse(`${dueOn}T00:00:00Z`)) && isoDay(new Date(`${dueOn}T00:00:00Z`)) === dueOn;
+      const last = monthDue(found.ref, 31);
+      if (!valid || dueOn < isoDay(new Date()) || dueOn > last) return studentBad("dueOn", `de hoje até ${last}`);
+      nextDueOverride.set(`${found.row.id}:${found.ref}`, dueOn);
+      return HttpResponse.json({ dueOn, referenceMonth: found.ref });
+    },
+  },
+  {
+    // RN-COB-02, RN-COB-10 (#74): cancela a próxima mensalidade (a cobrança do mês fica CANCELED com o motivo) e avança.
+    method: "post",
+    path: "/students/{id}/modalities/{modalityRowId}/next-charge/cancel",
+    resolver: async ({ request, params }) => {
+      const found = nextChargeFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { reason?: unknown; referenceMonth?: string }) ?? {};
+      const bad = reasonError(body.reason);
+      if (bad) return studentBad("reason", bad);
+      if (body.referenceMonth && body.referenceMonth !== found.ref) return conflict();
+      const c: MockCharge = {
+        id: crypto.randomUUID(), type: "MONTHLY", studentId: params.id as string, unitId: found.row.unitId, modalityRowId: found.row.id, referenceMonth: found.ref,
+        dueOn: nextDueOf(found.row, found.ref), toleranceDays: 0, amountCents: rowMonthly(found.row).amount, status: "OPEN", description: "",
+      };
+      cancelMock(c, (body.reason as string).trim());
+      mockCharges.push(c);
+      return HttpResponse.json({ chargeId: c.id, referenceMonth: found.ref });
     },
   },
   {
