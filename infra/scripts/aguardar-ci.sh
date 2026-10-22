@@ -14,13 +14,13 @@
 #   5  erro            uso errado, gh sem login, PR sem run, ou o head do PR mudou (push novo)
 #
 # Variáveis: CI_LIMITE (segundos, padrão 2400 = ~4x o CI normal de ~10 min),
-#            CI_INTERVALO (padrão 30), CI_FANTASMA (carência em segundos, padrão 120).
+#            CI_INTERVALO (padrão 30), CI_FANTASMA (carência em segundos, padrão 600).
 # Nunca corta a saída do gh; `gh pr checks` com código 8 é "pendente", não falha.
 set -u
 
 pr="${1:-}"
 [[ "$pr" =~ ^[0-9]+$ ]] || { echo "uso: $0 <número-do-PR>" >&2; exit 5; }
-limite="${CI_LIMITE:-2400}"; intervalo="${CI_INTERVALO:-30}"; carencia="${CI_FANTASMA:-120}"
+limite="${CI_LIMITE:-2400}"; intervalo="${CI_INTERVALO:-30}"; carencia="${CI_FANTASMA:-600}"
 
 # Um watcher por PR: diretório de trava com o pid; trava de processo morto é refeita.
 trava="${TMPDIR:-/tmp}/aguardar-ci-pr$pr.lock"
