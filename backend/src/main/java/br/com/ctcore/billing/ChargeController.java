@@ -20,8 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 class ChargeController {
     private final MonthlyGeneration generation;
     private final Charges charges;
+    private final ChargeActions actions;
 
-    ChargeController(MonthlyGeneration generation, Charges charges) {
+    ChargeController(MonthlyGeneration generation, Charges charges, ChargeActions actions) {
+        this.actions = actions;
         this.generation = generation;
         this.charges = charges;
     }
@@ -31,10 +33,29 @@ class ChargeController {
     Charges.ChargeList list(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q, @RequestParam(required = false) UUID unitId,
             @RequestParam(required = false) String quick, @RequestParam(required = false) String from, @RequestParam(required = false) String to,
             @RequestParam(required = false) String status, @RequestParam(required = false) String type, @RequestParam(required = false) UUID modalityId,
-            @RequestParam(required = false) UUID classId, @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) UUID classId, @RequestParam(required = false) UUID studentId, @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String sort) {
-        return charges.list(who, new Charges.Filter(q, unitId, quick, from, to, status, type, modalityId, classId),
+        return charges.list(who, new Charges.Filter(q, unitId, quick, from, to, status, type, modalityId, classId, studentId),
                 PageRequest.of(page, size, sort, Charges.SORT_FIELDS));
+    }
+
+    /** RF-COB-02: o painel da cobrança. */
+    @GetMapping("/api/v1/charges/{id}")
+    ChargeActions.Detail detail(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id) {
+        return actions.detail(who, id);
+    }
+
+    public record CancelInput(String reason) {}
+
+    @PostMapping("/api/v1/charges/{id}/cancel")
+    ChargeActions.Detail cancel(@AuthenticationPrincipal AccountPrincipal who, @PathVariable UUID id, @RequestBody CancelInput input, HttpServletRequest request) {
+        return actions.cancel(who, id, input.reason(), request.getRemoteAddr());
+    }
+
+    @PostMapping("/api/v1/charges/renegotiate")
+    @ResponseStatus(HttpStatus.CREATED)
+    List<Charges.Row> renegotiate(@AuthenticationPrincipal AccountPrincipal who, @RequestBody ChargeActions.RenegotiateInput input, HttpServletRequest request) {
+        return actions.renegotiate(who, input, request.getRemoteAddr());
     }
 
     @GetMapping("/api/v1/billing/generation-preview")

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
-import type { EndPreview, Enrollment, StudentDetail, StudentHistoryEntry, StudentRecord, StudentUpdate } from "./types";
+import type { ChargeDecision, EndPreview, Enrollment, StudentDetail, StudentHistoryEntry, StudentRecord, StudentUpdate } from "./types";
 
 type Failure = "forbidden" | "notFound" | "error";
 type Done<T> = { path: string; data?: T; failure?: Failure };
@@ -46,7 +46,7 @@ export const changeClass = (id: string, rowId: string, body: { primaryClassId: s
 export const changePlan = (id: string, rowId: string, planId: string) => api<Enrollment>(`${row(id, rowId)}/plan`, { method: "PUT", body: { planId } });
 export const transferModality = (id: string, rowId: string, body: { unitId: string; primaryClassId: string; otherClassIds: string[]; planId: string; dueDay?: number }) =>
   api<Enrollment>(`${row(id, rowId)}/transfer`, { method: "POST", body });
-export const endModality = (id: string, rowId: string, body: { reason: string; note?: string }) => api<Enrollment>(`${row(id, rowId)}/end`, { method: "POST", body });
+export const endModality = (id: string, rowId: string, body: { reason: string; note?: string; charges?: ChargeDecision[] }) => api<Enrollment>(`${row(id, rowId)}/end`, { method: "POST", body });
 export const useEndPreview = (id: string, rowId: string) => useResource<EndPreview>(`${row(id, rowId)}/end-preview`);
 
 // Dados pessoais completos para a janela de edição (RF-ALU-04).

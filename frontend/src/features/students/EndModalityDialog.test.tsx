@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/server";
@@ -12,6 +12,7 @@ let bodies: unknown[];
 const onDone = vi.fn();
 const onClose = vi.fn();
 const preview = (openCharges: unknown[] = []) => http.get("/api/v1/students/s1/modalities/m1/end-preview", () => HttpResponse.json({ openCharges }));
+const open = (id: string, due: string) => ({ id, referenceMonth: "2026-03-01", dueOn: due, amountCents: 15000, status: "OVERDUE" });
 
 function setup(post?: () => Response, ...extra: Parameters<typeof server.use>) {
   bodies = [];
@@ -50,8 +51,27 @@ describe("janela Encerrar modalidade (RF-MAT-03, CA9, CA10)", () => {
   });
 
   it("lista as cobranças em aberto quando existirem", async () => {
-    setup(undefined, preview([{ id: "c1", dueOn: "2026-03-05", amountCents: 15000, status: "OPEN" }]));
-    expect(await screen.findByText(/05\/03\/2026/)).toBeInTheDocument();
+    setup(undefined, preview([open("c1", "2026-03-05")]));
+    expect(await screen.findByText(/05\/03\/2026 · R\$ 150,00 · Em atraso/)).toBeInTheDocument();
+  });
+
+  it("CA19: escolhe Cancelar (com motivo) numa cobrança e Manter na outra; o envio leva charges", async () => {
+    const user = userEvent.setup();
+    setup(undefined, preview([open("c1", "2026-03-05"), open("c2", "2026-04-05")]));
+    const groups = await screen.findAllByRole("group", { name: /R\$ 150,00/ });
+    expect(groups).toHaveLength(2);
+    expect(screen.getAllByRole("radio", { name: "Manter", checked: true })).toHaveLength(2);
+    await user.selectOptions(screen.getByLabelText("Motivo"), "FINANCIAL");
+    await user.click(within(groups[0]).getByRole("radio", { name: "Cancelar" }));
+    const submit = screen.getByRole("button", { name: "Encerrar modalidade" });
+    expect(submit).toBeDisabled();
+    await user.type(within(groups[0]).getByRole("textbox"), " Mudou de cidade ");
+    expect(submit).toBeEnabled();
+    await user.click(submit);
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(bodies).toEqual([
+      { reason: "FINANCIAL", charges: [{ chargeId: "c1", action: "CANCEL", reason: "Mudou de cidade" }, { chargeId: "c2", action: "KEEP" }] },
+    ]);
   });
 
   it("mostra o 400 do servidor no campo e não fecha", async () => {

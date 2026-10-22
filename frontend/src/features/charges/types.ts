@@ -30,3 +30,52 @@ export interface ChargeList {
   counts: { overdue: number; dueToday: number; inReview: number; paidMonth: number };
   totals: { count: number; amountCents: number };
 }
+
+// Espelha ChargeDetail do OpenAPI (RF-COB-02). Valores em centavos; `reminders` vem vazio até o item de lembretes.
+export type StoredStatus = "OPEN" | "IN_REVIEW" | "PAID" | "CANCELED" | "RENEGOTIATED" | "REFUNDED";
+export interface ChargeRef {
+  id: string;
+  type: ChargeType;
+  referenceMonth: string | null;
+  dueOn: string;
+  amountCents: number;
+  status: StoredStatus;
+}
+export interface ChargePayment {
+  id: string;
+  amountCents: number;
+  method: PaymentMethod;
+  origin: "MANAGEMENT" | "PORTAL" | "AUTO_DEBIT";
+  paidAt: string;
+  registeredBy: { id: string; name: string | null } | null;
+  observation: string | null;
+  status: "CONFIRMED" | "REFUNDED";
+  receipt: { number: number; code: string } | null;
+}
+export interface ChargeDetail {
+  charge: ChargeRow;
+  toleranceDays: number;
+  composition: {
+    plan: { id: string; name: string } | null;
+    planCents: number;
+    benefitType: string | null;
+    benefitCents: number;
+    amountCents: number;
+  };
+  payer: { id: string; name: string; kind: "STUDENT" | "GUARDIAN" };
+  origin: ChargeRef | null;
+  replacedBy: ChargeRef[];
+  reason: string | null;
+  canceledAt: string | null;
+  canceledBy: { id: string; name: string | null } | null;
+  payments: ChargePayment[];
+  reminders: unknown[];
+  actions: { cancel: boolean; renegotiate: boolean; registerPayment: boolean; sendReminder: boolean; refund: boolean };
+}
+export interface RenegotiateInput {
+  chargeIds: string[];
+  amountCents?: number;
+  firstDueOn: string;
+  installments: number;
+  reason: string;
+}

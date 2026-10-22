@@ -41,6 +41,7 @@ let record: StudentRecord;
 let history: StudentHistoryEntry[];
 let enrollment: Enrollment;
 let enrollmentCalls: number;
+let chargeCalls: number;
 let puts: { url: string; body: unknown }[];
 let posts: { url: string; method: string; body: unknown }[];
 
@@ -48,6 +49,7 @@ function setup(path = "/alunos", opts: { record?: () => Response | Promise<Respo
   const role = opts.role ?? "COORDINATOR";
   enrollment = enrollmentOf([modalityRow()]);
   enrollmentCalls = 0;
+  chargeCalls = 0;
   puts = [];
   record = baseRecord();
   history = [{ action: "student.created", at: "2026-01-10T15:00:00Z", actor: "Ana Coordenadora", actorProfile: "COORDINATOR", reason: null }];
@@ -69,6 +71,10 @@ function setup(path = "/alunos", opts: { record?: () => Response | Promise<Respo
     http.get("/api/v1/students/:id/enrollment", () => {
       enrollmentCalls++;
       return opts.enrollment ? opts.enrollment() : HttpResponse.json(enrollment);
+    }),
+    http.get("/api/v1/charges", () => {
+      chargeCalls++;
+      return HttpResponse.json({ items: [], page: 1, size: 100, total: 0, counts: { overdue: 0, dueToday: 0, inReview: 0, paidMonth: 0 }, totals: { count: 0, amountCents: 0 } });
     }),
     http.put("/api/v1/students/:id/modalities/:row/class", async ({ request }) => {
       puts.push({ url: new URL(request.url).pathname, body: await request.json() });
@@ -140,7 +146,7 @@ describe("ficha do aluno (RF-ALU-03)", () => {
     expect(within(dialog).queryByText("Emergência")).toBeNull();
   });
 
-  it("CA10: as abas se alternam por teclado; Financeiro e Graduações mostram o estado vazio explicativo", async () => {
+  it("CA10: as abas se alternam por teclado; Financeiro e Graduações mostram o estado vazio", async () => {
     const user = userEvent.setup();
     setup("/alunos/s1");
     const dialog = await panel();
@@ -151,7 +157,7 @@ describe("ficha do aluno (RF-ALU-03)", () => {
     expect(within(dialog).getByRole("tab", { name: "Matrícula e modalidades", selected: true })).toHaveFocus();
     expect(await within(dialog).findByText("Jiu-Jitsu")).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
-    expect(within(dialog).getByText(/quando as cobranças estiverem disponíveis/)).toBeInTheDocument();
+    expect(await within(dialog).findByText("Este aluno ainda não tem cobranças.")).toBeInTheDocument();
     await user.keyboard("{ArrowRight}");
     expect(within(dialog).getByText(/quando a graduação do aluno estiver disponível/)).toBeInTheDocument();
     await user.keyboard("{End}");
@@ -250,6 +256,8 @@ describe("ficha do aluno (RF-ALU-03)", () => {
     expect(await within(dialog).findByText("Marta Souza")).toBeInTheDocument();
     for (const name of ["Tornar financeiro", "Desvincular", "Reenviar convite", "Vincular responsável"]) expect(within(dialog).queryByRole("button", { name })).toBeNull();
     expect(enrollmentCalls).toBe(0);
+    expect(chargeCalls).toBe(0);
+    expect(within(dialog).queryByText("Em dia")).toBeNull();
   });
 
   it("CA35: a ficha da gestão mantém os botões de escrita", async () => {

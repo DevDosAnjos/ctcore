@@ -53,15 +53,26 @@ export function useReference() {
       : (r.description ?? t(`charges.types.${r.type}`));
 }
 
+// A referência abre o painel da cobrança (RF-COB-02).
+export function OpenButton({ row, onOpen }: { row: ChargeRow; onOpen: (id: string) => void }) {
+  const { t } = useTranslation();
+  const reference = useReference();
+  return (
+    <button type="button" aria-label={t("charges.panel.open", { student: row.student.name, reference: reference(row) })} className="inline-flex min-h-11 items-center break-words text-left underline-offset-2 hover:underline" onClick={() => onOpen(row.id)}>
+      {reference(row)}
+    </button>
+  );
+}
+
 // Cartão do celular: mesma informação das colunas, em pilha.
-export function ChargeCard({ row }: { row: ChargeRow }) {
+export function ChargeCard({ row, onOpen }: { row: ChargeRow; onOpen?: (id: string) => void }) {
   const { t } = useTranslation();
   const reference = useReference();
   return (
     <div className="flex flex-col gap-2">
       <StudentCell row={row} />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="break-words">{reference(row)}</span>
+        {onOpen ? <OpenButton row={row} onOpen={onOpen} /> : <span className="break-words">{reference(row)}</span>}
         <StatusBadge status={row.status} />
       </div>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">

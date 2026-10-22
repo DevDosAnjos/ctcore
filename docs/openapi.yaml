@@ -780,6 +780,69 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /charges/{id}:
+    get:
+      summary: Painel da cobrança (RF-COB-02). Coordenador e Administrador da unidade.
+      description: |
+        Os campos da linha de `GET /charges` (`charge`, com a situação calculada) mais tolerância, composição (plano, benefício e valor final, em centavos),
+        pagador (aluno ou responsável financeiro), cobrança de origem, as parcelas que a substituíram, motivo, quem cancelou e quando, pagamentos (com recibo),
+        `reminders` (sempre vazio até o item de lembretes) e `actions` (`registerPayment`, `sendReminder` e `refund` ficam `false` até os itens que os entregam).
+        Professor, Aluno e Responsável: 403. Cobrança inexistente, de outra organização ou de unidade fora do alcance: 404. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: O painel.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChargeDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /charges/{id}/cancel:
+    post:
+      summary: Cancela uma cobrança em aberto, de qualquer valor e idade (RN-COB-10). Coordenador e Administrador da unidade.
+      description: |
+        `reason` é obrigatório, sem espaços nas pontas e de até 200 caracteres (400 no campo `reason`). A cobrança passa a `CANCELED` com motivo, quem
+        cancelou e quando. Paga, estornada, renegociada ou em conferência: 409 e nada muda. Já cancelada: 200 sem efeito e sem nova auditoria. Duas chamadas
+        simultâneas travam a linha: uma efetiva, a outra repete sem efeito. Grava `charge.canceled` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ChargeCancelInput' } } }
+      responses:
+        '200':
+          description: O painel atualizado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChargeDetail' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /charges/renegotiate:
+    post:
+      summary: Renegocia cobranças em aberto do mesmo aluno em parcelas mensais (RN-COB-09). Coordenador e Administrador da unidade.
+      description: |
+        As cobranças de `chargeIds` (uma ou mais, em aberto, do mesmo aluno e da mesma unidade, sem repetir) viram `RENEGOTIATED` com o motivo e nascem
+        `installments` (1 a 6) cobranças do tipo `INSTALLMENT`, mensais a partir de `firstDueOn` (dia mantido, limitado ao último dia do mês), que somam
+        exatamente o total; o resto dos centavos vai para a primeira. `amountCents` só pode diferir da soma das originais quando há uma só original. Total maior
+        que zero e ao menos 1 centavo por parcela; `firstDueOn` não anterior a hoje no fuso da unidade; `reason` como no cancelamento. Violação: 400 com o campo e
+        nada muda. Cobrança de outra organização ou de unidade fora do alcance: 404. Alguma não está em aberto: 409. Tudo ou nada, com as linhas travadas.
+        Grava `charge.renegotiated` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ChargeRenegotiateInput' } } }
+      responses:
+        '201':
+          description: As cobranças novas, no formato da lista.
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/ChargeRow' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /charges/{id}/payments:
     post:
       summary: Registra o pagamento no balcão do valor total de uma cobrança em aberto (RN-COB-12, RN-MAT-06). Coordenador e Administrador da unidade.
@@ -827,6 +890,7 @@ paths:
         - { name: type, in: query, required: false, schema: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] } }
         - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
         - { name: classId, in: query, required: false, description: Turma principal ou outro horário da matrícula., schema: { type: string, format: uuid } }
+        - { name: studentId, in: query, required: false, description: "Cobranças de um aluno (aba Financeiro da ficha); aluno inexistente na organização: 404.", schema: { type: string, format: uuid } }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/Size' }
         - { name: sort, in: query, required: false, description: "`campo,asc|desc` com campo `dueOn`, `amount` ou `student`; desempate por id.", schema: { type: string } }
@@ -3932,6 +3996,82 @@ components:
           properties:
             method: { type: string, enum: [PIX_MP, CREDIT_CARD, DEBIT_CARD, BOLETO, PIX_KEY, CASH, CARD_MACHINE, TRANSFER] }
             paidAt: { type: string, format: date-time }
+    ChargeCancelInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 200, description: Sem espaços nas pontas. }
+    ChargeRenegotiateInput:
+      type: object
+      required: [chargeIds, firstDueOn, installments, reason]
+      properties:
+        chargeIds: { type: array, minItems: 1, items: { type: string, format: uuid } }
+        amountCents: { type: integer, format: int64, nullable: true, description: Só difere da soma das originais com uma única original. }
+        firstDueOn: { type: string, format: date }
+        installments: { type: integer, minimum: 1, maximum: 6 }
+        reason: { type: string, minLength: 1, maxLength: 200 }
+    ChargeRef:
+      type: object
+      required: [id, type, referenceMonth, dueOn, amountCents, status]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] }
+        referenceMonth: { type: string, format: date, nullable: true }
+        dueOn: { type: string, format: date }
+        amountCents: { type: integer, format: int64 }
+        status: { type: string, enum: [OPEN, IN_REVIEW, PAID, CANCELED, RENEGOTIATED, REFUNDED], description: Situação gravada. }
+    ChargeDetail:
+      type: object
+      required: [charge, toleranceDays, composition, payer, origin, replacedBy, reason, canceledAt, canceledBy, payments, reminders, actions]
+      properties:
+        charge: { $ref: '#/components/schemas/ChargeRow' }
+        toleranceDays: { type: integer, minimum: 0 }
+        composition:
+          type: object
+          required: [plan, planCents, benefitType, benefitCents, amountCents]
+          properties:
+            plan: { type: object, nullable: true, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+            planCents: { type: integer, format: int64 }
+            benefitType: { type: string, nullable: true }
+            benefitCents: { type: integer, format: int64 }
+            amountCents: { type: integer, format: int64 }
+        payer:
+          type: object
+          required: [id, name, kind]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            kind: { type: string, enum: [STUDENT, GUARDIAN] }
+        origin: { allOf: [{ $ref: '#/components/schemas/ChargeRef' }], nullable: true, description: A cobrança que esta substituiu. }
+        replacedBy: { type: array, items: { $ref: '#/components/schemas/ChargeRef' }, description: "As cobranças que substituíram esta, quando renegociada." }
+        reason: { type: string, nullable: true, description: Motivo do cancelamento ou da renegociação. }
+        canceledAt: { type: string, format: date-time, nullable: true }
+        canceledBy: { type: object, nullable: true, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string, nullable: true } } }
+        payments:
+          type: array
+          items:
+            type: object
+            required: [id, amountCents, method, origin, paidAt, registeredBy, observation, status, receipt]
+            properties:
+              id: { type: string, format: uuid }
+              amountCents: { type: integer, format: int64 }
+              method: { type: string }
+              origin: { type: string, enum: [MANAGEMENT, PORTAL, AUTO_DEBIT] }
+              paidAt: { type: string, format: date-time }
+              registeredBy: { type: object, nullable: true, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string, nullable: true } } }
+              observation: { type: string, nullable: true }
+              status: { type: string, enum: [CONFIRMED, REFUNDED] }
+              receipt: { type: object, nullable: true, required: [number, code], properties: { number: { type: integer }, code: { type: string } } }
+        reminders: { type: array, items: { type: object }, description: Sempre vazio até o item de lembretes. }
+        actions:
+          type: object
+          required: [cancel, renegotiate, registerPayment, sendReminder, refund]
+          properties:
+            cancel: { type: boolean }
+            renegotiate: { type: boolean }
+            registerPayment: { type: boolean }
+            sendReminder: { type: boolean }
+            refund: { type: boolean }
     ChargeList:
       allOf:
         - $ref: '#/components/schemas/Page'
@@ -4011,21 +4151,32 @@ components:
       properties:
         reason: { type: string, enum: [CITY_CHANGE, FINANCIAL, SCHEDULE, INJURY, DISSATISFACTION, OTHER] }
         note: { type: string, maxLength: 500, nullable: true, description: "Texto livre, sem espaços nas pontas; vazia vira ausente. Não vai para a auditoria." }
+        charges:
+          type: array
+          description: "Decisão por cobrança em aberto da modalidade (RN-MAT-17). Não listada, ou KEEP, fica mantida; CANCEL cancela na mesma transação do encerramento (RN-COB-10). Cobrança que não está em aberto nesta modalidade, repetida, ação inválida ou CANCEL sem motivo: 400 e nada muda."
+          items:
+            type: object
+            required: [chargeId, action]
+            properties:
+              chargeId: { type: string, format: uuid }
+              action: { type: string, enum: [KEEP, CANCEL] }
+              reason: { type: string, maxLength: 200, nullable: true, description: Obrigatório no CANCEL. }
     EndPreview:
       type: object
       required: [openCharges]
       properties:
         openCharges:
           type: array
-          description: Cobranças em aberto da modalidade; vazia até as cobranças existirem (Sprint 08).
+          description: Cobranças em aberto da modalidade (RN-MAT-17), da mais antiga para a mais nova.
           items:
             type: object
-            required: [id, dueOn, amountCents, status]
+            required: [id, referenceMonth, dueOn, amountCents, status]
             properties:
               id: { type: string, format: uuid }
+              referenceMonth: { type: string, format: date, nullable: true }
               dueOn: { type: string, format: date }
               amountCents: { type: integer, format: int64 }
-              status: { type: string }
+              status: { $ref: '#/components/schemas/ChargeSituation' }
     EnrollmentNamed:
       type: object
       required: [id, name]

@@ -454,8 +454,14 @@
       },
       "notFound": "Aluno não encontrado.",
       "notFoundText": "Este aluno não existe ou não está ao seu alcance.",
+      "financial": {
+        "emptyTitle": "Sem cobranças",
+        "emptyText": "Este aluno ainda não tem cobranças.",
+        "line": "Vence em {{due}} · {{amount}}",
+        "overdue": "Em atraso",
+        "current": "Em dia"
+      },
       "empty": {
-        "financial": "As cobranças, os pagamentos e os recibos do aluno aparecem aqui quando as cobranças estiverem disponíveis.",
         "graduations": "A linha do tempo de graduação aparece aqui quando a graduação do aluno estiver disponível.",
         "title": "Ainda não há o que mostrar"
       },
@@ -507,6 +513,9 @@
           "charges": "Cobranças em aberto",
           "noCharges": "Nenhuma cobrança em aberto",
           "chargeLine": "{{due}} · {{amount}} · {{status}}",
+          "keep": "Manter",
+          "cancel": "Cancelar",
+          "cancelReason": "Motivo do cancelamento de {{line}}",
           "reason": "Motivo",
           "reasons": {
             "CITY_CHANGE": "Mudança de cidade",
@@ -1903,6 +1912,81 @@
       "ONE_OFF": "Avulsa",
       "INSTALLMENT": "Parcela",
       "READJUSTMENT_DIFF": "Diferença de reajuste"
+    },
+    "stored": {
+      "OPEN": "Em aberto",
+      "IN_REVIEW": "Em conferência",
+      "PAID": "Paga",
+      "CANCELED": "Cancelada",
+      "RENEGOTIATED": "Renegociada",
+      "REFUNDED": "Estornada"
+    },
+    "panel": {
+      "title": "Cobrança",
+      "open": "Abrir cobrança de {{student}}: {{reference}}",
+      "notFound": "Cobrança não encontrada.",
+      "notFoundText": "Esta cobrança não existe ou não está ao seu alcance.",
+      "tolerance": "Tolerância",
+      "days_one": "{{count}} dia",
+      "days_other": "{{count}} dias",
+      "payer": "Pagador",
+      "composition": "Composição",
+      "plan": "Plano",
+      "benefit": "Benefício",
+      "final": "Valor final",
+      "history": "Origem e histórico",
+      "origin": "Substitui a cobrança:",
+      "replacedBy": "Substituída por:",
+      "ref": "{{type}} · {{amount}} · vence em {{due}} · {{status}}",
+      "reason": "Motivo: {{reason}}",
+      "canceled": "Cancelada em {{at}} por {{by}}",
+      "payments": "Pagamentos",
+      "noPayments": "Nenhum pagamento registrado",
+      "registeredBy": "Lançado por {{name}}",
+      "origins": {
+        "MANAGEMENT": "gestão",
+        "PORTAL": "portal do aluno",
+        "AUTO_DEBIT": "débito automático"
+      },
+      "receipt": "Recibo número {{number}} · código {{code}}",
+      "reminders": "Lembretes enviados",
+      "noReminders": "Nenhum lembrete enviado",
+      "cancel": "Cancelar cobrança",
+      "renegotiate": "Renegociar",
+      "seeStudent": "Ver aluno",
+      "registerPayment": "Registrar pagamento",
+      "sendReminder": "Enviar lembrete",
+      "refund": "Estornar",
+      "disabled": {
+        "registerPayment": "Disponível quando a janela de pagamento for entregue.",
+        "sendReminder": "Disponível quando o envio de lembretes for entregue.",
+        "refund": "Disponível quando o estorno for entregue."
+      }
+    },
+    "actions": {
+      "reason": "Motivo",
+      "conflict": "Esta cobrança já foi alterada por outra pessoa. Atualize o painel e confira a situação.",
+      "gone": "Esta cobrança não existe mais ou não está ao seu alcance.",
+      "error": "Não foi possível concluir. Nada foi alterado. Tente de novo."
+    },
+    "cancel": {
+      "title": "Cancelar cobrança",
+      "summary": "{{student}} · {{amount}} · vence em {{due}}",
+      "effect": "A cobrança deixa de valer e não pode ser reaberta. O motivo fica na auditoria.",
+      "submit": "Cancelar cobrança"
+    },
+    "renegotiate": {
+      "title": "Renegociar",
+      "effect": "A cobrança original passa a Renegociada e nascem parcelas mensais no lugar dela.",
+      "original": "{{student}} · {{amount}} · vence em {{due}}",
+      "total": "Total a pagar",
+      "totalLocked": "Com mais de uma cobrança, o total é a soma delas.",
+      "firstDueOn": "Primeiro vencimento",
+      "installments": "Parcelas (1 a 6)",
+      "preview": "Prévia das parcelas",
+      "line": "Parcela {{n}}: {{amount}} em {{due}}",
+      "sum": "Total: {{amount}}",
+      "submit": "Renegociar"
     }
   },
   "payments": {

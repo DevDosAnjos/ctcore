@@ -49,7 +49,11 @@ public class Charges {
     public record ChargeList(List<Row> items, int page, int size, long total, Counts counts, Totals totals) {}
 
     /** R5: filtros; {@code from} e {@code to} chegam como texto para a data inválida virar 400 com o nome do campo. */
-    public record Filter(String q, UUID unitId, String quick, String from, String to, String status, String type, UUID modalityId, UUID classId) {}
+    public record Filter(String q, UUID unitId, String quick, String from, String to, String status, String type, UUID modalityId, UUID classId, UUID studentId) {
+        public Filter(String q, UUID unitId, String quick, String from, String to, String status, String type, UUID modalityId, UUID classId) {
+            this(q, unitId, quick, from, to, status, type, modalityId, classId, null);
+        }
+    }
 
     private static final Set<String> QUICK = Set.of("OVERDUE", "DUE_TODAY", "IN_REVIEW", "PAID_MONTH");
     private static final Set<String> STATUSES = Set.of("PENDING", "DUE_TODAY", "OVERDUE", "IN_REVIEW", "PAID", "PAID_LATE", "CANCELED", "RENEGOTIATED", "REFUNDED");
@@ -68,14 +72,14 @@ public class Charges {
     }
 
     /** Situação calculada (R2). Aliases {@code c} (cobrança), {@code u} (unidade dela) e {@code p} (pagamento confirmado). */
-    private static final String SITUATION = "(case when c.status = 'OPEN' then case when " + overdue("c", "u") + " then 'OVERDUE' when c.due_on = " + today("u")
+    static final String SITUATION = "(case when c.status = 'OPEN' then case when " + overdue("c", "u") + " then 'OVERDUE' when c.due_on = " + today("u")
             + " then 'DUE_TODAY' else 'PENDING' end when c.status = 'PAID' then case when (p.paid_at at time zone u.timezone)::date > c.due_on + c.tolerance_days "
             + "then 'PAID_LATE' else 'PAID' end else c.status end)";
 
     /** D3: paga e com o pagamento no mês corrente do fuso da unidade. */
     private static final String PAID_MONTH = "(c.status = 'PAID' and to_char(p.paid_at at time zone u.timezone, 'YYYYMM') = to_char(" + today("u") + ", 'YYYYMM'))";
 
-    private static final String FROM = " from charge c join unit u on u.organization_id = c.organization_id and u.id = c.unit_id "
+    static final String FROM = " from charge c join unit u on u.organization_id = c.organization_id and u.id = c.unit_id "
             + "join student s on s.organization_id = c.organization_id and s.id = c.student_id "
             + "left join payment p on p.organization_id = c.organization_id and p.charge_id = c.id and p.status = 'CONFIRMED' "
             + "left join enrollment_modality em on em.organization_id = c.organization_id and em.id = c.enrollment_modality_id "
@@ -110,6 +114,7 @@ public class Charges {
                         .query(Integer.class).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
             }
             if (f.classId() != null) exists("training_class", org, f.classId());
+            if (f.studentId() != null) exists("student", org, f.studentId());
             boolean admin = who.role() == Role.ADMINISTRATOR;
             Set<UUID> reach = who.units() == null ? Set.of() : who.units();
             if (admin && (reach.isEmpty() || f.unitId() != null && !reach.contains(f.unitId()))) {
@@ -158,6 +163,10 @@ public class Charges {
                 where.append(" and em.modality_id = :modality");
                 params.put("modality", f.modalityId());
             }
+            if (f.studentId() != null) {
+                where.append(" and c.student_id = :student");
+                params.put("student", f.studentId());
+            }
             if (f.classId() != null) {
                 where.append(" and (em.primary_class_id = :class or exists (select 1 from enrollment_modality_class o where o.organization_id = em.organization_id "
                         + "and o.modality_row_id = em.id and o.class_id = :class))");
@@ -169,18 +178,37 @@ public class Charges {
             var sort = page.sort() == null ? new PageRequest.Sort("dueOn", true) : page.sort();
             params.put("limit", page.size());
             params.put("offset", page.offset());
-            List<Row> rows = jdbc.sql("select c.id, s.id, s.name, s.photo, u.id, u.name, c.type, md.id, md.name, c.reference_month, c.description, c.amount_cents, "
-                    + "c.due_on, " + SITUATION + ", p.method, p.paid_at" + FROM + "where " + where + " order by " + SORTS.get(sort.field()) + (sort.desc() ? " desc" : " asc")
-                    + ", c.id limit :limit offset :offset").params(params).query((rs, n) -> {
-                        UUID modality = rs.getObject(8, UUID.class);
-                        String method = rs.getString(15);
-                        return new Row(rs.getObject(1, UUID.class), new StudentRef(rs.getObject(2, UUID.class), rs.getString(3), students.photoUrl(rs.getString(4))),
-                                new Named(rs.getObject(5, UUID.class), rs.getString(6)), rs.getString(7), modality == null ? null : new Named(modality, rs.getString(9)),
-                                rs.getObject(10, LocalDate.class), rs.getString(11), rs.getLong(12), rs.getObject(13, LocalDate.class), rs.getString(14),
-                                method == null ? null : new PaymentRef(method, rs.getObject(16, OffsetDateTime.class)));
-                    }).list();
+            List<Row> rows = jdbc.sql("select " + COLUMNS + FROM + "where " + where + " order by " + SORTS.get(sort.field()) + (sort.desc() ? " desc" : " asc")
+                    + ", c.id limit :limit offset :offset").params(params).query(this::map).list();
             return new ChargeList(rows, page.page(), page.size(), totals.count(), counts, totals);
         });
+    }
+
+    static final String COLUMNS = "c.id, s.id, s.name, s.photo, u.id, u.name, c.type, md.id, md.name, c.reference_month, c.description, c.amount_cents, c.due_on, "
+            + SITUATION + ", p.method, p.paid_at";
+
+    private Row map(java.sql.ResultSet rs, int n) throws java.sql.SQLException {
+        UUID modality = rs.getObject(8, UUID.class);
+        String method = rs.getString(15);
+        return new Row(rs.getObject(1, UUID.class), new StudentRef(rs.getObject(2, UUID.class), rs.getString(3), students.photoUrl(rs.getString(4))),
+                new Named(rs.getObject(5, UUID.class), rs.getString(6)), rs.getString(7), modality == null ? null : new Named(modality, rs.getString(9)),
+                rs.getObject(10, LocalDate.class), rs.getString(11), rs.getLong(12), rs.getObject(13, LocalDate.class), rs.getString(14),
+                method == null ? null : new PaymentRef(method, rs.getObject(16, OffsetDateTime.class)));
+    }
+
+    /** A linha da lista de uma cobrança (situação calculada hoje); chamar dentro da transação da organização. */
+    Row one(UUID org, UUID id) {
+        return jdbc.sql("select " + COLUMNS + FROM + "where c.organization_id = :org and c.id = :id").param("org", org).param("id", id)
+                .param("now", OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)).query(this::map).single();
+    }
+
+    public record OpenCharge(UUID id, LocalDate referenceMonth, LocalDate dueOn, long amountCents, String status) {}
+
+    /** RN-MAT-17: cobranças em aberto da modalidade, com a situação calculada; chamar dentro da transação da organização. */
+    public List<OpenCharge> openOfModality(UUID org, UUID modalityRow) {
+        return jdbc.sql("select c.id, c.reference_month, c.due_on, c.amount_cents, " + SITUATION + FROM + "where c.organization_id = :org and c.enrollment_modality_id = :row "
+                + "and c.status = 'OPEN' order by c.due_on, c.reference_month, c.id").param("org", org).param("row", modalityRow).param("now", OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
+                .query((rs, n) -> new OpenCharge(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getObject(3, LocalDate.class), rs.getLong(4), rs.getString(5))).list();
     }
 
     private static String quick(String quick) {

@@ -5,17 +5,19 @@ import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/componen
 import { WhatsAppButton } from "@/components/whatsapp";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/features/permissions/usePermissions";
+import { StudentFinancialTab, isOverdue } from "./StudentFinancialTab";
 import { StudentEditDialog } from "./StudentEditDialog";
 import { RecordEnrollment } from "./RecordEnrollment";
 import { RecordGuardians } from "./RecordGuardians";
 import { RecordHistory } from "./RecordHistory";
 import { RecordSummary } from "./RecordSummary";
+import { useStudentCharges } from "@/features/charges/useChargeActions";
 import { useEnrollment, useStudentRecord } from "./useStudentRecord";
 import type { EnrollmentStatus, StudentRecord } from "./types";
 
 const TABS = ["summary", "enrollment", "financial", "graduations", "guardians", "history"] as const;
 type Tab = (typeof TABS)[number];
-const LATER: Tab[] = ["financial", "graduations"];
+const LATER: Tab[] = ["graduations"];
 // O Professor vê só o Resumo e os Responsáveis (RF-ALU-03, R26): matrícula, histórico e o que vier depois são da gestão.
 const TEACHER_TABS: readonly Tab[] = ["summary", "guardians"];
 
@@ -27,7 +29,7 @@ const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join("");
 
-function Header({ record, status, onEdit }: { record: StudentRecord; status?: EnrollmentStatus; onEdit?: () => void }) {
+function Header({ record, status, overdue, onEdit }: { record: StudentRecord; status?: EnrollmentStatus; overdue?: boolean; onEdit?: () => void }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -43,6 +45,7 @@ function Header({ record, status, onEdit }: { record: StudentRecord; status?: En
         <p className="text-sm text-muted-foreground">{t("students.age", { count: record.age })}</p>
         <div className="mt-1 flex flex-wrap gap-1">
           {status && <span className="rounded-md border px-2 py-0.5 text-sm font-medium">{t(`students.statuses.${status}`)}</span>}
+          {overdue !== undefined && <span className="rounded-md border px-2 py-0.5 text-sm font-medium">{t(overdue ? "students.record.financial.overdue" : "students.record.financial.current")}</span>}
           {(record.seals ?? []).map((seal) => (
             <span key={seal} className="rounded-md border px-2 py-0.5 text-sm">
               {t(`students.seals.${seal}`)}
@@ -105,13 +108,16 @@ function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
   // Só a gestão vê o botão; a barreira é o servidor.
   const canEdit = !!permissions && permissions.STUDENT_MANAGE !== "NONE";
   const enrollment = useEnrollment(id, canEdit);
+  // D6: só quem tem Cobranças lê as cobranças do aluno; o Professor nem faz o pedido.
+  const canCollect = !!permissions && permissions.COLLECTIONS !== "NONE";
+  const charges = useStudentCharges(id, canEdit && canCollect);
   if (status === "loading" || permStatus === "loading") return <LoadingState />;
   if (status === "forbidden") return <ForbiddenState />;
   if (status === "notFound") return <EmptyState title={t("students.record.notFound")} text={t("students.record.notFoundText")} />;
   if (status === "error" || !data) return <ErrorState onRetry={reload} />;
   return (
     <div className="flex flex-col gap-4">
-      <Header record={data} status={enrollment.data?.status} onEdit={canEdit ? () => setEditing(true) : undefined} />
+      <Header record={data} status={enrollment.data?.status} overdue={charges.status === "ready" ? isOverdue(charges.data) : undefined} onEdit={canEdit ? () => setEditing(true) : undefined} />
       <StudentEditDialog
         studentId={id}
         open={editing}
@@ -121,10 +127,11 @@ function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
           onChanged?.();
         }}
       />
-      <Tabs tab={tab} tabs={canEdit ? TABS : TEACHER_TABS} onChange={setTab} />
+      <Tabs tab={tab} tabs={canEdit ? (canCollect ? TABS : TABS.filter((x) => x !== "financial")) : TEACHER_TABS} onChange={setTab} />
       <div role="tabpanel" id={`record-panel-${tab}`} aria-labelledby={`record-tab-${tab}`}>
         {tab === "summary" && <RecordSummary record={data} modalities={enrollment.data?.modalities} />}
         {tab === "enrollment" && <RecordEnrollment studentId={id} studentName={data.name} canGrant={!!permissions && permissions.BENEFITS !== "NONE"} enrollment={enrollment} onChanged={() => { reload(); onChanged?.(); }} />}
+        {tab === "financial" && <StudentFinancialTab charges={charges} onChanged={() => onChanged?.()} />}
         {LATER.includes(tab) && <EmptyState title={t("students.record.empty.title")} text={t(`students.record.empty.${tab}`)} />}
         {tab === "guardians" && <RecordGuardians record={data} onChanged={reload} canManage={canEdit} />}
         {tab === "history" && <RecordHistory id={id} />}
