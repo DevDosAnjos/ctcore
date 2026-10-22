@@ -804,6 +804,40 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { description: 'amountCents diferente do valor da cobrança (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /charges:
+    get:
+      summary: Lista paginada de cobranças (RF-COB-01). Coordenador e Administrador.
+      description: |
+        Cobranças das unidades ao alcance de quem chama: o Coordenador vê todas; o Administrador só as das unidades dele, e `unitId` fora do alcance devolve
+        lista vazia (200). Professor, Aluno e Responsável recebem 403. A `status` é calculada pela data do fuso da unidade da cobrança (nunca gravada):
+        `PENDING`, `DUE_TODAY`, `OVERDUE` (passou do vencimento mais a tolerância), `IN_REVIEW`, `PAID`, `PAID_LATE` (pago depois do vencimento mais a
+        tolerância), `CANCELED`, `RENEGOTIATED` e `REFUNDED`. O valor é sempre o final gravado (`amountCents`); atraso não soma juros nem multa (RN-COB-07).
+        `quick` é o atalho (`PAID_MONTH`: pagamentos confirmados no mês corrente do fuso da unidade). Os filtros combinam (E); cobrança sem modalidade
+        (taxa, avulsa) não passa pelo filtro de modalidade nem de turma. `modalityId`, `classId` ou `unitId` inexistente na organização: 404; valor inválido,
+        `from` depois de `to` ou `sort` fora de `dueOn`, `amount`, `student`: 400. `counts` vale para o alcance e a unidade escolhida, sem os demais filtros;
+        `totals` soma tudo o que está filtrado, não só a página. Padrão `sort=dueOn,desc`. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, description: Nome do aluno (sem acento nem caixa)., schema: { type: string } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: quick, in: query, required: false, schema: { type: string, enum: [OVERDUE, DUE_TODAY, IN_REVIEW, PAID_MONTH] } }
+        - { name: from, in: query, required: false, description: Vencimento a partir de., schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, description: Vencimento até., schema: { type: string, format: date } }
+        - { name: status, in: query, required: false, schema: { $ref: '#/components/schemas/ChargeSituation' } }
+        - { name: type, in: query, required: false, schema: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: classId, in: query, required: false, description: Turma principal ou outro horário da matrícula., schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: "`campo,asc|desc` com campo `dueOn`, `amount` ou `student`; desempate por id.", schema: { type: string } }
+      responses:
+        '200':
+          description: Página de cobranças.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ChargeList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /billing/generation-preview:
     get:
       summary: Prévia da geração de mensalidades (RF-COB-03, RN-COB-02). Coordenador e Administrador da unidade.
@@ -1849,6 +1883,7 @@ paths:
         - { name: classId, in: query, required: false, schema: { type: string, format: uuid }, description: "Quem tem a turma como principal ou outro horário numa modalidade ativa; turma inexistente ou de outra organização dá 404." }
         - { name: levelId, in: query, required: false, schema: { type: string, format: uuid }, description: Nível de graduação; aceito e sem resultado até a graduação. }
         - { name: status, in: query, required: false, schema: { type: string, enum: [ACTIVE, FORMER] }, description: Filtro rápido Ativos ou Ex-alunos. }
+        - { name: financial, in: query, required: false, schema: { type: string, enum: [OVERDUE] }, description: "Filtro rápido Em atraso (cobrança aberta vencida mais a tolerância); outro valor, 400." }
         - { $ref: '#/components/parameters/Page' }
         - { $ref: '#/components/parameters/Size' }
         - { name: sort, in: query, required: false, description: Só `name`., schema: { type: string, enum: [name] } }
@@ -3779,7 +3814,7 @@ components:
       enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW, SCHOLARSHIP]
     StudentRow:
       type: object
-      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, modalities]
+      required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, financialStatus, modalities]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -3803,6 +3838,7 @@ components:
             name: { type: string }
         createdAt: { type: string, format: date-time }
         status: { type: string, enum: [NONE, ACTIVE, FORMER], description: "Situação calculada das modalidades: NONE (Sem matrícula), ACTIVE (Ativo) ou FORMER (Ex-aluno)." }
+        financialStatus: { type: string, enum: [OVERDUE, CURRENT], description: "OVERDUE com cobrança aberta em atraso de qualquer tipo (D5); só nesta lista, nunca para o Professor." }
         modalities:
           type: array
           description: Modalidades ativas do aluno, por modalidade. Vazia sem matrícula ou para ex-aluno.
@@ -3858,11 +3894,67 @@ components:
             items: { type: array, items: { $ref: '#/components/schemas/StudentRow' } }
             counts:
               type: object
-              required: [active, former]
+              required: [active, former, overdue]
               description: Contagens dos filtros rápidos Ativos e Ex-alunos, sobre o alcance de quem chama e o filtro de unidade, sem o filtro rápido nem os demais filtros.
               properties:
                 active: { type: integer, minimum: 0 }
                 former: { type: integer, minimum: 0 }
+                overdue: { type: integer, minimum: 0, description: Alunos com cobrança em atraso (filtro financial=OVERDUE). }
+    ChargeSituation:
+      type: string
+      enum: [PENDING, DUE_TODAY, OVERDUE, IN_REVIEW, PAID, PAID_LATE, CANCELED, RENEGOTIATED, REFUNDED]
+      description: Situação calculada na leitura pela data do fuso da unidade (RF-COB-01).
+    ChargeRow:
+      type: object
+      required: [id, student, unit, type, modality, referenceMonth, description, amountCents, dueOn, status, payment]
+      properties:
+        id: { type: string, format: uuid }
+        student:
+          type: object
+          required: [id, name, photoUrl]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            photoUrl: { type: string, nullable: true, description: URL temporária assinada; nulo sem foto. }
+        unit: { $ref: '#/components/schemas/EnrollmentNamed' }
+        type: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] }
+        modality: { type: object, nullable: true, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } }, description: Nulo em taxa e avulsa. }
+        referenceMonth: { type: string, format: date, nullable: true }
+        description: { type: string, nullable: true }
+        amountCents: { type: integer, format: int64, minimum: 0, description: Valor final gravado; sem juros nem multa (RN-COB-07). }
+        dueOn: { type: string, format: date }
+        status: { $ref: '#/components/schemas/ChargeSituation' }
+        payment:
+          type: object
+          nullable: true
+          required: [method, paidAt]
+          description: Pagamento confirmado, quando há.
+          properties:
+            method: { type: string, enum: [PIX_MP, CREDIT_CARD, DEBIT_CARD, BOLETO, PIX_KEY, CASH, CARD_MACHINE, TRANSFER] }
+            paidAt: { type: string, format: date-time }
+    ChargeList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          required: [counts, totals]
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/ChargeRow' } }
+            counts:
+              type: object
+              required: [overdue, dueToday, inReview, paidMonth]
+              description: Contagens dos quatro atalhos sobre o alcance e a unidade escolhida, sem os demais filtros.
+              properties:
+                overdue: { type: integer, minimum: 0 }
+                dueToday: { type: integer, minimum: 0 }
+                inReview: { type: integer, minimum: 0 }
+                paidMonth: { type: integer, minimum: 0 }
+            totals:
+              type: object
+              required: [count, amountCents]
+              description: Quantidade e soma em centavos de tudo o que está filtrado, não só da página.
+              properties:
+                count: { type: integer, minimum: 0 }
+                amountCents: { type: integer, format: int64, minimum: 0 }
     StudentRef:
       type: object
       required: [id, name, photoUrl]

@@ -346,7 +346,8 @@
       "ageRange": "Faixa etária",
       "createdAt": "Cadastrado em",
       "modalities": "Modalidades",
-      "status": "Situação"
+      "status": "Situação",
+      "financial": "Situação financeira"
     },
     "age_one": "{{count}} ano",
     "age_other": "{{count}} anos",
@@ -614,7 +615,12 @@
       "label": "Situação do aluno",
       "ACTIVE": "Ativos",
       "FORMER": "Ex-alunos",
+      "OVERDUE": "Em atraso",
       "withCount": "{{label}} ({{count}})"
+    },
+    "financial": {
+      "OVERDUE": "Em atraso",
+      "CURRENT": "Em dia"
     }
   },
   "teachers": {
@@ -1844,8 +1850,67 @@
       "portal": "Aluno paga pelo portal"
     }
   },
+  "charges": {
+    "title": "Cobranças",
+    "intro": "Cobranças das unidades ao seu alcance, com a situação calculada pela data da unidade.",
+    "reference": "{{modality}} · {{month}}",
+    "totals": "{{count}} cobranças somando {{amount}}",
+    "columns": {
+      "student": "Aluno",
+      "unit": "Unidade",
+      "reference": "Referência",
+      "amount": "Valor",
+      "dueOn": "Vencimento",
+      "status": "Situação",
+      "method": "Meio"
+    },
+    "quick": {
+      "label": "Atalhos de cobrança",
+      "OVERDUE": "Em atraso",
+      "DUE_TODAY": "Vence hoje",
+      "IN_REVIEW": "Em conferência",
+      "PAID_MONTH": "Pagas no mês",
+      "withCount": "{{label}} ({{count}})"
+    },
+    "filters": {
+      "from": "Vencimento de",
+      "to": "Vencimento até",
+      "status": "Situação",
+      "allStatuses": "Todas as situações",
+      "type": "Tipo",
+      "allTypes": "Todos os tipos",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "modality": "Modalidade",
+      "allModalities": "Todas as modalidades",
+      "class": "Turma",
+      "allClasses": "Todas as turmas"
+    },
+    "status": {
+      "PENDING": "Pendente",
+      "DUE_TODAY": "Vence hoje",
+      "OVERDUE": "Em atraso",
+      "IN_REVIEW": "Em conferência",
+      "PAID": "Paga",
+      "PAID_LATE": "Paga com atraso",
+      "CANCELED": "Cancelada",
+      "RENEGOTIATED": "Renegociada",
+      "REFUNDED": "Estornada"
+    },
+    "types": {
+      "MONTHLY": "Mensalidade",
+      "ENROLLMENT_FEE": "Taxa de matrícula",
+      "ONE_OFF": "Avulsa",
+      "INSTALLMENT": "Parcela",
+      "READJUSTMENT_DIFF": "Diferença de reajuste"
+    }
+  },
   "payments": {
     "method": {
+      "PIX_MP": "Pix",
+      "CREDIT_CARD": "Cartão de crédito",
+      "DEBIT_CARD": "Cartão de débito",
+      "BOLETO": "Boleto",
       "CASH": "Dinheiro",
       "PIX_KEY": "Pix pela chave",
       "CARD_MACHINE": "Maquininha de cartão",

@@ -769,6 +769,17 @@ const chargeView = (c: MockCharge) => ({ id: c.id, type: c.type, unitId: c.unitI
 const initials = (name: string) => name.split(" ").filter(Boolean).map((p) => `${p[0].toUpperCase()}.`).filter((_, i, a) => i === 0 || i === a.length - 1).join(" ");
 const firstOfMonth = (iso: string) => `${iso.slice(0, 7)}-01`;
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (day: string, n: number) => isoDay(new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000));
+// RF-COB-01 (R2, D1, D2): situação calculada na leitura; o simulado só grava aberta e paga, então as demais situações não aparecem aqui.
+const chargeSituation = (c: MockCharge, today: string) => {
+  const limit = addDays(c.dueOn, c.toleranceDays);
+  if (c.status === "PAID") {
+    const paidAt = mockReceipts.find((r) => r.chargeId === c.id)?.paidAt ?? `${today}T00:00:00Z`;
+    return paidAt.slice(0, 10) > limit ? "PAID_LATE" : "PAID";
+  }
+  return today > limit ? "OVERDUE" : c.dueOn === today ? "DUE_TODAY" : "PENDING";
+};
+const studentOverdue = (studentId: string) => mockCharges.some((c) => c.studentId === studentId && c.status === "OPEN" && chargeSituation(c, isoDay(new Date())) === "OVERDUE");
 const plusDays = (iso: string, days: number) => isoDay(new Date(Date.parse(`${iso}T12:00:00Z`) + days * 86_400_000));
 // RN-MAT-07: a primeira data com o dia de vencimento a pelo menos 15 dias da matrícula.
 const suggestSecond = (today: string, dueDay: number) => {
@@ -1033,7 +1044,7 @@ const studentRowOf = (s: StudentDetail): StudentRow => {
     id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age, minor: s.minor,
     ageRange: own ? { id: own.id, name: own.name } : null,
     registeredUnit: { id: s.registeredUnitId, name: units.find((u) => u.id === s.registeredUnitId)?.name ?? "" },
-    createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s), status: enrollmentStatus(s.id),
+    createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s), status: enrollmentStatus(s.id), financialStatus: studentOverdue(s.id) ? "OVERDUE" : "CURRENT",
     modalities: (mockEnrollments[s.id]?.modalities ?? []).filter((m) => m.status === "ACTIVE").map((m) => ({
       id: m.id, unit: { id: m.unitId, name: units.find((u) => u.id === m.unitId)?.name ?? "" }, modality: { id: m.modalityId, name: modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? "" },
       primaryClass: { id: m.primaryClassId, name: mockClasses.find((c) => c.id === m.primaryClassId)?.name ?? "" }, level: null,
@@ -2700,11 +2711,13 @@ export const routes: Route[] = [
       const modalityId = p.get("modalityId");
       // R19: unidade ou turma que não existe é 404.
       if ((unitId && !units.some((u) => u.id === unitId)) || (classId && !mockClasses.some((c) => c.id === classId))) return error(404, "NOT_FOUND", "Não encontrado.");
-      const none = { active: 0, former: 0 };
+      const financial = p.get("financial");
+      if (financial !== null && financial !== "OVERDUE") return studentBad("financial", "inválido");
+      const none = { active: 0, former: 0, overdue: 0 };
       if (role === "ADMINISTRATOR" && unitId && unitId !== ADMIN_UNIT) return HttpResponse.json({ items: [], page, size, total: 0, counts: none });
       const q = teacherKey((p.get("q") ?? "").trim());
       const inScope = mockStudents.filter((s) => (role === "COORDINATOR" || studentInUnit(s, ADMIN_UNIT)) && (!unitId || studentInUnit(s, unitId)));
-      const counts = { active: inScope.filter((s) => enrollmentStatus(s.id) === "ACTIVE").length, former: inScope.filter((s) => enrollmentStatus(s.id) === "FORMER").length };
+      const counts = { active: inScope.filter((s) => enrollmentStatus(s.id) === "ACTIVE").length, former: inScope.filter((s) => enrollmentStatus(s.id) === "FORMER").length, overdue: inScope.filter((s) => studentOverdue(s.id)).length };
       // Modalidade e turma valem na mesma linha ativa (a turma é principal ou outro horário); o nível não existe até a graduação (D13).
       const sameRow = (s: StudentDetail) =>
         (mockEnrollments[s.id]?.modalities ?? []).some((m) => m.status === "ACTIVE" && (!modalityId || m.modalityId === modalityId) && (!classId || m.primaryClassId === classId || m.otherClassIds.includes(classId)));
@@ -2715,6 +2728,7 @@ export const routes: Route[] = [
         .filter((s) => (!modalityId && !classId) || sameRow(s))
         .filter(() => !p.get("levelId"))
         .filter((s) => !quick || enrollmentStatus(s.id) === quick)
+        .filter((s) => !financial || studentOverdue(s.id))
         .sort((a, b) => teacherKey(a.name).localeCompare(teacherKey(b.name)) || a.id.localeCompare(b.id));
       const items = found.slice((page - 1) * size, page * size).map(studentRowOf);
       return HttpResponse.json({ items, page, size, total: found.length, counts });
@@ -2948,6 +2962,80 @@ export const routes: Route[] = [
       for (const u of summary.units) if (u.feeCents > 0) created.push({ id: crypto.randomUUID(), type: "ENROLLMENT_FEE", studentId: found.id, unitId: u.unitId, modalityRowId: null, referenceMonth: null, dueOn: today, toleranceDays: 5, amountCents: u.feeCents, status: "OPEN", description: "Taxa de matrícula" });
       mockCharges.push(...created);
       return HttpResponse.json({ enrollment: enrollmentView(found.id), summary, termPending: true, inviteStatus, charges: created.map(chargeView) }, { status: 201 });
+    },
+  },
+  {
+    // RF-COB-01 (#72): lista de cobranças. Coordenador e Administrador (só a unidade dele); situação calculada; counts ignora os filtros além da unidade; totals respeita todos.
+    method: "get",
+    path: "/charges",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const role = activeRole();
+      const p = new URL(request.url).searchParams;
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const day = /^\d{4}-\d{2}-\d{2}$/;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const [sortField, sortDir] = (p.get("sort") || "dueOn,desc").split(",");
+      const bad: { field: string; message: string }[] = [];
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (!["dueOn", "amount", "student"].includes(sortField) || !["asc", "desc"].includes(sortDir)) bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
+      for (const k of ["unitId", "modalityId", "classId"]) if (p.get(k) !== null && !uuid.test(p.get(k)!)) bad.push({ field: k, message: "id inválido" });
+      for (const k of ["from", "to"]) if (p.get(k) !== null && (!day.test(p.get(k)!) || Number.isNaN(Date.parse(p.get(k)!)))) bad.push({ field: k, message: "data inválida" });
+      if (p.get("from") && p.get("to") && p.get("from")! > p.get("to")!) bad.push({ field: "from", message: "deve ser anterior ou igual a to" });
+      const quick = p.get("quick");
+      if (quick !== null && !["OVERDUE", "DUE_TODAY", "IN_REVIEW", "PAID_MONTH"].includes(quick)) bad.push({ field: "quick", message: "inválido" });
+      const status = p.get("status");
+      if (status !== null && !["PENDING", "DUE_TODAY", "OVERDUE", "IN_REVIEW", "PAID", "PAID_LATE", "CANCELED", "RENEGOTIATED", "REFUNDED"].includes(status)) bad.push({ field: "status", message: "inválido" });
+      const type = p.get("type");
+      if (type !== null && !["MONTHLY", "ENROLLMENT_FEE", "ONE_OFF", "INSTALLMENT", "READJUSTMENT_DIFF"].includes(type)) bad.push({ field: "type", message: "inválido" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const unitId = p.get("unitId");
+      const modalityId = p.get("modalityId");
+      const classId = p.get("classId");
+      if ((unitId && !units.some((u) => u.id === unitId)) || (modalityId && !modalityCatalog.some((m) => m.id === modalityId)) || (classId && !mockClasses.some((c) => c.id === classId))) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (role === "ADMINISTRATOR" && unitId && unitId !== ADMIN_UNIT)
+        return HttpResponse.json({ items: [], page, size, total: 0, counts: { overdue: 0, dueToday: 0, inReview: 0, paidMonth: 0 }, totals: { count: 0, amountCents: 0 } });
+      const today = isoDay(new Date());
+      const rowOf = (c: MockCharge) => {
+        const student = mockStudents.find((s) => s.id === c.studentId)!;
+        const row = mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId);
+        const receipt = mockReceipts.find((r) => r.chargeId === c.id);
+        return {
+          c, row, name: student.name, receipt,
+          view: {
+            id: c.id, student: { id: student.id, name: student.name, photoUrl: student.photoUrl }, unit: { id: c.unitId, name: units.find((u) => u.id === c.unitId)?.name ?? "" }, type: c.type,
+            modality: row ? { id: row.modalityId, name: modalityCatalog.find((m) => m.id === row.modalityId)?.name ?? "" } : null,
+            referenceMonth: c.referenceMonth, description: c.description, amountCents: c.amountCents, dueOn: c.dueOn, status: chargeSituation(c, today),
+            payment: receipt ? { method: "CASH", paidAt: receipt.paidAt } : null,
+          },
+        };
+      };
+      type Entry = ReturnType<typeof rowOf>;
+      const inScope = mockCharges.filter((c) => (role === "COORDINATOR" || c.unitId === ADMIN_UNIT) && (!unitId || c.unitId === unitId)).map(rowOf);
+      const paidMonth = (r: Entry) => (r.view.status === "PAID" || r.view.status === "PAID_LATE") && r.receipt?.paidAt.slice(0, 7) === today.slice(0, 7);
+      const count = (st: string) => inScope.filter((r) => r.view.status === st).length;
+      const counts = { overdue: count("OVERDUE"), dueToday: count("DUE_TODAY"), inReview: count("IN_REVIEW"), paidMonth: inScope.filter(paidMonth).length };
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const from = p.get("from");
+      const to = p.get("to");
+      const quickStatus: Record<string, string> = { OVERDUE: "OVERDUE", DUE_TODAY: "DUE_TODAY", IN_REVIEW: "IN_REVIEW" };
+      const found = inScope
+        .filter((r) => !quick || (quick === "PAID_MONTH" ? paidMonth(r) : r.view.status === quickStatus[quick]))
+        .filter((r) => (!from || r.c.dueOn >= from) && (!to || r.c.dueOn <= to))
+        .filter((r) => !status || r.view.status === status)
+        .filter((r) => !type || r.c.type === type)
+        .filter((r) => !modalityId || r.row?.modalityId === modalityId)
+        .filter((r) => !classId || (r.row && (r.row.primaryClassId === classId || r.row.otherClassIds.includes(classId))))
+        .filter((r) => teacherKey(r.name).includes(q))
+        .sort((a, b) => {
+          const by = sortField === "amount" ? a.c.amountCents - b.c.amountCents : sortField === "student" ? teacherKey(a.name).localeCompare(teacherKey(b.name)) : a.c.dueOn.localeCompare(b.c.dueOn);
+          return (sortDir === "asc" ? by : -by) || a.c.id.localeCompare(b.c.id);
+        });
+      const totals = { count: found.length, amountCents: found.reduce((sum, r) => sum + r.c.amountCents, 0) };
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size).map((r) => r.view), page, size, total: found.length, counts, totals });
     },
   },
   {

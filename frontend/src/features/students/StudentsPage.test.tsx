@@ -29,6 +29,7 @@ const student = (over: Partial<StudentRow>): StudentRow => ({
   createdAt: "2026-01-10T12:00:00Z",
   seals: [],
   status: "NONE",
+  financialStatus: "CURRENT",
   modalities: [],
   ...over,
 });
@@ -55,7 +56,7 @@ function setup(role = "COORDINATOR", list?: () => Response | Promise<Response>, 
       if (list) return list();
       const q = (p.get("q") ?? "").toLowerCase();
       const items = all.filter((s) => s.name.toLowerCase().includes(q));
-      return HttpResponse.json({ items, page: 1, size: 25, total: items.length, counts: { active: 3, former: 1 } });
+      return HttpResponse.json({ items, page: 1, size: 25, total: items.length, counts: { active: 3, former: 1, overdue: 2 } });
     }),
   );
   return render(
@@ -175,6 +176,19 @@ describe("StudentsPage", () => {
     await user.selectOptions(modality, "m3");
     await waitFor(() => expect(calls.at(-1)!.get("modalityId")).toBe("m3"));
     expect(calls.at(-1)!.get("levelId")).toBeNull();
+  });
+
+  it("CA20: a coluna Situação financeira mostra Em atraso e Em dia e o atalho Em atraso (N) filtra e se desliga", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR", () => HttpResponse.json({ items: [student({ financialStatus: "OVERDUE" }), student({ id: "s2", name: "João Pereira", financialStatus: "CURRENT" })], page: 1, size: 25, total: 2, counts: { active: 3, former: 1, overdue: 2 } }));
+    const row = (await screen.findByText("Ana Souza")).closest("tr")!;
+    expect(within(row).getByText("Em atraso")).toBeInTheDocument();
+    expect(within(screen.getByText("João Pereira").closest("tr")!).getByText("Em dia")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Em atraso (2)" }));
+    await waitFor(() => expect(calls.at(-1)!.get("financial")).toBe("OVERDUE"));
+    expect(screen.getByRole("button", { name: "Em atraso (2)" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("button", { name: "Em atraso (2)" }));
+    await waitFor(() => expect(calls.at(-1)!.get("financial")).toBeNull());
   });
 
   it("CA29: filtros rápidos Ativos e Ex-alunos mostram a contagem do servidor, filtram e se desligam com o segundo clique", async () => {
