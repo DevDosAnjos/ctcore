@@ -12,6 +12,9 @@
 #   3  tempo estourou  passou o limite sem terminar e sem fantasma
 #   4  já há watcher   outro aguardar-ci.sh está rodando para este PR; não iniciar outro
 #   5  erro            uso errado, gh sem login, PR sem run, ou o head do PR mudou (push novo)
+#   6  passou, com fantasma de exibição   run concluído com success e job ci-gate com success, mas
+#                      checks ainda "pendentes" na exibição; não bloqueiam. Seguir para o merge e
+#                      registrar um comentário no PR com os jobs listados na saída
 #
 # Variáveis: CI_LIMITE (segundos, padrão 2400 = ~4x o CI normal de ~10 min),
 #            CI_INTERVALO (padrão 30), CI_FANTASMA (carência em segundos, padrão 600).
@@ -59,7 +62,11 @@ while :; do
       gh pr checks "$pr"; code=$?
       case $code in
         0) exit 0 ;;
-        8) f=$(fantasmas) && [ -n "$f" ] && { echo "run $run concluído, mas há job fantasma:"; echo "$f"; exit 2; } ;;  # pendente: seguir esperando
+        8) # pendente na exibição: com o run em success e o ci-gate em success, são fantasmas de exibição
+           if [ "$(gh run view "$run" --json conclusion,jobs --jq '[.conclusion, ([.jobs[] | select(.name == "ci-gate") | .conclusion] | first // "")] | join(" ")')" = "success success" ]; then
+             echo "run $run success e ci-gate success; checks pendentes são fantasmas de exibição:"; fantasmas; exit 6
+           fi
+           f=$(fantasmas) && [ -n "$f" ] && { echo "run $run concluído sem ci-gate verde, com job fantasma:"; echo "$f"; exit 2; } ;;
         *) echo "run $run: ver gh run view $run --log-failed"; exit 1 ;;
       esac
     else
