@@ -59,7 +59,7 @@ while :; do
       gh pr checks "$pr"; code=$?
       case $code in
         0) exit 0 ;;
-        8) ;;                       # pendente: ainda não registrou tudo, seguir esperando
+        8) f=$(fantasmas) && [ -n "$f" ] && { echo "run $run concluído, mas há job fantasma:"; echo "$f"; exit 2; } ;;  # pendente: seguir esperando
         *) echo "run $run: ver gh run view $run --log-failed"; exit 1 ;;
       esac
     else
