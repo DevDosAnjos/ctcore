@@ -5,7 +5,9 @@
 #
 # Códigos de saída:
 #   0  passou          todos os checks do PR passaram (gh pr checks saiu com 0)
-#   1  falhou          `gh pr checks` devolveu 1 de verdade (check falhou); ler `gh run view <run> --log-failed` antes de corrigir
+#   1  falhou          `gh pr checks` devolveu 1 e a conclusão do run é failure (o gh também devolve 1
+#                      em erro de rede; sem failure confirmado é falha passageira); ler
+#                      `gh run view <run> --log-failed` antes de corrigir
 #   2  job fantasma    job pendente/em andamento com todos os passos já concluídos; rerodar só ele
 #                      uma vez (`gh run rerun <run> --job <id>`); se travar de novo, validar local,
 #                      comentar no PR e parar para o dono decidir o merge
@@ -73,7 +75,10 @@ ciclo() {
     gh pr checks "$pr"; code=$?
     case $code in
       0) exit 0 ;;
-      1) echo "run $run: ver gh run view $run --log-failed"; exit 1 ;;
+      1) # o gh devolve 1 também para erro genérico (rede): só vale falha se o run concluiu em failure
+         info=$(gh run view "$run" --json conclusion --jq .conclusion) || return 10
+         [ "$info" = failure ] || return 10
+         echo "run $run: ver gh run view $run --log-failed"; exit 1 ;;
       8) # pendente na exibição: com o run em success e o ci-gate em success, são fantasmas de exibição
          info=$(gh run view "$run" --json conclusion,jobs --jq '[.conclusion, ([.jobs[] | select(.name == "ci-gate") | .conclusion] | first // "")] | join(" ")') || return 10
          if [ "$info" = "success success" ]; then
