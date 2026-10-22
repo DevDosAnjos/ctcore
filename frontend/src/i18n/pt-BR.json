@@ -1949,6 +1949,7 @@
         "AUTO_DEBIT": "débito automático"
       },
       "receipt": "Recibo número {{number}} · código {{code}}",
+      "downloadReceipt": "Baixar recibo",
       "reminders": "Lembretes enviados",
       "noReminders": "Nenhum lembrete enviado",
       "cancel": "Cancelar cobrança",
@@ -1958,7 +1959,7 @@
       "sendReminder": "Enviar lembrete",
       "refund": "Estornar",
       "disabled": {
-        "registerPayment": "Disponível quando a janela de pagamento for entregue.",
+        "registerPayment": "Só cobranças em aberto recebem pagamento.",
         "sendReminder": "Disponível quando o envio de lembretes for entregue.",
         "refund": "Disponível quando o estorno for entregue."
       }
@@ -2031,6 +2032,17 @@
       "submit": "Renegociar"
     }
   },
+  "publicReceipt": {
+    "title": "Recibo número {{number}}",
+    "unit": "Unidade",
+    "reference": "Referência",
+    "amount": "Valor",
+    "paidAt": "Pago em",
+    "payer": "Pago por",
+    "download": "Baixar PDF",
+    "notFoundTitle": "Recibo não encontrado",
+    "notFoundText": "Confira o código do recibo e tente de novo."
+  },
   "payments": {
     "method": {
       "PIX_MP": "Pix",
@@ -2047,6 +2059,21 @@
       "charge": "{{label}}: {{value}}",
       "method": "Meio de pagamento",
       "confirm": "Confirmar pagamento",
+      "sending": "Registrando...",
+      "amount": "Valor",
+      "day": "Data do pagamento",
+      "dayInvalid": "Informe a data do pagamento; ela não pode ser futura.",
+      "observation": "Observação (opcional)",
+      "observationCount": "{{count}} de {{max}} caracteres",
+      "sendReceipt": "Enviar recibo por e-mail",
+      "download": "Baixar recibo",
+      "invalid": "Confira a data e a observação. Nada foi gravado.",
+      "amountChanged": "O valor da cobrança mudou. Feche a janela, atualize e tente de novo.",
+      "email": {
+        "SENT": "Recibo enviado por e-mail ao pagador.",
+        "NO_ADDRESS": "O pagador não tem e-mail cadastrado; o recibo não foi enviado.",
+        "FAILED": "Pagamento registrado, mas o e-mail do recibo não saiu. Uma nova tentativa será feita."
+      },
       "done": "Pagamento registrado.",
       "receiptNumber": "Recibo número {{number}}",
       "receiptCode": "Código de conferência: {{code}}",

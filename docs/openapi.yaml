@@ -786,7 +786,7 @@ paths:
       description: |
         Os campos da linha de `GET /charges` (`charge`, com a situação calculada) mais tolerância, composição (plano, benefício e valor final, em centavos),
         pagador (aluno ou responsável financeiro), cobrança de origem, as parcelas que a substituíram, motivo, quem cancelou e quando, pagamentos (com recibo),
-        `reminders` (sempre vazio até o item de lembretes) e `actions` (`registerPayment`, `sendReminder` e `refund` ficam `false` até os itens que os entregam).
+        `reminders` (sempre vazio até o item de lembretes) e `actions` (`registerPayment` é verdadeiro só na cobrança em aberto; `sendReminder` e `refund` ficam `false` até os itens que os entregam).
         Professor, Aluno e Responsável: 403. Cobrança inexistente, de outra organização ou de unidade fora do alcance: 404. Só lê; não audita.
       security: [{ sessionCookie: [] }]
       parameters:
@@ -848,6 +848,7 @@ paths:
       summary: Registra o pagamento no balcão do valor total de uma cobrança em aberto (RN-COB-12, RN-MAT-06). Coordenador e Administrador da unidade.
       description: |
         `method` é `CASH`, `PIX_KEY`, `CARD_MACHINE` ou `TRANSFER`; `paidAt` opcional (padrão agora, não pode ser futuro); `observation` opcional, até 200 caracteres.
+        `sendReceipt` (padrão falso) manda ao pagador (aluno adulto ou responsável financeiro, endereço do cadastro) o e-mail "Pagamento confirmado" com o link do PDF, depois de gravar o pagamento; a resposta diz em `receiptEmail` o que houve e uma falha do envio nunca desfaz o pagamento.
         `amountCents`, se vier, tem de ser igual ao da cobrança (senão 422): não há pagamento parcial. A cobrança passa a `PAID` e o recibo nasce na mesma
         transação, com número sequencial da unidade e código de conferência. Segunda chamada, ou cobrança cancelada, renegociada, estornada ou em conferência:
         409 `CHARGE_NOT_PAYABLE`. Cobrança de outra organização ou de unidade fora do alcance: 404. Grava `payment.registered` na auditoria, sem a observação.
@@ -989,6 +990,20 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { description: 'Modalidade encerrada ou de valor final zero (UNPROCESSABLE). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /public/receipts/{code}/pdf:
+    get:
+      summary: PDF do recibo (RN-COB-16). Rota pública, sem sessão.
+      description: |
+        Recibo completo: logo (quando a organização tem), unidade, CNPJ, endereço, número, quem pagou com CPF (quando existe), aluno, referência, valor, taxa repassada, meio,
+        data e hora no fuso da unidade, a frase de não ser nota fiscal e o código. O código de 80 bits é a única credencial e o link não expira. Código desconhecido ou
+        malformado: 404 igual. Resposta `Cache-Control: private, no-store`.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: O PDF.
+          content: { application/pdf: { schema: { type: string, format: binary } } }
+        '404': { $ref: '#/components/responses/NotFound' }
   /public/receipts/{code}:
     get:
       summary: Conferência pública do recibo (RN-COB-16). Rota pública, sem sessão.
@@ -3007,6 +3022,7 @@ components:
         paidAt: { type: string, format: date-time, description: 'Padrão agora; não pode ser futuro.' }
         observation: { type: string, maxLength: 200 }
         amountCents: { type: integer, format: int64, description: 'Se vier, tem de ser igual ao valor da cobrança (senão 422).' }
+        sendReceipt: { type: boolean, default: false, description: 'Envia o recibo por e-mail ao pagador.' }
     ReceiptRef:
       type: object
       required: [number, code]
@@ -3015,7 +3031,7 @@ components:
         code: { type: string, minLength: 16, maxLength: 16, description: Código de conferência. }
     Payment:
       type: object
-      required: [id, chargeId, amountCents, method, paidAt, registeredBy, observation, receipt]
+      required: [id, chargeId, amountCents, method, paidAt, registeredBy, observation, receipt, receiptEmail]
       properties:
         id: { type: string, format: uuid }
         chargeId: { type: string, format: uuid }
@@ -3025,6 +3041,7 @@ components:
         registeredBy: { type: string, format: uuid }
         observation: { type: string, nullable: true }
         receipt: { $ref: '#/components/schemas/ReceiptRef' }
+        receiptEmail: { type: string, enum: [SENT, NO_ADDRESS, NOT_REQUESTED, FAILED], description: 'SENT: mensagem entregue ou guardada; NO_ADDRESS: pagador sem e-mail; NOT_REQUESTED: sendReceipt falso; FAILED: o envio não saiu (nova tentativa automática).' }
     PublicReceipt:
       type: object
       required: [unit, number, reference, amountCents, paidAt, payerInitials]

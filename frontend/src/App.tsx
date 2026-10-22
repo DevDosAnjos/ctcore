@@ -4,6 +4,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { AreaUnavailablePage } from "@/features/auth/AreaUnavailablePage";
 import { InvitePage } from "@/features/auth/InvitePage";
+import { PublicReceiptPage } from "@/features/payments/PublicReceiptPage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
 import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { RequireSession } from "@/features/auth/RequireSession";
@@ -91,6 +92,7 @@ export function App() {
       <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
       <Route path="/redefinir-senha/:code" element={<ResetPasswordPage />} />
       <Route path="/convite/:code" element={<InvitePage />} />
+      <Route path="/recibo/:codigo" element={<PublicReceiptPage />} />
       <Route element={<RequireSession />}>
         <Route element={<RequireTwoFactor />}>
           <Route path={TWO_FACTOR_REQUIRED_PATH} element={<TwoFactorRequiredPage />} />

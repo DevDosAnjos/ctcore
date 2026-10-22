@@ -12,7 +12,9 @@ public enum EmailTemplate {
     /** RN-RSP-05: neutro, sem nome do aluno nem motivo. */
     GUARDIAN_UNLINKED("mail.guardian-unlinked", false, false),
     /** RN-RSP-07: o aluno cadastrado menor completou 18 anos. */
-    STUDENT_MAJORITY("mail.student-majority", false, false);
+    STUDENT_MAJORITY("mail.student-majority", false, false),
+    /** RF-COB-04: recibo do pagamento no balcão; o primeiro argumento é o link do PDF. */
+    PAYMENT_CONFIRMED("mail.payment-confirmed", false, true);
 
     final String key;
     final boolean secret;

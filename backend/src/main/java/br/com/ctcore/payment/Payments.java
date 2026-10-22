@@ -27,25 +27,29 @@ public class Payments {
     static final Set<String> METHODS = Set.of("CASH", "PIX_KEY", "CARD_MACHINE", "TRANSFER");
     static final int MAX_OBSERVATION = 200;
 
-    public record Input(String method, OffsetDateTime paidAt, String observation, Long amountCents) {}
+    public record Input(String method, OffsetDateTime paidAt, String observation, Long amountCents, Boolean sendReceipt) {}
 
     public record Receipt(int number, String code) {}
 
     public record Registered(UUID id, UUID chargeId, long amountCents, String method, OffsetDateTime paidAt, UUID registeredBy, String observation,
-            Receipt receipt) {}
+            Receipt receipt, String receiptEmail) {}
+
+    private record Done(Registered registered, String email, String reference) {}
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
     private final Permissions permissions;
     private final AuditService audit;
     private final Clock clock;
+    private final ReceiptMailer mailer;
 
-    public Payments(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, AuditService audit, Clock clock) {
+    public Payments(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, AuditService audit, Clock clock, ReceiptMailer mailer) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.permissions = permissions;
         this.audit = audit;
         this.clock = clock;
+        this.mailer = mailer;
     }
 
     public Registered register(AccountPrincipal who, UUID chargeId, Input in, String ip) {
@@ -56,7 +60,8 @@ public class Payments {
         String observation = in.observation() == null || in.observation().isBlank() ? null : in.observation().strip();
         if (observation != null && observation.length() > MAX_OBSERVATION) throw new ApiValidationException("observation", "até 200 caracteres");
         OffsetDateTime paidAt = in.paidAt() == null ? now : in.paidAt();
-        return transactions.execute(() -> {
+        boolean send = Boolean.TRUE.equals(in.sendReceipt());
+        Done done = transactions.execute(() -> {
             // A trava da linha faz a segunda chamada esperar e ver a cobrança já paga (RNF-12).
             var charge = jdbc.sql("select unit_id, student_id, amount_cents, status from charge where id = :id and organization_id = :org for update")
                     .param("id", chargeId).param("org", who.organizationId())
@@ -83,9 +88,18 @@ public class Payments {
                     .param("number", number).param("code", code).update();
             jdbc.sql("update charge set status = 'PAID' where id = :id").param("id", chargeId).update();
             audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name()), "payment.registered", "payment",
-                    paymentId.toString(), unit, Map.of(), Map.of("chargeId", chargeId.toString(), "amountCents", amount, "method", in.method(), "receiptNumber", number),
+                    paymentId.toString(), unit, Map.of(), Map.of("chargeId", chargeId.toString(), "amountCents", amount, "method", in.method(), "receiptNumber", number, "receiptRequested", send),
                     null, ip));
-            return new Registered(paymentId, chargeId, amount, in.method(), paidAt, who.accountId(), observation, new Receipt(number, code));
+            // O endereço vem do cadastro (nunca do cliente); o envio só sai depois do commit (D7).
+            String to = !send ? null : jdbc.sql("select coalesce(ga.email, s.email) from charge c join student s on s.id = c.student_id "
+                    + "left join guardian g on g.id = c.payer_guardian_id left join account ga on ga.id = g.account_id where c.id = :id")
+                    .param("id", chargeId).query(String.class).optional().orElse(null);
+            String reference = !send ? null : jdbc.sql("select reference from public_receipt(:code)").param("code", code).query(String.class).single();
+            return new Done(new Registered(paymentId, chargeId, amount, in.method(), paidAt, who.accountId(), observation, new Receipt(number, code), "NOT_REQUESTED"), to, reference);
         });
+        Registered r = done.registered();
+        if (!send) return r;
+        String status = mailer.send(done.email(), r.receipt().code(), done.reference(), r.receipt().number());
+        return new Registered(r.id(), r.chargeId(), r.amountCents(), r.method(), r.paidAt(), r.registeredBy(), r.observation(), r.receipt(), status);
     }
 }

@@ -136,7 +136,7 @@ public class ChargeActions {
         boolean open = "OPEN".equals(x.status());
         return new Detail(row, x.tolerance(), new Composition(x.planId() == null ? null : new Named(x.planId(), x.planName()), x.planCents(), x.benefitType(), x.benefitCents(),
                 row.amountCents()), payer, origin, replaced, x.reason(), x.canceledAt(),
-                x.canceledBy() == null ? null : new Named(x.canceledBy(), x.canceledByName()), payments, List.of(), new Actions(open, open, false, false, false));
+                x.canceledBy() == null ? null : new Named(x.canceledBy(), x.canceledByName()), payments, List.of(), new Actions(open, open, open, false, false));
     }
 
     private static Ref ref(java.sql.ResultSet rs, int n) throws java.sql.SQLException {
