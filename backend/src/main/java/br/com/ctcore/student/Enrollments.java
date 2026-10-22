@@ -8,6 +8,8 @@ import br.com.ctcore.audit.AuditActor;
 import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.benefit.BenefitWrite;
+import br.com.ctcore.billing.ChargeActions;
+import br.com.ctcore.billing.Charges;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.permission.Access;
@@ -56,10 +58,14 @@ public class Enrollments {
     private final Permissions permissions;
     private final AuditService audit;
     private final BenefitWrite benefitWrite;
+    private final ChargeActions chargeActions;
+    private final Charges charges;
     private final Clock clock;
 
     public Enrollments(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Students students, Permissions permissions, AuditService audit,
-            BenefitWrite benefitWrite, Clock clock) {
+            BenefitWrite benefitWrite, ChargeActions chargeActions, Charges charges, Clock clock) {
+        this.chargeActions = chargeActions;
+        this.charges = charges;
         this.benefitWrite = benefitWrite;
         this.jdbc = jdbc;
         this.transactions = transactions;
@@ -376,10 +382,13 @@ public class Enrollments {
         });
     }
 
-    public record EndInput(String reason, String note) {}
+    /** R11: {@code action} KEEP ou CANCEL; o motivo é obrigatório só no CANCEL. */
+    public record ChargeDecision(UUID chargeId, String action, String reason) {}
 
-    /** RN-MAT-17 (D2): cobranças em aberto da modalidade; a lista vem vazia até as cobranças existirem (Sprint 08). */
-    public record EndPreview(List<Object> openCharges) {}
+    public record EndInput(String reason, String note, List<ChargeDecision> charges) {}
+
+    /** RN-MAT-17: cobranças em aberto da modalidade. */
+    public record EndPreview(List<Charges.OpenCharge> openCharges) {}
 
     private static final Set<String> END_REASONS = Set.of("CITY_CHANGE", "FINANCIAL", "SCHEDULE", "INJURY", "DISSATISFACTION", "OTHER");
 
@@ -393,9 +402,22 @@ public class Enrollments {
         return transactions.execute(() -> {
             Row row = lockRow(who, studentId, rowId);
             UUID org = who.organizationId();
+            Map<UUID, String> cancels = new LinkedHashMap<>();
+            if (in.charges() != null) {
+                var open = charges.openOfModality(org, rowId).stream().map(Charges.OpenCharge::id).collect(java.util.stream.Collectors.toSet());
+                for (ChargeDecision d : in.charges()) {
+                    if (d == null || d.chargeId() == null || !open.contains(d.chargeId()) || cancels.containsKey(d.chargeId()) || !Set.of("KEEP", "CANCEL").contains(d.action())) {
+                        throw new ApiValidationException("charges", "cobrança em aberto desta modalidade, uma vez, com ação KEEP ou CANCEL");
+                    }
+                    cancels.put(d.chargeId(), "CANCEL".equals(d.action()) ? ChargeActions.reason(d.reason()) : null);
+                }
+            }
             jdbc.sql("update enrollment_modality set status = 'ENDED', ended_at = :now, end_reason = :why, end_note = :note where organization_id = :org and id = :id")
                     .param("now", OffsetDateTime.now(clock)).param("why", reason).param("note", savedNote).param("org", org).param("id", rowId).update();
             benefitWrite.endModalityBenefits(who, rowId, ip);
+            cancels.forEach((id, why) -> {
+                if (why != null) chargeActions.cancelLocked(who, id, why, ip);
+            });
             Map<String, Object> before = new LinkedHashMap<>(), after = new LinkedHashMap<>();
             before.put("modalityRowId", rowId.toString());
             before.put("status", "ACTIVE");
@@ -412,7 +434,7 @@ public class Enrollments {
     public EndPreview endPreview(AccountPrincipal who, UUID studentId, UUID rowId) {
         return transactions.execute(() -> {
             lockRow(who, studentId, rowId);
-            return new EndPreview(List.of());
+            return new EndPreview(charges.openOfModality(who.organizationId(), rowId));
         });
     }
 

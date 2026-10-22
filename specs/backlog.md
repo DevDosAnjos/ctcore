@@ -81,7 +81,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 70 | RF-MAT-05 · Configurações › Termos | issue #70 | Sprint 07 | — | agente | feito |
 | 71 | Geração de cobranças e primeira cobrança no servidor | issue #71 | Sprint 08 | — | agente | feito |
 | 72 | RF-COB-01 · Financeiro › Cobranças (lista) | issue #72 | Sprint 08 | — | agente | feito |
-| 73 | RF-COB-02 · Painel da cobrança | issue #73 | Sprint 08 | — | agente | a fazer |
+| 73 | RF-COB-02 · Painel da cobrança | issue #73 | Sprint 08 | — | agente | feito |
 | 74 | RF-COB-03 · Prévia da geração de mensalidades | issue #74 | Sprint 08 | — | agente | a fazer |
 | 75 | RF-COB-04 · Registrar pagamento no balcão | issue #75 | Sprint 08 | — | agente | a fazer |
 | 76 | RF-COB-07 · Cobrança avulsa e gerar mensalidades adiantadas | issue #76 | Sprint 08 | — | agente | a fazer |

@@ -2,12 +2,14 @@ import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { combine, ModalityDialog, PickSelect } from "./ModalityPickers";
-import type { EndReason, EnrollmentModality } from "./types";
+import type { ChargeDecision, EndReason, EnrollmentModality } from "./types";
 import { endModality, useEndPreview } from "./useStudentRecord";
 
 const REASONS: EndReason[] = ["CITY_CHANGE", "FINANCIAL", "SCHEDULE", "INJURY", "DISSATISFACTION", "OTHER"];
 
-// RF-MAT-03 (RN-MAT-17): encerra a modalidade com motivo e observação opcional; a lista de cobranças em aberto vem do servidor (vazia até a Sprint 08).
+type Choice = { cancel: boolean; reason: string };
+
+// RF-MAT-03 (RN-MAT-17): encerra a modalidade com motivo e observação opcional; as cobranças em aberto vêm do servidor e cada uma é mantida ou cancelada (com motivo).
 export function EndModalityDialog({ studentId, studentName, row, onClose, onDone }: { studentId: string; studentName: string; row: EnrollmentModality; onClose: () => void; onDone: () => void }) {
   const { t } = useTranslation();
   const k = "students.record.enrollment.end.";
@@ -15,8 +17,11 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
   const preview = useEndPreview(studentId, row.id);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
+  const [choices, setChoices] = useState<Record<string, Choice>>({});
   const { state, retry } = combine(preview);
   const charges = preview.data?.openCharges ?? [];
+  const choose = (id: string, change: Partial<Choice>) => setChoices((c) => ({ ...c, [id]: { ...(c[id] ?? { cancel: false, reason: "" }), ...change } }));
+  const decisions: ChargeDecision[] = charges.map((c) => (choices[c.id]?.cancel ? { chargeId: c.id, action: "CANCEL", reason: choices[c.id].reason.trim() } : { chargeId: c.id, action: "KEEP" }));
   return (
     <ModalityDialog
       title={t(`${k}title`)}
@@ -24,8 +29,8 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
       state={state}
       retry={retry}
       submitLabel={t(`${k}submit`)}
-      canSubmit={!!reason}
-      work={() => endModality(studentId, row.id, { reason, note: note.trim() || undefined })}
+      canSubmit={!!reason && decisions.every((d) => d.action === "KEEP" || !!d.reason)}
+      work={() => endModality(studentId, row.id, { reason, note: note.trim() || undefined, ...(decisions.length ? { charges: decisions } : {}) })}
       onClose={onClose}
       onDone={onDone}
     >
@@ -39,10 +44,37 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
             {charges.length === 0 ? (
               <p className="text-sm text-muted-foreground">{t(`${k}noCharges`)}</p>
             ) : (
-              <ul className="flex flex-col gap-1 text-sm">
-                {charges.map((c) => (
-                  <li key={c.id}>{t(`${k}chargeLine`, { due: formatDate(c.dueOn), amount: formatCurrency(c.amountCents), status: c.status })}</li>
-                ))}
+              <ul className="flex flex-col gap-2 text-sm">
+                {charges.map((c) => {
+                  const choice = choices[c.id];
+                  const line = t(`${k}chargeLine`, { due: formatDate(c.dueOn), amount: formatCurrency(c.amountCents), status: t(`charges.status.${c.status}`) });
+                  return (
+                    <li key={c.id}>
+                      <fieldset className="flex flex-col gap-1 rounded-md border p-2">
+                        <legend className="px-1">{line}</legend>
+                        <div className="flex flex-wrap gap-4">
+                          <label className="flex min-h-11 items-center gap-2">
+                            <input type="radio" name={`${noteId}-${c.id}`} checked={!choice?.cancel} onChange={() => choose(c.id, { cancel: false })} />
+                            {t(`${k}keep`)}
+                          </label>
+                          <label className="flex min-h-11 items-center gap-2">
+                            <input type="radio" name={`${noteId}-${c.id}`} checked={!!choice?.cancel} onChange={() => choose(c.id, { cancel: true })} />
+                            {t(`${k}cancel`)}
+                          </label>
+                        </div>
+                        {choice?.cancel && (
+                          <input
+                            className="min-h-11 rounded-md border bg-background px-3"
+                            aria-label={t(`${k}cancelReason`, { line })}
+                            maxLength={200}
+                            value={choice.reason}
+                            onChange={(e) => choose(c.id, { reason: e.target.value })}
+                          />
+                        )}
+                      </fieldset>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
