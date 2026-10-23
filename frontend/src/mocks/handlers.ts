@@ -766,7 +766,7 @@ const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; f
 // RF-COB-02 (#73): cancelar e renegociar acrescentam as situações CANCELED e RENEGOTIATED, a parcela (INSTALLMENT) e os campos do painel.
 type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
 let mockCharges: MockCharge[] = [];
-let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null }[] = [];
+let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null; by?: { id: string; name: string } }[] = [];
 const chargeRowView = (c: MockCharge, today: string) => {
   const student = mockStudents.find((s) => s.id === c.studentId)!;
   const row = mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId);
@@ -3127,7 +3127,7 @@ export const routes: Route[] = [
       const number = mockReceipts.filter((r) => r.unitId === charge.unitId).length + 1;
       const code = crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase();
       charge.status = "PAID";
-      mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "", method: body.method, observation: body.observation ?? null });
+      mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "", method: body.method, observation: body.observation ?? null, by: { id: session.account.id, name: session.account.name } });
       return HttpResponse.json({ id: crypto.randomUUID(), chargeId: charge.id, amountCents: charge.amountCents, method: body.method, paidAt, registeredBy: session.account.id, observation: body.observation ?? null, receipt: { number, code }, receiptEmail: body.sendReceipt ? "SENT" : "NOT_REQUESTED" }, { status: 201 });
     },
   },
@@ -3268,6 +3268,51 @@ export const routes: Route[] = [
       const prevRef = firstDue ? isoDay(new Date(Date.UTC(Number(firstDue.slice(0, 4)), Number(firstDue.slice(5, 7)) - 2, 1))) : "";
       const previousMonthTotalCents = mockCharges.filter((c) => c.type === "MONTHLY" && c.unitId === unitId && c.status !== "CANCELED" && c.referenceMonth === prevRef).reduce((t, c) => t + c.amountCents, 0);
       return HttpResponse.json({ until, days: list, count: list.reduce((t, d) => t + d.count, 0), totalCents: list.reduce((t, d) => t + d.totalCents, 0), previousMonthTotalCents, skipped });
+    },
+  },
+  {
+    // RF-COB-08 (#77): recebimentos do dia da unidade, calculados dos pagamentos do simulado; só lê. Unidade fora do alcance: resposta vazia.
+    method: "get",
+    path: "/billing/daily-receipts",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const q = new URL(request.url).searchParams;
+      const unitId = q.get("unitId");
+      if (!unitId || !/^[0-9a-f-]{36}$/i.test(unitId)) return studentBad("unitId", "obrigatório");
+      const localDay = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+      const today = localDay(new Date());
+      const date = q.get("date") || today;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return studentBad("date", "use AAAA-MM-DD");
+      if (date > today) return studentBad("date", "não pode ser futura");
+      const reach = activeRole() === "COORDINATOR" || unitId === ADMIN_UNIT;
+      const payments = mockReceipts
+        .filter((r) => reach && r.unitId === unitId && localDay(new Date(r.paidAt)) === date)
+        .sort((a, b) => b.paidAt.localeCompare(a.paidAt) || b.code.localeCompare(a.code))
+        .map((r) => {
+          const c = mockCharges.find((x) => x.id === r.chargeId)!;
+          const row = mockEnrollments[c.studentId]?.modalities.find((x) => x.id === c.modalityRowId);
+          const reference = c.type === "MONTHLY" ? `${modalityCatalog.find((m) => m.id === row?.modalityId)?.name ?? ""} · ${c.referenceMonth!.slice(5, 7)}/${c.referenceMonth!.slice(0, 4)}` : c.description;
+          return { id: r.code, paidAt: r.paidAt, student: { id: c.studentId, name: r.studentName }, reference, method: r.method ?? "CASH", registeredBy: r.by ?? null, amountCents: r.amountCents, receiptNumber: r.number };
+        });
+      const sum = <K,>(key: (p: (typeof payments)[number]) => K, id: (k: K) => string) => {
+        const groups = new Map<string, { key: K; count: number; totalCents: number }>();
+        for (const p of payments) {
+          const g = groups.get(id(key(p))) ?? { key: key(p), count: 0, totalCents: 0 };
+          g.count += 1;
+          g.totalCents += p.amountCents;
+          groups.set(id(key(p)), g);
+        }
+        return [...groups.values()];
+      };
+      return HttpResponse.json({
+        date,
+        totalCents: payments.reduce((t, p) => t + p.amountCents, 0),
+        count: payments.length,
+        byMethod: sum((p) => p.method, (k) => k).map((g) => ({ method: g.key, count: g.count, totalCents: g.totalCents })),
+        byRegistrar: sum((p) => p.registeredBy, (k) => k?.id ?? "").map((g) => ({ registeredBy: g.key, count: g.count, totalCents: g.totalCents })),
+        payments,
+      });
     },
   },
   {

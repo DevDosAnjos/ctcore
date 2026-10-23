@@ -24,6 +24,7 @@ import { EnrollmentWizardPage } from "@/features/students/enrollment-wizard/Enro
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { ChargesPage } from "@/features/charges/ChargesPage";
 import { ChargePreviewPage } from "@/features/charges/ChargePreviewPage";
+import { DailyReceiptsPage } from "@/features/charges/DailyReceiptsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
@@ -115,6 +116,7 @@ export function App() {
             <Route path="/alunos/:id?" element={<StudentsPage />} />
             <Route path="/cobrancas" element={<ChargesPage />} />
             <Route path="/cobrancas/previa" element={<ChargePreviewPage />} />
+            <Route path="/cobrancas/recebimentos" element={<DailyReceiptsPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

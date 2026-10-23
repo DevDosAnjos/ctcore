@@ -2008,6 +2008,35 @@
         "refund": "Disponível quando o estorno for entregue."
       }
     },
+    "daily": {
+      "open": "Recebimentos do dia",
+      "title": "Recebimentos do dia",
+      "intro": "O que a unidade recebeu no dia, por meio de pagamento e por pessoa que lançou. Não há abertura nem fechamento de caixa.",
+      "back": "Voltar às cobranças",
+      "unit": "Unidade",
+      "chooseUnit": "Escolha uma unidade",
+      "pickUnit": "Escolha uma unidade",
+      "pickUnitText": "Os recebimentos são do dia de uma unidade. Escolha uma na lista acima.",
+      "date": "Data",
+      "empty": "Nenhum recebimento neste dia",
+      "total": "Total recebido",
+      "count": "Pagamentos",
+      "byMethod": "Por meio de pagamento",
+      "byRegistrar": "Por pessoa que lançou",
+      "list": "Pagamentos do dia",
+      "online": "Pagamento online",
+      "columns": {
+        "method": "Meio",
+        "registrar": "Lançado por",
+        "count": "Quantidade",
+        "total": "Total",
+        "time": "Hora",
+        "student": "Aluno",
+        "reference": "Referente a",
+        "amount": "Valor",
+        "receipt": "Recibo"
+      }
+    },
     "preview": {
       "open": "Prévia da geração",
       "title": "Prévia da geração de mensalidades",

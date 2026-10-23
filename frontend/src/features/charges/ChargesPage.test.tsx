@@ -91,6 +91,12 @@ describe("ChargesPage (RF-COB-01)", () => {
     expect(calls.at(-1)!.get("size")).toBe("25");
   });
 
+  it("RF-COB-08: o link Recebimentos do dia leva a /cobrancas/recebimentos", async () => {
+    setup();
+    await ready();
+    expect(screen.getByRole("link", { name: "Recebimentos do dia" })).toHaveAttribute("href", "/cobrancas/recebimentos");
+  });
+
   it("CA16: cada situação aparece com texto traduzido", async () => {
     const rows = SITUATIONS.map((status, i) => charge({ id: `x${i}`, student: { id: `s${i}`, name: `Aluno ${i}`, photoUrl: null }, status }));
     setup("COORDINATOR", () => HttpResponse.json({ items: rows, page: 1, size: 25, total: 9, counts, totals: { count: 9, amountCents: 108000 } }));
