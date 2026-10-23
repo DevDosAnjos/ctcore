@@ -64,6 +64,7 @@ type Opts = {
   width?: number;
   lesson?: LessonDetail;
   status?: number;
+  respond?: () => Response | Promise<Response>;
   path?: string;
 };
 function setup(opts: Opts = {}) {
@@ -88,9 +89,11 @@ function setup(opts: Opts = {}) {
       return HttpResponse.json([{ id: "s9", name: "Bia Lima", photoUrl: null, belt: null, blocked: false }]);
     }),
     http.get("/api/v1/agenda/lessons/:id", () =>
-      opts.status
-        ? HttpResponse.json({ code: "X" }, { status: opts.status })
-        : HttpResponse.json(opts.lesson ?? detail()),
+      opts.respond
+        ? opts.respond()
+        : opts.status
+          ? HttpResponse.json({ code: "X" }, { status: opts.status })
+          : HttpResponse.json(opts.lesson ?? detail()),
     ),
   );
   return render(
@@ -184,15 +187,12 @@ describe("LessonPanelPage", () => {
     const user = userEvent.setup();
     let fail = true;
     const loading = gate();
-    setup();
-    server.use(
-      http.get("/api/v1/agenda/lessons/:id", async () => {
+    setup({
+      respond: async () => {
         await loading.opened;
-        return fail
-          ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 })
-          : HttpResponse.json(detail());
-      }),
-    );
+        return fail ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 }) : HttpResponse.json(detail());
+      },
+    });
     expect(await screen.findByText("Carregando...")).toBeInTheDocument();
     loading.release();
     const retry = await screen.findByRole("button", { name: "Tentar de novo" });

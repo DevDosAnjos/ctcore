@@ -1,10 +1,11 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
 import { SessionProvider, type SessionView } from "@/features/auth/SessionProvider";
 import { mockPermissions } from "@/mocks/permissions";
+import { gate } from "@/test/gate";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
@@ -225,4 +226,44 @@ describe("ChargePreviewPage (RF-COB-03)", () => {
       unmount();
     }
   });
+
+  it("trocar vencimento: sem data ou com a janela fechada nada é enviado, falha do servidor aparece e Esc fecha; cancelar ignora o segundo envio enquanto grava", async () => {
+    const user = userEvent.setup();
+    setup();
+    server.use(http.patch("/api/v1/students/:id/modalities/:row/next-charge", () => HttpResponse.json({ code: "CONFLICT", message: "x", fields: [] }, { status: 409 })));
+    await screen.findByText("Total previsto");
+    await user.click(screen.getByRole("button", { name: "Trocar vencimento de Aluno 1" }));
+    let dialog = await screen.findByRole("dialog", { name: "Trocar vencimento" });
+    await user.clear(within(dialog).getByLabelText("Novo vencimento"));
+    fireEvent.submit(dialog.querySelector("form")!);
+    expect(writes).toHaveLength(0);
+    await user.type(within(dialog).getByLabelText("Novo vencimento"), "2099-12-20");
+    await user.click(within(dialog).getByRole("button", { name: "Trocar vencimento" }));
+    expect(await within(dialog).findByRole("alert")).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const hold = gate();
+    server.use(
+      http.post("/api/v1/students/:id/modalities/:row/next-charge/cancel", async ({ request }) => {
+        writes.push({ method: "POST", url: request.url, body: await request.json() });
+        await hold.opened;
+        return HttpResponse.json({ chargeId: "c1", referenceMonth: "2099-12-01" });
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Cancelar mensalidade de Aluno 3" }));
+    dialog = await screen.findByRole("dialog", { name: "Cancelar mensalidade" });
+    await user.type(within(dialog).getByLabelText(/^Motivo/), "Viagem");
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar mensalidade" }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    fireEvent.submit(dialog.querySelector("form")!);
+    hold.release();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(writes).toHaveLength(1);
+    await user.click(screen.getByRole("button", { name: "Cancelar mensalidade de Aluno 2" }));
+    await screen.findByRole("dialog", { name: "Cancelar mensalidade" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
 });

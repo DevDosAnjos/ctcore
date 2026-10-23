@@ -239,4 +239,16 @@ describe("botões de criação (RF-COB-07, CA10)", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await waitFor(() => expect(calls.length).toBeGreaterThan(before));
   });
+
+  it("Esc fecha a janela de gerar mensalidades", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR");
+    await ready();
+    await screen.findAllByText("Ana Souza");
+    await user.click(screen.getByRole("button", { name: "Gerar próximas mensalidades" }));
+    await screen.findByRole("dialog", { name: "Gerar próximas mensalidades" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
 });

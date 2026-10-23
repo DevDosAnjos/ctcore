@@ -90,7 +90,7 @@ export function ModalityDialog({
   title: string;
   effect: string;
   state: "loading" | "forbidden" | "error" | "ready";
-  retry: () => void;
+  retry?: () => void;
   submitLabel: string;
   canSubmit: boolean;
   work: () => Promise<unknown>;
@@ -128,7 +128,7 @@ export function ModalityDialog({
     <Modal open onOpenChange={(o) => !o && onClose()} title={title}>
       {state === "loading" && <LoadingState />}
       {state === "forbidden" && <ForbiddenState />}
-      {state === "error" && <ErrorState onRetry={retry} />}
+      {state === "error" && retry && <ErrorState onRetry={retry} />}
       {state === "ready" && (
         <form onSubmit={submit} noValidate className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">{effect}</p>

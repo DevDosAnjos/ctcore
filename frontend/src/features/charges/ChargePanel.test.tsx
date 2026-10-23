@@ -335,4 +335,22 @@ describe("ChargePanel (RF-COB-02)", () => {
       unmount();
     }
   });
+
+  it("enviar em branco não envia, Esc fecha cada janela e depois o painel", async () => {
+    const user = userEvent.setup();
+    setup();
+    const panel = await openPanel(user);
+    for (const [button, title] of [["Cancelar cobrança", "Cancelar cobrança"], ["Renegociar", "Renegociar"]] as const) {
+      await user.click(await within(panel).findByRole("button", { name: button }));
+      const dialog = await screen.findByRole("dialog", { name: title });
+      fireEvent.submit(dialog.querySelector("form")!);
+      expect(posts).toHaveLength(0);
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: title })).toBeNull());
+    }
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Cobrança" })).toBeNull());
+    expect(window.location.search).toBe("");
+  });
+
 });

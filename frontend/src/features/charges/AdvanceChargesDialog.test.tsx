@@ -121,4 +121,17 @@ describe("janela Gerar próximas mensalidades (RN-COB-06, CA13, CA14, CA15)", ()
     await user.selectOptions(await screen.findByLabelText("Modalidade"), "m1");
     expect(await axeViolations(document.body)).toEqual([]);
   });
+
+  it("Esc fecha a janela do resultado", async () => {
+    const user = userEvent.setup();
+    setup();
+    await search(user);
+    await user.selectOptions(await screen.findByLabelText("Modalidade"), "m1");
+    await user.type(screen.getByLabelText("Quantidade de mensalidades (1 a 12)"), "3");
+    await user.click(screen.getByRole("button", { name: "Gerar mensalidades" }));
+    await screen.findByText("3 mensalidades criadas (de dez/2026 a fev/2027).");
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
 });
