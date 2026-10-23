@@ -81,12 +81,13 @@ class PaymentReceiptIT extends OrganizationBase {
         assertThat(r.getContentType()).isEqualTo("application/pdf");
         assertThat(r.getHeader("Cache-Control")).contains("no-store", "private");
         assertThat(r.getHeader("X-Content-Type-Options")).isEqualTo("nosniff");
-        assertThat(text(r)).contains("Unit", "CNPJ: 12.345.678/0001-90", "Rua das Flores, 10, Centro", "Recibo nº 1", "Pago por: Maria Souza · CPF 123.456.789-01",
+        assertThat(text(r)).contains("Unit", "CNPJ: 12.345.678/0001-90", "Rua das Flores, 10, Centro", "Recibo nº 1", "Pago por: Maria Souza · CPF ***.456.789-**",
                 "Aluno: Maria Souza", "Referente a: " + modality + " · nov/2026", "Valor: R$ 150,00", "Meio: Pix na chave", ReceiptPdf.NOT_INVOICE, "ctcore.com.br/recibo/" + code);
         try (var doc = Loader.loadPDF(r.getContentAsByteArray())) {
             var names = doc.getPage(0).getResources().getXObjectNames();
             assertThat(names).hasSize(1);
         }
+        assertThat(text(r)).doesNotContain("12345678901", "123.456.789-01");
         // O contexto da organização aberto para ler a logo foi fechado.
         assertThat(OrganizationContext.organizationId()).isNull();
     }
@@ -104,7 +105,7 @@ class PaymentReceiptIT extends OrganizationBase {
         var r = pdf(pay(admin, charge));
         assertThat(r.getStatus()).isEqualTo(200);
         String text = text(r);
-        assertThat(text).contains("Pago por: Ana Souza · CPF 987.654.321-00", "Aluno: Pedro Souza", "Referente a: Kimono", "Valor: R$ 90,00").doesNotContain("CNPJ");
+        assertThat(text).contains("Pago por: Ana Souza · CPF ***.654.321-**", "Aluno: Pedro Souza", "Referente a: Kimono", "Valor: R$ 90,00").doesNotContain("CNPJ");
         try (var doc = Loader.loadPDF(r.getContentAsByteArray())) {
             assertThat(doc.getPage(0).getResources().getXObjectNames()).isEmpty();
         }
@@ -133,5 +134,48 @@ class PaymentReceiptIT extends OrganizationBase {
             assertThat(r.getStatus()).as(bad).isEqualTo(404);
             assertThat(json.readTree(r.getContentAsString()).get("code").asText()).as(bad).isEqualTo(reference);
         }
+    }
+
+    private MockHttpServletResponse staffPdf(String code, AccountPrincipal who) throws Exception {
+        return call(MockMvcRequestBuilders.get("/api/v1/receipts/" + code + "/pdf"), who).getResponse();
+    }
+
+    @Test
+    @DisplayName("RN-COB-16: com sessão e acesso a cobranças da unidade o PDF traz o CPF completo; o link público segue mascarado")
+    void staffGetsFullCpf() throws Exception {
+        var t = tenant();
+        var admin = admin(t);
+        UUID student = BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Maria Souza");
+        adminJdbc().update("update student set cpf = '12345678901' where id = ?", student);
+        String code = pay(admin, BillingFixtures.oneOff(adminJdbc(), t.orgId(), t.unitId(), student, 5000, "OPEN"));
+        var staff = staffPdf(code, who(t, Role.COORDINATOR));
+        assertThat(staff.getStatus()).isEqualTo(200);
+        assertThat(staff.getContentType()).isEqualTo("application/pdf");
+        assertThat(staff.getHeader("Cache-Control")).contains("no-store", "private");
+        assertThat(text(staff)).contains("Pago por: Maria Souza · CPF 123.456.789-01");
+        assertThat(text(staffPdf(code, admin))).contains("CPF 123.456.789-01");
+        assertThat(text(pdf(code))).contains("CPF ***.456.789-**").doesNotContain("123.456.789-01");
+    }
+
+    @Test
+    @DisplayName("RN-COB-16: rota com sessão: sem sessão 401, Professor 403, outra organização, outra unidade e código desconhecido dão o mesmo 404")
+    void staffRouteAccess() throws Exception {
+        var t = tenant();
+        var other = tenant();
+        var admin = admin(t);
+        String code = pay(admin, BillingFixtures.oneOff(adminJdbc(), t.orgId(), t.unitId(), BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Maria"), 100, "OPEN"));
+        assertThat(mvc.perform(MockMvcRequestBuilders.get("/api/v1/receipts/" + code + "/pdf").secure(true)).andReturn().getResponse().getStatus()).isEqualTo(401);
+        assertThat(staffPdf(code, who(t, Role.TEACHER)).getStatus()).isEqualTo(403);
+        var foreign = staffPdf(code, who(other, Role.COORDINATOR));
+        var unknown = staffPdf("AAAAAAAAAAAAAAAA", admin);
+        assertThat(foreign.getStatus()).isEqualTo(404);
+        assertThat(unknown.getStatus()).isEqualTo(404);
+        assertThat(json.readTree(foreign.getContentAsString()).get("code").asText()).isEqualTo(json.readTree(unknown.getContentAsString()).get("code").asText());
+        // Administrador sem a unidade do recibo.
+        UUID second = UUID.randomUUID();
+        adminJdbc().update("insert into unit (id, organization_id, name, short_name, active) values (?, ?, 'Outra', ?, true)", second, t.orgId(), "u" + second.toString().substring(0, 12));
+        var elsewhere = new AccountPrincipal(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), t.orgId(), Role.ADMINISTRATOR, java.util.Set.of(second));
+        adminJdbc().update("insert into account (id, email, name, status) values (?, ?, 'Outra Gestora', 'ACTIVE')", elsewhere.accountId(), "pay-" + elsewhere.accountId() + "@example.com");
+        assertThat(staffPdf(code, elsewhere).getStatus()).isEqualTo(404);
     }
 }

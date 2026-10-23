@@ -3224,6 +3224,17 @@ export const routes: Route[] = [
     },
   },
   {
+    // RN-COB-16 (#338): PDF do recibo com o CPF completo, só com sessão e acesso a cobranças; código desconhecido é 404.
+    method: "get",
+    path: "/receipts/{code}/pdf",
+    resolver: ({ params }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      if (!mockReceipts.some((x) => x.code === params.code)) return error(404, "NOT_FOUND", "Não encontrado.");
+      return new HttpResponse("%PDF-1.4\n%%EOF\n", { headers: { "Content-Type": "application/pdf" } });
+    },
+  },
+  {
     // RF-COB-03 (#71, #74): prévia da geração calculada das modalidades ativas do simulado; só lê. Unidade fora do alcance: prévia vazia.
     method: "get",
     path: "/billing/generation-preview",

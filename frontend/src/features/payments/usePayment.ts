@@ -19,5 +19,8 @@ export interface PaymentInput {
 
 export const registerPayment = (chargeId: string, input: PaymentInput) => api<PaymentReceipt>(`/charges/${chargeId}/payments`, { method: "POST", body: input });
 
-/** Endereço do PDF do recibo (RN-COB-16): público, sem sessão, não expira. */
+/** Endereço do PDF do recibo para o link público (RN-COB-16): sem sessão, não expira, CPF mascarado. */
 export const receiptPdfUrl = (code: string) => `/api/v1/public/receipts/${encodeURIComponent(code)}/pdf`;
+
+/** PDF do recibo com sessão (RN-COB-16): traz o CPF completo; usado pela gestão. */
+export const receiptStaffPdfUrl = (code: string) => `/api/v1/receipts/${encodeURIComponent(code)}/pdf`;

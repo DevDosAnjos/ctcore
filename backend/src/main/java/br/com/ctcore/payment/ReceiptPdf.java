@@ -41,12 +41,17 @@ final class ReceiptPdf {
         return digits.length() == 11 ? digits.substring(0, 3) + "." + digits.substring(3, 6) + "." + digits.substring(6, 9) + "-" + digits.substring(9) : digits;
     }
 
+    /** CPF do PDF aberto pelo link público (RN-COB-16): só os dígitos do meio. */
+    static String maskedCpf(String digits) {
+        return digits.length() == 11 ? "***." + digits.substring(3, 6) + "." + digits.substring(6, 9) + "-**" : "***";
+    }
+
     static String cnpj(String digits) {
         return digits.matches("[0-9]{14}") ? digits.substring(0, 2) + "." + digits.substring(2, 5) + "." + digits.substring(5, 8) + "/" + digits.substring(8, 12) + "-" + digits.substring(12) : digits;
     }
 
-    /** {@code logo} pode ser nulo; imagem que o PDF não lê (ex.: WebP) é omitida sem erro. */
-    static byte[] render(Data d, byte[] logo) throws IOException {
+    /** {@code logo} pode ser nulo; imagem que o PDF não lê (ex.: WebP) é omitida sem erro. {@code fullCpf} só com sessão; sem ele o CPF sai mascarado. */
+    static byte[] render(Data d, byte[] logo, boolean fullCpf) throws IOException {
         PDType1Font regular = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
         PDType1Font bold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
         try (PDDocument doc = new PDDocument()) {
@@ -65,7 +70,7 @@ final class ReceiptPdf {
                 y -= 18;
                 y = line(out, bold, 14, y, "Recibo nº " + d.number());
                 y -= 8;
-                String payerLine = d.payerCpf() == null ? d.payerName() : d.payerName() + " · CPF " + cpf(d.payerCpf());
+                String payerLine = d.payerCpf() == null ? d.payerName() : d.payerName() + " · CPF " + (fullCpf ? cpf(d.payerCpf()) : maskedCpf(d.payerCpf()));
                 String[][] rows = {{"Pago por", payerLine}, {"Aluno", d.studentName()}, {"Referente a", d.reference()}, {"Valor", money(d.amountCents())},
                     {"Taxa repassada", money(d.feePassedCents())}, {"Meio", METHODS.getOrDefault(d.method(), d.method())},
                     {"Data e hora", WHEN.format(d.paidAt().atZoneSameInstant(ZoneId.of(d.timezone())))}};
