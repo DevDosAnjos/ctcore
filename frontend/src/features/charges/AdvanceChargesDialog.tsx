@@ -47,7 +47,6 @@ export function AdvanceChargesDialog({ onClose, onDone }: { onClose: () => void;
       title={t(`${k}title`)}
       effect={t(`${k}effect`)}
       state="ready"
-      retry={() => {}}
       submitLabel={t(`${k}submit`)}
       canSubmit={!!studentId && !!rowId && n >= 1 && n <= 12}
       errorPrefix={`${k}errors.`}

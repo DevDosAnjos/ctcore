@@ -34,7 +34,6 @@ export function OneOffChargeDialog({ onClose, onDone }: { onClose: () => void; o
       title={t(`${k}title`)}
       effect={t(`${k}effect`)}
       state="ready"
-      retry={() => {}}
       submitLabel={t(`${k}submit`)}
       canSubmit={canSubmit}
       errorPrefix={`${k}errors.`}
