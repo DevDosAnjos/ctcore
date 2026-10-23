@@ -48,7 +48,7 @@ test("@critical Registrar pagamento no balcão", async ({ page }) => {
   await dialog.getByRole("button", { name: "Confirmar pagamento" }).click();
   await expect(dialog.getByText("Recibo número 1")).toBeVisible();
   const code = (await dialog.getByText(/Código de conferência: [A-Z0-9]{16}/).innerText()).split(": ")[1];
-  await expect(dialog.getByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", `/api/v1/public/receipts/${code}/pdf`);
+  await expect(dialog.getByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", `/api/v1/receipts/${code}/pdf`);
   await dialog.getByRole("button", { name: "Fechar" }).first().click();
 
   await expect(panel.getByRole("link", { name: "Baixar recibo" })).toBeVisible();
