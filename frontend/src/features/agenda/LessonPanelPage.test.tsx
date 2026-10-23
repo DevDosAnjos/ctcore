@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { delay, http, HttpResponse } from "msw";
+import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
 import {
@@ -10,6 +10,7 @@ import {
 import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { gate } from "@/test/gate";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { todayIso } from "./agendaDates";
@@ -182,16 +183,18 @@ describe("LessonPanelPage", () => {
   it("CA10: carregando, erro com Tentar de novo, sem permissão e aula não encontrada", async () => {
     const user = userEvent.setup();
     let fail = true;
+    const loading = gate();
     setup();
     server.use(
       http.get("/api/v1/agenda/lessons/:id", async () => {
-        await delay(100);
+        await loading.opened;
         return fail
           ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 })
           : HttpResponse.json(detail());
       }),
     );
     expect(await screen.findByText("Carregando...")).toBeInTheDocument();
+    loading.release();
     const retry = await screen.findByRole("button", { name: "Tentar de novo" });
     fail = false;
     await user.click(retry);

@@ -1,9 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { delay, http, HttpResponse } from "msw";
+import { http, HttpResponse } from "msw";
 import { enrollmentOf, modalityRow } from "@/features/students/enrollmentFixtures";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { gate } from "@/test/gate";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { OneOffChargeDialog } from "./OneOffChargeDialog";
@@ -114,9 +115,11 @@ describe("janela Nova cobrança avulsa (RN-COB-11, CA11, CA12, CA15)", () => {
 
   it("estados da busca: carregando, vazio, erro com nova tentativa e sem permissão", async () => {
     const user = userEvent.setup();
-    setup({ students: async () => (await delay(50), HttpResponse.json({ items: [], page: 1, size: 25, total: 0 })) });
+    const students = gate();
+    setup({ students: async () => (await students.opened, HttpResponse.json({ items: [], page: 1, size: 25, total: 0 })) });
     await user.type(screen.getByLabelText("Buscar aluno pelo nome (mínimo 2 letras)"), "zz");
     expect(await screen.findByText("Carregando...")).toBeInTheDocument();
+    students.release();
     expect(await screen.findByText("Nenhum aluno encontrado.")).toBeInTheDocument();
     server.use(http.get("/api/v1/students", () => HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 })));
     await user.type(screen.getByLabelText("Buscar aluno pelo nome (mínimo 2 letras)"), "z");

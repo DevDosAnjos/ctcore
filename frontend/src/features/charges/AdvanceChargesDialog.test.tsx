@@ -1,9 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { delay, http, HttpResponse } from "msw";
+import { http, HttpResponse } from "msw";
 import { enrollmentOf, modalityRow } from "@/features/students/enrollmentFixtures";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { gate } from "@/test/gate";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { AdvanceChargesDialog } from "./AdvanceChargesDialog";
@@ -93,9 +94,11 @@ describe("janela Gerar próximas mensalidades (RN-COB-06, CA13, CA14, CA15)", ()
   it("estados: carregando, aluno sem modalidade ativa, erro com nova tentativa e sem permissão", async () => {
     const user = userEvent.setup();
     setup();
-    server.use(http.get("/api/v1/students", async () => (await delay(50), HttpResponse.json({ items: [{ id: "s1", name: "Maria Lima" }, { id: "s2", name: "Beto Lima" }], page: 1, size: 25, total: 2 }))));
+    const students = gate();
+    server.use(http.get("/api/v1/students", async () => (await students.opened, HttpResponse.json({ items: [{ id: "s1", name: "Maria Lima" }, { id: "s2", name: "Beto Lima" }], page: 1, size: 25, total: 2 }))));
     await user.type(screen.getByLabelText("Buscar aluno pelo nome (mínimo 2 letras)"), "li");
     expect(await screen.findByText("Carregando...")).toBeInTheDocument();
+    students.release();
     await user.selectOptions(await screen.findByLabelText("Aluno"), "s2");
     expect(await screen.findByText("Sem modalidade ativa")).toBeInTheDocument();
     server.use(http.get("/api/v1/students/s1/enrollment", () => HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 })));

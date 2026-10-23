@@ -1,12 +1,13 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { delay, http, HttpResponse } from "msw";
+import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
 import { App } from "@/App";
 import { SessionProvider, type SessionView } from "@/features/auth/SessionProvider";
 import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { gate } from "@/test/gate";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { RenegotiateDialog, previewInstallments } from "./RenegotiateDialog";
@@ -126,9 +127,11 @@ describe("ChargePanel (RF-COB-02)", () => {
   it("CA20: erro 500 pede nova tentativa, 403 mostra sem permissão e 404 mostra não encontrada", async () => {
     const user = userEvent.setup();
     let fail = true;
-    setup({ detail: async () => (await delay(100), fail ? HttpResponse.json({ code: "X" }, { status: 500 }) : HttpResponse.json(detail())) });
+    const loading = gate();
+    setup({ detail: async () => (await loading.opened, fail ? HttpResponse.json({ code: "X" }, { status: 500 }) : HttpResponse.json(detail())) });
     const panel = await openPanel(user);
     expect(within(panel).getByText("Carregando...")).toBeInTheDocument();
+    loading.release();
     const retry = await within(panel).findByRole("button", { name: "Tentar de novo" });
     fail = false;
     await user.click(retry);
