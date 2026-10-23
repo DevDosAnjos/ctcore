@@ -5,3 +5,7 @@
 ecfc681e81f39393d66c8483f0528cbce3efb48b:backend/src/test/resources/config/application.properties:generic-api-key:2
 # Mesma chave fixa de teste (#26), no commit de squash que entrou em dev; o hash acima era o da branch antes do squash. Valor fictício (base64 de "ctcore-test-key-..."), nao e segredo.
 ce5617d0d9f9e0e2537c86dc06eecc229f0e8ad5:backend/src/test/resources/config/application.properties:generic-api-key:2
+# Token de GitHub inventado, de uma prova do gitleaks no PR #204 (fechado, "DESCARTAVEL prova segredo", 15/10/2026, commit "teste: segredo falso"). Conferido em 23/10/2026: a API do GitHub o recusa (HTTP 401), nao e credencial valida. So existe na ref refs/pull/204/head.
+cfd54bf8e3088431f050535a12dc325fd902f03b:segredo-falso.txt:github-pat:1
+# Mesmo falso positivo do LogOutputTest (valores ficticios que o teste exige que NAO aparecam no log), no commit da cabeca do PR #198 antes do squash (7be7dd1 acima).
+6d5758a6e5bfe8d17aef8de259b7772484294642:backend/src/test/java/br/com/ctcore/logging/LogOutputTest.java:generic-api-key:87
