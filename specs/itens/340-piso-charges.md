@@ -31,3 +31,4 @@ Quatro arquivos de teste ganham um caso cada (`AdvanceChargesDialog`, `ChargePan
 ## 6. Decisões
 
 - D1: `GrantBenefitDialog` (benefícios) tem o mesmo `retry={() => {}}`; não mexi porque a pasta não está no piso e o item é de `charges`.
+- D2 (achado na medição, corrigido aqui): no `npm run test:cov` desta branch o `CA10` de `LessonPanelPage.test.tsx` (convertido no #333) falhou 1 vez: o `server.use` da resposta retida vinha depois do `render`, e sob carga o pedido da aula já tinha usado a resposta padrão. A resposta retida passa a entrar por `setup({ respond })`, antes do `render`. Medição: o arquivo 10 vezes → 0 falhas. Os outros testes convertidos no #333 registram a resposta retida antes do pedido (o pedido só sai ao digitar, ou entra pelo `setup`).
