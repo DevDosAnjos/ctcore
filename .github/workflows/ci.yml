@@ -127,6 +127,8 @@ jobs:
         run: |
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
           ./gitleaks git --no-banner --redact --verbose --log-opts "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+      - name: Prova das regras próprias do gitleaks (.gitleaks.toml)
+        run: bash infra/scripts/gitleaks-rules.test.sh ./gitleaks
       - name: Prova do filtro de severidade do OSV
         run: bash infra/scripts/osv-high.test.sh
       - name: Dependências com falha conhecida (OSV-Scanner, severidade alta, crítica ou sem nota)
