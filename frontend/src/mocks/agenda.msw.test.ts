@@ -218,12 +218,13 @@ describe("aula avulsa x OpenAPI (RF-AGE-04)", () => {
 
   it("cria, devolve o painel no formato do contrato e a aula entra na agenda com título e class nulo", async () => {
     const s = await setup();
-    const res = await create(s.body());
+    const date = addDays(todayIso(), 3);
+    const res = await create(s.body({ date }));
     expect(res.status).toBe(201);
     const detail = await res.json();
     expect(Object.keys(detail).sort()).toEqual([...openapi.components.schemas.LessonDetail.required].sort());
     expect(detail).toMatchObject({ class: null, title: "Seminário", visibilityClass: null, head: null, substitute: false, status: "SCHEDULED", canViewClass: false });
-    const listed = (await (await get(week() + `&unitId=${s.unitId}&modalityId=${s.modalityId}`)).json()).lessons.find((l: { id: string }) => l.id === detail.id);
+    const listed = (await (await get(`from=${mondayOf(date)}&to=${addDays(mondayOf(date), 6)}&unitId=${s.unitId}&modalityId=${s.modalityId}`)).json()).lessons.find((l: { id: string }) => l.id === detail.id);
     expect(Object.keys(listed).sort()).toEqual([...openapi.components.schemas.AgendaLesson.required].sort());
     expect(listed).toMatchObject({ class: null, title: "Seminário" });
     expect((await fetch(`/api/v1/agenda/lessons/${detail.id}`)).status).toBe(200);

@@ -48,6 +48,14 @@ export function StudentFilters({ get, set, counts }: Props) {
             {countOf(s) === undefined ? t(`students.quick.${s}`) : t("students.quick.withCount", { label: t(`students.quick.${s}`), count: countOf(s) })}
           </button>
         ))}
+        <button
+          type="button"
+          aria-pressed={get("financial") === "OVERDUE"}
+          className="inline-flex min-h-11 items-center rounded-md border px-3 text-sm aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+          onClick={() => set("financial", get("financial") === "OVERDUE" ? "" : "OVERDUE")}
+        >
+          {counts?.overdue === undefined ? t("students.quick.OVERDUE") : t("students.quick.withCount", { label: t("students.quick.OVERDUE"), count: counts.overdue })}
+        </button>
       </div>
       <Filter label={t("students.filters.unit")} value={get("unitId")} onChange={(v) => set("unitId", v)} all={t("students.filters.allUnits")} options={units} />
       <Filter label={t("students.filters.ageRange")} value={get("ageRangeId")} onChange={(v) => set("ageRangeId", v)} all={t("students.filters.allAgeRanges")} options={ageRanges} />

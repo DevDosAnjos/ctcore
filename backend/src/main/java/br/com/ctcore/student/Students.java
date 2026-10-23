@@ -5,6 +5,7 @@ import br.com.ctcore.api.error.ApiValidationException;
 import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.api.page.PageResponse;
+import br.com.ctcore.billing.Charges;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.InviteRules;
 import br.com.ctcore.identity.Role;
@@ -57,9 +58,9 @@ public class Students {
 
     /** RF-ALU-01: linha da lista, sem CPF, e-mail, telefone, endereço nem emergência (minimização). */
     public record Row(UUID id, String name, String photoUrl, LocalDate birthDate, int age, boolean minor, RangeRef ageRange, UnitRef registeredUnit,
-            OffsetDateTime createdAt, List<StudentSeal> seals, String status, List<RowModality> modalities) {
+            OffsetDateTime createdAt, List<StudentSeal> seals, String status, String financialStatus, List<RowModality> modalities) {
         Row withModalities(List<RowModality> list) {
-            return new Row(id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, list);
+            return new Row(id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, financialStatus, list);
         }
     }
 
@@ -67,10 +68,10 @@ public class Students {
     public record RowModality(UUID id, UnitRef unit, Enrollments.Named modality, Enrollments.Named primaryClass, Enrollments.Named level) {}
 
     /** R20: contagens dos filtros rápidos, sobre o alcance e a unidade, sem o filtro rápido. */
-    public record Counts(long active, long former) {}
+    public record Counts(long active, long former, long overdue) {}
 
     /** R19: filtros da lista; {@code status} é ACTIVE ou FORMER (filtro rápido). */
-    public record Filter(String q, UUID unitId, UUID ageRangeId, String seal, UUID modalityId, UUID classId, UUID levelId, String status) {}
+    public record Filter(String q, UUID unitId, UUID ageRangeId, String seal, UUID modalityId, UUID classId, UUID levelId, String status, String financial) {}
 
     public record StudentList(List<Row> items, int page, int size, long total, Counts counts) {}
 
@@ -108,6 +109,7 @@ public class Students {
         UUID unitId = f.unitId(), ageRangeId = f.ageRangeId();
         StudentSeal wanted = seal == null ? null : StudentSeal.parse(seal).orElseThrow(() -> new ApiValidationException("seal", "inválido"));
         if (f.status() != null && !f.status().equals("ACTIVE") && !f.status().equals("FORMER")) throw new ApiValidationException("status", "inválido");
+        if (f.financial() != null && !f.financial().equals("OVERDUE")) throw new ApiValidationException("financial", "inválido");
         return transactions.execute(() -> {
             // R19: unidade ou turma que não existe na organização é 404, como a faixa etária.
             if (unitId != null) exists("unit", who.organizationId(), unitId);
@@ -123,7 +125,7 @@ public class Students {
             boolean admin = who.role() == Role.ADMINISTRATOR;
             Set<UUID> reach = who.units() == null ? Set.of() : who.units();
             if (admin && (reach.isEmpty() || unitId != null && !reach.contains(unitId))) {
-                return new StudentList(List.of(), page.page(), page.size(), 0, new Counts(0, 0));
+                return new StudentList(List.of(), page.page(), page.size(), 0, new Counts(0, 0, 0));
             }
 
             String age = AGE;
@@ -168,6 +170,7 @@ public class Students {
             }
             // D13: o nível chega com a graduação (#105 e #106); até lá o filtro é aceito e ninguém tem nível.
             if (f.levelId() != null) where.append(" and false");
+            if (f.financial() != null) where.append(" and ").append(OVERDUE);
             if (f.status() != null) {
                 where.append(" and ").append(STATUS).append(" = :status");
                 params.put("status", f.status());
@@ -187,15 +190,20 @@ public class Students {
     }
 
     private Counts counts(String where, Map<String, Object> params) {
-        return jdbc.sql("select count(*) filter (where " + STATUS + " = 'ACTIVE'), count(*) filter (where " + STATUS + " = 'FORMER') "
+        return jdbc.sql("select count(*) filter (where " + STATUS + " = 'ACTIVE'), count(*) filter (where " + STATUS + " = 'FORMER'), count(*) filter (where " + OVERDUE + ") "
                 + "from student s where " + where)
-                .params(params).query((rs, n) -> new Counts(rs.getLong(1), rs.getLong(2))).single();
+                .params(params).query((rs, n) -> new Counts(rs.getLong(1), rs.getLong(2), rs.getLong(3))).single();
     }
 
     /** RN-MAT-04, D7: a situação do aluno é calculada das modalidades (NONE, ACTIVE, FORMER). Alias {@code s}. */
     static final String STATUS = "(case when not exists (select 1 from enrollment e where e.organization_id = s.organization_id and e.student_id = s.id) "
             + "then 'NONE' when exists (select 1 from enrollment_modality m where m.organization_id = s.organization_id and m.student_id = s.id "
             + "and m.status = 'ACTIVE') then 'ACTIVE' else 'FORMER' end)";
+
+    /** R10, D5: cobrança aberta em atraso de qualquer tipo, na data do fuso da unidade dela. Alias {@code s}. */
+    private static final String OVERDUE = "exists (select 1 from charge c join unit cu on cu.organization_id = c.organization_id and cu.id = c.unit_id "
+            + "where c.organization_id = s.organization_id and c.student_id = s.id and " + Charges.overdue("c", "cu") + ")";
+    private static final String FINANCIAL = "(case when " + OVERDUE + " then 'OVERDUE' else 'CURRENT' end)";
 
     /** A data de hoje é a do fuso da unidade de cadastro (alias {@code u}), não a do UTC do servidor (RF-ALU-02, RF-ALU-06). */
     private static final String TODAY = "(cast(:now as timestamptz) at time zone u.timezone)::date";
@@ -226,7 +234,7 @@ public class Students {
         String age = AGE;
         List<Row> found = jdbc.sql("select s.id, s.name, s.photo, s.birth_date, " + age + ", r.id, r.name, u.id, u.name, s.created_at, "
                 + sealPredicate(StudentSeal.INCOMPLETE_REGISTRATION, age) + ", " + sealPredicate(StudentSeal.EMAIL_PROBLEM, age) + ", "
-                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + ", " + sealPredicate(StudentSeal.NEW, age) + ", " + sealPredicate(StudentSeal.SCHOLARSHIP, age) + ", u.timezone, " + STATUS + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
+                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + ", " + sealPredicate(StudentSeal.NEW, age) + ", " + sealPredicate(StudentSeal.SCHOLARSHIP, age) + ", u.timezone, " + STATUS + ", " + FINANCIAL + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
                 + "left join lateral (select a.id, a.name from age_range a where a.organization_id = s.organization_id and a.min_age <= " + age
                 + " and (a.max_age is null or a.max_age >= " + age + ") order by a.min_age desc, a.name_key limit 1) r on true "
                 + "where " + where + " " + tail)
@@ -236,7 +244,7 @@ public class Students {
                     UUID rangeId = rs.getObject(6, UUID.class);
                     return new Row(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)), birth, rs.getInt(5),
                             !InviteRules.adult(birth, today(rs.getString(16))), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
-                            new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs), rs.getString(17),
+                            new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs), rs.getString(17), rs.getString(18),
                             List.of());
                 }).list();
         if (found.isEmpty()) return found;
@@ -400,7 +408,7 @@ public class Students {
                         "ACTIVE".equals(rs.getString(6)) ? "ACTIVE" : "PENDING", rs.getBoolean(7))).list();
     }
 
-    String photoUrl(String photo) {
+    public String photoUrl(String photo) {
         if (photo == null) return null;
         try {
             return storage.readUrl(photo);

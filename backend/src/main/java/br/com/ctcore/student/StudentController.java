@@ -59,10 +59,10 @@ class StudentController {
     Students.StudentList list(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q,
             @RequestParam(required = false) UUID unitId, @RequestParam(required = false) UUID ageRangeId, @RequestParam(required = false) String seal,
             @RequestParam(required = false) UUID modalityId, @RequestParam(required = false) UUID classId, @RequestParam(required = false) UUID levelId,
-            @RequestParam(required = false) String status, @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String financial, @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size, @RequestParam(required = false) String sort) {
         String field = "name".equals(sort) ? "name,asc" : sort;
-        return students.list(who, new Students.Filter(q, unitId, ageRangeId, seal, modalityId, classId, levelId, status),
+        return students.list(who, new Students.Filter(q, unitId, ageRangeId, seal, modalityId, classId, levelId, status, financial),
                 PageRequest.of(page, size, field, Set.of("name")));
     }
 

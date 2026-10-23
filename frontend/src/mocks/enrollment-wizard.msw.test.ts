@@ -32,7 +32,7 @@ describe("nova matrícula x OpenAPI (RF-MAT-01, #67)", () => {
     ] as const) {
       expect(Object.keys(openapi.paths[path].post.responses)).toEqual(expect.arrayContaining([...codes]));
     }
-    expect(openapi.components.schemas.EnrollmentConcluded.required).toEqual(["enrollment", "summary", "termPending", "inviteStatus"]);
+    expect([...openapi.components.schemas.EnrollmentConcluded.required].sort()).toEqual(["charges", "enrollment", "inviteStatus", "summary", "termPending"]);
     expect(openapi.components.schemas.OriginProofStored.required).toEqual(["proofKey"]);
   });
 

@@ -120,3 +120,4 @@ Cada fluxo entra na suíte na sprint que o completa e roda em todo PR dali em di
 - 13/10/2026 · Monorepo (`backend/`, `frontend/`, `infra/`, `docs/`) no lugar do compose com submódulos.
 - 13/10/2026 · Tudo o que depende do dono fica no fim do plano: hospedagem, publicação automática, backup e alertas foram da Sprint 00 para a Sprint 22 (#192, #193). As issues #5 e #11 ficaram só com a parte que o agente faz sozinho.
 - 13/10/2026 · `dev` é o branch de trabalho e padrão; `main` só recebe `dev` por PR com o método "Merge", no fim de cada sprint, depois da revisão do dono.
+- 23/10/2026 · O repositório fica público durante o desenvolvimento, para o CI rodar sem limite de minutos, e volta a ser privado antes da Sprint 22, antes de qualquer chave real ou dado de cliente. Regras e trava no `AGENTS.md`, seção "Repositório público: segredos e dados reais".

@@ -20,6 +20,8 @@ export function QueryPage<T>({
   filterKeys = [],
   filters,
   emptyAction,
+  cards,
+  footer,
 }: {
   columns: Column<T>[];
   fetchPage: (q: Query) => Promise<Page<T>>;
@@ -27,6 +29,9 @@ export function QueryPage<T>({
   filterKeys?: string[];
   filters?: (p: { get: (k: string) => string; set: (k: string, v: string) => void; counts?: Record<string, number> }) => ReactNode;
   emptyAction?: ReactNode;
+  // Opcionais: abaixo de md a lista sai em cartões no lugar da tabela; `footer` recebe a página carregada (ex.: totais).
+  cards?: (row: T) => ReactNode;
+  footer?: (page: Page<T>) => ReactNode;
 }) {
   const { t } = useTranslation();
   const { get, set, clear } = useQueryParams();
@@ -92,13 +97,18 @@ export function QueryPage<T>({
     const pages = Math.max(1, Math.ceil(state.data!.total / tamanho));
     body = (
       <>
-        <DataTable
-          columns={columns}
-          rows={state.data!.rows}
-          rowKey={rowKey}
-          order={ordem}
-          onOrder={(o) => set({ ordem: o })}
-        />
+        <div className={cards ? "hidden md:block" : undefined}>
+          <DataTable columns={columns} rows={state.data!.rows} rowKey={rowKey} order={ordem} onOrder={(o) => set({ ordem: o })} />
+        </div>
+        {cards && (
+          <ul className="flex flex-col gap-3 md:hidden">
+            {state.data!.rows.map((r) => (
+              <li key={rowKey(r)} className="rounded-md border p-3">
+                {cards(r)}
+              </li>
+            ))}
+          </ul>
+        )}
         <Pagination
           page={pagina}
           pages={pages}
@@ -108,6 +118,7 @@ export function QueryPage<T>({
           // Trocar o tamanho volta para a página 1; o padrão não aparece no endereço.
           onSize={(s) => set({ tamanho: s === DEFAULT_PAGE_SIZE ? "" : String(s) })}
         />
+        {footer?.(state.data!)}
       </>
     );
   }

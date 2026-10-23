@@ -88,6 +88,9 @@ export const resetMockSession = () => {
   mockEnrollments = {};
   mockProofs.clear();
   mockStartedUnits.length = 0;
+  mockCharges = [];
+  nextDueOverride.clear();
+  mockReceipts = [];
   studentLog = {};
   for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
   guardianCpfs["00000000-0000-0000-0000-000000000801"] = "98765432100";
@@ -759,7 +762,101 @@ type ConclusionBody = {
 };
 const mockProofs = new Map<string, string>();
 const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; feeExemptReason: string | null; secondDueOn: string }[] = [];
+// RN-COB-12, RN-MAT-05 (#71): cobranças, pagamentos e recibos em memória (o simulado paga só no balcão, uma cobrança por vez).
+// RF-COB-02 (#73): cancelar e renegociar acrescentam as situações CANCELED e RENEGOTIATED, a parcela (INSTALLMENT) e os campos do painel.
+type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
+let mockCharges: MockCharge[] = [];
+let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null; by?: { id: string; name: string } }[] = [];
+const chargeRowView = (c: MockCharge, today: string) => {
+  const student = mockStudents.find((s) => s.id === c.studentId)!;
+  const row = mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId);
+  const receipt = mockReceipts.find((r) => r.chargeId === c.id);
+  return {
+    id: c.id, student: { id: student.id, name: student.name, photoUrl: student.photoUrl }, unit: { id: c.unitId, name: units.find((u) => u.id === c.unitId)?.name ?? "" }, type: c.type,
+    modality: row ? { id: row.modalityId, name: modalityCatalog.find((m) => m.id === row.modalityId)?.name ?? "" } : null,
+    referenceMonth: c.referenceMonth, description: c.description, amountCents: c.amountCents, dueOn: c.dueOn, status: chargeSituation(c, today),
+    payment: receipt ? { method: receipt.method ?? "CASH", paidAt: receipt.paidAt } : null,
+  };
+};
+// RF-COB-02 (#73): motivo obrigatório, sem espaços nas pontas, até 200; devolve a mensagem de erro ou null.
+const reasonError = (raw: unknown) => {
+  const r = typeof raw === "string" ? raw.trim() : "";
+  return !r ? "obrigatório" : r.length > 200 ? "até 200 caracteres" : null;
+};
+const conflict = () => error(409, "CONFLICT", "A cobrança mudou. Atualize e confira a situação.");
+// Cobrança ao alcance de quem chama: 401/403 pelo perfil, 404 fora da unidade do Administrador.
+const chargeFor = (id: string) => {
+  const denied = studentAccess();
+  if (denied) return denied;
+  return mockCharges.find((c) => c.id === id && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+const chargeDetail = (c: MockCharge) => {
+  const refOf = (x: MockCharge) => ({ id: x.id, type: x.type, referenceMonth: x.referenceMonth, dueOn: x.dueOn, amountCents: x.amountCents, status: x.status });
+  const student = mockStudents.find((st) => st.id === c.studentId)!;
+  const row = mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId);
+  const plan = mockPlans.find((p) => p.id === row?.planId);
+  const receipt = mockReceipts.find((r) => r.chargeId === c.id);
+  const origin = c.originId ? mockCharges.find((x) => x.id === c.originId) : undefined;
+  const open = c.status === "OPEN";
+  return {
+    charge: chargeRowView(c, isoDay(new Date())), toleranceDays: c.toleranceDays,
+    composition: { plan: plan ? { id: plan.id, name: plan.name } : null, planCents: plan?.valueCents ?? c.amountCents, benefitType: null, benefitCents: 0, amountCents: c.amountCents },
+    payer: { id: student.id, name: student.name, kind: "STUDENT" },
+    origin: origin ? refOf(origin) : null,
+    replacedBy: c.status === "RENEGOTIATED" ? mockCharges.filter((x) => x.renegotiationId === c.renegotiationId && x.originId).map(refOf) : [],
+    reason: c.reason ?? null, canceledAt: c.canceledAt ?? null, canceledBy: c.canceledAt ? { id: session.account.id, name: session.account.name } : null,
+    payments: receipt
+      ? [{ id: receipt.code, amountCents: receipt.amountCents, method: receipt.method ?? "CASH", origin: "MANAGEMENT", paidAt: receipt.paidAt, registeredBy: { id: session.account.id, name: session.account.name }, observation: receipt.observation ?? null, status: "CONFIRMED", receipt: { number: receipt.number, code: receipt.code } }]
+      : [],
+    reminders: [], actions: { cancel: open, renegotiate: open, registerPayment: open, sendReminder: false, refund: false },
+  };
+};
+const cancelMock = (c: MockCharge, reason: string) => {
+  c.status = "CANCELED";
+  c.reason = reason;
+  c.canceledAt = new Date().toISOString();
+};
+const chargeView = (c: MockCharge) => ({ id: c.id, type: c.type, unitId: c.unitId, referenceMonth: c.referenceMonth, dueOn: c.dueOn, toleranceDays: c.toleranceDays, amountCents: c.amountCents });
+const initials = (name: string) => name.split(" ").filter(Boolean).map((p) => `${p[0].toUpperCase()}.`).filter((_, i, a) => i === 0 || i === a.length - 1).join(" ");
+const firstOfMonth = (iso: string) => `${iso.slice(0, 7)}-01`;
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const addDays = (day: string, n: number) => isoDay(new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000));
+// RF-COB-01 (R2, D1, D2): situação calculada na leitura; o simulado só grava aberta e paga, então as demais situações não aparecem aqui.
+const chargeSituation = (c: MockCharge, today: string) => {
+  const limit = addDays(c.dueOn, c.toleranceDays);
+  if (c.status === "CANCELED" || c.status === "RENEGOTIATED") return c.status;
+  if (c.status === "PAID") {
+    const paidAt = mockReceipts.find((r) => r.chargeId === c.id)?.paidAt ?? `${today}T00:00:00Z`;
+    return paidAt.slice(0, 10) > limit ? "PAID_LATE" : "PAID";
+  }
+  return today > limit ? "OVERDUE" : c.dueOn === today ? "DUE_TODAY" : "PENDING";
+};
+const studentOverdue = (studentId: string) => mockCharges.some((c) => c.studentId === studentId && c.status === "OPEN" && chargeSituation(c, isoDay(new Date())) === "OVERDUE");
+// RF-COB-03 (#74): o simulado não guarda ponteiro de geração; a próxima mensalidade de uma modalidade é o mês seguinte à última cobrança dela
+// (ou o mês corrente) e a troca de vencimento fica em memória, por modalidade e mês.
+const nextDueOverride = new Map<string, string>();
+const monthDue = (ref: string, day: number) => `${ref.slice(0, 8)}${String(Math.min(day, new Date(Date.UTC(Number(ref.slice(0, 4)), Number(ref.slice(5, 7)), 0)).getUTCDate())).padStart(2, "0")}`;
+const nextMonth = (ref: string) => isoDay(new Date(Date.UTC(Number(ref.slice(0, 4)), Number(ref.slice(5, 7)), 1)));
+const nextRefOf = (row: MockEnrollmentModality) => {
+  const last = mockCharges.filter((c) => c.modalityRowId === row.id && c.type === "MONTHLY").map((c) => c.referenceMonth!).sort().pop();
+  return last ? nextMonth(last) : firstOfMonth(isoDay(new Date()));
+};
+const nextDueOf = (row: MockEnrollmentModality, ref: string) => nextDueOverride.get(`${row.id}:${ref}`) ?? monthDue(ref, row.dueDay);
+const rowMonthly = (row: MockEnrollmentModality) => {
+  const plan = mockPlans.find((p) => p.id === row.planId);
+  const b = benefitRows.find((x) => x.rowId === row.id && x.status === "ACTIVE");
+  const discount = plan && b ? benefitDiscount(b.type, b.value, plan.valueCents) : 0;
+  return { plan, discount, amount: plan ? Math.max(0, plan.valueCents - discount) : 0 };
+};
+// 404 fora do alcance, 422 modalidade encerrada ou de valor zero; devolve a linha e o mês da próxima mensalidade.
+const nextChargeFor = (studentId: string, rowId: string) => {
+  const found = studentFor(studentId);
+  if (found instanceof Response) return found;
+  const row = mockEnrollments[found.id]?.modalities.find((m) => m.id === rowId);
+  if (!row || (activeRole() !== "COORDINATOR" && row.unitId !== ADMIN_UNIT)) return error(404, "NOT_FOUND", "Não encontrado.");
+  if (row.status !== "ACTIVE" || rowMonthly(row).amount === 0) return rule("modalityRowId", "modalidade encerrada ou de valor zero");
+  return { row, ref: nextRefOf(row) };
+};
 const plusDays = (iso: string, days: number) => isoDay(new Date(Date.parse(`${iso}T12:00:00Z`) + days * 86_400_000));
 // RN-MAT-07: a primeira data com o dia de vencimento a pelo menos 15 dias da matrícula.
 const suggestSecond = (today: string, dueDay: number) => {
@@ -810,8 +907,9 @@ function mockPreview(found: StudentDetail, body: ConclusionBody) {
       dueDay = [...wanted][0];
       if (wanted.size > 1 || !MOCK_DUE_DAYS.includes(dueDay)) return rule("dueDay", "dia não permitido pela unidade");
     }
-    const had = (current?.modalities ?? []).some((r) => r.unitId === unitId);
-    const standard = settings.enrollmentFeeEnabled && (returning || !had) ? settings.enrollmentFeeCents : 0;
+    // R21: a taxa já está tratada quando há cobrança de taxa do aluno na unidade ou isenção registrada; ex-aluno em retorno paga de novo.
+    const handled = mockCharges.some((c) => c.type === "ENROLLMENT_FEE" && c.studentId === found.id && c.unitId === unitId) || mockStartedUnits.some((x) => x.studentId === found.id && x.unitId === unitId && x.feeExemptReason !== null);
+    const standard = settings.enrollmentFeeEnabled && (returning || !handled) ? settings.enrollmentFeeCents : 0;
     const ask = body.units?.find((u) => u.unitId === unitId);
     let fee = standard;
     let reason: string | null = null;
@@ -835,7 +933,9 @@ function mockPreview(found: StudentDetail, body: ConclusionBody) {
       firstChargeCents: (monthlyByUnit.get(unitId) ?? 0) + fee, secondDueOn: second, suggestedSecondDueOn: suggested,
     });
   }
-  return { modalities, units: summaries };
+  const asking = new Set(asked.map((m) => m.unitId));
+  const debt = mockCharges.filter((c) => c.status === "OPEN" && c.studentId === found.id && asking.has(c.unitId));
+  return { modalities, units: summaries, openDebt: { count: debt.length, totalCents: debt.reduce((n, c) => n + c.amountCents, 0) } };
 }
 // RN-GRA-09: graduação de origem só em modalidade com graduação ligada; com a exigência ligada, o comprovante é obrigatório.
 function checkOrigin(studentId: string, m: NonNullable<ConclusionBody["modalities"]>[number]) {
@@ -1021,7 +1121,7 @@ const studentRowOf = (s: StudentDetail): StudentRow => {
     id: s.id, name: s.name, photoUrl: s.photoUrl, birthDate: s.birthDate, age, minor: s.minor,
     ageRange: own ? { id: own.id, name: own.name } : null,
     registeredUnit: { id: s.registeredUnitId, name: units.find((u) => u.id === s.registeredUnitId)?.name ?? "" },
-    createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s), status: enrollmentStatus(s.id),
+    createdAt: "2026-01-10T12:00:00Z", seals: sealsOf(s), status: enrollmentStatus(s.id), financialStatus: studentOverdue(s.id) ? "OVERDUE" : "CURRENT",
     modalities: (mockEnrollments[s.id]?.modalities ?? []).filter((m) => m.status === "ACTIVE").map((m) => ({
       id: m.id, unit: { id: m.unitId, name: units.find((u) => u.id === m.unitId)?.name ?? "" }, modality: { id: m.modalityId, name: modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? "" },
       primaryClass: { id: m.primaryClassId, name: mockClasses.find((c) => c.id === m.primaryClassId)?.name ?? "" }, level: null,
@@ -2041,7 +2141,7 @@ export const routes: Route[] = [
       if (found instanceof Response) return found;
       const raw = new URL(request.url).searchParams.get("valueCents");
       if (!raw || !validCents(Number(raw))) return planBad("valueCents", "inteiro de 1 a 99999999 centavos");
-      return HttpResponse.json({ studentsAffected: 0, effectiveFrom: "NEXT_CHARGE" });
+      return HttpResponse.json({ studentsAffected: 0, effectiveFrom: "NEXT_CHARGE", unpaidCharges: 0, paidFutureCharges: 0 });
     },
   },
   {
@@ -2688,11 +2788,13 @@ export const routes: Route[] = [
       const modalityId = p.get("modalityId");
       // R19: unidade ou turma que não existe é 404.
       if ((unitId && !units.some((u) => u.id === unitId)) || (classId && !mockClasses.some((c) => c.id === classId))) return error(404, "NOT_FOUND", "Não encontrado.");
-      const none = { active: 0, former: 0 };
+      const financial = p.get("financial");
+      if (financial !== null && financial !== "OVERDUE") return studentBad("financial", "inválido");
+      const none = { active: 0, former: 0, overdue: 0 };
       if (role === "ADMINISTRATOR" && unitId && unitId !== ADMIN_UNIT) return HttpResponse.json({ items: [], page, size, total: 0, counts: none });
       const q = teacherKey((p.get("q") ?? "").trim());
       const inScope = mockStudents.filter((s) => (role === "COORDINATOR" || studentInUnit(s, ADMIN_UNIT)) && (!unitId || studentInUnit(s, unitId)));
-      const counts = { active: inScope.filter((s) => enrollmentStatus(s.id) === "ACTIVE").length, former: inScope.filter((s) => enrollmentStatus(s.id) === "FORMER").length };
+      const counts = { active: inScope.filter((s) => enrollmentStatus(s.id) === "ACTIVE").length, former: inScope.filter((s) => enrollmentStatus(s.id) === "FORMER").length, overdue: inScope.filter((s) => studentOverdue(s.id)).length };
       // Modalidade e turma valem na mesma linha ativa (a turma é principal ou outro horário); o nível não existe até a graduação (D13).
       const sameRow = (s: StudentDetail) =>
         (mockEnrollments[s.id]?.modalities ?? []).some((m) => m.status === "ACTIVE" && (!modalityId || m.modalityId === modalityId) && (!classId || m.primaryClassId === classId || m.otherClassIds.includes(classId)));
@@ -2703,6 +2805,7 @@ export const routes: Route[] = [
         .filter((s) => (!modalityId && !classId) || sameRow(s))
         .filter(() => !p.get("levelId"))
         .filter((s) => !quick || enrollmentStatus(s.id) === quick)
+        .filter((s) => !financial || studentOverdue(s.id))
         .sort((a, b) => teacherKey(a.name).localeCompare(teacherKey(b.name)) || a.id.localeCompare(b.id));
       const items = found.slice((page - 1) * size, page * size).map(studentRowOf);
       return HttpResponse.json({ items, page, size, total: found.length, counts });
@@ -2926,7 +3029,389 @@ export const routes: Route[] = [
         if (u.feeExempt) logStudent(found.id, "enrollment.fee_exempted", u.feeExemptReason);
       }
       const inviteStatus = found.minor ? "MINOR" : found.email ? "SENT" : "NO_EMAIL";
-      return HttpResponse.json({ enrollment: enrollmentView(found.id), summary, termPending: true, inviteStatus }, { status: 201 });
+      // R18, R19: mensalidade por modalidade (valor zero não gera) e taxa quando a unidade cobra; vencimento hoje, 5 dias de tolerância.
+      const today = isoDay(new Date());
+      const created: MockCharge[] = [];
+      body.modalities!.forEach((m, i) => {
+        const monthly = summary.modalities[i].monthlyCents;
+        if (monthly > 0) created.push({ id: crypto.randomUUID(), type: "MONTHLY", studentId: found.id, unitId: m.unitId!, modalityRowId: added[i].id, referenceMonth: firstOfMonth(today), dueOn: today, toleranceDays: 5, amountCents: monthly, status: "OPEN", description: "" });
+      });
+      for (const u of summary.units) if (u.feeCents > 0) created.push({ id: crypto.randomUUID(), type: "ENROLLMENT_FEE", studentId: found.id, unitId: u.unitId, modalityRowId: null, referenceMonth: null, dueOn: today, toleranceDays: 5, amountCents: u.feeCents, status: "OPEN", description: "Taxa de matrícula" });
+      mockCharges.push(...created);
+      return HttpResponse.json({ enrollment: enrollmentView(found.id), summary, termPending: true, inviteStatus, charges: created.map(chargeView) }, { status: 201 });
+    },
+  },
+  {
+    // RF-COB-01 (#72): lista de cobranças. Coordenador e Administrador (só a unidade dele); situação calculada; counts ignora os filtros além da unidade; totals respeita todos.
+    method: "get",
+    path: "/charges",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const role = activeRole();
+      const p = new URL(request.url).searchParams;
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const day = /^\d{4}-\d{2}-\d{2}$/;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const [sortField, sortDir] = (p.get("sort") || "dueOn,desc").split(",");
+      const bad: { field: string; message: string }[] = [];
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (!["dueOn", "amount", "student"].includes(sortField) || !["asc", "desc"].includes(sortDir)) bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
+      for (const k of ["unitId", "modalityId", "classId", "studentId"]) if (p.get(k) !== null && !uuid.test(p.get(k)!)) bad.push({ field: k, message: "id inválido" });
+      for (const k of ["from", "to"]) if (p.get(k) !== null && (!day.test(p.get(k)!) || Number.isNaN(Date.parse(p.get(k)!)))) bad.push({ field: k, message: "data inválida" });
+      if (p.get("from") && p.get("to") && p.get("from")! > p.get("to")!) bad.push({ field: "from", message: "deve ser anterior ou igual a to" });
+      const quick = p.get("quick");
+      if (quick !== null && !["OVERDUE", "DUE_TODAY", "IN_REVIEW", "PAID_MONTH"].includes(quick)) bad.push({ field: "quick", message: "inválido" });
+      const status = p.get("status");
+      if (status !== null && !["PENDING", "DUE_TODAY", "OVERDUE", "IN_REVIEW", "PAID", "PAID_LATE", "CANCELED", "RENEGOTIATED", "REFUNDED"].includes(status)) bad.push({ field: "status", message: "inválido" });
+      const type = p.get("type");
+      if (type !== null && !["MONTHLY", "ENROLLMENT_FEE", "ONE_OFF", "INSTALLMENT", "READJUSTMENT_DIFF"].includes(type)) bad.push({ field: "type", message: "inválido" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      const unitId = p.get("unitId");
+      const modalityId = p.get("modalityId");
+      const classId = p.get("classId");
+      const studentId = p.get("studentId");
+      if (studentId && !mockStudents.some((s) => s.id === studentId && studentInReach(s))) return error(404, "NOT_FOUND", "Não encontrado.");
+      if ((unitId && !units.some((u) => u.id === unitId)) || (modalityId && !modalityCatalog.some((m) => m.id === modalityId)) || (classId && !mockClasses.some((c) => c.id === classId))) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (role === "ADMINISTRATOR" && unitId && unitId !== ADMIN_UNIT)
+        return HttpResponse.json({ items: [], page, size, total: 0, counts: { overdue: 0, dueToday: 0, inReview: 0, paidMonth: 0 }, totals: { count: 0, amountCents: 0 } });
+      const today = isoDay(new Date());
+      const rowOf = (c: MockCharge) => ({
+        c, row: mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId), name: mockStudents.find((s) => s.id === c.studentId)!.name,
+        receipt: mockReceipts.find((r) => r.chargeId === c.id), view: chargeRowView(c, today),
+      });
+      type Entry = ReturnType<typeof rowOf>;
+      const inScope = mockCharges.filter((c) => (role === "COORDINATOR" || c.unitId === ADMIN_UNIT) && (!unitId || c.unitId === unitId)).map(rowOf);
+      const paidMonth = (r: Entry) => (r.view.status === "PAID" || r.view.status === "PAID_LATE") && r.receipt?.paidAt.slice(0, 7) === today.slice(0, 7);
+      const count = (st: string) => inScope.filter((r) => r.view.status === st).length;
+      const counts = { overdue: count("OVERDUE"), dueToday: count("DUE_TODAY"), inReview: count("IN_REVIEW"), paidMonth: inScope.filter(paidMonth).length };
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const from = p.get("from");
+      const to = p.get("to");
+      const quickStatus: Record<string, string> = { OVERDUE: "OVERDUE", DUE_TODAY: "DUE_TODAY", IN_REVIEW: "IN_REVIEW" };
+      const found = inScope
+        .filter((r) => !quick || (quick === "PAID_MONTH" ? paidMonth(r) : r.view.status === quickStatus[quick]))
+        .filter((r) => (!from || r.c.dueOn >= from) && (!to || r.c.dueOn <= to))
+        .filter((r) => !status || r.view.status === status)
+        .filter((r) => !type || r.c.type === type)
+        .filter((r) => !studentId || r.c.studentId === studentId)
+        .filter((r) => !modalityId || r.row?.modalityId === modalityId)
+        .filter((r) => !classId || (r.row && (r.row.primaryClassId === classId || r.row.otherClassIds.includes(classId))))
+        .filter((r) => teacherKey(r.name).includes(q))
+        .sort((a, b) => {
+          const by = sortField === "amount" ? a.c.amountCents - b.c.amountCents : sortField === "student" ? teacherKey(a.name).localeCompare(teacherKey(b.name)) : a.c.dueOn.localeCompare(b.c.dueOn);
+          return (sortDir === "asc" ? by : -by) || a.c.id.localeCompare(b.c.id);
+        });
+      const totals = { count: found.length, amountCents: found.reduce((sum, r) => sum + r.c.amountCents, 0) };
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size).map((r) => r.view), page, size, total: found.length, counts, totals });
+    },
+  },
+  {
+    // RN-COB-12 (#71): pagamento no balcão do valor total; segunda chamada é 409; `amountCents` diferente é 422.
+    method: "post",
+    path: "/charges/{id}/payments",
+    resolver: async ({ request, params }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const charge = mockCharges.find((c) => c.id === params.id && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT));
+      if (!charge) return error(404, "NOT_FOUND", "Não encontrado.");
+      const body = ((await request.json().catch(() => ({}))) as { method?: string; paidAt?: string; observation?: string; amountCents?: number; sendReceipt?: boolean }) ?? {};
+      if (!["CASH", "PIX_KEY", "CARD_MACHINE", "TRANSFER"].includes(body.method ?? "")) return studentBad("method", "meio inválido");
+      if (body.paidAt && Date.parse(body.paidAt) > Date.now()) return studentBad("paidAt", "não pode ser futuro");
+      if ((body.observation ?? "").length > 200) return studentBad("observation", "até 200 caracteres");
+      if (charge.status !== "OPEN") return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
+      if (body.amountCents !== undefined && body.amountCents !== charge.amountCents) return rule("amountCents", "igual ao valor da cobrança");
+      const paidAt = body.paidAt ?? new Date().toISOString();
+      const number = mockReceipts.filter((r) => r.unitId === charge.unitId).length + 1;
+      const code = crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase();
+      charge.status = "PAID";
+      mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "", method: body.method, observation: body.observation ?? null, by: { id: session.account.id, name: session.account.name } });
+      return HttpResponse.json({ id: crypto.randomUUID(), chargeId: charge.id, amountCents: charge.amountCents, method: body.method, paidAt, registeredBy: session.account.id, observation: body.observation ?? null, receipt: { number, code }, receiptEmail: body.sendReceipt ? "SENT" : "NOT_REQUESTED" }, { status: 201 });
+    },
+  },
+  {
+    // RF-COB-02 (#73): painel da cobrança; Coordenador e Administrador da unidade.
+    method: "get",
+    path: "/charges/{id}",
+    resolver: ({ params }) => {
+      const c = chargeFor(params.id as string);
+      return c instanceof Response ? c : HttpResponse.json(chargeDetail(c));
+    },
+  },
+  {
+    // RN-COB-10 (#73): cancela cobrança em aberto com motivo; repetir em cancelada é 200 sem efeito; as demais situações são 409.
+    method: "post",
+    path: "/charges/{id}/cancel",
+    resolver: async ({ request, params }) => {
+      const c = chargeFor(params.id as string);
+      if (c instanceof Response) return c;
+      const reason = ((await request.json().catch(() => ({}))) as { reason?: string }).reason;
+      const bad = reasonError(reason);
+      if (bad) return studentBad("reason", bad);
+      if (c.status === "OPEN") cancelMock(c, reason!.trim());
+      else if (c.status !== "CANCELED") return conflict();
+      return HttpResponse.json(chargeDetail(c));
+    },
+  },
+  {
+    // RN-COB-09 (#73): renegocia cobranças em aberto do mesmo aluno e unidade em 1 a 6 parcelas mensais; o resto dos centavos vai para a primeira.
+    method: "post",
+    path: "/charges/renegotiate",
+    resolver: async ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const b = ((await request.json().catch(() => ({}))) as { chargeIds?: string[]; amountCents?: number | null; firstDueOn?: string; installments?: number; reason?: string }) ?? {};
+      const badReason = reasonError(b.reason);
+      if (badReason) return studentBad("reason", badReason);
+      const ids = b.chargeIds ?? [];
+      if (ids.length === 0 || new Set(ids).size !== ids.length) return studentBad("chargeIds", "uma ou mais cobranças, sem repetir");
+      const n = b.installments ?? 0;
+      if (!Number.isInteger(n) || n < 1 || n > 6) return studentBad("installments", "de 1 a 6");
+      const first = b.firstDueOn ?? "";
+      const parsed = new Date(`${first}T00:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(first) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== first) return studentBad("firstDueOn", "data inválida");
+      if (first < isoDay(new Date())) return studentBad("firstDueOn", "não pode ser anterior a hoje");
+      const found = ids.map((id) => mockCharges.find((c) => c.id === id && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT)));
+      if (found.some((c) => !c)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const originals = found as MockCharge[];
+      if (new Set(originals.map((c) => c.studentId)).size > 1 || new Set(originals.map((c) => c.unitId)).size > 1) return studentBad("chargeIds", "do mesmo aluno e da mesma unidade");
+      if (originals.some((c) => c.status !== "OPEN")) return conflict();
+      const sum = originals.reduce((t, c) => t + c.amountCents, 0);
+      const total = b.amountCents ?? sum;
+      if (total !== sum && originals.length > 1) return studentBad("amountCents", "só pode mudar com uma única cobrança");
+      if (total <= 0 || total < n) return studentBad("amountCents", "ao menos 1 centavo por parcela");
+      const head = [...originals].sort((a, c) => a.dueOn.localeCompare(c.dueOn))[0];
+      const group = crypto.randomUUID();
+      const [y, m, d] = first.split("-").map(Number);
+      const base = Math.floor(total / n);
+      const made: MockCharge[] = Array.from({ length: n }, (_, i) => {
+        const last = new Date(Date.UTC(y, m + i, 0)).getUTCDate();
+        const month = new Date(Date.UTC(y, m - 1 + i, 1));
+        return {
+          id: crypto.randomUUID(), type: "INSTALLMENT", studentId: head.studentId, unitId: head.unitId, modalityRowId: head.modalityRowId, referenceMonth: head.referenceMonth,
+          dueOn: `${month.getUTCFullYear()}-${String(month.getUTCMonth() + 1).padStart(2, "0")}-${String(Math.min(d, last)).padStart(2, "0")}`, toleranceDays: 0,
+          amountCents: i === 0 ? total - base * (n - 1) : base, status: "OPEN", description: "", originId: head.id, renegotiationId: group,
+        };
+      });
+      for (const c of originals) Object.assign(c, { status: "RENEGOTIATED", reason: b.reason!.trim(), renegotiationId: group });
+      mockCharges.push(...made);
+      const today = isoDay(new Date());
+      return HttpResponse.json(made.map((c) => chargeRowView(c, today)), { status: 201 });
+    },
+  },
+  {
+    // RN-COB-16 (#71): conferência pública, sem sessão; só unidade, número, referência, valor, data e iniciais.
+    method: "get",
+    path: "/public/receipts/{code}",
+    resolver: ({ params }) => {
+      const r = mockReceipts.find((x) => x.code === params.code);
+      if (!r) return error(404, "NOT_FOUND", "Não encontrado.");
+      const c = mockCharges.find((x) => x.id === r.chargeId)!;
+      const row = mockEnrollments[c.studentId]?.modalities.find((x) => x.id === c.modalityRowId);
+      const reference = c.type === "MONTHLY" ? `${modalityCatalog.find((m) => m.id === row?.modalityId)?.name ?? ""} · ${c.referenceMonth!.slice(5, 7)}/${c.referenceMonth!.slice(0, 4)}` : c.description;
+      return HttpResponse.json({ unit: units.find((u) => u.id === r.unitId)?.name ?? "", number: r.number, reference, amountCents: r.amountCents, paidAt: r.paidAt, payerInitials: initials(r.studentName) });
+    },
+  },
+  {
+    // RN-COB-16 (#75): PDF do recibo pelo código, sem sessão; código desconhecido é 404.
+    method: "get",
+    path: "/public/receipts/{code}/pdf",
+    resolver: ({ params }) => {
+      if (!mockReceipts.some((x) => x.code === params.code)) return error(404, "NOT_FOUND", "Não encontrado.");
+      return new HttpResponse("%PDF-1.4\n%%EOF\n", { headers: { "Content-Type": "application/pdf" } });
+    },
+  },
+  {
+    // RN-COB-16 (#338): PDF do recibo com o CPF completo, só com sessão e acesso a cobranças; código desconhecido é 404.
+    method: "get",
+    path: "/receipts/{code}/pdf",
+    resolver: ({ params }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      if (!mockReceipts.some((x) => x.code === params.code)) return error(404, "NOT_FOUND", "Não encontrado.");
+      return new HttpResponse("%PDF-1.4\n%%EOF\n", { headers: { "Content-Type": "application/pdf" } });
+    },
+  },
+  {
+    // RF-COB-03 (#71, #74): prévia da geração calculada das modalidades ativas do simulado; só lê. Unidade fora do alcance: prévia vazia.
+    method: "get",
+    path: "/billing/generation-preview",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const q = new URL(request.url).searchParams;
+      const days = q.has("days") ? Number(q.get("days")) : 10;
+      const unitId = q.get("unitId");
+      if (!unitId) return studentBad("unitId", "obrigatório");
+      if (!Number.isInteger(days) || days < 1 || days > 60) return studentBad("days", "de 1 a 60");
+      const until = plusDays(isoDay(new Date()), days);
+      const reach = activeRole() === "COORDINATOR" || unitId === ADMIN_UNIT;
+      const byDay = new Map<string, { dueOn: string; count: number; totalCents: number; lines: unknown[] }>();
+      const skipped: unknown[] = [];
+      let firstDue = "";
+      for (const [studentId, e] of Object.entries(mockEnrollments)) {
+        const student = mockStudents.find((s) => s.id === studentId);
+        for (const row of e.modalities) {
+          if (!reach || !student || row.unitId !== unitId || row.status !== "ACTIVE") continue;
+          const { plan, discount, amount } = rowMonthly(row);
+          if (!plan) continue;
+          const modality = modalityCatalog.find((m) => m.id === row.modalityId)?.name ?? "";
+          let ref = nextRefOf(row);
+          if (amount === 0) {
+            skipped.push({ studentId, student: student.name, modality, referenceMonth: ref, reason: "FULL_BENEFIT" });
+            continue;
+          }
+          for (let first = true; nextDueOf(row, ref) <= until; first = false) {
+            const dueOn = nextDueOf(row, ref);
+            const day = byDay.get(dueOn) ?? { dueOn, count: 0, totalCents: 0, lines: [] };
+            day.lines.push({ studentId, student: student.name, modalityRowId: row.id, modality, plan: plan.name, discountCents: discount, amountCents: amount, referenceMonth: ref, adjustable: first });
+            day.count += 1;
+            day.totalCents += amount;
+            byDay.set(dueOn, day);
+            if (!firstDue || dueOn < firstDue) firstDue = dueOn;
+            ref = nextMonth(ref);
+          }
+        }
+      }
+      const list = [...byDay.values()].sort((a, b) => a.dueOn.localeCompare(b.dueOn));
+      const prevRef = firstDue ? isoDay(new Date(Date.UTC(Number(firstDue.slice(0, 4)), Number(firstDue.slice(5, 7)) - 2, 1))) : "";
+      const previousMonthTotalCents = mockCharges.filter((c) => c.type === "MONTHLY" && c.unitId === unitId && c.status !== "CANCELED" && c.referenceMonth === prevRef).reduce((t, c) => t + c.amountCents, 0);
+      return HttpResponse.json({ until, days: list, count: list.reduce((t, d) => t + d.count, 0), totalCents: list.reduce((t, d) => t + d.totalCents, 0), previousMonthTotalCents, skipped });
+    },
+  },
+  {
+    // RF-COB-08 (#77): recebimentos do dia da unidade, calculados dos pagamentos do simulado; só lê. Unidade fora do alcance: resposta vazia.
+    method: "get",
+    path: "/billing/daily-receipts",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const q = new URL(request.url).searchParams;
+      const unitId = q.get("unitId");
+      if (!unitId || !/^[0-9a-f-]{36}$/i.test(unitId)) return studentBad("unitId", "obrigatório");
+      const localDay = (d: Date) => d.toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+      const today = localDay(new Date());
+      const date = q.get("date") || today;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return studentBad("date", "use AAAA-MM-DD");
+      if (date > today) return studentBad("date", "não pode ser futura");
+      const reach = activeRole() === "COORDINATOR" || unitId === ADMIN_UNIT;
+      const payments = mockReceipts
+        .filter((r) => reach && r.unitId === unitId && localDay(new Date(r.paidAt)) === date)
+        .sort((a, b) => b.paidAt.localeCompare(a.paidAt) || b.code.localeCompare(a.code))
+        .map((r) => {
+          const c = mockCharges.find((x) => x.id === r.chargeId)!;
+          const row = mockEnrollments[c.studentId]?.modalities.find((x) => x.id === c.modalityRowId);
+          const reference = c.type === "MONTHLY" ? `${modalityCatalog.find((m) => m.id === row?.modalityId)?.name ?? ""} · ${c.referenceMonth!.slice(5, 7)}/${c.referenceMonth!.slice(0, 4)}` : c.description;
+          return { id: r.code, paidAt: r.paidAt, student: { id: c.studentId, name: r.studentName }, reference, method: r.method ?? "CASH", registeredBy: r.by ?? null, amountCents: r.amountCents, receiptNumber: r.number };
+        });
+      const sum = <K,>(key: (p: (typeof payments)[number]) => K, id: (k: K) => string) => {
+        const groups = new Map<string, { key: K; count: number; totalCents: number }>();
+        for (const p of payments) {
+          const g = groups.get(id(key(p))) ?? { key: key(p), count: 0, totalCents: 0 };
+          g.count += 1;
+          g.totalCents += p.amountCents;
+          groups.set(id(key(p)), g);
+        }
+        return [...groups.values()];
+      };
+      return HttpResponse.json({
+        date,
+        totalCents: payments.reduce((t, p) => t + p.amountCents, 0),
+        count: payments.length,
+        byMethod: sum((p) => p.method, (k) => k).map((g) => ({ method: g.key, count: g.count, totalCents: g.totalCents })),
+        byRegistrar: sum((p) => p.registeredBy, (k) => k?.id ?? "").map((g) => ({ registeredBy: g.key, count: g.count, totalCents: g.totalCents })),
+        payments,
+      });
+    },
+  },
+  {
+    // RN-COB-02 (#74): troca o vencimento da próxima mensalidade; de hoje até o fim do mês de referência.
+    method: "patch",
+    path: "/students/{id}/modalities/{modalityRowId}/next-charge",
+    resolver: async ({ request, params }) => {
+      const found = nextChargeFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const dueOn = ((await request.json().catch(() => ({}))) as { dueOn?: unknown }).dueOn;
+      const valid = typeof dueOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dueOn) && !Number.isNaN(Date.parse(`${dueOn}T00:00:00Z`)) && isoDay(new Date(`${dueOn}T00:00:00Z`)) === dueOn;
+      const last = monthDue(found.ref, 31);
+      if (!valid || dueOn < isoDay(new Date()) || dueOn > last) return studentBad("dueOn", `de hoje até ${last}`);
+      nextDueOverride.set(`${found.row.id}:${found.ref}`, dueOn);
+      return HttpResponse.json({ dueOn, referenceMonth: found.ref });
+    },
+  },
+  {
+    // RN-COB-02, RN-COB-10 (#74): cancela a próxima mensalidade (a cobrança do mês fica CANCELED com o motivo) e avança.
+    method: "post",
+    path: "/students/{id}/modalities/{modalityRowId}/next-charge/cancel",
+    resolver: async ({ request, params }) => {
+      const found = nextChargeFor(params.id as string, params.modalityRowId as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { reason?: unknown; referenceMonth?: string }) ?? {};
+      const bad = reasonError(body.reason);
+      if (bad) return studentBad("reason", bad);
+      if (body.referenceMonth && body.referenceMonth !== found.ref) return conflict();
+      const c: MockCharge = {
+        id: crypto.randomUUID(), type: "MONTHLY", studentId: params.id as string, unitId: found.row.unitId, modalityRowId: found.row.id, referenceMonth: found.ref,
+        dueOn: nextDueOf(found.row, found.ref), toleranceDays: 0, amountCents: rowMonthly(found.row).amount, status: "OPEN", description: "",
+      };
+      cancelMock(c, (body.reason as string).trim());
+      mockCharges.push(c);
+      return HttpResponse.json({ chargeId: c.id, referenceMonth: found.ref });
+    },
+  },
+  {
+    // RN-COB-06 (#71): geração adiantada; o simulado cria as próximas N mensalidades a partir do mês seguinte à última da modalidade.
+    method: "post",
+    path: "/students/{id}/modalities/{modalityRowId}/charges/advance",
+    resolver: async ({ request, params }) => {
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      const row = mockEnrollments[found.id]?.modalities.find((m) => m.id === params.modalityRowId);
+      if (!row) return error(404, "NOT_FOUND", "Não encontrado.");
+      const count = ((await request.json().catch(() => ({}))) as { count?: number }).count;
+      if (!Number.isInteger(count) || count! < 1 || count! > 12) return studentBad("count", "de 1 a 12");
+      const plan = mockPlans.find((p) => p.id === row.planId)!;
+      if (row.status !== "ACTIVE" || plan.valueCents === 0) return rule("modalityRowId", "modalidade encerrada ou de valor zero");
+      const last = mockCharges.filter((c) => c.modalityRowId === row.id).map((c) => c.referenceMonth!).sort().pop() ?? firstOfMonth(isoDay(new Date()));
+      const made: MockCharge[] = Array.from({ length: count! }, (_, i) => {
+        const ref = isoDay(new Date(Date.UTC(Number(last.slice(0, 4)), Number(last.slice(5, 7)) + i, 1)));
+        return { id: crypto.randomUUID(), type: "MONTHLY", studentId: found.id, unitId: row.unitId, modalityRowId: row.id, referenceMonth: ref, dueOn: `${ref.slice(0, 8)}${String(row.dueDay).padStart(2, "0")}`, toleranceDays: 0, amountCents: plan.valueCents, status: "OPEN", description: "" };
+      });
+      mockCharges.push(...made);
+      return HttpResponse.json(made.map((c) => ({ ...chargeView(c), modalityRowId: row.id })), { status: 201 });
+    },
+  },
+  {
+    // RN-COB-11 (#76): cobrança avulsa; o requestId vira o id da cobrança (200 na repetição igual, 409 com outros dados). Fora da geração de mensalidades.
+    method: "post",
+    path: "/students/{id}/charges",
+    resolver: async ({ request, params }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const b = ((await request.json().catch(() => ({}))) as { requestId?: string; unitId?: string; description?: unknown; amountCents?: unknown; dueOn?: unknown }) ?? {};
+      const description = typeof b.description === "string" ? b.description.trim() : "";
+      const amount = b.amountCents;
+      const dueOn = typeof b.dueOn === "string" ? b.dueOn : "";
+      if (!b.unitId) return studentBad("unitId", "obrigatório");
+      if (description.length < 1 || description.length > 80) return studentBad("description", "de 1 a 80 caracteres");
+      if (!Number.isInteger(amount) || (amount as number) < 1 || (amount as number) > 10_000_000) return studentBad("amountCents", "de 1 a 10000000");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dueOn) || Number.isNaN(Date.parse(`${dueOn}T00:00:00Z`)) || isoDay(new Date(`${dueOn}T00:00:00Z`)) !== dueOn) return studentBad("dueOn", "use AAAA-MM-DD");
+      if (dueOn < isoDay(new Date())) return studentBad("dueOn", "não pode ser anterior a hoje");
+      const found = studentFor(params.id as string);
+      if (found instanceof Response) return found;
+      if (!units.some((u) => u.id === b.unitId) || (activeRole() === "ADMINISTRATOR" && b.unitId !== ADMIN_UNIT)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const same = b.requestId ? mockCharges.find((c) => c.id === b.requestId) : undefined;
+      if (same) {
+        const equal = same.type === "ONE_OFF" && same.studentId === found.id && same.unitId === b.unitId && same.description === description && same.amountCents === amount && same.dueOn === dueOn;
+        return equal ? HttpResponse.json(chargeRowView(same, isoDay(new Date()))) : conflict();
+      }
+      if (!(mockEnrollments[found.id]?.modalities ?? []).some((m) => m.unitId === b.unitId) || (found.minor && !found.guardians.some((g) => g.financial)))
+        return error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.");
+      const c: MockCharge = { id: b.requestId ?? crypto.randomUUID(), type: "ONE_OFF", studentId: found.id, unitId: b.unitId, modalityRowId: null, referenceMonth: null, dueOn, toleranceDays: 0, amountCents: amount as number, status: "OPEN", description };
+      mockCharges.push(c);
+      return HttpResponse.json(chargeRowView(c, isoDay(new Date())), { status: 201 });
     },
   },
   {
@@ -3026,9 +3511,19 @@ export const routes: Route[] = [
     resolver: async ({ request, params }) => {
       const found = modalityRowFor(params.id as string, params.modalityRowId as string);
       if (found instanceof Response) return found;
-      const body = ((await request.json().catch(() => ({}))) as { reason?: string; note?: string | null }) ?? {};
+      const body = ((await request.json().catch(() => ({}))) as { reason?: string; note?: string | null; charges?: { chargeId: string; action: string; reason?: string }[] }) ?? {};
       if (!body.reason || !END_REASONS.includes(body.reason)) return studentBad("reason", "um dos motivos da lista");
       if ((body.note ?? "").trim().length > 500) return studentBad("note", "até 500 caracteres");
+      // RN-MAT-17 (#73): decisão por cobrança em aberto da modalidade; tudo ou nada.
+      const decisions = body.charges ?? [];
+      const open = (id: string) => mockCharges.find((c) => c.id === id && c.modalityRowId === found.row.id && c.status === "OPEN");
+      for (const [i, d] of decisions.entries()) {
+        if (!open(d.chargeId) || decisions.findIndex((x) => x.chargeId === d.chargeId) !== i) return studentBad(`charges[${i}].chargeId`, "cobrança em aberto desta modalidade");
+        if (!["KEEP", "CANCEL"].includes(d.action)) return studentBad(`charges[${i}].action`, "KEEP ou CANCEL");
+        const bad = d.action === "CANCEL" ? reasonError(d.reason) : null;
+        if (bad) return studentBad(`charges[${i}].reason`, bad);
+      }
+      for (const d of decisions) if (d.action === "CANCEL") cancelMock(open(d.chargeId)!, d.reason!.trim());
       found.row.status = "ENDED";
       found.row.endedAt = new Date().toISOString();
       logStudent(found.student.id, "student.modality_ended", null);
@@ -3036,12 +3531,18 @@ export const routes: Route[] = [
     },
   },
   {
-    // RN-MAT-17, R6 (D2): cobranças em aberto da modalidade; vazia até as cobranças existirem (Sprint 08).
+    // RN-MAT-17, R11 (#73): cobranças em aberto da modalidade, da mais antiga para a mais nova.
     method: "get",
     path: "/students/{id}/modalities/{modalityRowId}/end-preview",
     resolver: ({ params }) => {
       const found = modalityRowFor(params.id as string, params.modalityRowId as string);
-      return found instanceof Response ? found : HttpResponse.json({ openCharges: [] });
+      if (found instanceof Response) return found;
+      const today = isoDay(new Date());
+      const openCharges = mockCharges
+        .filter((c) => c.modalityRowId === found.row.id && c.status === "OPEN")
+        .sort((a, b) => a.dueOn.localeCompare(b.dueOn))
+        .map((c) => ({ id: c.id, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, status: chargeSituation(c, today) }));
+      return HttpResponse.json({ openCharges });
     },
   },
   {

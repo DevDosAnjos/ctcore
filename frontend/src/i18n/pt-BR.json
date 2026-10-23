@@ -346,7 +346,8 @@
       "ageRange": "Faixa etária",
       "createdAt": "Cadastrado em",
       "modalities": "Modalidades",
-      "status": "Situação"
+      "status": "Situação",
+      "financial": "Situação financeira"
     },
     "age_one": "{{count}} ano",
     "age_other": "{{count}} anos",
@@ -453,8 +454,14 @@
       },
       "notFound": "Aluno não encontrado.",
       "notFoundText": "Este aluno não existe ou não está ao seu alcance.",
+      "financial": {
+        "emptyTitle": "Sem cobranças",
+        "emptyText": "Este aluno ainda não tem cobranças.",
+        "line": "Vence em {{due}} · {{amount}}",
+        "overdue": "Em atraso",
+        "current": "Em dia"
+      },
       "empty": {
-        "financial": "As cobranças, os pagamentos e os recibos do aluno aparecem aqui quando as cobranças estiverem disponíveis.",
         "graduations": "A linha do tempo de graduação aparece aqui quando a graduação do aluno estiver disponível.",
         "title": "Ainda não há o que mostrar"
       },
@@ -506,6 +513,9 @@
           "charges": "Cobranças em aberto",
           "noCharges": "Nenhuma cobrança em aberto",
           "chargeLine": "{{due}} · {{amount}} · {{status}}",
+          "keep": "Manter",
+          "cancel": "Cancelar",
+          "cancelReason": "Motivo do cancelamento de {{line}}",
           "reason": "Motivo",
           "reasons": {
             "CITY_CHANGE": "Mudança de cidade",
@@ -614,7 +624,12 @@
       "label": "Situação do aluno",
       "ACTIVE": "Ativos",
       "FORMER": "Ex-alunos",
+      "OVERDUE": "Em atraso",
       "withCount": "{{label}} ({{count}})"
+    },
+    "financial": {
+      "OVERDUE": "Em atraso",
+      "CURRENT": "Em dia"
     }
   },
   "teachers": {
@@ -1816,9 +1831,11 @@
       "firstDue": "Primeira cobrança em {{date}}, com {{days}} dias de tolerância",
       "fee": "Taxa de matrícula: {{value}}",
       "feeExempt": "Taxa de matrícula isentada: {{reason}}",
+      "feeNone": "Taxa de matrícula: não será cobrada",
+      "openDebt": "Débito anterior: {{count}} cobranças em aberto, {{value}}",
       "firstTotal": "Total da primeira cobrança: {{value}}",
       "secondDue": "Segunda cobrança em {{date}}",
-      "noCharge": "Nenhuma cobrança é criada agora: o resumo fica guardado para as cobranças.",
+      "noCharge": "A mensalidade da primeira cobrança e a taxa são criadas ao concluir.",
       "conclude": "Concluir matrícula"
     },
     "done": {
@@ -1831,9 +1848,310 @@
         "EXISTING_ACCOUNT": "Sem convite novo: o aluno já tem acesso ao portal.",
         "NO_EMAIL": "Sem convite: o aluno não tem e-mail cadastrado."
       },
+      "charges": "Cobranças criadas",
+      "noCharges": "Nenhuma cobrança foi criada: o valor final é zero.",
+      "forbidden": "Você não tem permissão para registrar pagamentos. O aluno paga pelo portal ou a coordenação registra depois.",
+      "monthly": "Mensalidade",
+      "fee": "Taxa de matrícula",
+      "chargeLine": "{{label}}: {{value}}, vence em {{date}} (tolerância de {{days}} dias)",
+      "paid": "Paga, recibo {{number}}",
       "payNow": "Registrar pagamento agora",
-      "payNowHint": "Disponível com as cobranças",
       "portal": "Aluno paga pelo portal"
+    }
+  },
+  "charges": {
+    "title": "Cobranças",
+    "intro": "Cobranças das unidades ao seu alcance, com a situação calculada pela data da unidade.",
+    "creation": {
+      "open": "Nova cobrança avulsa",
+      "title": "Nova cobrança avulsa",
+      "effect": "Cria uma cobrança única (kimono, exame, seminário). Ela não conta como mensalidade e é paga como qualquer cobrança.",
+      "search": "Buscar aluno pelo nome (mínimo 2 letras)",
+      "student": "Aluno",
+      "noStudent": "Nenhum aluno encontrado.",
+      "unit": "Unidade",
+      "unitFixed": "Unidade: {{unit}}",
+      "noUnit": "Este aluno não tem matrícula em nenhuma unidade.",
+      "description": "Descrição",
+      "amount": "Valor",
+      "dueOn": "Vencimento",
+      "submit": "Criar cobrança",
+      "errors": {
+        "403": "Você não tem permissão para criar cobranças nesta unidade. Nada foi gravado.",
+        "404": "O aluno ou a unidade não existe ou não está ao seu alcance. Nada foi gravado.",
+        "409": "Este pedido já foi usado com outros dados. Feche a janela e abra de novo. Nada foi gravado.",
+        "422": "O aluno precisa ter matrícula na unidade e, sendo menor de 18 anos, um responsável financeiro. Nada foi gravado.",
+        "generic": "Não foi possível criar a cobrança. Tente de novo. Nada foi gravado."
+      }
+    },
+    "advance": {
+      "open": "Gerar próximas mensalidades",
+      "title": "Gerar próximas mensalidades",
+      "effect": "A geração automática pula os meses já gerados, então nada se repete. Tudo é criado de uma vez ou nada é criado.",
+      "modality": "Modalidade",
+      "noModalityTitle": "Sem modalidade ativa",
+      "noModalityText": "Este aluno não tem modalidade ativa que você possa alterar.",
+      "count": "Quantidade de mensalidades (1 a 12)",
+      "countHint": "Contadas a partir da próxima mensalidade ainda não gerada.",
+      "submit": "Gerar mensalidades",
+      "doneTitle": "Mensalidades geradas",
+      "done_one": "{{count}} mensalidade criada (de {{from}} a {{to}}).",
+      "done_other": "{{count}} mensalidades criadas (de {{from}} a {{to}}).",
+      "doneNone": "Nenhuma mensalidade nova: os meses já estavam gerados.",
+      "close": "Concluir",
+      "errors": {
+        "403": "Você não tem permissão para gerar mensalidades desta modalidade. Nada foi gravado.",
+        "404": "A modalidade não existe ou não está ao seu alcance. Nada foi gravado.",
+        "422": "A modalidade está encerrada ou tem valor final zero (por exemplo, bolsa de 100%), então não há mensalidade a gerar. Nada foi gravado.",
+        "generic": "Não foi possível gerar as mensalidades. Tente de novo. Nada foi gravado."
+      }
+    },
+    "reference": "{{modality}} · {{month}}",
+    "totals": "{{count}} cobranças somando {{amount}}",
+    "columns": {
+      "student": "Aluno",
+      "unit": "Unidade",
+      "reference": "Referência",
+      "amount": "Valor",
+      "dueOn": "Vencimento",
+      "status": "Situação",
+      "method": "Meio"
+    },
+    "quick": {
+      "label": "Atalhos de cobrança",
+      "OVERDUE": "Em atraso",
+      "DUE_TODAY": "Vence hoje",
+      "IN_REVIEW": "Em conferência",
+      "PAID_MONTH": "Pagas no mês",
+      "withCount": "{{label}} ({{count}})"
+    },
+    "filters": {
+      "from": "Vencimento de",
+      "to": "Vencimento até",
+      "status": "Situação",
+      "allStatuses": "Todas as situações",
+      "type": "Tipo",
+      "allTypes": "Todos os tipos",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "modality": "Modalidade",
+      "allModalities": "Todas as modalidades",
+      "class": "Turma",
+      "allClasses": "Todas as turmas"
+    },
+    "status": {
+      "PENDING": "Pendente",
+      "DUE_TODAY": "Vence hoje",
+      "OVERDUE": "Em atraso",
+      "IN_REVIEW": "Em conferência",
+      "PAID": "Paga",
+      "PAID_LATE": "Paga com atraso",
+      "CANCELED": "Cancelada",
+      "RENEGOTIATED": "Renegociada",
+      "REFUNDED": "Estornada"
+    },
+    "types": {
+      "MONTHLY": "Mensalidade",
+      "ENROLLMENT_FEE": "Taxa de matrícula",
+      "ONE_OFF": "Avulsa",
+      "INSTALLMENT": "Parcela",
+      "READJUSTMENT_DIFF": "Diferença de reajuste"
+    },
+    "stored": {
+      "OPEN": "Em aberto",
+      "IN_REVIEW": "Em conferência",
+      "PAID": "Paga",
+      "CANCELED": "Cancelada",
+      "RENEGOTIATED": "Renegociada",
+      "REFUNDED": "Estornada"
+    },
+    "panel": {
+      "title": "Cobrança",
+      "open": "Abrir cobrança de {{student}}: {{reference}}",
+      "notFound": "Cobrança não encontrada.",
+      "notFoundText": "Esta cobrança não existe ou não está ao seu alcance.",
+      "tolerance": "Tolerância",
+      "days_one": "{{count}} dia",
+      "days_other": "{{count}} dias",
+      "payer": "Pagador",
+      "composition": "Composição",
+      "plan": "Plano",
+      "benefit": "Benefício",
+      "final": "Valor final",
+      "history": "Origem e histórico",
+      "origin": "Substitui a cobrança:",
+      "replacedBy": "Substituída por:",
+      "ref": "{{type}} · {{amount}} · vence em {{due}} · {{status}}",
+      "reason": "Motivo: {{reason}}",
+      "canceled": "Cancelada em {{at}} por {{by}}",
+      "payments": "Pagamentos",
+      "noPayments": "Nenhum pagamento registrado",
+      "registeredBy": "Lançado por {{name}}",
+      "origins": {
+        "MANAGEMENT": "gestão",
+        "PORTAL": "portal do aluno",
+        "AUTO_DEBIT": "débito automático"
+      },
+      "receipt": "Recibo número {{number}} · código {{code}}",
+      "downloadReceipt": "Baixar recibo",
+      "reminders": "Lembretes enviados",
+      "noReminders": "Nenhum lembrete enviado",
+      "cancel": "Cancelar cobrança",
+      "renegotiate": "Renegociar",
+      "seeStudent": "Ver aluno",
+      "registerPayment": "Registrar pagamento",
+      "sendReminder": "Enviar lembrete",
+      "refund": "Estornar",
+      "disabled": {
+        "registerPayment": "Só cobranças em aberto recebem pagamento.",
+        "sendReminder": "Disponível quando o envio de lembretes for entregue.",
+        "refund": "Disponível quando o estorno for entregue."
+      }
+    },
+    "daily": {
+      "open": "Recebimentos do dia",
+      "title": "Recebimentos do dia",
+      "intro": "O que a unidade recebeu no dia, por meio de pagamento e por pessoa que lançou. Não há abertura nem fechamento de caixa.",
+      "back": "Voltar às cobranças",
+      "unit": "Unidade",
+      "chooseUnit": "Escolha uma unidade",
+      "pickUnit": "Escolha uma unidade",
+      "pickUnitText": "Os recebimentos são do dia de uma unidade. Escolha uma na lista acima.",
+      "date": "Data",
+      "empty": "Nenhum recebimento neste dia",
+      "total": "Total recebido",
+      "count": "Pagamentos",
+      "byMethod": "Por meio de pagamento",
+      "byRegistrar": "Por pessoa que lançou",
+      "list": "Pagamentos do dia",
+      "online": "Pagamento online",
+      "columns": {
+        "method": "Meio",
+        "registrar": "Lançado por",
+        "count": "Quantidade",
+        "total": "Total",
+        "time": "Hora",
+        "student": "Aluno",
+        "reference": "Referente a",
+        "amount": "Valor",
+        "receipt": "Recibo"
+      }
+    },
+    "preview": {
+      "open": "Prévia da geração",
+      "title": "Prévia da geração de mensalidades",
+      "intro": "O que a geração diária vai criar nos próximos dias, por dia de vencimento. Ajuste antes de gerar.",
+      "back": "Voltar às cobranças",
+      "unit": "Unidade",
+      "chooseUnit": "Escolha uma unidade",
+      "pickUnit": "Escolha uma unidade",
+      "pickUnitText": "A prévia é feita por unidade. Escolha uma na lista acima.",
+      "period": "Período",
+      "periodOption": "Próximos {{count}} dias",
+      "empty": "Nada a gerar nos próximos {{days}} dias",
+      "total": "Total previsto",
+      "count": "Mensalidades",
+      "diff": "Diferença para o mês anterior",
+      "discount": "desconto de {{amount}}",
+      "dayTitle": "Vence em {{date}} · {{count}} mensalidades · {{total}}",
+      "skipped": "Não serão cobrados",
+      "reasons": {
+        "FULL_BENEFIT": "Bolsa de 100%",
+        "OTHER": "Outro motivo"
+      },
+      "changeDue": {
+        "title": "Trocar vencimento",
+        "open": "Trocar vencimento de {{student}}",
+        "summary": "{{student}} · {{modality}}",
+        "effect": "Vale só para esta mensalidade, até {{max}}. A seguinte volta ao dia de vencimento do aluno.",
+        "field": "Novo vencimento",
+        "submit": "Trocar vencimento"
+      },
+      "cancel": {
+        "title": "Cancelar mensalidade",
+        "open": "Cancelar mensalidade de {{student}}",
+        "summary": "{{student}} · {{modality}} · {{amount}}",
+        "effect": "A mensalidade do mês fica cancelada e não será gerada. O motivo fica na auditoria.",
+        "submit": "Cancelar mensalidade"
+      },
+      "benefit": {
+        "title": "Aplicar benefício",
+        "open": "Aplicar benefício a {{student}}"
+      }
+    },
+    "actions": {
+      "reason": "Motivo",
+      "conflict": "Esta cobrança já foi alterada por outra pessoa. Atualize o painel e confira a situação.",
+      "gone": "Esta cobrança não existe mais ou não está ao seu alcance.",
+      "error": "Não foi possível concluir. Nada foi alterado. Tente de novo."
+    },
+    "cancel": {
+      "title": "Cancelar cobrança",
+      "summary": "{{student}} · {{amount}} · vence em {{due}}",
+      "effect": "A cobrança deixa de valer e não pode ser reaberta. O motivo fica na auditoria.",
+      "submit": "Cancelar cobrança"
+    },
+    "renegotiate": {
+      "title": "Renegociar",
+      "effect": "A cobrança original passa a Renegociada e nascem parcelas mensais no lugar dela.",
+      "original": "{{student}} · {{amount}} · vence em {{due}}",
+      "total": "Total a pagar",
+      "totalLocked": "Com mais de uma cobrança, o total é a soma delas.",
+      "firstDueOn": "Primeiro vencimento",
+      "installments": "Parcelas (1 a 6)",
+      "preview": "Prévia das parcelas",
+      "line": "Parcela {{n}}: {{amount}} em {{due}}",
+      "sum": "Total: {{amount}}",
+      "submit": "Renegociar"
+    }
+  },
+  "publicReceipt": {
+    "title": "Recibo número {{number}}",
+    "unit": "Unidade",
+    "reference": "Referência",
+    "amount": "Valor",
+    "paidAt": "Pago em",
+    "payer": "Pago por",
+    "download": "Baixar PDF",
+    "notFoundTitle": "Recibo não encontrado",
+    "notFoundText": "Confira o código do recibo e tente de novo."
+  },
+  "payments": {
+    "method": {
+      "PIX_MP": "Pix",
+      "CREDIT_CARD": "Cartão de crédito",
+      "DEBIT_CARD": "Cartão de débito",
+      "BOLETO": "Boleto",
+      "CASH": "Dinheiro",
+      "PIX_KEY": "Pix pela chave",
+      "CARD_MACHINE": "Maquininha de cartão",
+      "TRANSFER": "Transferência"
+    },
+    "dialog": {
+      "title": "Registrar pagamento",
+      "charge": "{{label}}: {{value}}",
+      "method": "Meio de pagamento",
+      "confirm": "Confirmar pagamento",
+      "sending": "Registrando...",
+      "amount": "Valor",
+      "day": "Data do pagamento",
+      "dayInvalid": "Informe a data do pagamento; ela não pode ser futura.",
+      "observation": "Observação (opcional)",
+      "observationCount": "{{count}} de {{max}} caracteres",
+      "sendReceipt": "Enviar recibo por e-mail",
+      "download": "Baixar recibo",
+      "invalid": "Confira a data e a observação. Nada foi gravado.",
+      "amountChanged": "O valor da cobrança mudou. Feche a janela, atualize e tente de novo.",
+      "email": {
+        "SENT": "Recibo enviado por e-mail ao pagador.",
+        "NO_ADDRESS": "O pagador não tem e-mail cadastrado; o recibo não foi enviado.",
+        "FAILED": "Pagamento registrado, mas o e-mail do recibo não saiu. Uma nova tentativa será feita."
+      },
+      "done": "Pagamento registrado.",
+      "receiptNumber": "Recibo número {{number}}",
+      "receiptCode": "Código de conferência: {{code}}",
+      "notPayable": "Esta cobrança não pode receber pagamento (já paga ou cancelada).",
+      "error": "Não foi possível registrar o pagamento. Nada foi gravado. Tente de novo."
     }
   },
   "common": {

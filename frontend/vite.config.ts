@@ -19,11 +19,12 @@ export default defineConfig({
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.test.*", "src/test/**", "src/main.tsx", "src/mocks/browser.ts"],
-      // RNF-37: 80% de linhas no total; 100% nas pastas das regras de cobrança, pagamentos,
-      // assinatura e inativação (sem efeito até existirem arquivos nelas).
+      // RNF-37: 80% de linhas no total; 100% nas pastas das regras de cobrança (billing e charges), pagamentos,
+      // assinatura e inativação (billing, subscription e deactivation sem efeito até existirem arquivos nelas).
       thresholds: {
         lines: 80,
         "src/features/billing/**": { lines: 100 },
+        "src/features/charges/**": { lines: 100 },
         "src/features/payments/**": { lines: 100 },
         "src/features/subscription/**": { lines: 100 },
         "src/features/deactivation/**": { lines: 100 },

@@ -209,14 +209,14 @@ describe("lista de alunos com matrícula x OpenAPI (RF-ALU-01, RF-ALU-02, R18 a 
   it("a linha traz status e modalidades ativas, o selo Novo e as contagens; filtros por modalidade, turma, nível e situação combinam", async () => {
     await login("ana@exemplo.com");
     const before = await (await send("GET", "/students")).json();
-    expect(before.counts).toEqual({ active: 0, former: 0 });
+    expect(before.counts).toEqual({ active: 0, former: 0, overdue: 0 });
     expect(before.items.map((i: { status: string }) => i.status)).toEqual(["NONE", "NONE"]);
     expect((await enrollAdult()).status).toBe(201);
     const list = await (await send("GET", "/students")).json();
     const adult = list.items.find((i: { id: string }) => i.id === ADULT);
     expect(adult).toMatchObject({ status: "ACTIVE", seals: expect.arrayContaining(["NEW"]), modalities: [{ unit: { id: CENTRO }, modality: { id: BJJ }, primaryClass: { id: BJJ_CLASS }, level: null }] });
     expect(Object.keys(adult.modalities[0]).sort()).toEqual([...openapi.components.schemas.StudentRowModality.required].sort());
-    expect(list.counts).toEqual({ active: 1, former: 0 });
+    expect(list.counts).toEqual({ active: 1, former: 0, overdue: 0 });
     const ids = async (qs: string) => ((await (await send("GET", `/students?${qs}`)).json()).items as { id: string }[]).map((i) => i.id);
     expect(await ids("status=ACTIVE")).toEqual([ADULT]);
     expect(await ids("status=FORMER")).toEqual([]);
@@ -227,7 +227,7 @@ describe("lista de alunos com matrícula x OpenAPI (RF-ALU-01, RF-ALU-02, R18 a 
     expect(await ids(`seal=NEW&unitId=${CENTRO}`)).toEqual([ADULT]);
     expect(await ids(`levelId=${UNKNOWN}`)).toEqual([]);
     // As contagens ignoram o filtro rápido e os demais filtros, e acompanham a unidade.
-    expect((await (await send("GET", "/students?status=FORMER")).json()).counts).toEqual({ active: 1, former: 0 });
+    expect((await (await send("GET", "/students?status=FORMER")).json()).counts).toEqual({ active: 1, former: 0, overdue: 0 });
     expect((await send("GET", `/students?classId=${UNKNOWN}`)).status).toBe(404);
     expect((await send("GET", `/students?unitId=${UNKNOWN}`)).status).toBe(404);
     expect((await send("GET", "/students?status=OUTRO")).status).toBe(400);

@@ -73,6 +73,7 @@ const allColumns = (t: TFunction, search: string): Record<"name" | OptionalColum
       ),
   },
   status: { key: "status", label: t("students.columns.status"), render: (r) => t(`students.statuses.${r.status}`) },
+  financial: { key: "financial", label: t("students.columns.financial"), render: (r) => t(`students.financial.${r.financialStatus}`) },
 });
 
 function Content({ accountId }: { accountId: string }) {
@@ -105,7 +106,7 @@ function Content({ accountId }: { accountId: string }) {
         columns={columns}
         fetchPage={fetchStudents}
         rowKey={(r) => r.id}
-        filterKeys={["unitId", "ageRangeId", "seal", "modalityId", "classId", "levelId", "status"]}
+        filterKeys={["unitId", "ageRangeId", "seal", "modalityId", "classId", "levelId", "status", "financial"]}
         filters={(p) => <StudentFilters {...p} />}
       />
       {id && <StudentRecordPanel id={id} onClose={() => navigate(`/alunos${search}`)} onChanged={() => setVersion((v) => v + 1)} />}

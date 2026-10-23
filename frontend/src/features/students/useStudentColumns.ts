@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 
-export const OPTIONAL_COLUMNS = ["modalities", "status", "unit", "age", "ageRange", "createdAt"] as const;
+export const OPTIONAL_COLUMNS = ["modalities", "status", "financial", "unit", "age", "ageRange", "createdAt"] as const;
 export type OptionalColumn = (typeof OPTIONAL_COLUMNS)[number];
 
 const storageKey = (accountId: string) => `ctcore.studentColumns.${accountId}`;

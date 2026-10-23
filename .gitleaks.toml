@@ -1,0 +1,65 @@
+# Regras do gitleaks (RNF-35). O CI e o gitleaks local leem este arquivo sozinhos (raiz do repositório).
+# Mantém todas as regras padrão e acrescenta quatro que o padrão não pega, testadas em 23/10/2026 com a v8.30.1.
+# Prova: bash infra/scripts/gitleaks-rules.test.sh [caminho-do-gitleaks]
+# Falso positivo continua indo para .gitleaksignore, um por impressão digital e com o motivo.
+
+[extend]
+useDefault = true
+
+# Token de acesso do Mercado Pago (produção APP_USR-, teste TEST-). Sprint 23. Quem tem o token movimenta a conta.
+# A chave pública (APP_USR-<uuid>) não é segredo e não casa: o token tem blocos numéricos e 32 hexadecimais.
+[[rules]]
+id = "mercadopago-access-token"
+description = "Token de acesso do Mercado Pago"
+regex = '''\b(?:APP_USR|TEST)-\d{10,20}-\d{6}-[a-f0-9]{32}-\d{6,12}\b'''
+keywords = ["app_usr-", "test-"]
+
+# Chave secreta do desafio invisível (Turnstile, Sprint 22). A chave do site tem o mesmo prefixo e é pública,
+# por isso a regra exige o nome da configuração com "secret" ou "segredo".
+[[rules]]
+id = "turnstile-secret-key"
+description = "Chave secreta do Turnstile"
+regex = '''(?i)(?:turnstile|captcha|challenge|desafio)[\w.-]*(?:secret|segredo)[\w.-]*["']?[ \t]*[:=][ \t]*["']?(0x4[A-Za-z0-9_-]{20,})'''
+secretGroup = 1
+keywords = ["0x4"]
+
+# Senha dentro de URL de conexão (banco, fila, cache, SMTP). Sprint 22, hospedagem.
+[[rules]]
+id = "connection-url-password"
+description = "Senha em URL de conexão"
+regex = '''(?i)\b(?:postgres(?:ql)?|jdbc:postgresql|mysql|mariadb|mongodb(?:\+srv)?|rediss?|amqps?|smtps?)://[^\s:/@"']+:([^\s@"'/]{6,})@[\w.-]+'''
+secretGroup = 1
+keywords = ["://"]
+
+  [[rules.allowlists]]
+  description = "Valores de desenvolvimento e variáveis não resolvidas"
+  regexTarget = "secret"
+  regexes = [
+    '''^\$\{''',
+    '''(?i)^(?:ctcore_[a-z_]*dev|dev-[a-z-]+|changeme|change-me|password|senha|secret|test|teste|example|exemplo|placeholder)$''',
+  ]
+
+# Senha ou segredo com valor literal em arquivo de configuração (spring.mail.password=..., API_SECRET=...).
+# Valor por variável (${...}), vazio ou de desenvolvimento passa. Testes ficam de fora: lá só há valor fictício.
+[[rules]]
+id = "config-password-literal"
+description = "Senha ou segredo literal em arquivo de configuração"
+regex = '''(?im)^[ \t]*(?:export[ \t]+)?[\w.-]*(?:password|passwd|pwd|secret|senha)[\w.-]*[ \t]*[=:][ \t]*["']?([^\s"'$#{][^\s"']{5,})["']?[ \t]*$'''
+secretGroup = 1
+path = '''(?i)(?:\.(?:properties|ya?ml|conf|ini|toml|cfg)$|(?:^|/)\.env(?:\.[\w-]+)?$)'''
+keywords = ["password", "passwd", "pwd", "secret", "senha"]
+
+  [[rules.allowlists]]
+  description = "Valores de desenvolvimento e chaves fictícias publicadas pelo fornecedor (Turnstile: 1x00...AA)"
+  regexTarget = "secret"
+  regexes = [
+    '''(?i)^(?:ctcore_[a-z_]*dev|dev-[a-z-]+|changeme|change-me|password|senha|secret|test|teste|example|exemplo|placeholder)$''',
+    '''^[123]x0{20,}AA$''',
+  ]
+
+  [[rules.allowlists]]
+  description = "Configuração de teste e esta própria configuração"
+  paths = [
+    '''(?:^|/)src/test/''',
+    '''(?:^|/)\.gitleaks\.toml$''',
+  ]

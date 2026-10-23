@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/login/two-factor", "/api/v1/auth/password-reset",
                                 "/api/v1/auth/password-reset/*", "/api/v1/auth/invitations/*/accept").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*", "/api/v1/public/receipts/*", "/api/v1/public/receipts/*/pdf").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 // D7: toda resposta garante o cookie XSRF-TOKEN; o SPA o lê e devolve em X-XSRF-TOKEN.

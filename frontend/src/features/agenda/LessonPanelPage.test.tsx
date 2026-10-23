@@ -10,6 +10,7 @@ import {
 import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { gate } from "@/test/gate";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { todayIso } from "./agendaDates";
@@ -63,6 +64,7 @@ type Opts = {
   width?: number;
   lesson?: LessonDetail;
   status?: number;
+  respond?: () => Response | Promise<Response>;
   path?: string;
 };
 function setup(opts: Opts = {}) {
@@ -87,9 +89,11 @@ function setup(opts: Opts = {}) {
       return HttpResponse.json([{ id: "s9", name: "Bia Lima", photoUrl: null, belt: null, blocked: false }]);
     }),
     http.get("/api/v1/agenda/lessons/:id", () =>
-      opts.status
-        ? HttpResponse.json({ code: "X" }, { status: opts.status })
-        : HttpResponse.json(opts.lesson ?? detail()),
+      opts.respond
+        ? opts.respond()
+        : opts.status
+          ? HttpResponse.json({ code: "X" }, { status: opts.status })
+          : HttpResponse.json(opts.lesson ?? detail()),
     ),
   );
   return render(
@@ -182,15 +186,15 @@ describe("LessonPanelPage", () => {
   it("CA10: carregando, erro com Tentar de novo, sem permissão e aula não encontrada", async () => {
     const user = userEvent.setup();
     let fail = true;
-    setup();
-    server.use(
-      http.get("/api/v1/agenda/lessons/:id", () =>
-        fail
-          ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 })
-          : HttpResponse.json(detail()),
-      ),
-    );
+    const loading = gate();
+    setup({
+      respond: async () => {
+        await loading.opened;
+        return fail ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 }) : HttpResponse.json(detail());
+      },
+    });
     expect(await screen.findByText("Carregando...")).toBeInTheDocument();
+    loading.release();
     const retry = await screen.findByRole("button", { name: "Tentar de novo" });
     fail = false;
     await user.click(retry);

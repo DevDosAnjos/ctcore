@@ -43,7 +43,7 @@ public class PlanWrite {
 
     public record Options(String crossUnitTraining, List<UnitOption> units) {}
 
-    public record ValueImpact(int studentsAffected, String effectiveFrom) {}
+    public record ValueImpact(int studentsAffected, String effectiveFrom, int unpaidCharges, int paidFutureCharges) {}
 
     private record Clean(UUID unitId, UUID modalityId, String name, long valueCents, Integer weeklyFrequency, boolean validOtherUnits,
             String unpaidCharges, boolean paidFutureDifference) {}
@@ -155,9 +155,14 @@ public class PlanWrite {
             Map<String, Object> next = snapshot(before.modality().id().toString(), c.name(), c.valueCents(), c.weeklyFrequency(), other, "ACTIVE");
             if (c.valueCents() != before.valueCents()) {
                 history(who, id, before.unit().id(), c.valueCents());
-                plans.applyRepricing(id, before.valueCents(), c.valueCents(), c.unpaidCharges().equals("ADJUST"), c.paidFutureDifference());
+                var done = plans.applyRepricing(who, before.unit().id(), id, c.valueCents(), c.unpaidCharges().equals("ADJUST"), c.paidFutureDifference());
                 next.put("unpaidCharges", c.unpaidCharges());
                 next.put("paidFutureDifference", c.paidFutureDifference());
+                next.put("adjustedCharges", done.adjusted().size());
+                next.put("createdCharges", done.created().size());
+                audit.record(new AuditEntry(actor(who), "plan.repriced", "plan", id.toString(), before.unit().id(), Map.of("valueCents", before.valueCents()),
+                        Map.of("valueCents", c.valueCents(), "adjustedCharges", done.adjusted().stream().map(UUID::toString).toList(),
+                                "createdCharges", done.created().stream().map(UUID::toString).toList()), null, ip));
             }
             audit.record(new AuditEntry(actor(who), "plan.updated", "plan", id.toString(), before.unit().id(),
                     snapshot(before.modality().id().toString(), before.name(), before.valueCents(), before.weeklyFrequency(), before.validOtherUnits(),
@@ -215,8 +220,11 @@ public class PlanWrite {
         } catch (NumberFormatException e) {
             throw new ApiValidationException("valueCents", "inteiro de 1 a 99999999 centavos");
         }
-        plans.get(who, id);
-        return new ValueImpact(plans.studentsAffected(id), "NEXT_CHARGE");
+        return transactions.execute(() -> {
+            var plan = plans.get(who, id);
+            var counts = plans.chargeCounts(plan.unit().id(), id);
+            return new ValueImpact(plans.studentsAffected(id), "NEXT_CHARGE", counts.unpaid(), counts.paidFuture());
+        });
     }
 
     private void lock(AccountPrincipal who, UUID id) {

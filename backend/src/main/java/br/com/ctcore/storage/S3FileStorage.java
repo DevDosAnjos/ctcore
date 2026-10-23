@@ -77,6 +77,16 @@ public class S3FileStorage implements FileStorage {
     }
 
     @Override
+    public byte[] get(String name) {
+        var key = key(name);
+        try {
+            return client.getObjectAsBytes(b -> b.bucket(props.getBucket()).key(key)).asByteArray();
+        } catch (NoSuchKeyException e) {
+            throw new NotFound(name);
+        }
+    }
+
+    @Override
     public String readUrl(String name) {
         var key = key(name);
         requireExists(key, name);

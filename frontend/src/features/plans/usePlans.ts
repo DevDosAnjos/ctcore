@@ -89,6 +89,8 @@ export interface PlanOptions {
 export interface PlanValueImpact {
   studentsAffected: number;
   effectiveFrom: "NEXT_CHARGE";
+  unpaidCharges: number;
+  paidFutureCharges: number;
 }
 
 export const createPlan = (input: PlanInput) => api<PlanRow>("/plans", { method: "POST", body: input });

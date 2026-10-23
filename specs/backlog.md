@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 07. O dono confirmou em 20/10/2026 que revisou a Sprint 06 (Alunos) e fez o PR dev→main (#302, merge). Só o dono libera a seguinte.
+Sprint liberada: Sprint 08. O dono confirmou em 21/10/2026 que revisou a Sprint 07 (Matrícula e benefícios) e fez o PR dev→main (#313, merge). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -79,13 +79,19 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 68 | RF-MAT-02 · Avisos de faixa etária e capacidade na matrícula | issue #68 | Sprint 07 | — | agente | feito |
 | 69 | RF-MAT-03 · Encerrar modalidade | issue #69 | Sprint 07 | — | agente | feito |
 | 70 | RF-MAT-05 · Configurações › Termos | issue #70 | Sprint 07 | — | agente | feito |
-| 71 | Geração de cobranças e primeira cobrança no servidor | issue #71 | Sprint 08 | — | agente | a fazer |
-| 72 | RF-COB-01 · Financeiro › Cobranças (lista) | issue #72 | Sprint 08 | — | agente | a fazer |
-| 73 | RF-COB-02 · Painel da cobrança | issue #73 | Sprint 08 | — | agente | a fazer |
-| 74 | RF-COB-03 · Prévia da geração de mensalidades | issue #74 | Sprint 08 | — | agente | a fazer |
-| 75 | RF-COB-04 · Registrar pagamento no balcão | issue #75 | Sprint 08 | — | agente | a fazer |
-| 76 | RF-COB-07 · Cobrança avulsa e gerar mensalidades adiantadas | issue #76 | Sprint 08 | — | agente | a fazer |
-| 77 | RF-COB-08 · Recebimentos do dia | issue #77 | Sprint 08 | — | agente | a fazer |
+| 71 | Geração de cobranças e primeira cobrança no servidor | issue #71 | Sprint 08 | — | agente | feito |
+| 72 | RF-COB-01 · Financeiro › Cobranças (lista) | issue #72 | Sprint 08 | — | agente | feito |
+| 73 | RF-COB-02 · Painel da cobrança | issue #73 | Sprint 08 | — | agente | feito |
+| 318 | Teste CA20 da aba Financeiro instável: medir e estabilizar | issue #318 | Sprint 08 | — | agente | feito |
+| 320 | Teste e2e de recuperação de senha instável: medir e estabilizar | issue #320 | Sprint 08 | — | agente | feito |
+| 74 | RF-COB-03 · Prévia da geração de mensalidades | issue #74 | Sprint 08 | — | agente | feito |
+| 75 | RF-COB-04 · Registrar pagamento no balcão | issue #75 | Sprint 08 | — | agente | feito |
+| 76 | RF-COB-07 · Cobrança avulsa e gerar mensalidades adiantadas | issue #76 | Sprint 08 | — | agente | feito |
+| 77 | RF-COB-08 · Recebimentos do dia | issue #77 | Sprint 08 | — | agente | feito |
+| 331 | Teste ChargeRenegotiationIT.invalid falha entre 21h e 24h de Brasília: data do teste em UTC contra a data da unidade | issue #331 | Sprint 08 | — | agente | feito |
+| 333 | Testes de tela com "Carregando..." instáveis: delay curto e asserção do estado transitório | issue #333 | Sprint 08 | — | agente | feito |
+| 338 | Recibo: CPF mascarado no PDF do link público e completo só com sessão | issue #338 | Sprint 08 | — | agente | feito |
+| 340 | Piso de 100% de linhas em src/features/charges | issue #340 | Sprint 08 | — | agente | feito |
 | 78 | E-mails automáticos e preferências de envio | issue #78 | Sprint 09 | — | agente | a fazer |
 | 79 | RF-COB-06 · Cobranças em atraso e envio de lembrete | issue #79 | Sprint 09 | — | agente | a fazer |
 | 80 | RF-COB-09 · Configurações › Unidade › Lembretes | issue #80 | Sprint 09 | — | agente | a fazer |
@@ -93,6 +99,9 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 82 | RF-COM-02 · Novo comunicado | issue #82 | Sprint 09 | — | agente | a fazer |
 | 83 | RF-COM-03 · Configurações › Textos | issue #83 | Sprint 09 | — | agente | a fazer |
 | 84 | RF-NOT-01 · Painel do sino (notificações) | issue #84 | Sprint 09 | — | agente | a fazer |
+| 342 | Afirmar que o aluno com bolsa de 100% continua Ativo | issue #342 | Sprint 09 | — | agente | a fazer |
+| 343 | Cache do Playwright que valha para PR novo e instalação do Chromium estável | issue #343 | Sprint 09 | — | agente | a fazer |
+| 344 | aguardar-ci.sh: resultado recuperável de um watcher órfão | issue #344 | Sprint 09 | — | agente | a fazer |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | a fazer |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |
@@ -135,6 +144,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 124 | RF-INI-03 · Início do Professor | issue #124 | Sprint 13 | — | agente | a fazer |
 | 125 | RF-BUS-01 · Busca global | issue #125 | Sprint 13 | — | agente | a fazer |
 | 126 | RF-BUS-02 · Busca vazia: telas e ações rápidas | issue #126 | Sprint 13 | — | agente | a fazer |
+| 335 | Limpar comprovantes de graduação de origem enviados e não usados | issue #335 | Sprint 13 | — | agente | a fazer |
 | 127 | Pico de alunos, faturas e situações da assinatura no servidor | issue #127 | Sprint 14 | — | agente | a fazer |
 | 128 | RF-ASS-01 · Configurações › Assinatura | issue #128 | Sprint 14 | — | agente | a fazer |
 | 129 | RF-ASS-02 · Pagar fatura da assinatura | issue #129 | Sprint 14 | — | agente | a fazer |
@@ -217,6 +227,7 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Encaixes para as próximas sprints
 
+- **Sprint 08, cobranças (#71 a #77):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #78 (e-mails de reajuste e "Cobrança gerada", modelo "Pagamento confirmado") e #79 ("Enviar lembrete" no painel da cobrança). A limpeza de comprovante de graduação enviado e não usado (A4 da revisão da Sprint 07) é a #335, na Sprint 13. Sem issue nova além da #335. Ajustes menores da revisão (A6 a A8), no marco da Sprint 09: #342 (afirmar que a bolsa de 100% segue Ativa), #343 (cache do Playwright) e #344 (`aguardar-ci.sh`).
 - **Sprint 06, ficha do aluno (#60, junto de #58 e #61):** permissão do Professor por unidade: ver ficha do aluno (padrão desligada); implementar junto da ficha, com migração do vetor `teacher_permissions` de 4 para 5, tela de configurações da unidade, `PermissionTable`, openapi e testes. Decisão do dono de 20/10/2026, só especificação até lá (`docs/especificacao/02`, `08`, `15`). Sem a chave, o Professor continua vendo os alunos da turma ou da aula como lista simples (RN-PRO-06). Ainda não há arquivo de item para #58 a #61; quem especificar a ficha lê este encaixe.
 - **Sprint 07, matrícula (#63) e benefícios (#66):** os encaixes de `ModalityUsage.activeStudents` e da RN-PRO-08 estão no fim do corpo das issues #63 e #66.
 - **Sprint 06, encaixes da lista, dos selos e da ficha do aluno (#58, #59, #60, #62):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #63 (alcance do Professor e do Administrador, lista simples, modalidades e filtros, selo Novo, abas da ficha, datas no fuso da unidade), #65 (selo Bolsista), #67 (data de matrícula), #70 e #85 (selo Termo pendente), #72 (situação financeira e Em atraso), #73 (aba Financeiro e Cobrar) e #109 (Bloqueados). Sem issue nova.
