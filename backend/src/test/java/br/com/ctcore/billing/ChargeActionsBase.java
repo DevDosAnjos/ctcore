@@ -8,6 +8,7 @@ import br.com.ctcore.organization.OrganizationBase;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,11 @@ public abstract class ChargeActionsBase extends OrganizationBase {
         return p;
     }
 
+    /** O "hoje" da unidade de teste (fuso padrão da unidade): a JVM roda em UTC e a data dela passa para o dia seguinte às 21h de Brasília (#331). */
+    protected LocalDate today() {
+        return LocalDate.now(ZoneId.of("America/Sao_Paulo"));
+    }
+
     protected UUID student(Tenant t) {
         return BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Aluno Sintético", "1990-01-01");
     }
@@ -43,7 +49,7 @@ public abstract class ChargeActionsBase extends OrganizationBase {
     }
 
     protected UUID open(Tenant t, UUID student, long amount) {
-        return charge(t, t.unitId(), student, LocalDate.now().plusDays(5), amount, "OPEN");
+        return charge(t, t.unitId(), student, today().plusDays(5), amount, "OPEN");
     }
 
     protected MockHttpServletResponse send(HttpMethod method, String path, String body, AccountPrincipal who) throws Exception {

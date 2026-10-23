@@ -5,7 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.Role;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -15,10 +19,32 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
 
 /** RN-COB-09 (CA7 renegociar, CA8, CA9, CA10, CA11 renegociar, CA12): renegociar em parcelas mensais, validações, travas e auditoria. */
+@Import(ChargeRenegotiationIT.NightClock.class)
 class ChargeRenegotiationIT extends ChargeActionsBase {
+    /** 22:30 de 22/10 em Brasília, que já é 23/10 em UTC: o pior horário para quem compara a data da JVM com a da unidade (#331). */
+    @TestConfiguration
+    static class NightClock {
+        static final Clock CLOCK = Clock.fixed(Instant.parse("2026-10-23T01:30:00Z"), ZoneOffset.UTC);
+
+        @Bean
+        @Primary
+        Clock nightClock() {
+            return CLOCK;
+        }
+    }
+
+    @Override
+    protected LocalDate today() {
+        return LocalDate.now(NightClock.CLOCK.withZone(ZoneId.of("America/Sao_Paulo")));
+    }
+
     private JsonNode renegotiate(String body, AccountPrincipal who, int status) throws Exception {
         return ok(send(HttpMethod.POST, "/charges/renegotiate", body, who), status);
     }
@@ -69,7 +95,7 @@ class ChargeRenegotiationIT extends ChargeActionsBase {
         Tenant t = tenant();
         var admin = account(t, Role.COORDINATOR);
         UUID s = student(t);
-        String first = LocalDate.now().plusDays(7).toString();
+        String first = today().plusDays(7).toString();
         UUID a = open(t, s, 10000), b = open(t, s, 5000);
         bad(renegotiation(ids(a, b), 14000, first, 2, "x"), admin, "amountCents");
         assertThat(status(a)).isEqualTo("OPEN");
@@ -99,13 +125,13 @@ class ChargeRenegotiationIT extends ChargeActionsBase {
         adminJdbc().update("insert into unit (id, organization_id, name, short_name, active) values (?, ?, 'Outra', ?, true)", second, t.orgId(), "u" + second.toString().substring(0, 12));
         var admin = new AccountPrincipal(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), t.orgId(), Role.ADMINISTRATOR, Set.of(t.unitId(), second));
         adminJdbc().update("insert into account (id, email, name, status) values (?, ?, 'Gestora', 'ACTIVE')", admin.accountId(), "act-" + admin.accountId() + "@example.com");
-        UUID a = open(t, s, 10000), otherStudent = open(t, other, 10000), otherUnit = charge(t, second, s, LocalDate.now().plusDays(5), 10000, "OPEN");
-        String first = LocalDate.now().plusDays(7).toString();
+        UUID a = open(t, s, 10000), otherStudent = open(t, other, 10000), otherUnit = charge(t, second, s, today().plusDays(5), 10000, "OPEN");
+        String first = today().plusDays(7).toString();
         bad(renegotiation(ids(a), null, first, 0, "x"), admin, "installments");
         bad(renegotiation(ids(a), null, first, 7, "x"), admin, "installments");
         bad(renegotiation(ids(a), null, "2026-13-45", 2, "x"), admin, "firstDueOn");
         bad(renegotiation(ids(a), null, null, 2, "x"), admin, "firstDueOn");
-        bad(renegotiation(ids(a), null, LocalDate.now().minusDays(1).toString(), 2, "x"), admin, "firstDueOn");
+        bad(renegotiation(ids(a), null, today().minusDays(1).toString(), 2, "x"), admin, "firstDueOn");
         bad(renegotiation(ids(a), 0, first, 1, "x"), admin, "amountCents");
         bad(renegotiation(ids(a), 2, first, 3, "x"), admin, "installments");
         bad(renegotiation("[]", null, first, 2, "x"), admin, "chargeIds");
@@ -121,7 +147,7 @@ class ChargeRenegotiationIT extends ChargeActionsBase {
         assertThat(count("select count(*) from charge")).isEqualTo(3);
         assertThat(status(a)).isEqualTo("OPEN");
         assertThat(audits(t, "charge.renegotiated")).isZero();
-        assertThat(renegotiate(renegotiation(ids(a), null, LocalDate.now().toString(), 6, "x".repeat(200)), admin, 201)).hasSize(6);
+        assertThat(renegotiate(renegotiation(ids(a), null, today().toString(), 6, "x".repeat(200)), admin, 201)).hasSize(6);
     }
 
     @Test
@@ -130,13 +156,13 @@ class ChargeRenegotiationIT extends ChargeActionsBase {
         Tenant t = tenant();
         var admin = account(t, Role.ADMINISTRATOR);
         UUID s = student(t);
-        String first = LocalDate.now().plusDays(7).toString();
+        String first = today().plusDays(7).toString();
         for (String st : new String[] {"PAID", "CANCELED", "RENEGOTIATED", "REFUNDED", "IN_REVIEW"}) {
-            UUID id = charge(t, t.unitId(), s, LocalDate.now(), 1000, st);
+            UUID id = charge(t, t.unitId(), s, today(), 1000, st);
             assertThat(send(HttpMethod.POST, "/charges/renegotiate", renegotiation(ids(id), null, first, 2, "x"), admin).getStatus()).as(st).isEqualTo(409);
             assertThat(status(id)).isEqualTo(st);
         }
-        UUID open = open(t, s, 1000), paid = charge(t, t.unitId(), s, LocalDate.now(), 1000, "PAID");
+        UUID open = open(t, s, 1000), paid = charge(t, t.unitId(), s, today(), 1000, "PAID");
         assertThat(send(HttpMethod.POST, "/charges/renegotiate", renegotiation(ids(open, paid), null, first, 2, "x"), admin).getStatus()).isEqualTo(409);
         assertThat(status(open)).isEqualTo("OPEN");
         assertThat(count("select count(*) from charge")).isEqualTo(7);
@@ -149,7 +175,7 @@ class ChargeRenegotiationIT extends ChargeActionsBase {
         Tenant t = tenant();
         var admin = account(t, Role.ADMINISTRATOR);
         UUID id = open(t, student(t), 9000);
-        String body = renegotiation(ids(id), null, LocalDate.now().plusDays(7).toString(), 3, "corrida");
+        String body = renegotiation(ids(id), null, today().plusDays(7).toString(), 3, "corrida");
         var pool = Executors.newFixedThreadPool(2);
         try {
             List<Future<Integer>> results = new ArrayList<>();
