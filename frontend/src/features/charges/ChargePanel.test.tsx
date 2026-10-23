@@ -300,10 +300,10 @@ describe("ChargePanel (RF-COB-02)", () => {
     await user.click(dialog.getByRole("button", { name: "Confirmar pagamento" }));
     expect(await dialog.findByText("Recibo número 7")).toBeInTheDocument();
     expect(dialog.getByText(/não tem e-mail cadastrado/)).toBeInTheDocument();
-    expect(dialog.getByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", "/api/v1/public/receipts/ABCDEF0123456789/pdf");
+    expect(dialog.getByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", "/api/v1/receipts/ABCDEF0123456789/pdf");
     expect(posts[0].body).toEqual({ method: "PIX_KEY", amountCents: 12000, sendReceipt: true, observation: "No balcão" });
     await user.click(dialog.getAllByRole("button", { name: "Fechar" })[0]);
-    expect(await within(panel).findByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", "/api/v1/public/receipts/ABC123/pdf");
+    expect(await within(panel).findByRole("link", { name: "Baixar recibo" })).toHaveAttribute("href", "/api/v1/receipts/ABC123/pdf");
     expect(within(panel).getByRole("button", { name: "Registrar pagamento" })).toBeDisabled();
   });
 

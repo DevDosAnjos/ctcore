@@ -8,7 +8,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/format";
 import { StatusBadge, useReference } from "./ChargeCards";
 import { CancelChargeDialog } from "./CancelChargeDialog";
 import { RegisterPaymentDialog } from "@/features/payments/RegisterPaymentDialog";
-import { receiptPdfUrl } from "@/features/payments/usePayment";
+import { receiptStaffPdfUrl } from "@/features/payments/usePayment";
 import { RenegotiateDialog } from "./RenegotiateDialog";
 import type { ChargeDetail, ChargeRef } from "./types";
 import { useChargeDetail } from "./useChargeActions";
@@ -109,7 +109,7 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
                 {p.receipt && (
                   <p>
                     {t("charges.panel.receipt", { number: p.receipt.number, code: p.receipt.code })}{" "}
-                    <a className="underline" href={receiptPdfUrl(p.receipt.code)} target="_blank" rel="noreferrer">
+                    <a className="underline" href={receiptStaffPdfUrl(p.receipt.code)} target="_blank" rel="noreferrer">
                       {t("charges.panel.downloadReceipt")}
                     </a>
                   </p>

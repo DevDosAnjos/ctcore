@@ -4,7 +4,7 @@ import { formatMoney } from "@/components/fields/masks";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
-import { PAYMENT_METHODS, receiptPdfUrl, registerPayment, type PaymentMethod, type PaymentReceipt } from "./usePayment";
+import { PAYMENT_METHODS, receiptStaffPdfUrl, registerPayment, type PaymentMethod, type PaymentReceipt } from "./usePayment";
 
 const MAX_OBSERVATION = 200;
 const input = "min-h-11 w-full rounded-md border bg-background px-2";
@@ -56,7 +56,7 @@ export function RegisterPaymentDialog({ chargeId, label, amountCents, onClose, o
           {paid.receiptEmail && paid.receiptEmail !== "NOT_REQUESTED" && <p>{t(`${k}email.${paid.receiptEmail}`)}</p>}
           <div className="flex flex-wrap justify-end gap-2">
             <Button asChild variant="outline" className="min-h-11">
-              <a href={receiptPdfUrl(paid.receipt.code)} target="_blank" rel="noreferrer">
+              <a href={receiptStaffPdfUrl(paid.receipt.code)} target="_blank" rel="noreferrer">
                 {t(`${k}download`)}
               </a>
             </Button>

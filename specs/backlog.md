@@ -90,6 +90,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 77 | RF-COB-08 · Recebimentos do dia | issue #77 | Sprint 08 | — | agente | feito |
 | 331 | Teste ChargeRenegotiationIT.invalid falha entre 21h e 24h de Brasília: data do teste em UTC contra a data da unidade | issue #331 | Sprint 08 | — | agente | feito |
 | 333 | Testes de tela com "Carregando..." instáveis: delay curto e asserção do estado transitório | issue #333 | Sprint 08 | — | agente | feito |
+| 338 | Recibo: CPF mascarado no PDF do link público e completo só com sessão | issue #338 | Sprint 08 | — | agente | feito |
 | 78 | E-mails automáticos e preferências de envio | issue #78 | Sprint 09 | — | agente | a fazer |
 | 79 | RF-COB-06 · Cobranças em atraso e envio de lembrete | issue #79 | Sprint 09 | — | agente | a fazer |
 | 80 | RF-COB-09 · Configurações › Unidade › Lembretes | issue #80 | Sprint 09 | — | agente | a fazer |

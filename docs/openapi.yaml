@@ -1040,15 +1040,30 @@ paths:
     get:
       summary: PDF do recibo (RN-COB-16). Rota pública, sem sessão.
       description: |
-        Recibo completo: logo (quando a organização tem), unidade, CNPJ, endereço, número, quem pagou com CPF (quando existe), aluno, referência, valor, taxa repassada, meio,
-        data e hora no fuso da unidade, a frase de não ser nota fiscal e o código. O código de 80 bits é a única credencial e o link não expira. Código desconhecido ou
-        malformado: 404 igual. Resposta `Cache-Control: private, no-store`.
+        Recibo: logo (quando a organização tem), unidade, CNPJ, endereço, número, quem pagou com o CPF mascarado (`***.456.789-**`, quando existe), aluno, referência, valor,
+        taxa repassada, meio, data e hora no fuso da unidade, a frase de não ser nota fiscal e o código. O CPF completo só sai por `GET /receipts/{code}/pdf`, com sessão.
+        O código de 80 bits é a única credencial e o link não expira. Código desconhecido ou malformado: 404 igual. Resposta `Cache-Control: private, no-store`.
       parameters:
         - { name: code, in: path, required: true, schema: { type: string } }
       responses:
         '200':
           description: O PDF.
           content: { application/pdf: { schema: { type: string, format: binary } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /receipts/{code}/pdf:
+    get:
+      summary: PDF do recibo com o CPF completo (RN-COB-16). Exige sessão.
+      description: |
+        Mesmo recibo do link público, com o CPF completo de quem pagou. Exige acesso a Cobranças e pagamentos na unidade do recibo. Código desconhecido, de outra
+        organização ou de unidade fora do alcance: 404 igual. Resposta `Cache-Control: private, no-store`.
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: O PDF.
+          content: { application/pdf: { schema: { type: string, format: binary } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
   /public/receipts/{code}:
     get:
