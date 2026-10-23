@@ -921,6 +921,25 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /billing/daily-receipts:
+    get:
+      summary: Recebimentos do dia da unidade (RF-COB-08, RN-COB-12). `COLLECTIONS` com algum acesso.
+      description: |
+        Pagamentos `CONFIRMED` cujo `paid_at`, no fuso da unidade, cai em `date` (AAAA-MM-DD, padrão hoje no fuso da unidade): total, quantidade, total por meio,
+        total por pessoa que lançou (pagamento sem lançador, como o do portal, forma uma linha com `registeredBy` nulo) e a lista, da hora mais recente para a
+        mais antiga. Estornados ficam fora. `unitId` ausente ou malformado, `date` malformada ou futura: 400 com o campo. Unidade fora do alcance: resposta vazia.
+        Só leitura: sem CSRF e sem auditoria.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitId, in: query, required: true, schema: { type: string, format: uuid } }
+        - { name: date, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Os recebimentos do dia.
+          content: { application/json: { schema: { $ref: '#/components/schemas/DailyReceipts' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /students/{id}/charges:
     post:
       summary: Cria uma cobrança avulsa para o aluno (RN-COB-11). `COLLECTIONS` completo na unidade informada.
@@ -3170,6 +3189,51 @@ components:
               modality: { type: string }
               referenceMonth: { type: string, format: date }
               reason: { type: string, enum: [FULL_BENEFIT] }
+    DailyReceiptsPerson:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    DailyReceipts:
+      type: object
+      required: [date, totalCents, count, byMethod, byRegistrar, payments]
+      properties:
+        date: { type: string, format: date }
+        totalCents: { type: integer, format: int64 }
+        count: { type: integer }
+        byMethod:
+          type: array
+          items:
+            type: object
+            required: [method, count, totalCents]
+            properties:
+              method: { type: string, enum: [PIX_MP, CREDIT_CARD, DEBIT_CARD, BOLETO, PIX_KEY, CASH, CARD_MACHINE, TRANSFER] }
+              count: { type: integer }
+              totalCents: { type: integer, format: int64 }
+        byRegistrar:
+          type: array
+          items:
+            type: object
+            required: [registeredBy, count, totalCents]
+            properties:
+              registeredBy: { allOf: [{ $ref: '#/components/schemas/DailyReceiptsPerson' }], nullable: true, description: 'Nulo: pagamento sem lançador (portal, débito automático).' }
+              count: { type: integer }
+              totalCents: { type: integer, format: int64 }
+        payments:
+          type: array
+          items:
+            type: object
+            required: [id, paidAt, student, reference, method, registeredBy, amountCents, receiptNumber]
+            properties:
+              id: { type: string, format: uuid }
+              paidAt: { type: string, format: date-time }
+              student: { $ref: '#/components/schemas/DailyReceiptsPerson' }
+              reference: { type: string, description: 'Modalidade e mês, ou a descrição da cobrança avulsa.' }
+              method: { type: string, enum: [PIX_MP, CREDIT_CARD, DEBIT_CARD, BOLETO, PIX_KEY, CASH, CARD_MACHINE, TRANSFER] }
+              registeredBy: { allOf: [{ $ref: '#/components/schemas/DailyReceiptsPerson' }], nullable: true }
+              amountCents: { type: integer, format: int64 }
+              receiptNumber: { type: integer }
     TeacherRow:
       type: object
       required: [id, name, photoUrl, modalities, units, classCount, status, directoryConsent, access]

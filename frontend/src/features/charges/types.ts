@@ -132,3 +132,26 @@ export interface ChargeCreated {
   toleranceDays: number;
   amountCents: number;
 }
+
+// Espelha DailyReceipts do OpenAPI (RF-COB-08).
+export interface DailyReceiptsPerson {
+  id: string;
+  name: string;
+}
+export interface DailyReceipts {
+  date: string;
+  totalCents: number;
+  count: number;
+  byMethod: { method: string; count: number; totalCents: number }[];
+  byRegistrar: { registeredBy: DailyReceiptsPerson | null; count: number; totalCents: number }[];
+  payments: {
+    id: string;
+    paidAt: string;
+    student: DailyReceiptsPerson;
+    reference: string;
+    method: string;
+    registeredBy: DailyReceiptsPerson | null;
+    amountCents: number;
+    receiptNumber: number;
+  }[];
+}
