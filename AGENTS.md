@@ -62,6 +62,7 @@ O repositório fica público durante o desenvolvimento, para o CI rodar sem limi
 - O OpenAPI em `docs/` é a fonte única do contrato; os handlers MSW batem com ele.
 - Telas com os quatro estados (carregando, vazio, erro, sem permissão), funcionando a partir de 360 px e passando no axe nos dois temas. Celular é a mesma aplicação responsiva, não telas novas.
 - Textos de tela nos arquivos de tradução pt-BR, nunca no código.
+- Falha na regressão completa (`verify`, `test:cov`, `e2e`), mesmo em teste anterior ao item, vira issue no formato das #318 e #320 antes da rodada `OK`; item não é verificado nem mesclado com a regressão vermelha. Teste não compara a data da JVM (UTC) com a data da unidade: usa o fuso da unidade.
 - Todo código de regra citado na issue tem ao menos um teste. Cobertura mínima de 80%; 100% das regras de cobrança, pagamentos, assinatura, inativação e isolamento.
 
 ## Idioma
