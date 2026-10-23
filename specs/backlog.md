@@ -99,6 +99,9 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 82 | RF-COM-02 · Novo comunicado | issue #82 | Sprint 09 | — | agente | a fazer |
 | 83 | RF-COM-03 · Configurações › Textos | issue #83 | Sprint 09 | — | agente | a fazer |
 | 84 | RF-NOT-01 · Painel do sino (notificações) | issue #84 | Sprint 09 | — | agente | a fazer |
+| 342 | Afirmar que o aluno com bolsa de 100% continua Ativo | issue #342 | Sprint 09 | — | agente | a fazer |
+| 343 | Cache do Playwright que valha para PR novo e instalação do Chromium estável | issue #343 | Sprint 09 | — | agente | a fazer |
+| 344 | aguardar-ci.sh: resultado recuperável de um watcher órfão | issue #344 | Sprint 09 | — | agente | a fazer |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | a fazer |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |
@@ -224,7 +227,7 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Encaixes para as próximas sprints
 
-- **Sprint 08, cobranças (#71 a #77):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #78 (e-mails de reajuste e "Cobrança gerada", modelo "Pagamento confirmado") e #79 ("Enviar lembrete" no painel da cobrança). A limpeza de comprovante de graduação enviado e não usado (A4 da revisão da Sprint 07) é a #335, na Sprint 13. Sem issue nova além da #335.
+- **Sprint 08, cobranças (#71 a #77):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #78 (e-mails de reajuste e "Cobrança gerada", modelo "Pagamento confirmado") e #79 ("Enviar lembrete" no painel da cobrança). A limpeza de comprovante de graduação enviado e não usado (A4 da revisão da Sprint 07) é a #335, na Sprint 13. Sem issue nova além da #335. Ajustes menores da revisão (A6 a A8), no marco da Sprint 09: #342 (afirmar que a bolsa de 100% segue Ativa), #343 (cache do Playwright) e #344 (`aguardar-ci.sh`).
 - **Sprint 06, ficha do aluno (#60, junto de #58 e #61):** permissão do Professor por unidade: ver ficha do aluno (padrão desligada); implementar junto da ficha, com migração do vetor `teacher_permissions` de 4 para 5, tela de configurações da unidade, `PermissionTable`, openapi e testes. Decisão do dono de 20/10/2026, só especificação até lá (`docs/especificacao/02`, `08`, `15`). Sem a chave, o Professor continua vendo os alunos da turma ou da aula como lista simples (RN-PRO-06). Ainda não há arquivo de item para #58 a #61; quem especificar a ficha lê este encaixe.
 - **Sprint 07, matrícula (#63) e benefícios (#66):** os encaixes de `ModalityUsage.activeStudents` e da RN-PRO-08 estão no fim do corpo das issues #63 e #66.
 - **Sprint 06, encaixes da lista, dos selos e da ficha do aluno (#58, #59, #60, #62):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #63 (alcance do Professor e do Administrador, lista simples, modalidades e filtros, selo Novo, abas da ficha, datas no fuso da unidade), #65 (selo Bolsista), #67 (data de matrícula), #70 e #85 (selo Termo pendente), #72 (situação financeira e Em atraso), #73 (aba Financeiro e Cobrar) e #109 (Bloqueados). Sem issue nova.
