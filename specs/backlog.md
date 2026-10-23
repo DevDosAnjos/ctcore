@@ -138,6 +138,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 124 | RF-INI-03 · Início do Professor | issue #124 | Sprint 13 | — | agente | a fazer |
 | 125 | RF-BUS-01 · Busca global | issue #125 | Sprint 13 | — | agente | a fazer |
 | 126 | RF-BUS-02 · Busca vazia: telas e ações rápidas | issue #126 | Sprint 13 | — | agente | a fazer |
+| 335 | Limpar comprovantes de graduação de origem enviados e não usados | issue #335 | Sprint 13 | — | agente | a fazer |
 | 127 | Pico de alunos, faturas e situações da assinatura no servidor | issue #127 | Sprint 14 | — | agente | a fazer |
 | 128 | RF-ASS-01 · Configurações › Assinatura | issue #128 | Sprint 14 | — | agente | a fazer |
 | 129 | RF-ASS-02 · Pagar fatura da assinatura | issue #129 | Sprint 14 | — | agente | a fazer |
@@ -220,6 +221,7 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Encaixes para as próximas sprints
 
+- **Sprint 08, cobranças (#71 a #77):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #78 (e-mails de reajuste e "Cobrança gerada", modelo "Pagamento confirmado") e #79 ("Enviar lembrete" no painel da cobrança). A limpeza de comprovante de graduação enviado e não usado (A4 da revisão da Sprint 07) é a #335, na Sprint 13. Sem issue nova além da #335.
 - **Sprint 06, ficha do aluno (#60, junto de #58 e #61):** permissão do Professor por unidade: ver ficha do aluno (padrão desligada); implementar junto da ficha, com migração do vetor `teacher_permissions` de 4 para 5, tela de configurações da unidade, `PermissionTable`, openapi e testes. Decisão do dono de 20/10/2026, só especificação até lá (`docs/especificacao/02`, `08`, `15`). Sem a chave, o Professor continua vendo os alunos da turma ou da aula como lista simples (RN-PRO-06). Ainda não há arquivo de item para #58 a #61; quem especificar a ficha lê este encaixe.
 - **Sprint 07, matrícula (#63) e benefícios (#66):** os encaixes de `ModalityUsage.activeStudents` e da RN-PRO-08 estão no fim do corpo das issues #63 e #66.
 - **Sprint 06, encaixes da lista, dos selos e da ficha do aluno (#58, #59, #60, #62):** o que ficou para depois está, com "Pronto quando", no fim do corpo das issues #63 (alcance do Professor e do Administrador, lista simples, modalidades e filtros, selo Novo, abas da ficha, datas no fuso da unidade), #65 (selo Bolsista), #67 (data de matrícula), #70 e #85 (selo Termo pendente), #72 (situação financeira e Em atraso), #73 (aba Financeiro e Cobrar) e #109 (Bloqueados). Sem issue nova.
