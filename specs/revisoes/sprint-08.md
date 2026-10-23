@@ -336,3 +336,75 @@ Ordem sugerida: A1, A2, A4 (as issues), A3 (depois de D1 a D4), A5 (depois de D2
 - Sprint 12 (inativação): a geração e a primeira cobrança já separam `ENROLLMENT_FEE` e `ONE_OFF` por tipo; a #111 precisa filtrar por tipo e a situação financeira da lista (D4) não é a mesma regra. A tolerância de 5 dias vive em `charge.tolerance_days`.
 - Dívida com prazo: `osv-scanner.toml` vence em 2027-01-15; o `ponytail:` do modelo de termo fixo vive até o RF-PNL-07; o repositório volta a ser privado antes da Sprint 22 (trava do `AGENTS.md`).
 - Nenhuma issue `depende de você` trava a Sprint 09.
+
+---
+
+### Rodada 2 — APROVAR — 2026-10-23, estado 5e2d54f
+
+Confere só os ajustes da rodada 1 e as respostas do dono. Não repete o clone limpo: o que mudou é teste, texto, o PDF do recibo e o piso de cobertura, e cada PR passou no `ci-gate` completo (back-end `verify` com JaCoCo, front `test:cov` com piso, e2e, onde a pasta mudou).
+
+#### Resumo e veredito
+
+Os ajustes A1 a A5 foram feitos, cada um em PR próprio para `dev`, com `ci-gate` verde e merge por squash; A6 a A8 viraram issues no marco da Sprint 09, sem correção, como o dono pediu; A9 ficou de fora, por decisão do dono. As quatro decisões estão aplicadas (D1 com código, D2 a D4 na especificação e no piso). Não há achado BLOQUEIA nem AJUSTAR novo. Dois achados pequenos desta rodada ficaram registrados (N1, corrigido no próprio PR; N2, sugestão). Dependem do dono as ações 1, 3 e 4 da rodada 1 (telas contra o canvas, token do PR #204, colaboradores). Resultado: `APROVAR`. O PR de `dev` para `main` é do dono.
+
+#### Estado revisado
+
+| | |
+|---|---|
+| `dev` | `5e2d54f` (igual a `origin/dev`) |
+| `main` | `8807a09d50c1bf11c4553c2ee470376fdc4e3456` (sem mudança) |
+| PRs desta rodada | #332 (#331), #334 (#333), #336 (encaixes), #337 (especificação), #339 (#338), #341 (#340), #345 (backlog das issues #342 a #344); #330 é a rodada 1 |
+| Issues | #331, #333, #338 e #340 fechadas no marco "Sprint 08 · Cobranças"; #335 (Sprint 13) e #342, #343, #344 (Sprint 09) abertas |
+
+#### Ajustes conferidos
+
+| Ajuste | Achado | Como foi feito | Evidência | Resultado |
+|---|---|---|---|---|
+| A1 | R08-1, R08-2 | issue #331, PR #332: `today()` no fuso da unidade em `ChargeActionsBase`; `ChargeRenegotiationIT` com `Clock` fixo em 22:30 de Brasília (já é 23/10 em UTC); regra do R08-2 e do fuso da unidade no `AGENTS.md` | **a falha foi reproduzida e some**: com o relógio fixo e as datas antigas, `invalid` reprovou (400 esperado, 201 recebido, `firstDueOn` 2026-10-22); com `today()` passam os 14 testes de `ChargeRenegotiationIT`, `ChargeCancelIT`, `ChargePanelIT` e `ChargeActionsIsolationIT`; `ci-gate` verde. Isso confirma a causa do R08-1, que na rodada 1 estava só por leitura de código | FEITO |
+| A2 | R08-3 | issue #333, PR #334: `gate()` em `src/test/gate.ts` e resposta retida em `AdvanceChargesDialog`, `OneOffChargeDialog`, `ChargePanel` e `LessonPanelPage` | os cinco arquivos 20 de 20 sem falha; `npm run test:cov` (paralelismo padrão) verde no PR. Ver N1: o `LessonPanelPage` ainda falhou uma vez depois, corrigido no #341 | FEITO, com N1 |
+| A3 | R08-4, D1 a D4 | PR #337: `10-cobrancas.md` (RN-COB-02, 04, 09, 10, 11, 12, 16, nova RN-COB-22, RF-COB-02, 03, 08, tabela de situações), `09-matricula.md` (RN-MAT-05, 07, 17), `07-planos-e-beneficios.md` (RN-PLA-05) | `git diff` do PR: 3 arquivos de especificação; as decisões "muda o comportamento" da rodada 1 estão escritas; D3 (Coordenador) em RN-COB-09 e 10; D4 na RN-COB-22 | FEITO |
+| A4 | R08-5 | blocos "Encaixe herdado da Sprint 08" nas issues #78 e #79; issue nova #335 (Sprint 13, comprovante de graduação abandonado, A4 da Sprint 07); PR #336 no `specs/backlog.md` | `gh issue view 78 79` traz o bloco (1 ocorrência cada); #335 no marco da Sprint 13 com o "Pronto quando" da rodada 1 | FEITO |
+| A5 | R08-6, D2 | issue #340, PR #341: `"src/features/charges/**": { lines: 100 }` no `vite.config.ts`, `AGENTS.md` e comentário; testes de Esc, envio em branco, envio repetido e falha na troca de vencimento; `retry` opcional em `ModalityDialog` (saem dois `retry={() => {}}` mortos) | as 394 instruções de `features/charges` cobertas na medição; o piso reprova quando só um arquivo roda ("Coverage for lines (40.4%) does not meet src/features/charges/** threshold"); `npm run test:cov`: 124 arquivos, 1079 testes, exit 0; sem `v8 ignore` | FEITO |
+| A6 | R08-7 | issue #342, Sprint 09, sem correção | `gh issue view 342` | ISSUE ABERTA |
+| A7 | R08-8 | issue #343, Sprint 09, sem correção | `gh issue view 343` | ISSUE ABERTA |
+| A8 | R08-9 | issue #344, Sprint 09, sem correção | `gh issue view 344` | ISSUE ABERTA |
+| A9 | R08-11, R08-13 | fora, por decisão do dono | segue como sugestão | NÃO FEITO (decidido) |
+| D1 | decisão sobre o PDF do recibo | issue #338, PR #339: o PDF do link público imprime o CPF mascarado (`***.456.789-**`; CPF fora do padrão vira `***`); rota nova `GET /api/v1/receipts/{code}/pdf` com sessão e CPF completo; painel e janela de pagamento usam a rota com sessão; RN-COB-16 já ajustada (#337) | `ReceiptPdfTest.maskedCpf`, `PaymentReceiptIT` (público mascarado e sem os 11 dígitos; rota com sessão com o completo; 401, 403 do Professor, 404 de outra organização, de outra unidade e de código desconhecido, com o mesmo corpo), `ChargePanel.test.tsx`, `payment.msw.test.ts`, e2e `pagamento.spec.ts`; OpenAPI com a rota nova; `OpenApiContractTest` e `ContractRoutesTest` passam; `ci-gate` verde com `payment` em 100% no JaCoCo | FEITO |
+| D2, D3, D4 | decisões de piso, perfil e situação financeira | A5 (D2), RN-COB-09 e 10 (D3), RN-COB-22 (D4) | acima | FEITO |
+
+Processo conferido: cada PR tem base `dev`, título no formato `#N: <título da issue>` com `Closes #N` (ou `docs:` nos de texto) e um commit de squash; nenhum push forçado, rebase, reset ou stash. Os PRs #336 e #337 foram mesclados com o CI de antes do #334 (o `strict` do `dev` é falso e eram só texto). O PR #339 precisou de um segundo commit depois do primeiro push (o e2e `pagamento.spec.ts` ainda esperava o endereço público do recibo): visto e corrigido antes do CI terminar, com o e2e do arquivo rodado localmente.
+
+#### Achados novos
+
+- **N1 · corrigido no PR #341 · teste** — `LessonPanelPage.test.tsx`, `CA10`. No `test:cov` do #341 o teste convertido no #333 falhou uma vez: `findByText("Carregando...")` não achou o texto. Causa: a resposta retida era registrada com `server.use` depois do `render`; sob carga o pedido da aula já tinha usado a resposta padrão. Corrigido com `setup({ respond })`, que registra a resposta retida antes do `render`; o arquivo passou 10 de 10 e o `test:cov` completo seguinte, mais o do CI, ficaram verdes. Os outros testes convertidos registram a resposta retida antes do pedido (o pedido só sai quando se digita, ou entra pelo `setup`). Não fiz 20 execuções do `test:cov` inteiro; se a classe voltar, vale a issue no formato das #318 e #320.
+- **N2 · SUGESTÃO · código** — `GrantBenefitDialog.tsx` (benefícios) ainda passa `retry={() => {}}` com `state="ready"`, o mesmo código morto que saiu das duas janelas de cobrança; `benefits` não está no piso de 100%, então não entrou no #340. Pode sair junto com o próximo toque no arquivo.
+
+#### Decisões do dono
+
+D1 a D4 foram respondidas e aplicadas (ver "Ajustes conferidos"). Nenhuma decisão nova.
+
+#### Ações do dono
+
+1. Conferir as telas contra o canvas, nos dois temas, a 360 px e a 1280 px (ação 1 da rodada 1). O painel e a janela de pagamento agora abrem o PDF pela rota com sessão: conferir que o CPF completo aparece no PDF aberto com a sessão e mascarado no aberto pela página `/recibo/:codigo`.
+2. Confirmar se o token de `segredo-falso.txt` (PR #204, fechado) é inventado; se não for, revogar no GitHub (ação 3 da rodada 1). Opcional: acrescentar ao `.gitleaksignore` a impressão digital do commit `6d5758a…` (PR #198).
+3. Conferir os colaboradores `itallovidal` e `lpatros` e os PRs #215 a #217 (ação 4 da rodada 1); decidir se `dev` passa a exigir revisão enquanto o repositório é público.
+4. Abrir o PR de `dev` para `main` com o método "Merge" (nunca squash) e, depois de revisar, dizer "sim" para liberar a Sprint 09.
+5. Opcional: apagar os branches mesclados (`item/75-…`, `item/76-…`, `item/77-…`, `item/331-…`, `item/333-…`, `item/338-…`, `item/340-…`, e os `docs/…` e `ajustes/…` já mesclados).
+
+#### Limitações e o que não foi conferido
+
+- Não repeti o clone limpo (`verify` completo, `test:cov`, e2e, imagens, seed): o que mudou foi teste, texto, o PDF do recibo e o piso, e cada PR passou no `ci-gate` completo (o #339 com o `verify` do back-end e o e2e do front; o #341 com o `test:cov` e o novo piso).
+- O PDF do recibo foi conferido por teste (texto extraído do PDF); o PDF aberto num leitor, o layout e a rota com sessão no navegador real não foram vistos.
+- A causa do R08-1 virou fato (reproduzida com relógio fixo); a das instabilidades de tela é da mesma classe medida nas #318 e #320, sem contagem em 20 execuções do `test:cov` completo.
+- As ações do dono 1, 3 e 4 da rodada 1 seguem abertas.
+
+#### Riscos para a próxima sprint
+
+- A Sprint 09 recebe, além dos encaixes da rodada 1 (#78, #79), as issues #342, #343 e #344.
+- O piso de 100% em `features/charges` vale daqui em diante: qualquer PR que mexa na pasta precisa de teste para a linha nova.
+- O instável de tela pode voltar em outro arquivo (`delay` curto ou `server.use` depois do `render`); a regra do `AGENTS.md` manda abrir a issue antes da rodada `OK`.
+- O recibo tem duas rotas de PDF (pública mascarada e com sessão completa): o portal (Sprint 10, #92) deve usar a com sessão para o aluno logado.
+
+---
+
+Ajustes A1 a A5 e D1 a D4 aplicados nos PRs #332, #334, #336, #337, #339 e #341; A6 a A8 abertos como #342, #343 e #344; A9 fora por decisão do dono.
