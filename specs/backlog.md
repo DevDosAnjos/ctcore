@@ -99,7 +99,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 82 | RF-COM-02 · Novo comunicado | issue #82 | Sprint 09 | — | agente | feito |
 | 83 | RF-COM-03 · Configurações › Textos | issue #83 | Sprint 09 | — | agente | feito |
 | 84 | RF-NOT-01 · Painel do sino (notificações) | issue #84 | Sprint 09 | — | agente | feito |
-| 342 | Afirmar que o aluno com bolsa de 100% continua Ativo | issue #342 | Sprint 09 | — | agente | a fazer |
+| 342 | Afirmar que o aluno com bolsa de 100% continua Ativo | issue #342 | Sprint 09 | — | agente | feito |
 | 343 | Cache do Playwright que valha para PR novo e instalação do Chromium estável | issue #343 | Sprint 09 | — | agente | a fazer |
 | 344 | aguardar-ci.sh: resultado recuperável de um watcher órfão | issue #344 | Sprint 09 | — | agente | a fazer |
 | 352 | Cobertura de billing cai para 0,99 conforme o horário: o ramo "Cobrança" do ChargeNoticeJob só é coberto pelo agendador por acaso | issue #352 | Sprint 09 | — | agente | feito |
