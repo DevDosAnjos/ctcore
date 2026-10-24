@@ -98,8 +98,13 @@ test("@critical Coordenador conclui a nova matrícula em cinco etapas", async ({
   await page.setViewportSize({ width: 360, height: 740 });
   const noOverflow = async () => expect(await page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")).toBe(true);
 
+  // #362: a barra superior também cabe logo na carga (unidades carregando) e depois de carregadas.
+  await noOverflow();
   await open(page, "/alunos/nova-matricula");
+  await noOverflow();
   await expect(page.getByText("Etapa 1 de 5")).toBeVisible();
+  await noOverflow();
+  await expect(page.getByRole("status").filter({ hasText: "Carregando unidades..." })).toHaveCount(0);
   await noOverflow();
   await page.getByLabel("CPF do aluno").fill("52998224725");
   await page.getByRole("button", { name: "Buscar" }).click();

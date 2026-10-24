@@ -6,11 +6,11 @@ import { ALL, useUnitScope } from "./UnitScopeProvider";
 export function UnitSwitcher() {
   const { t } = useTranslation();
   const scope = useUnitScope();
-  if (scope.status === "loading") return <span role="status" className="text-sm text-muted-foreground">{t("unitScope.loading")}</span>;
+  if (scope.status === "loading") return <span role="status" className="sr-only">{t("unitScope.loading")}</span>;
   if (scope.status === "error") {
     return (
-      <span className="flex items-center gap-2">
-        <span role="alert" className="text-sm">{t("unitScope.error")}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span role="alert" className="min-w-0 truncate text-sm">{t("unitScope.error")}</span>
         <Button variant="outline" size="sm" onClick={scope.retry}>{t("states.retry")}</Button>
       </span>
     );
