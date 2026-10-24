@@ -46,6 +46,8 @@ type Draft = {
   fees: Record<FeeKey, number | null>;
   pixKey: string;
   reminders: string;
+  remindersEnabled: boolean;
+  remindersHour: string;
   teacher: Record<TeacherKey, boolean>;
   directoryEnabled: boolean;
   trialLinkEnabled: boolean;
@@ -71,6 +73,8 @@ function toDraft(d: UnitDetail): Draft {
     fees: s.feesCents,
     pixKey: s.pixKey ?? "",
     reminders: s.reminderDays.join(", "),
+    remindersEnabled: s.remindersEnabled,
+    remindersHour: String(s.remindersHour),
     teacher: s.teacherPermissions,
     directoryEnabled: s.directoryEnabled,
     trialLinkEnabled: s.trialLinkEnabled,
@@ -111,6 +115,8 @@ function toBody(d: Draft, base: Draft): UnitUpdate {
       feesCents: Object.fromEntries(FEE_KEYS.map((k) => [k, d.fees[k] ?? 0])) as Record<FeeKey, number>,
       pixKey: blankToNull(d.pixKey),
       reminderDays: parseDays(d.reminders) ?? [],
+      remindersEnabled: d.remindersEnabled,
+      remindersHour: Number(d.remindersHour),
       teacherPermissions: d.teacher,
       directoryEnabled: d.directoryEnabled,
       trialLinkEnabled: d.trialLinkEnabled,
@@ -163,6 +169,7 @@ function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useU
     whatsapp: d.whatsapp !== "" && !isValidPhone(d.whatsapp) ? t("fields.phoneInvalid") : undefined,
     email: d.email.trim() !== "" && !EMAIL.test(d.email.trim()) ? t("unitSettings.emailInvalid") : undefined,
     dueDays: d.dueDays.length === 0 ? t("unitSettings.dueDaysRequired") : undefined,
+    remindersHour: !/^\d{1,2}$/.test(d.remindersHour.trim()) || Number(d.remindersHour) > 23 ? t("unitSettings.remindersHourInvalid") : undefined,
     reminders:
       !reminders || reminders.some((n) => n < -30 || n > 60) || new Set(reminders).size !== reminders.length || reminders.length > MAX_REMINDERS
         ? t("unitSettings.remindersInvalid", { max: MAX_REMINDERS })
@@ -218,6 +225,8 @@ function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useU
       [t("unitSettings.enrollmentFeeValue"), d.enrollmentFeeCents, c.enrollmentFeeCents, money],
       ...FEE_KEYS.map((k): [string, unknown, unknown, (v: unknown) => string] => [t(`unitSettings.fees.${k}`), d.fees[k], c.fees[k], money]),
       [t("unitSettings.pixKey"), d.pixKey, c.pixKey, text],
+      [t("unitSettings.remindersEnabledField"), d.remindersEnabled, c.remindersEnabled, text],
+      [t("unitSettings.remindersHour"), d.remindersHour, c.remindersHour, text],
       [t("unitSettings.reminders"), d.reminders, c.reminders, text],
       ...TEACHER_KEYS.map((k): [string, unknown, unknown, (v: unknown) => string] => [t(`unitSettings.teacher.${k}`), d.teacher[k], c.teacher[k], text]),
       [t("unitSettings.directory"), d.directoryEnabled, c.directoryEnabled, text],
@@ -250,6 +259,12 @@ function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useU
       key={nonce}
       className="flex max-w-3xl flex-col gap-4"
       noValidate
+      // Com o botão desabilitado o Enter não envia: leva o foco ao primeiro campo com erro (CA8).
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" || !blocked || !(e.target instanceof HTMLInputElement)) return;
+        e.preventDefault();
+        e.currentTarget.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      }}
       onSubmit={(e) => {
         e.preventDefault();
         if (!blocked && dirty && !busy) void submit();
@@ -329,7 +344,15 @@ function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useU
       </Card>
 
       <Card heading="h2" title={t("unitSettings.sections.reminders")}>
-        <Text label={t("unitSettings.reminders")} value={d.reminders} onChange={set("reminders")} inputMode="text" autoComplete="off" help={t("unitSettings.remindersHelp")} error={shown("settings.reminderDays", problems.reminders)} />
+        <div className="flex flex-col gap-3">
+          <Check label={t("unitSettings.remindersEnabled")} help={t("unitSettings.remindersEnabledHelp")} checked={d.remindersEnabled} onChange={set("remindersEnabled")} />
+          {!d.remindersEnabled && <p className="text-sm">{t("unitSettings.remindersOff")}</p>}
+          <Text label={t("unitSettings.remindersHour")} value={d.remindersHour} onChange={set("remindersHour")} inputMode="numeric" autoComplete="off" disabled={!d.remindersEnabled} help={t("unitSettings.remindersHourHelp")} error={shown("settings.remindersHour", problems.remindersHour)} />
+          <Text label={t("unitSettings.reminders")} value={d.reminders} onChange={set("reminders")} inputMode="text" autoComplete="off" disabled={!d.remindersEnabled} help={t("unitSettings.remindersHelp")} error={shown("settings.reminderDays", problems.reminders)} />
+          <p className="text-sm text-muted-foreground">{t("unitSettings.remindersDefault")}</p>
+          <p className="text-sm text-muted-foreground">{t("unitSettings.remindersChannel")}</p>
+          <p className="text-sm text-muted-foreground">{t("unitSettings.remindersBlockNotice")}</p>
+        </div>
       </Card>
 
       <Card heading="h2" title={t("unitSettings.sections.teacher")}>
