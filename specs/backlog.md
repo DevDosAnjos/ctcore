@@ -104,7 +104,9 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 344 | aguardar-ci.sh: resultado recuperável de um watcher órfão | issue #344 | Sprint 09 | — | agente | feito |
 | 352 | Cobertura de billing cai para 0,99 conforme o horário: o ramo "Cobrança" do ChargeNoticeJob só é coberto pelo agendador por acaso | issue #352 | Sprint 09 | — | agente | feito |
 | 358 | AuditServiceIT.writesDiffWithoutSecrets instável: '4111' coincide com carimbo de hora do log | issue #358 | Sprint 09 | — | agente | feito |
+| 362 | Teste e2e da matrícula instável: estouro horizontal a 360 px (CA24) | issue #362 | Sprint 09 | — | agente | feito |
 | 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | a fazer |
+| 368 | Testes e2e poderem sobrescrever respostas do MSW por teste (worker.use) | issue #368 | Sprint 10 | — | agente | a fazer |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | a fazer |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |
