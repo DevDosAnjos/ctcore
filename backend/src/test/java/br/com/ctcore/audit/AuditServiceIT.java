@@ -46,23 +46,24 @@ class AuditServiceIT extends PostgresIT {
     @Test
     @DisplayName("RN-LGP-11, CA2, CA5, CA9: grava só os campos alterados, sem chaves sensíveis, e o log não traz valores")
     void writesDiffWithoutSecrets(CapturedOutput out) {
+        final String card = "4111111111111111";
         var a = create();
         try (var s = Scopes.open(a.id(), a.unitId())) {
             tx.execute(() -> {
                 audit.record(entry(ACCOUNT, a.unitId(),
                         Map.of("nome", "Ana", "faixa", "branca", "password", "SEGREDO-ANTES"),
-                        Map.of("nome", "Ana", "faixa", "azul", "cardNumber", "4111111111111111")));
+                        Map.of("nome", "Ana", "faixa", "azul", "cardNumber", card)));
                 return null;
             });
         }
         var row = adminJdbc().queryForMap("select * from audit_log where organization_id = ?", a.id());
         assertThat(row.get("before_data").toString()).contains("branca").doesNotContain("nome", "SEGREDO-ANTES");
-        assertThat(row.get("after_data").toString()).contains("azul").doesNotContain("4111");
+        assertThat(row.get("after_data").toString()).contains("azul").doesNotContain(card);
         assertThat(row).containsEntry("actor_type", "ACCOUNT").containsEntry("action", "student.update")
                 .containsEntry("entity_type", "student").containsEntry("entity_id", "42");
         assertThat(row.get("occurred_at")).isNotNull();
         assertThat(out.getOut() + out.getErr()).contains("audit action=student.update entity=student id=42")
-                .doesNotContain("branca", "azul", "SEGREDO-ANTES", "4111");
+                .doesNotContain("branca", "azul", "SEGREDO-ANTES", card);
     }
 
     @Test
