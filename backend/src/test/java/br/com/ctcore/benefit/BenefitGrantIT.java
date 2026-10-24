@@ -35,6 +35,7 @@ class BenefitGrantIT extends OrganizationBase {
             adminJdbc().update("delete from " + table);
         }
         adminJdbc().update("delete from account where email like 'grant-%@example.com'");
+        cleanLinked("bennot-");
     }
 
     private record Fx(UUID student, UUID row) {}
@@ -126,6 +127,24 @@ class BenefitGrantIT extends OrganizationBase {
         assertThat(student.get("status").asText()).isEqualTo("ACTIVE");
     }
 
+
+    @Test
+    @DisplayName("#84 CA4: benefício de 60% avisa o Coordenador; o de 50% e o de 30% não avisam")
+    void notifiesCoordinator() throws Exception {
+        var t = tenant();
+        var c = linked(t.orgId(), Role.COORDINATOR, "bennot-");
+        var admin = linked(t.orgId(), Role.ADMINISTRATOR, "bennot-", t.unitId());
+        assertThat(post("", body(enrolled(t, t.unitId(), "Bia", 15000), "PERCENT", 50), c).getStatus()).isEqualTo(201);
+        assertThat(post("", body(enrolled(t, t.unitId(), "Caio", 15000), "PERCENT", 30), c).getStatus()).isEqualTo(201);
+        assertThat(adminJdbc().queryForObject("select count(*) from notification", Integer.class)).isZero();
+        var high = enrolled(t, t.unitId(), "Duda", 15000);
+        assertThat(post("", body(high, "PERCENT", 60), c).getStatus()).isEqualTo(201);
+        var rows = adminJdbc().queryForList("select link_id, type, ref_type, params::text as params from notification");
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0)).containsEntry("link_id", c.activeLinkId()).containsEntry("type", "HIGH_BENEFIT").containsEntry("ref_type", "benefit");
+        assertThat((String) rows.get(0).get("params")).contains("Duda");
+        assertThat(admin.activeLinkId()).isNotEqualTo(rows.get(0).get("link_id"));
+    }
     @Test
     @DisplayName("CA2, CA10: sem confirmação 409 e nada muda; com replaceExisting encerra o atual (bolsa para reais e de volta) e audita")
     void replace() throws Exception {

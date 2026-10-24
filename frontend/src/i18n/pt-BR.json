@@ -2538,6 +2538,53 @@
       "back": "Ir para Minha conta"
     }
   },
+  "notifications": {
+    "title": "Notificações",
+    "bell": {
+      "label": "Notificações",
+      "withCount": "Notificações, {{count}} não lidas"
+    },
+    "unreadMark": "Não lida:",
+    "filters": {
+      "label": "Filtrar notificações",
+      "all": "Todas ({{count}})",
+      "unread": "Não lidas ({{count}})"
+    },
+    "groups": {
+      "TODAY": "Hoje",
+      "WEEK": "Esta semana"
+    },
+    "markAll": "Marcar todas como lidas",
+    "allRead": {
+      "title": "Tudo lido",
+      "text": "Você não tem notificações não lidas."
+    },
+    "empty": {
+      "title": "Nenhuma notificação",
+      "text": "Quando algo precisar da sua atenção, aparece aqui."
+    },
+    "receiveAll": {
+      "label": "Receber tudo",
+      "hint": "Receber também os avisos de todas as unidades."
+    },
+    "failed": "Não foi possível concluir. Nada foi alterado; tente de novo.",
+    "time": {
+      "now": "agora",
+      "minutes": "há {{count}} min",
+      "hours": "há {{count}} h",
+      "days": "há {{count}} dias"
+    },
+    "types": {
+      "PAYMENT_RECEIVED": { "text": "{{studentName}} pagou {{amount}}.", "action": "Ver cobranças" },
+      "HIGH_BENEFIT": { "text": "Benefício acima de 50% concedido a {{studentName}}.", "action": "Ver benefícios" },
+      "STUDENT_MAJORITY": { "text": "{{studentName}} completou 18 anos.", "action": "Ver aluno" },
+      "EMAIL_PROBLEM": { "text": "Um e-mail de aluno ou responsável está com problema.", "action": "Ver aluno" },
+      "INVITE_PENDING": { "text": "O convite de {{personName}} segue sem aceite há 7 dias.", "action": "Ver usuários" },
+      "CLOSURE_REQUEST": { "text": "Há um pedido de encerramento aguardando decisão.", "action": "Abrir configurações" },
+      "MP_DISCONNECTED": { "text": "A conexão de pagamentos da academia caiu.", "action": "Abrir configurações" },
+      "SUBSCRIPTION_OVERDUE": { "text": "A assinatura do CTCore está em atraso.", "action": "Abrir configurações" }
+    }
+  },
   "format": {
     "empty": "—",
     "today": "hoje",

@@ -36,6 +36,7 @@ class PaymentIT extends OrganizationBase {
     @AfterEach
     void clean() {
         BillingFixtures.clean(adminJdbc());
+        cleanLinked("paynot-");
         adminJdbc().update("delete from student");
         adminJdbc().update("delete from account where email like 'pay-%@example.com'");
     }
@@ -66,6 +67,21 @@ class PaymentIT extends OrganizationBase {
         return adminJdbc().queryForObject("select count(*) from " + table, Integer.class);
     }
 
+
+    @Test
+    @DisplayName("#84 CA3: o pagamento no balcão avisa o Administrador da unidade com a cobrança como origem; pagamento recusado não avisa")
+    void notifiesAdministrator() throws Exception {
+        var t = tenant();
+        var admin = linked(t.orgId(), Role.ADMINISTRATOR, "paynot-", t.unitId());
+        var charge = charge(t, 15000, "OPEN");
+        assertThat(send(pay(charge, "{\"method\":\"BOLETO\"}"), admin).getStatus()).isEqualTo(400);
+        assertThat(adminJdbc().queryForObject("select count(*) from notification where link_id = ?", Integer.class, admin.activeLinkId())).isZero();
+        assertThat(send(pay(charge, "{\"method\":\"CASH\"}"), admin).getStatus()).isEqualTo(201);
+        var rows = adminJdbc().queryForList("select type, ref_type, ref_id, params::text as params from notification where link_id = ?", admin.activeLinkId());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0)).containsEntry("type", "PAYMENT_RECEIVED").containsEntry("ref_type", "charge").containsEntry("ref_id", charge);
+        assertThat((String) rows.get(0).get("params")).contains("Maria Souza").contains("15000");
+    }
     @Test
     @DisplayName("CA3: Administrador paga a cobrança em aberto: 201, cobrança PAID, pagamento e recibo; com ou sem amountCents")
     void registers() throws Exception {

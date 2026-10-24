@@ -46,6 +46,7 @@ class EmailRegistryIT extends PostgresIT {
     @AfterEach
     void clean() {
         root.detachAppender(logs);
+        cleanLinked("emlnot-");
         admin.update("delete from email_message where to_email like '%.example'");
         admin.update("delete from student where email like '%.example'");
         admin.update("delete from account_link where account_id in (select id from account where email like '%.example')");
@@ -138,6 +139,26 @@ class EmailRegistryIT extends PostgresIT {
         assertThat(outbox.list()).hasSize(1);
     }
 
+
+    @Test
+    @DisplayName("#84 CA6: e-mail do aluno marcado Com problema avisa o Administrador da unidade, uma vez, sem o endereço")
+    void emailProblemNotifies() {
+        UUID org = org();
+        UUID unit = admin.queryForObject("select id from unit where organization_id = ?", UUID.class, org);
+        var administrator = linked(org, br.com.ctcore.identity.Role.ADMINISTRATOR, "emlnot-", unit);
+        UUID student = BillingFixtures.student(admin, org, unit, "Aluno Teste");
+        admin.update("update student set email = 'aluno@notice.example' where id = ?", student);
+
+        assertThat(problems.mark(org, "aluno@notice.example")).isEqualTo(1);
+        assertThat(problems.mark(org, "aluno@notice.example")).isZero();
+        var rows = admin.queryForList("select type, ref_type, ref_id, params::text as params from notification where link_id = ?", administrator.activeLinkId());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0)).containsEntry("type", "EMAIL_PROBLEM").containsEntry("ref_type", "student").containsEntry("ref_id", student);
+        assertThat(rows.toString()).doesNotContain("notice.example");
+        problems.clear(org, "aluno@notice.example");
+        assertThat(problems.mark(org, "aluno@notice.example")).isEqualTo(1);
+        assertThat(admin.queryForObject("select count(*) from notification where link_id = ?", Integer.class, administrator.activeLinkId())).isEqualTo(1);
+    }
     @Test
     @DisplayName("A tarefa apaga SKIPPED e BOUNCED antigos e não os reenvia")
     void cleanup() {

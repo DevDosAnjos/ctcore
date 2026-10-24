@@ -2903,6 +2903,89 @@ paths:
         '429':
           description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /notifications:
+    get:
+      summary: Notificações do vínculo ativo, dos últimos 7 dias, com o contador de não lidas (RF-NOT-01, RN-NOT-01). Coordenador, Administrador e Professor.
+      description: |
+        Hoje e os 6 dias anteriores no fuso da unidade da notificação, do mais novo ao mais velho; `group` é `TODAY` ou `WEEK`. `filter=unread` só traz as
+        não lidas. `unreadCount` conta as não lidas de qualquer data. `params` traz só o necessário para o texto (nome, valor em centavos), nunca CPF,
+        e-mail ou telefone. O Professor recebe lista vazia (nenhum tipo atual é de turma). Aluno e Responsável: 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: filter, in: query, required: false, schema: { type: string, enum: [all, unread], default: all } }
+      responses:
+        '200':
+          description: Notificações e contador.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/unread-count:
+    get:
+      summary: Só o contador de não lidas do vínculo ativo (RN-NOT-01), barato para a barra superior.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Contador.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/read-all:
+    post:
+      summary: Marca como lidas todas as notificações do vínculo ativo (RF-NOT-01).
+      description: Responde 200 com quantas mudaram; repetir responde 0. Grava `notification.read_all` na auditoria, sem texto de notificação.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '200':
+          description: Quantas mudaram.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [changed]
+                properties:
+                  changed: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/preferences:
+    get:
+      summary: Preferência "receber tudo" do vínculo ativo (RN-NOT-03).
+      description: "`canReceiveAll` é verdadeiro só para o Coordenador; para os demais perfis de gestão, `receiveAll` vem falso."
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Preferência.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      summary: Liga ou desliga "receber tudo" (RN-NOT-03). Só o Coordenador.
+      description: |
+        Com a chave ligada o Coordenador passa a receber também as notificações de unidade. Outro perfil de gestão: 403. `receiveAll` ausente ou que
+        não seja booleano: 422. Grava `notification.preferences_updated` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receiveAll]
+              properties:
+                receiveAll: { type: boolean }
+      responses:
+        '200':
+          description: Preferência gravada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: 'receiveAll ausente ou que não seja booleano (UNPROCESSABLE).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /portal/students:
     get:
       summary: Cartões dos alunos do portal (RN-RSP-03, RN-LGP-03). Responsável e Aluno.
@@ -3343,6 +3426,33 @@ components:
       properties:
         body: { type: string, minLength: 20, maxLength: 20000 }
         reaccept: { type: boolean }
+    NotificationType:
+      type: string
+      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE]
+    Notification:
+      type: object
+      required: [id, type, group, createdAt, readAt, refType, refId, params]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/NotificationType' }
+        group: { type: string, enum: [TODAY, WEEK] }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: string, format: date-time, nullable: true }
+        refType: { type: string, nullable: true, description: "Objeto de origem: charge, benefit, student, guardian, invite." }
+        refId: { type: string, format: uuid, nullable: true }
+        params: { type: object, additionalProperties: true, description: "Valores para o texto (studentName, personName, amountCents)." }
+    NotificationList:
+      type: object
+      required: [items, unreadCount]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        unreadCount: { type: integer, minimum: 0 }
+    NotificationPreferences:
+      type: object
+      required: [receiveAll, canReceiveAll]
+      properties:
+        receiveAll: { type: boolean }
+        canReceiveAll: { type: boolean }
     TextModelKey:
       type: string
       enum: [REMINDER_BEFORE, REMINDER_DUE, REMINDER_OVERDUE, WELCOME, ANNOUNCEMENT_CANCELED_CLASS, ANNOUNCEMENT_TEACHER_CHANGE, ANNOUNCEMENT_SCHEDULE_CHANGE, ANNOUNCEMENT_NO_CLASS_DAY, ANNOUNCEMENT_GENERAL]

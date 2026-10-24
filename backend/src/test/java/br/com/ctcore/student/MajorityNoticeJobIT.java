@@ -20,6 +20,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 class MajorityNoticeJobIT extends OrganizationBase {
     @Autowired JdbcClient jdbc;
     @Autowired OrganizationTransactions transactions;
+    @Autowired br.com.ctcore.notification.Notifications notifications;
     @Autowired EmailService emails;
     @Autowired ScopedAudit audit;
 
@@ -27,6 +28,7 @@ class MajorityNoticeJobIT extends OrganizationBase {
 
     @AfterEach
     void clean() {
+        cleanLinked("majnot-");
         adminJdbc().update("delete from email_message where to_email like '%.example'");
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
@@ -62,7 +64,7 @@ class MajorityNoticeJobIT extends OrganizationBase {
         guardian(t, late, "g3@majority.example", true, false);
         guardian(t, adultAtSignup, "g4@majority.example", true, false);
         guardian(t, tomorrow, "g5@majority.example", true, false);
-        var job = new MajorityNoticeJob(transactions, jdbc, emails, audit, clock);
+        var job = new MajorityNoticeJob(transactions, jdbc, emails, audit, clock, notifications);
 
         assertThat(job.runOnce()).isEqualTo(2);
         assertThat(adminJdbc().queryForList("select id from student where majority_notice_at is not null", UUID.class)).containsExactlyInAnyOrder(due, late);
@@ -74,5 +76,20 @@ class MajorityNoticeJobIT extends OrganizationBase {
 
         assertThat(job.runOnce()).isZero();
         assertThat(adminJdbc().queryForObject("select count(*) from email_message where template = 'STUDENT_MAJORITY' and to_email like '%majority.example'", Long.class)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("#84 CA5: o aviso dos 18 anos gera STUDENT_MAJORITY ao Administrador da unidade de cadastro, uma vez")
+    void notifiesAdministrator() {
+        Tenant t = tenant();
+        var admin = linked(t.orgId(), br.com.ctcore.identity.Role.ADMINISTRATOR, "majnot-", t.unitId());
+        UUID due = student(t, "Aluno Dezoito", "2008-06-15", "2026-01-01T00:00:00Z");
+        var job = new MajorityNoticeJob(transactions, jdbc, emails, audit, clock, notifications);
+        assertThat(job.runOnce()).isEqualTo(1);
+        assertThat(job.runOnce()).isZero();
+        var rows = adminJdbc().queryForList("select type, ref_type, ref_id, params::text as params from notification where link_id = ?", admin.activeLinkId());
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0)).containsEntry("type", "STUDENT_MAJORITY").containsEntry("ref_type", "student").containsEntry("ref_id", due);
+        assertThat((String) rows.get(0).get("params")).contains("Aluno Dezoito");
     }
 }
