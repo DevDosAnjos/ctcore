@@ -3,6 +3,7 @@ package br.com.ctcore.communication;
 import br.com.ctcore.api.error.ApiValidationException;
 import br.com.ctcore.api.page.PageRequest;
 import br.com.ctcore.identity.AccountPrincipal;
+import br.com.ctcore.mail.TextModels;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.util.UUID;
@@ -26,8 +27,10 @@ class AnnouncementController {
     private final Announcements announcements;
     private final AnnouncementTargets targets;
     private final AnnouncementWrite write;
+    private final TextModels texts;
 
-    AnnouncementController(Announcements announcements, AnnouncementTargets targets, AnnouncementWrite write) {
+    AnnouncementController(Announcements announcements, AnnouncementTargets targets, AnnouncementWrite write, TextModels texts) {
+        this.texts = texts;
         this.announcements = announcements;
         this.targets = targets;
         this.write = write;
@@ -43,6 +46,13 @@ class AnnouncementController {
     @GetMapping("/api/v1/announcements/targets")
     AnnouncementTargets.Targets targets(@AuthenticationPrincipal AccountPrincipal who) {
         return targets.targets(who);
+    }
+
+    /** RN-COM-04, RN-COM-12: o título e o texto em uso de cada tipo (o da organização ou o da plataforma); lê quem pode enviar comunicado. */
+    @GetMapping("/api/v1/announcements/templates")
+    TextModels.Templates templates(@AuthenticationPrincipal AccountPrincipal who) {
+        targets.requireAnnouncements(who);
+        return texts.announcementTemplates(who.organizationId());
     }
 
     @PostMapping("/api/v1/announcements/preview")

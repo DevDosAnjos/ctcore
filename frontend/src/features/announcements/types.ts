@@ -64,3 +64,6 @@ export interface AnnouncementImage {
   name: string;
   url: string;
 }
+
+// Espelha AnnouncementTemplates do OpenAPI (RN-COM-12): o título e o texto em uso de cada tipo, com {campo} por preencher.
+export type AnnouncementTemplates = Record<AnnouncementType, { title: string; body: string }>;

@@ -78,6 +78,16 @@ public class EmailService {
         return store(organizationId, skip, to, template, args);
     }
 
+    /**
+     * RN-COM-12: an organization e-mail whose subject and text come ready (the organization's own text of a model). Same opt-out and problem rules as
+     * {@link #send(UUID, String, EmailTemplate, Object...)}; the text is escaped here, so a field value never becomes markup.
+     */
+    public UUID sendText(UUID organizationId, String to, EmailTemplate template, String subject, String plainBody) {
+        String skip = transactions.provision(organizationId, () -> skipReason(organizationId, to, template));
+        String html = EmailLayout.html(HtmlUtils.htmlEscape(plainBody, "UTF-8").replace("\n", "<br>"), null, null);
+        return insert(organizationId, skip, to, template, subject.replaceAll("[\r\n]+", " "), html);
+    }
+
     private String skipReason(UUID org, String to, EmailTemplate template) {
         if (template.kind == EmailTemplate.Kind.ANNOUNCEMENT && jdbc.sql("select 1 from account_link l join account a on a.id = l.account_id "
                 + "where l.organization_id = :o and lower(a.email) = lower(:e) and not l.announcement_email limit 1")
@@ -96,6 +106,10 @@ public class EmailService {
         Object[] safe = Arrays.stream(args).map(a -> HtmlUtils.htmlEscape(String.valueOf(a), "UTF-8")).toArray();
         String body = EmailLayout.html(messages.getMessage(template.key + ".body", safe, PT_BR),
                 template.link ? (String) safe[0] : null, messages.getMessage("mail.button", null, PT_BR));
+        return insert(organizationId, skip, to, template, subject, body);
+    }
+
+    private UUID insert(UUID organizationId, String skip, String to, EmailTemplate template, String subject, String body) {
         boolean on = sender.isEnabled() && skip == null;
         OffsetDateTime now = now();
         UUID id = jdbc.sql("insert into email_message (to_email, template, subject, body, status, next_attempt_at, created_at, organization_id, last_error) "

@@ -30,11 +30,19 @@ const teacher: AnnouncementTargets = { organization: false, units: [], modalitie
 const preview = (recipients: number, whatsapp: unknown = null) => HttpResponse.json({ recipients, portal: recipients, email: recipients - 1, whatsapp, channels: ["PORTAL"] });
 const failure = (status: number, code: string, fields: { field: string; message: string }[] = []) => HttpResponse.json({ code, message: "m", fields, traceId: "t" }, { status });
 
+const platform = {
+  CANCELED_CLASS: { title: "Aula cancelada", body: "A aula de {turma} do dia {data}, às {horario}, foi cancelada. Avisaremos quando houver reposição." },
+  TEACHER_CHANGE: { title: "Troca de professor", body: "A aula de {turma} terá outro professor a partir de {data}." },
+  SCHEDULE_CHANGE: { title: "Mudança de horário", body: "A aula de {turma} muda de horário a partir de {data}. O novo horário é {horario}." },
+  NO_CLASS_DAY: { title: "Dia sem aula", body: "Não haverá aula em {periodo}: {motivo}." },
+  GENERAL: { title: "Aviso geral", body: "" },
+};
+
 let previews: AnnouncementDraft[];
 let creates: AnnouncementDraft[];
 
-type Options = { role?: string; targets?: AnnouncementTargets; targetsResponse?: () => Response; create?: () => Response; path?: string };
-function setup({ role = "COORDINATOR", targets = full, targetsResponse, create, path = "/comunicados/novo" }: Options = {}) {
+type Options = { role?: string; templates?: typeof platform; targets?: AnnouncementTargets; targetsResponse?: () => Response; create?: () => Response; path?: string };
+function setup({ role = "COORDINATOR", templates = platform, targets = full, targetsResponse, create, path = "/comunicados/novo" }: Options = {}) {
   previews = [];
   creates = [];
   window.history.replaceState(null, "", path);
@@ -43,6 +51,7 @@ function setup({ role = "COORDINATOR", targets = full, targetsResponse, create, 
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role as never) })),
     http.get("/api/v1/units/reachable", () => HttpResponse.json({ allUnits: true, units: [] })),
     http.get("/api/v1/announcements/targets", () => targetsResponse?.() ?? HttpResponse.json(targets)),
+    http.get("/api/v1/announcements/templates", () => HttpResponse.json({ templates })),
     http.post("/api/v1/announcements/preview", async ({ request }) => {
       const draft = (await request.json()) as AnnouncementDraft;
       previews.push(draft);
@@ -128,6 +137,15 @@ describe("NewAnnouncementPage (RF-COM-02)", () => {
     expect(screen.getByLabelText("Tipo")).toHaveValue("CANCELED_CLASS");
     expect(screen.getByLabelText("Texto")).toHaveValue("A aula de Jiu-Jitsu Adulto do dia 03/11/2026, às 19:00, foi cancelada. Avisaremos quando houver reposição.");
     expect(await screen.findByText("Este aviso vai para 8 pessoas")).toBeInTheDocument();
+  });
+
+  it("CA18: o texto próprio do servidor é o inicial do tipo, com {turma}, {data} e {horario} preenchidos e [marcador] no que a tela não sabe", async () => {
+    const own = { ...platform, CANCELED_CLASS: { title: "Hoje não tem {turma}", body: "Sem {turma} em {data} às {horario} ({unidade}). {inventado}" } };
+    setup({ templates: own, path: "/comunicados/novo?classId=k1&type=CANCELED_CLASS&date=2026-11-03" });
+    await ready();
+    await screen.findByLabelText("Destino");
+    expect(screen.getByLabelText("Título")).toHaveValue("Hoje não tem Jiu-Jitsu Adulto");
+    expect(screen.getByLabelText("Texto")).toHaveValue("Sem Jiu-Jitsu Adulto em 03/11/2026 às [horário] ([unidade]). {inventado}");
   });
 
   it("CA26: o dia sem aula chega pela URL com a unidade, o período, o motivo e o vínculo ao dia", async () => {

@@ -26,6 +26,7 @@ abstract class ReminderBase extends OrganizationBase {
     @Autowired protected JdbcClient jdbc;
     @Autowired protected OrganizationTransactions transactions;
     @Autowired protected EmailService email;
+    @Autowired protected br.com.ctcore.mail.TextModels texts;
     @Autowired protected SmsSender sms;
     @Autowired protected MessageSource messages;
 
@@ -41,7 +42,7 @@ abstract class ReminderBase extends OrganizationBase {
 
     protected ReminderJob job(String instant, SmsSender smsSender) {
         Clock clock = Clock.fixed(Instant.parse(instant), ZoneOffset.UTC);
-        return new ReminderJob(transactions, jdbc, new ReminderSender(jdbc, email, clock), new BlockWarningSms(jdbc, smsSender, messages, clock), clock);
+        return new ReminderJob(transactions, jdbc, new ReminderSender(jdbc, email, clock, texts), new BlockWarningSms(jdbc, smsSender, messages, clock), clock);
     }
 
     protected ReminderJob job() {
