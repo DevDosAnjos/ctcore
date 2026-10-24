@@ -153,8 +153,18 @@ class ChargeNoticeIT extends OrganizationBase {
         UUID good = charge(t, adult(t, "notice-boa@example.com"), "2026-10-10", "OPEN");
         EmailService failing = org.mockito.Mockito.mock(EmailService.class);
         org.mockito.Mockito.when(failing.send(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq("notice-erro@example.com"),
-                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenThrow(new IllegalStateException("fora do ar"));
-        new ChargeNoticeJob(transactions, jdbc, failing, Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"), ZoneOffset.UTC)).runOnce();
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenThrow(new IllegalStateException("fora do ar notice-erro@example.com"));
+        Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        root.addAppender(logs);
+        try {
+            new ChargeNoticeJob(transactions, jdbc, failing, Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"), ZoneOffset.UTC)).runOnce();
+        } finally {
+            root.detachAppender(logs);
+        }
+        assertThat(logs.list).anySatisfy(e -> assertThat(e.getFormattedMessage()).contains("cause=IllegalStateException"));
+        assertThat(logs.list).noneMatch(e -> e.getFormattedMessage().contains("notice-erro") || e.getThrowableProxy() != null);
         assertThat(adminJdbc().queryForObject("select notified_at is null from charge where id = ?", Boolean.class, bad)).isTrue();
         assertThat(adminJdbc().queryForObject("select notified_at is not null from charge where id = ?", Boolean.class, good)).isTrue();
     }

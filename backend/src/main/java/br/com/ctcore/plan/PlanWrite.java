@@ -192,7 +192,7 @@ public class PlanWrite {
             try {
                 payers.forStudent(org, student).ifPresent(to -> email.send(org, to, EmailTemplate.PLAN_RATE_ADJUSTED, plan, value));
             } catch (RuntimeException e) {
-                LOG.error("plan rate notice failed org={}", org, e);
+                LOG.error("plan rate notice failed org={} cause={}", org, e.getClass().getSimpleName());
             }
         }
     }

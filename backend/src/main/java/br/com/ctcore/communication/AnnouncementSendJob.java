@@ -51,7 +51,7 @@ public class AnnouncementSendJob {
                 try {
                     if (transactions.provision(org, () -> sender.dispatch(org, id, now)) >= 0) done++;
                 } catch (RuntimeException e) {
-                    LOG.error("announcement send failed org={} announcement={}", org, id, e);
+                    LOG.error("announcement send failed org={} announcement={} cause={}", org, id, e.getClass().getSimpleName());
                 }
             }
         }
