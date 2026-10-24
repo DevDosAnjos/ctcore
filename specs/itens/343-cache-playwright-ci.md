@@ -20,7 +20,7 @@ O passo de instalação do Chromium no job `e2e` do CI deixa de depender do espe
 - CA1 (R1): dado o PR do item, quando o `e2e` roda, então não há passo `playwright install` no workflow e o job passa.
 - CA2 (R2): dado a versão da imagem diferente da do lockfile, quando o passo de conferência roda, então o job falha citando as duas versões; com versões iguais, passa.
 - CA3 (R3): dado o workflow, então `ci-gate` lista `changes, backend, frontend, e2e, image-backend, image-frontend, security` e o gate fica verde no PR.
-- CA4 (R4, R5): dado 5 runs seguidos de PRs novos, então o tempo de iniciar o container (pull da imagem) mais a conferência fica abaixo de 60 s em todos, e o `e2e` fecha em menos de 7 min; os tempos de antes (22 s a 695 s) e de depois entram na Construção/Verificação.
+- CA4 (R4, R5): 1 de 5 aceito; o resto na #363. (Texto original: dado 5 runs seguidos de PRs novos, o tempo de iniciar o container mais a conferência fica abaixo de 60 s em todos, e o `e2e` fecha em menos de 7 min.)
 - CA5 (R6): `AGENTS.md` e `README.md` não citam mais `playwright install`/cache como parte do CI e citam a imagem fixada.
 
 ## 4. Plano técnico
@@ -53,6 +53,11 @@ O passo de instalação do Chromium no job `e2e` do CI deixa de depender do espe
 Regressão: mudança só de CI/documentação, sem código de produto; `verify`, `test:cov` e `e2e` não rodados (o e2e na imagem só é provado no CI do PR).
 Desvios: a conferência de versão (R2) não pode ler `${{ job.container.image }}` (actionlint: a propriedade não existe no contexto `job.container`); o passo extrai a tag com `sed` da linha `image:` do próprio `ci.yml` via `$GITHUB_WORKSPACE`.
 Não é do item: nada.
+
+### Correção necessária (ajuste A6 da revisão da Sprint 09, R09-6 e R09-7)
+- R09-6 — arquivos: `README.md` (tabela do `frontend`: piso de 100% agora lista `src/features/{billing,charges,payments,subscription,deactivation}`, igual a `AGENTS.md` e `frontend/vite.config.ts`) — prova: `grep -n "billing,charges" README.md` → 1 linha.
+- R09-7 — arquivos: este arquivo (texto do CA4 trocado para "1 de 5 aceito; o resto na #363", conforme "Decisão do dono"; registro de Construção/Correção acrescentado) — prova: leitura do arquivo. Verificação e Entrega ficam para as fases 4 e 5.
+Regressão: só documentação, sem código; nada rodado.
 
 ## Verificação
 
@@ -87,6 +92,19 @@ Comandos: `git write-tree` do estado atual e `gh pr list`; nada novo a rodar.
 Achados: nenhum obrigatório novo; a sugestão da rodada 1 (sed lendo o próprio ci.yml) segue.
 Pendência: CA1, CA4 e T3 só fecham com o PR aberto e medido. Não é limitação aceita no AGENTS.md; a entrega abre o PR e a verificação é repetida depois.
 
+### Rodada 3 — OK — 2026-10-24, estado 7bd1b121f6a7313461c21e76c6b0ed9b166cefcd
+
+Escopo: ajuste A6 (só documentação). Mudança desde a rodada 2: `README.md` (linha 68) e, neste arquivo, o texto do CA4 e o registro de Correção.
+
+| Critério | Status | Evidência |
+|---|---|---|
+| README alinhado a AGENTS.md/vite.config.ts | PASSOU | `grep "billing,charges"`: README.md:68 e AGENTS.md:80 com a mesma lista; `frontend/vite.config.ts` linhas 26-30 têm billing, charges, payments, subscription, deactivation a 100% |
+| CA4 reescrito conforme a decisão do dono | PASSOU | CA4 diz "1 de 5 aceito; o resto na #363", coerente com "Decisão do dono" e a tabela de medição (#361: 33 s, 89 s) |
+| CA1, CA2, CA3, CA5 | mantido das rodadas 1 e 2 | ci.yml e AGENTS.md inalterados; CA1 coberto pela medição do CI do PR #361 (verde) |
+
+Comandos: `git diff`, `grep`, leitura do `vite.config.ts`; regressão não rodada (só documentação, nenhum código tocado).
+Achados: nenhum obrigatório; a sugestão da rodada 1 (sed no próprio ci.yml) segue.
+
 ## Medição do CA4 (CI)
 
 Limite: 5 PRs. Medido: 1 (#361). Os demais ficam na #363.
@@ -102,3 +120,13 @@ Critério por PR: container + conferência abaixo de 60 s (33 s: passou) e `e2e`
 ## Decisão do dono (24/10/2026)
 
 O dono aceitou fechar o #343 com a medição do #361. Os PRs #364 e #365 não rodaram o `e2e` e não contam. O CA4 continua na #363, que conta só PRs que rodem o `e2e`, até completar 5 (1 de 5 hoje). Se uma medição futura estourar o limite, a #363 vira prioridade, com a alternativa da D1 (cache em `push` para `dev`).
+
+## Entrega
+
+Ajuste A6 da revisão da Sprint 09 (R09-6 e R09-7), só documentação.
+
+- O que muda: `README.md` (tabela do `frontend` lista `billing,charges,payments,subscription,deactivation` a 100%, igual a `AGENTS.md` e `frontend/vite.config.ts`). Neste arquivo, o CA4 virou "1 de 5 aceito; o resto na #363", conforme a decisão do dono, e foram registradas as rodadas 2 e 3.
+- Verificação: rodada 3 OK (estado `7bd1b121`), com `grep` do README e do AGENTS e leitura do `vite.config.ts`. Regressão não rodada: nenhum código tocado e a base não avançou desde a verificação.
+- Decisões: CA4 fechado com a medição do #361 (container e conferência 33 s; job `e2e` 89 s; CI verde), por decisão do dono em 24/10/2026. #364 e #365 não rodaram o `e2e` e não contam.
+- Limitações: o CA4 segue como medição em aberto na #363, até 5 PRs com `e2e` medidos.
+- A issue #343 já está fechada; este PR a referencia com `Refs #343`.
