@@ -805,13 +805,59 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /charges/overdue:
+    get:
+      summary: Cobranças em atraso (RF-COB-06). Coordenador e Administrador da unidade.
+      description: |
+        As cobranças em atraso (mesma regra de "Em atraso" de `GET /charges`, RN-COB-07: abertas e passadas do vencimento mais a tolerância), do alcance de quem chama
+        (o Coordenador vê todas; o Administrador só as das unidades dele, e `unitId` fora do alcance devolve lista vazia). Cada linha traz aluno, unidade, tipo,
+        referência, vencimento, valor gravado em centavos (sem juros), `daysLate` (hoje na unidade menos o vencimento), `lastReminder` (data e canal do último lembrete
+        enviado, ou nulo), `daysToBlock` (dias até o bloqueio, nunca negativo, ou nulo para avulsa, taxa de matrícula e unidade sem conta conectada) e o pagador
+        (responsável financeiro do menor; nome e telefone). `unitId` de outra organização: 404. `sort` fora de `daysLate`, `amount`, `student`: 400. Padrão
+        `sort=daysLate,desc`. Professor, Aluno e Responsável: 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, description: Nome do aluno (sem acento nem caixa)., schema: { type: string } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: "`campo,asc|desc` com campo `daysLate`, `amount` ou `student`; desempate por id.", schema: { type: string } }
+      responses:
+        '200':
+          description: Página de cobranças em atraso.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OverdueList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /charges/reminders:
+    post:
+      summary: Envia lembrete por e-mail de uma ou mais cobranças (RF-COB-06). Coordenador e Administrador da unidade.
+      description: |
+        `chargeIds` de 1 a 100, sem repetir (400 no campo `chargeIds`). Cobrança de outra organização ou de unidade fora do alcance: 404 para o pedido inteiro e nada é
+        enviado. O resultado vem por cobrança, na ordem do pedido: `SENT`, `NO_ADDRESS` (sem e-mail), `EMAIL_PROBLEM` (endereço "Com problema"), `NOT_OPEN` (paga,
+        cancelada, renegociada, estornada ou em conferência) e `RECENT` (outro lembrete manual há menos de 24 horas). O modelo segue a data (antes, no dia ou depois
+        do vencimento) e o envio não depende de a unidade ter ligado os lembretes automáticos. Grava `charge.reminder_sent` na auditoria por cobrança que gerou
+        histórico (`SENT`, `NO_ADDRESS`, `EMAIL_PROBLEM`), sem endereço, telefone nem texto. Tudo com as linhas travadas.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReminderRequest' } } }
+      responses:
+        '200':
+          description: O resultado de cada cobrança.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReminderResults' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /charges/{id}:
     get:
       summary: Painel da cobrança (RF-COB-02). Coordenador e Administrador da unidade.
       description: |
         Os campos da linha de `GET /charges` (`charge`, com a situação calculada) mais tolerância, composição (plano, benefício e valor final, em centavos),
         pagador (aluno ou responsável financeiro), cobrança de origem, as parcelas que a substituíram, motivo, quem cancelou e quando, pagamentos (com recibo),
-        `reminders` (sempre vazio até o item de lembretes) e `actions` (`registerPayment` é verdadeiro só na cobrança em aberto; `sendReminder` e `refund` ficam `false` até os itens que os entregam).
+        `reminders` (histórico de lembretes, o mais recente primeiro) e `actions` (`cancel`, `renegotiate`, `registerPayment` e `sendReminder` são verdadeiros só na cobrança em aberto; `refund` fica `false` até o item que o entrega).
         Professor, Aluno e Responsável: 403. Cobrança inexistente, de outra organização ou de unidade fora do alcance: 404. Só lê; não audita.
       security: [{ sessionCookie: [] }]
       parameters:
@@ -4253,6 +4299,66 @@ components:
         dueOn: { type: string, format: date }
         amountCents: { type: integer, format: int64 }
         status: { type: string, enum: [OPEN, IN_REVIEW, PAID, CANCELED, RENEGOTIATED, REFUNDED], description: Situação gravada. }
+    ChargeReminder:
+      type: object
+      required: [kind, channel, status, reason, createdAt, sentBy]
+      properties:
+        kind: { type: string, enum: [SCHEDULED, BLOCK_WARNING, MANUAL] }
+        channel: { type: string, enum: [EMAIL, SMS] }
+        status: { type: string, enum: [SENT, SKIPPED] }
+        reason: { type: string, nullable: true, enum: [NO_ADDRESS, EMAIL_PROBLEM, NO_PHONE, SMS_LIMIT], description: "Por que não foi enviado; nulo quando enviado." }
+        createdAt: { type: string, format: date-time }
+        sentBy: { type: object, nullable: true, required: [id, name], description: "Quem enviou, só no manual.", properties: { id: { type: string, format: uuid }, name: { type: string, nullable: true } } }
+    OverdueCharge:
+      type: object
+      required: [id, student, unit, type, referenceMonth, description, amountCents, dueOn, daysLate, daysToBlock, lastReminder, payer]
+      properties:
+        id: { type: string, format: uuid }
+        student:
+          type: object
+          required: [id, name, photoUrl]
+          properties: { id: { type: string, format: uuid }, name: { type: string }, photoUrl: { type: string, nullable: true } }
+        unit: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+        type: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] }
+        referenceMonth: { type: string, format: date, nullable: true }
+        description: { type: string, nullable: true }
+        amountCents: { type: integer, format: int64 }
+        dueOn: { type: string, format: date }
+        daysLate: { type: integer, minimum: 1 }
+        daysToBlock: { type: integer, minimum: 0, nullable: true }
+        lastReminder:
+          type: object
+          nullable: true
+          required: [at, channel]
+          properties: { at: { type: string, format: date-time }, channel: { type: string, enum: [EMAIL, SMS] } }
+        payer:
+          type: object
+          required: [name, phone]
+          description: Responsável financeiro do menor, ou o próprio aluno.
+          properties: { name: { type: string }, phone: { type: string, nullable: true } }
+    OverdueList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/OverdueCharge' } }
+    ReminderRequest:
+      type: object
+      required: [chargeIds]
+      properties:
+        chargeIds: { type: array, minItems: 1, maxItems: 100, uniqueItems: true, items: { type: string, format: uuid } }
+    ReminderResults:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            required: [chargeId, result]
+            properties:
+              chargeId: { type: string, format: uuid }
+              result: { type: string, enum: [SENT, NO_ADDRESS, EMAIL_PROBLEM, NOT_OPEN, RECENT] }
     ChargeDetail:
       type: object
       required: [charge, toleranceDays, composition, payer, origin, replacedBy, reason, canceledAt, canceledBy, payments, reminders, actions]
@@ -4295,7 +4401,7 @@ components:
               observation: { type: string, nullable: true }
               status: { type: string, enum: [CONFIRMED, REFUNDED] }
               receipt: { type: object, nullable: true, required: [number, code], properties: { number: { type: integer }, code: { type: string } } }
-        reminders: { type: array, items: { type: object }, description: Sempre vazio até o item de lembretes. }
+        reminders: { type: array, items: { $ref: '#/components/schemas/ChargeReminder' }, description: "Histórico de lembretes, o mais recente primeiro." }
         actions:
           type: object
           required: [cancel, renegotiate, registerPayment, sendReminder, refund]

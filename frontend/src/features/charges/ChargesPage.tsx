@@ -49,6 +49,9 @@ function Content() {
         <Button asChild variant="outline" className="min-h-11">
           <Link to="/cobrancas/recebimentos">{t("charges.daily.open")}</Link>
         </Button>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link to="/cobrancas/atrasados">{t("charges.overdue.open")}</Link>
+        </Button>
         {canCreate && (
           <>
             <Button type="button" variant="outline" className="min-h-11" onClick={() => setCreating("oneOff")}>
