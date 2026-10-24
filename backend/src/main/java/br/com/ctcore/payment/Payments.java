@@ -99,7 +99,7 @@ public class Payments {
         });
         Registered r = done.registered();
         if (!send) return r;
-        String status = mailer.send(done.email(), r.receipt().code(), done.reference(), r.receipt().number());
+        String status = mailer.send(who.organizationId(), done.email(), r.receipt().code(), done.reference(), r.receipt().number());
         return new Registered(r.id(), r.chargeId(), r.amountCents(), r.method(), r.paidAt(), r.registeredBy(), r.observation(), r.receipt(), status);
     }
 }

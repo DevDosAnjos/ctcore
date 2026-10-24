@@ -23,11 +23,12 @@ class ReceiptMailer {
     }
 
     /** SENT, NO_ADDRESS ou FAILED (mensagem guardada mas ainda não entregue: o {@code EmailRetryJob} tenta de novo). */
-    String send(String to, String code, String reference, int number) {
+    String send(java.util.UUID organizationId, String to, String code, String reference, int number) {
         if (to == null || !to.contains("@")) return "NO_ADDRESS";
         try {
-            UUID id = email.send(to.strip(), EmailTemplate.PAYMENT_CONFIRMED, baseUrl + "/api/v1/public/receipts/" + code + "/pdf", reference, number);
+            UUID id = email.send(organizationId, to.strip(), EmailTemplate.PAYMENT_CONFIRMED, baseUrl + "/api/v1/public/receipts/" + code + "/pdf", reference, number);
             String status = jdbc.sql("select status from email_message where id = :id").param("id", id).query(String.class).single();
+            if (status.equals("SKIPPED")) return "NO_ADDRESS"; // RN-ALU-10 (D7): endereço "Com problema"
             return Set.of("PENDING", "FAILED").contains(status) ? "FAILED" : "SENT";
         } catch (RuntimeException e) {
             return "FAILED";

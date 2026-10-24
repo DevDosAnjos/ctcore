@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/** Retries due PENDING messages (R2), drops old SENT/DISABLED rows and refreshes the queue gauge. */
+/** Retries due PENDING messages (R2), drops old SENT/DISABLED/SKIPPED/BOUNCED rows and refreshes the queue gauge. */
 @Component
 public class EmailRetryJob {
     static final int BATCH = 50;
@@ -46,7 +46,7 @@ public class EmailRetryJob {
                     + "order by next_attempt_at limit " + BATCH + " for update skip locked").param("now", now).query(UUID.class).list();
             due.forEach(service::attempt);
         });
-        jdbc.sql("delete from email_message where status in ('SENT', 'DISABLED') and created_at < :old")
+        jdbc.sql("delete from email_message where status in ('SENT', 'DISABLED', 'SKIPPED', 'BOUNCED') and created_at < :old")
                 .param("old", now.minus(KEEP)).update();
         service.refreshQueue();
     }

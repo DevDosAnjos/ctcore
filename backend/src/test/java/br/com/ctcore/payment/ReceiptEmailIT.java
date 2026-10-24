@@ -70,7 +70,7 @@ class ReceiptEmailIT extends OrganizationBase {
         var row = adminJdbc().queryForMap("select to_email, subject from email_message where template = 'PAYMENT_CONFIRMED'");
         assertThat(row.get("to_email")).isEqualTo("pay-aluno@example.com");
         assertThat(row.get("subject")).isEqualTo("Pagamento confirmado");
-        org.mockito.Mockito.verify(email).send(eq("pay-aluno@example.com"), eq(EmailTemplate.PAYMENT_CONFIRMED),
+        org.mockito.Mockito.verify(email).send(eq(t.orgId()), eq("pay-aluno@example.com"), eq(EmailTemplate.PAYMENT_CONFIRMED),
                 org.mockito.ArgumentMatchers.<Object>argThat(a -> String.valueOf(a).endsWith("/api/v1/public/receipts/" + paid.get("receipt").get("code").asText() + "/pdf")),
                 any(), any());
 
@@ -110,7 +110,7 @@ class ReceiptEmailIT extends OrganizationBase {
         var admin = admin(t);
         UUID student = BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Maria Souza");
         adminJdbc().update("update student set email = 'pay-aluno@example.com' where id = ?", student);
-        doThrow(new IllegalStateException("fora do ar")).when(email).send(anyString(), eq(EmailTemplate.PAYMENT_CONFIRMED), any(), any(), any());
+        doThrow(new IllegalStateException("fora do ar")).when(email).send(any(UUID.class), anyString(), eq(EmailTemplate.PAYMENT_CONFIRMED), any(), any(), any());
         UUID first = chargeOf(t, student);
         assertThat(pay(admin, first, "{\"method\":\"CASH\",\"sendReceipt\":true}").get("receiptEmail").asText()).isEqualTo("FAILED");
         assertThat(adminJdbc().queryForObject("select status from charge where id = ?", String.class, first)).isEqualTo("PAID");
@@ -119,9 +119,23 @@ class ReceiptEmailIT extends OrganizationBase {
             UUID id = UUID.randomUUID();
             adminJdbc().update("insert into email_message (id, to_email, template, subject, body, status, next_attempt_at) values (?, 'pay-aluno@example.com', 'PAYMENT_CONFIRMED', 's', 'b', 'PENDING', now())", id);
             return id;
-        }).when(email).send(anyString(), eq(EmailTemplate.PAYMENT_CONFIRMED), any(), any(), any());
+        }).when(email).send(any(UUID.class), anyString(), eq(EmailTemplate.PAYMENT_CONFIRMED), any(), any(), any());
         UUID second = chargeOf(t, student);
         assertThat(pay(admin, second, "{\"method\":\"CASH\",\"sendReceipt\":true}").get("receiptEmail").asText()).isEqualTo("FAILED");
         assertThat(adminJdbc().queryForObject("select status from charge where id = ?", String.class, second)).isEqualTo("PAID");
+    }
+
+    @Test
+    @DisplayName("CA15 (D7): endereço marcado \"Com problema\" não recebe o recibo: NO_ADDRESS, mensagem SKIPPED, pagamento registrado")
+    void emailProblem() throws Exception {
+        var t = tenant();
+        var admin = admin(t);
+        UUID student = BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Maria Souza");
+        adminJdbc().update("update student set email = 'pay-aluno@example.com', email_problem_at = now() where id = ?", student);
+        UUID charge = chargeOf(t, student);
+        assertThat(pay(admin, charge, "{\"method\":\"CASH\",\"sendReceipt\":true}").get("receiptEmail").asText()).isEqualTo("NO_ADDRESS");
+        assertThat(adminJdbc().queryForObject("select status from charge where id = ?", String.class, charge)).isEqualTo("PAID");
+        assertThat(adminJdbc().queryForList("select status || ':' || last_error from email_message where template = 'PAYMENT_CONFIRMED'", String.class))
+                .containsExactly("SKIPPED:EMAIL_PROBLEM");
     }
 }
