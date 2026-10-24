@@ -20,6 +20,7 @@ export function QueryPage<T>({
   filterKeys = [],
   filters,
   emptyAction,
+  texts,
   cards,
   footer,
 }: {
@@ -29,6 +30,8 @@ export function QueryPage<T>({
   filterKeys?: string[];
   filters?: (p: { get: (k: string) => string; set: (k: string, v: string) => void; counts?: Record<string, number> }) => ReactNode;
   emptyAction?: ReactNode;
+  // Textos próprios dos dois vazios (sem item / sem item com estes filtros); sem eles valem os padrões.
+  texts?: { emptyTitle?: string; emptyText?: string; noResultTitle?: string; noResultText?: string };
   // Opcionais: abaixo de md a lista sai em cartões no lugar da tabela; `footer` recebe a página carregada (ex.: totais).
   cards?: (row: T) => ReactNode;
   footer?: (page: Page<T>) => ReactNode;
@@ -83,8 +86,8 @@ export function QueryPage<T>({
   else if (state.data!.total === 0 && hasFilter)
     body = (
       <EmptyState
-        title={t("query.noResultTitle")}
-        text={t("query.noResultText")}
+        title={texts?.noResultTitle ?? t("query.noResultTitle")}
+        text={texts?.noResultText ?? t("query.noResultText")}
         action={
           <Button className="min-h-11" onClick={clear}>
             {t("query.clear")}
@@ -92,7 +95,7 @@ export function QueryPage<T>({
         }
       />
     );
-  else if (state.data!.total === 0) body = <EmptyState action={emptyAction} />;
+  else if (state.data!.total === 0) body = <EmptyState title={texts?.emptyTitle} text={texts?.emptyText} action={emptyAction} />;
   else {
     const pages = Math.max(1, Math.ceil(state.data!.total / tamanho));
     body = (

@@ -805,6 +805,51 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /announcements:
+    get:
+      summary: Comunicados (RF-COM-01). Coordenador, Administrador e Professor com a permissão de comunicados.
+      description: |
+        Página de comunicados com data (instante do envio ou do agendamento), destino (`target`: turma, modalidade, unidade ou todas as unidades, com o nome), título,
+        tipo, autor (nome), situação (`SCHEDULED` ou `SENT`), `recipients` (só depois do envio; nulo no agendado) e `reads` (alunos distintos que abriram; a leitura do
+        responsável conta como a do aluno menor, uma vez; 0 no agendado). Alcance: o Coordenador vê os da organização; o Administrador, os das unidades dele (nunca o de
+        "todas as unidades"); o Professor, os que enviou e os destinados às suas turmas. Sem a permissão de comunicados: 403. Filtros opcionais e combináveis: `from` e `to`
+        (data na unidade, inclusivos; `to` antes de `from`: 400), `classId`, `type` (um dos cinco tipos; outro valor: 400) e `unitId` (de outra organização: 404; do
+        Administrador fora do alcance: lista vazia). `sort` por `date`, `title` ou `type`; padrão `date,desc`. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - { name: classId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: type, in: query, required: false, schema: { $ref: '#/components/schemas/AnnouncementType' } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: "`campo,asc|desc` com campo `date`, `title` ou `type`; desempate por id.", schema: { type: string } }
+      responses:
+        '200':
+          description: Página de comunicados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /announcements/{id}:
+    delete:
+      summary: Cancela um comunicado agendado (RF-COM-01, RN-COM-06).
+      description: |
+        Apaga o comunicado agendado, que nunca saiu. Quem cancela: Coordenador e Administrador da unidade do comunicado; o Professor, só o que ele mesmo agendou.
+        Comunicado enviado não é apagado nem editado: 409 `ANNOUNCEMENT_ALREADY_SENT`. Comunicado de outra organização ou inexistente: 404 (repetir o cancelamento
+        também dá 404). Administrador de outra unidade, Professor sem a permissão ou que não é o autor, Aluno e Responsável: 403. Grava `announcement.cancel` na
+        auditoria com título e destino, sem o texto do corpo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Cancelado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /charges/overdue:
     get:
       summary: Cobranças em atraso (RF-COB-06). Coordenador e Administrador da unidade.
@@ -2970,6 +3015,7 @@ components:
             - AGE_RANGE_NAME_TAKEN
             - TERMS_VERSION_CONFLICT
             - CHARGE_NOT_PAYABLE
+            - ANNOUNCEMENT_ALREADY_SENT
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
             - HAS_PRIMARY_STUDENTS
@@ -4346,6 +4392,38 @@ components:
         - type: object
           properties:
             items: { type: array, items: { $ref: '#/components/schemas/OverdueCharge' } }
+    AnnouncementType:
+      type: string
+      enum: [CANCELED_CLASS, TEACHER_CHANGE, SCHEDULE_CHANGE, NO_CLASS_DAY, GENERAL]
+    AnnouncementStatus:
+      type: string
+      enum: [SCHEDULED, SENT]
+    AnnouncementItem:
+      type: object
+      required: [id, date, target, title, type, author, status, recipients, reads]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date-time, description: Instante do envio ou do agendamento. }
+        target:
+          type: object
+          required: [kind, id, name]
+          description: Destino. Em `ORGANIZATION` (todas as unidades) `id` e `name` são nulos.
+          properties:
+            kind: { type: string, enum: [CLASS, MODALITY, UNIT, ORGANIZATION] }
+            id: { type: string, format: uuid, nullable: true }
+            name: { type: string, nullable: true }
+        title: { type: string }
+        type: { $ref: '#/components/schemas/AnnouncementType' }
+        author: { type: string }
+        status: { $ref: '#/components/schemas/AnnouncementStatus' }
+        recipients: { type: integer, minimum: 0, nullable: true, description: Só depois do envio. }
+        reads: { type: integer, format: int64, minimum: 0 }
+    AnnouncementList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/AnnouncementItem' } }
     ReminderRequest:
       type: object
       required: [chargeIds]
