@@ -33,4 +33,26 @@ public abstract class PostgresIT {
         registry.add("spring.flyway.user", POSTGRES::getUsername);
         registry.add("spring.flyway.password", POSTGRES::getPassword);
     }
+
+    /** Gestor com conta (duas etapas ligadas), vínculo ativo e unidades reais, para os testes que dependem de quem recebe notificação (#84). */
+    public static br.com.ctcore.identity.AccountPrincipal linked(java.util.UUID orgId, br.com.ctcore.identity.Role role, String emailPrefix, java.util.UUID... units) {
+        java.util.UUID account = java.util.UUID.randomUUID(), link = java.util.UUID.randomUUID();
+        adminJdbc().update("insert into account (id, email, name, status) values (?, ?, 'Pessoa Sintética', 'ACTIVE')", account, emailPrefix + account + "@example.com");
+        adminJdbc().update("insert into account_two_factor (account_id, secret_encrypted, enabled_at) values (?, 'x', now())", account);
+        adminJdbc().update("insert into account_link (id, account_id, organization_id, role, status) values (?, ?, ?, ?, 'ACTIVE')", link, account, orgId, role.name());
+        for (java.util.UUID unit : units) {
+            adminJdbc().update("insert into account_link_unit (link_id, organization_id, unit_id) values (?, ?, ?)", link, orgId, unit);
+        }
+        return new br.com.ctcore.identity.AccountPrincipal(account, java.util.UUID.randomUUID(), link, orgId, role, java.util.Set.of(units));
+    }
+
+    /** Desfaz {@link #linked}: notificações, preferências, vínculos e contas com o prefixo. */
+    public static void cleanLinked(String emailPrefix) {
+        String links = "select l.id from account_link l join account a on a.id = l.account_id where a.email like '" + emailPrefix + "%@example.com'";
+        adminJdbc().update("delete from notification where link_id in (" + links + ")");
+        adminJdbc().update("delete from notification_preference where link_id in (" + links + ")");
+        adminJdbc().update("delete from account_link_unit where link_id in (" + links + ")");
+        adminJdbc().update("delete from account_link where id in (" + links + ")");
+        adminJdbc().update("delete from account where email like '" + emailPrefix + "%@example.com'");
+    }
 }

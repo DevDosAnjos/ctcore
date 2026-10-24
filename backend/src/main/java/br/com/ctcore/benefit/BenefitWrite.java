@@ -10,6 +10,8 @@ import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
+import br.com.ctcore.notification.NotificationType;
+import br.com.ctcore.notification.Notifications;
 import br.com.ctcore.plan.Plans;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -56,14 +58,17 @@ public class BenefitWrite {
     private final Benefits benefits;
     private final AuditService audit;
     private final Clock clock;
+    private final Notifications notifications;
 
-    public BenefitWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Plans plans, Benefits benefits, AuditService audit, Clock clock) {
+    public BenefitWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Plans plans, Benefits benefits, AuditService audit, Clock clock,
+            Notifications notifications) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.plans = plans;
         this.benefits = benefits;
         this.audit = audit;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     /** RN-BEN-04 (D6): mês do primeiro vencimento do dia {@code dueDay} depois de hoje + 10 dias. */
@@ -147,7 +152,8 @@ public class BenefitWrite {
         long value = value(type, in.value());
         String reason = text("reason", in.reason(), 2, 200);
         String decidedBy = text("decidedBy", in.decidedBy(), 2, 80);
-        return transactions.execute(() -> {
+        Object[] notice = new Object[2];
+        Benefits.Row granted = transactions.execute(() -> {
             UUID org = who.organizationId();
             Target t = target(who, in.studentId(), in.modalityRowId(), true);
             if (in.validUntil() != null && in.validUntil().isBefore(today(t.zone()))) {
@@ -187,8 +193,18 @@ public class BenefitWrite {
             after.put("reason", reason);
             after.put("decidedBy", decidedBy);
             audit.record(new AuditEntry(actor(who), "benefit.granted", "benefit", id.toString(), t.unitId(), null, after, null, ip));
+            if (high(type, value, t.planCents())) {
+                notice[0] = t.unitId();
+                notice[1] = jdbc.sql("select name from student where id = :id").param("id", in.studentId()).query(String.class).single();
+            }
             return benefits.find(org, id).orElseThrow();
         });
+        // RN-NOT-04: benefício acima de 50% avisa o Coordenador, depois do commit (a falha da notificação não desfaz a concessão).
+        if (notice[1] != null) {
+            notifications.publish(who.organizationId(), (UUID) notice[0], NotificationType.HIGH_BENEFIT, "benefit", granted.id(),
+                    Map.of("studentName", notice[1], "studentId", in.studentId().toString()));
+        }
+        return granted;
     }
 
     /** RF-BEN-03: encerra o benefício (vencido também); vale a partir da próxima cobrança gerada (Sprint 08). */

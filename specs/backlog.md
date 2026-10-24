@@ -98,11 +98,12 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 81 | RF-COM-01 · Comunicação › Comunicados (lista) | issue #81 | Sprint 09 | — | agente | feito |
 | 82 | RF-COM-02 · Novo comunicado | issue #82 | Sprint 09 | — | agente | feito |
 | 83 | RF-COM-03 · Configurações › Textos | issue #83 | Sprint 09 | — | agente | feito |
-| 84 | RF-NOT-01 · Painel do sino (notificações) | issue #84 | Sprint 09 | — | agente | a fazer |
+| 84 | RF-NOT-01 · Painel do sino (notificações) | issue #84 | Sprint 09 | — | agente | feito |
 | 342 | Afirmar que o aluno com bolsa de 100% continua Ativo | issue #342 | Sprint 09 | — | agente | a fazer |
 | 343 | Cache do Playwright que valha para PR novo e instalação do Chromium estável | issue #343 | Sprint 09 | — | agente | a fazer |
 | 344 | aguardar-ci.sh: resultado recuperável de um watcher órfão | issue #344 | Sprint 09 | — | agente | a fazer |
 | 352 | Cobertura de billing cai para 0,99 conforme o horário: o ramo "Cobrança" do ChargeNoticeJob só é coberto pelo agendador por acaso | issue #352 | Sprint 09 | — | agente | feito |
+| 358 | AuditServiceIT.writesDiffWithoutSecrets instável: '4111' coincide com carimbo de hora do log | issue #358 | Sprint 09 | — | agente | a fazer |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | a fazer |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |
@@ -220,11 +221,12 @@ Itens de pessoa (etiqueta `depende de você`, Sprints 22 a 25): o agente não co
 
 ## Pendências para o dono
 
-Último número usado: P2. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
+Último número usado: P3. Quem acrescenta uma pendência atualiza esta linha; os números não se repetem, mesmo depois que a pendência sai da tabela.
 
 | Nº | Pendência | Opção recomendada | Trava qual item | Enquanto isso |
 |---|---|---|---|---|
 | P2 | Com a #67, `student_graduation` aponta para `graduation_level`: salvar a graduação da modalidade sem um nível já usado por graduação de aluno (origem) falha na chave estrangeira (a resposta é a de conflito de dados, sem texto próprio). A #105/#106 decidem a mensagem (ex.: "nível em uso por N alunos"). | Tratar na #105, junto da tela de graduações do aluno. | nenhum | Salvar o sistema de graduação continua valendo; só a exclusão de nível em uso é recusada. |
+| P3 | #84 (D3): o resumo diário por e-mail com o "Precisa de atenção" e a opção de desligá-lo (RN-NOT-01) ficaram fora do painel do sino, porque a lista "Precisa de atenção" ainda não existe. | Novo item, no marco em que o "Precisa de atenção" for criado. | nenhum | O sino e o contador funcionam; não sai resumo por e-mail. |
 
 ## Encaixes para as próximas sprints
 

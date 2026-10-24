@@ -106,6 +106,8 @@ export const resetMockSession = () => {
   ageRanges = initialAgeRanges();
   termsVersions = { ENROLLMENT: [], IMAGE_USE: [] };
   textCustoms = {};
+  mockNotifications = initialNotifications();
+  notificationReceiveAll = false;
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -1293,7 +1295,86 @@ const announcementTarget = (b: AnnouncementBody) => {
       return bad("targetKind", "destino inválido");
   }
 };
+// Notificações (RF-NOT-01, #84), em memória: uma lista do vínculo ativo. Professor recebe lista vazia; Aluno e Responsável, 403; só o Coordenador muda "receber tudo".
+type MockNotification = { id: string; type: string; createdAt: string; readAt: string | null; refType: string; refId: string; params: Record<string, unknown> };
+const notificationAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+const initialNotifications = (): MockNotification[] => [
+  { id: "00000000-0000-0000-0000-000000000a01", type: "PAYMENT_RECEIVED", createdAt: notificationAgo(1), readAt: null, refType: "charge", refId: "00000000-0000-0000-0000-000000000b01", params: { studentName: "Maria Souza", amountCents: 15000 } },
+  { id: "00000000-0000-0000-0000-000000000a02", type: "HIGH_BENEFIT", createdAt: notificationAgo(2), readAt: null, refType: "benefit", refId: "00000000-0000-0000-0000-000000000b02", params: { studentName: "João Lima", studentId: "00000000-0000-0000-0000-000000000b05" } },
+  { id: "00000000-0000-0000-0000-000000000a03", type: "EMAIL_PROBLEM", createdAt: notificationAgo(3 * 1440), readAt: new Date().toISOString(), refType: "student", refId: "00000000-0000-0000-0000-000000000b03", params: {} },
+  { id: "00000000-0000-0000-0000-000000000a04", type: "INVITE_PENDING", createdAt: notificationAgo(4 * 1440), readAt: null, refType: "invite", refId: "00000000-0000-0000-0000-000000000b04", params: { personName: "Paula Reis" } },
+  { id: "00000000-0000-0000-0000-000000000a05", type: "STUDENT_MAJORITY", createdAt: notificationAgo(9 * 1440), readAt: null, refType: "student", refId: "00000000-0000-0000-0000-000000000b06", params: { studentName: "Ana Prado" } },
+];
+let mockNotifications = initialNotifications();
+let notificationReceiveAll = false;
+const notificationAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  return isPortal() ? error(403, "FORBIDDEN", "Sem permissão.") : null;
+};
+const notificationDay = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+const notificationGroup = (iso: string) => {
+  const days = Math.round((Date.parse(notificationDay(new Date().toISOString())) - Date.parse(notificationDay(iso))) / 86_400_000);
+  return days <= 0 ? "TODAY" : days <= 6 ? "WEEK" : null;
+};
+const visibleNotifications = () => (activeRole() === "TEACHER" ? [] : mockNotifications);
+const unreadNotifications = () => visibleNotifications().filter((n) => n.readAt === null).length;
 export const routes: Route[] = [
+  {
+    method: "get",
+    path: "/notifications",
+    resolver: ({ request }) => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      const filter = new URL(request.url).searchParams.get("filter") ?? "all";
+      if (filter !== "all" && filter !== "unread") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "filter", message: "all ou unread" }]);
+      const items = visibleNotifications()
+        .filter((n) => filter === "all" || n.readAt === null)
+        .map((n) => ({ ...n, group: notificationGroup(n.createdAt) }))
+        .filter((n) => n.group !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return HttpResponse.json({ items, unreadCount: unreadNotifications() });
+    },
+  },
+  {
+    method: "get",
+    path: "/notifications/unread-count",
+    resolver: () => notificationAccess() ?? HttpResponse.json({ count: unreadNotifications() }),
+  },
+  {
+    method: "post",
+    path: "/notifications/read-all",
+    resolver: () => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      const changed = unreadNotifications();
+      const now = new Date().toISOString();
+      mockNotifications = mockNotifications.map((n) => (n.readAt === null ? { ...n, readAt: now } : n));
+      return HttpResponse.json({ changed });
+    },
+  },
+  {
+    method: "get",
+    path: "/notifications/preferences",
+    resolver: () => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      const coordinator = activeRole() === "COORDINATOR";
+      return HttpResponse.json({ receiveAll: coordinator && notificationReceiveAll, canReceiveAll: coordinator });
+    },
+  },
+  {
+    method: "put",
+    path: "/notifications/preferences",
+    resolver: async ({ request }) => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      if (activeRole() !== "COORDINATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const input = (await request.json()) as { receiveAll?: unknown };
+      if (typeof input.receiveAll !== "boolean") return error(422, "UNPROCESSABLE", "Não foi possível processar.", [{ field: "receiveAll", message: "deve ser verdadeiro ou falso" }]);
+      notificationReceiveAll = input.receiveAll;
+      return HttpResponse.json({ receiveAll: notificationReceiveAll, canReceiveAll: true });
+    },
+  },
   {
     method: "post",
     path: "/auth/login",

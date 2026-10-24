@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"announcement_read", "announcement", "receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"notification", "notification_preference", "announcement_read", "announcement", "receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -48,7 +48,7 @@ class SeedDataIT extends PostgresIT {
     // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
     @org.junit.jupiter.api.AfterEach
     void cleanTeachers() {
-        for (String table : new String[]{"announcement_read", "announcement", "receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
+        for (String table : new String[]{"notification", "notification_preference", "announcement_read", "announcement", "receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
                 "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite", "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -278,6 +278,16 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from announcement_class", Integer.class)).isEqualTo(2);
     }
 
+
+    @Test
+    @DisplayName("RF-NOT-01, #84: seed cria 6 notificações (3 do Administrador e 3 do Coordenador, uma lida) sem duplicar")
+    void notificationsSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from notification", Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("select count(*) from notification where read_at is not null", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(distinct link_id) from notification", Integer.class)).isEqualTo(2);
+    }
     @Test
     @DisplayName("CA6: arquivos aplicados em ordem do nome")
     void order(@org.junit.jupiter.api.io.TempDir Path tmp) throws IOException {

@@ -30,7 +30,9 @@ public enum EmailTemplate {
     REMINDER_OVERDUE("mail.reminder-overdue", false, false, Kind.ALWAYS),
     BLOCK_WARNING("mail.block-warning", false, false, Kind.ALWAYS),
     /** RN-COM-13: comunicado da academia, o único que o aluno ou responsável desliga (texto). */
-    ANNOUNCEMENT("mail.announcement", false, false, Kind.ANNOUNCEMENT);
+    ANNOUNCEMENT("mail.announcement", false, false, Kind.ANNOUNCEMENT),
+    /** RN-NOT-02: aviso urgente ao gestor; assunto e texto por tipo (chaves {@code notification.<TIPO>}; a geral é o modelo do registro), via {@code sendText}, sem dado de pessoa. */
+    NOTIFICATION_URGENT("notification.urgent", false, false, Kind.ALWAYS);
 
     public enum Kind { ALWAYS, ANNOUNCEMENT }
 

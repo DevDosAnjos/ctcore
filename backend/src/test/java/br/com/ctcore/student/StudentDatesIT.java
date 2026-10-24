@@ -42,6 +42,7 @@ class StudentDatesIT extends OrganizationBase {
     @Autowired ObjectMapper json;
     @Autowired JdbcClient jdbc;
     @Autowired OrganizationTransactions transactions;
+    @Autowired br.com.ctcore.notification.Notifications notifications;
     @Autowired EmailService emails;
     @Autowired ScopedAudit audit;
     @Autowired InviteService invites;
@@ -131,7 +132,7 @@ class StudentDatesIT extends OrganizationBase {
     void majorityNotice() {
         UUID brasilia = student(t.unitId(), "Aluno Brasilia", BIRTH, "2026-01-01T00:00:00Z");
         UUID tokyoStudent = student(tokyo, "Aluno Toquio", BIRTH, "2026-01-01T00:00:00Z");
-        var job = new MajorityNoticeJob(transactions, jdbc, emails, audit, clock);
+        var job = new MajorityNoticeJob(transactions, jdbc, emails, audit, clock, notifications);
         assertThat(job.runOnce()).isEqualTo(1);
         assertThat(adminJdbc().queryForList("select id from student where majority_notice_at is not null", UUID.class)).containsExactly(tokyoStudent)
                 .doesNotContain(brasilia);

@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AreaUnavailablePage } from "@/features/auth/AreaUnavailablePage";
 import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
+import { BellButton } from "@/features/notifications/BellButton";
 import { UnitScopeProvider } from "@/features/units/UnitScopeProvider";
 import { UnitSwitcher } from "@/features/units/UnitSwitcher";
 import { buildMenu } from "./buildMenu";
@@ -31,6 +32,7 @@ export function ManagementLayout({ activeId = "home", children }: { activeId?: s
         headerExtra={
           <>
             <UnitSwitcher />
+            <BellButton />
             <AccountLink />
             <ChooseLinkTrigger />
           </>
