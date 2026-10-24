@@ -10,8 +10,8 @@ import { ApiError } from "@/lib/api";
 import { AnnouncementPreviewPanel, type PreviewState } from "./AnnouncementPreviewPanel";
 import { AnnouncementTargetPicker, draftTarget, targetName } from "./AnnouncementTargetPicker";
 import { templateFor } from "./announcementTemplates";
-import { ANNOUNCEMENT_TYPES, type AnnouncementChannel, type AnnouncementDraft, type AnnouncementTargets, type AnnouncementType } from "./types";
-import { createAnnouncement, fetchTargets, previewAnnouncement, uploadAnnouncementImage } from "./useAnnouncements";
+import { ANNOUNCEMENT_TYPES, type AnnouncementChannel, type AnnouncementDraft, type AnnouncementTargets, type AnnouncementTemplates, type AnnouncementType } from "./types";
+import { createAnnouncement, fetchTargets, fetchTemplates, previewAnnouncement, uploadAnnouncementImage } from "./useAnnouncements";
 
 const FIELD_ORDER = ["type", "title", "body", "file", "channels", "pinnedUntil", "sendAt"];
 const inputClass = "min-h-11 w-full rounded-md border bg-background px-2";
@@ -55,7 +55,7 @@ function initialTarget(targets: AnnouncementTargets, p: URLSearchParams) {
   return unitId && targets.units.some((u) => u.id === unitId) ? `UNIT:${unitId}` : "";
 }
 
-function Form({ targets }: { targets: AnnouncementTargets }) {
+function Form({ targets, templates }: { targets: AnnouncementTargets; templates: AnnouncementTemplates }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -76,7 +76,7 @@ function Form({ targets }: { targets: AnnouncementTargets }) {
   const [start] = useState(() => {
     const asked = params.get("type") as AnnouncementType | null;
     const known = !!asked && ANNOUNCEMENT_TYPES.includes(asked);
-    return { type: known ? asked : ("GENERAL" as AnnouncementType), ...(known ? templateFor(t, asked, vars(target)) : { title: "", body: "" }) };
+    return { type: known ? asked : ("GENERAL" as AnnouncementType), ...(known ? templateFor(t, templates, asked, vars(target)) : { title: "", body: "" }) };
   });
   const [type, setType] = useState<AnnouncementType>(start.type);
   const [title, setTitle] = useState(start.title);
@@ -127,7 +127,7 @@ function Form({ targets }: { targets: AnnouncementTargets }) {
   }, [focusTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function applyType(next: AnnouncementType) {
-    const text = templateFor(t, next, vars(target));
+    const text = templateFor(t, templates, next, vars(target));
     setType(next);
     setTitle(text.title);
     setBody(text.body);
@@ -299,12 +299,12 @@ function Form({ targets }: { targets: AnnouncementTargets }) {
 function Content() {
   const { t } = useTranslation();
   const [tick, setTick] = useState(0);
-  const [state, setState] = useState<{ status: "loading" | "error" | "forbidden" } | { status: "ready"; data: AnnouncementTargets }>({ status: "loading" });
+  const [state, setState] = useState<{ status: "loading" | "error" | "forbidden" } | { status: "ready"; data: AnnouncementTargets; templates: AnnouncementTemplates }>({ status: "loading" });
 
   useEffect(() => {
     let alive = true;
-    fetchTargets().then(
-      (data) => alive && setState({ status: "ready", data }),
+    Promise.all([fetchTargets(), fetchTemplates()]).then(
+      ([data, templates]) => alive && setState({ status: "ready", data, templates }),
       (e) => alive && setState({ status: e instanceof ApiError && e.status === 403 ? "forbidden" : "error" }),
     );
     return () => {
@@ -313,6 +313,7 @@ function Content() {
   }, [tick]);
 
   const data = state.status === "ready" ? state.data : null;
+  const templates = state.status === "ready" ? state.templates : null;
   const none = !!data && !data.organization && data.units.length === 0 && data.classes.length === 0 && data.modalities.length === 0;
   return (
     <div className="flex max-w-2xl flex-col gap-4">
@@ -327,10 +328,10 @@ function Content() {
           }} />}
       {state.status === "forbidden" && <ForbiddenState />}
       {none && <EmptyState title={t("announcements.new.emptyTitle")} text={t("announcements.new.emptyText")} />}
-      {data && !none && (
+      {data && templates && !none && (
         <>
           <p className="text-muted-foreground">{t("announcements.new.intro")}</p>
-          <Form targets={data} />
+          <Form targets={data} templates={templates} />
         </>
       )}
     </div>

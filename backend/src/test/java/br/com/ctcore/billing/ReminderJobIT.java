@@ -131,7 +131,7 @@ class ReminderJobIT extends ReminderBase {
         UUID bad = charge(t, adult(t, "rem-erro@example.com"), "2026-10-08", "OPEN");
         UUID good = charge(t, adult(t, "rem-boa@example.com"), "2026-10-08", "OPEN");
         var clock = java.time.Clock.fixed(java.time.Instant.parse(NOON), java.time.ZoneOffset.UTC);
-        var real = new ReminderSender(jdbc, email, clock);
+        var real = new ReminderSender(jdbc, email, clock, texts);
         var failing = Mockito.spy(real);
         Mockito.doThrow(new IllegalStateException("rem-erro@example.com")).when(failing).send(ArgumentMatchers.any(), ArgumentMatchers.eq(bad),
                 ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any(EmailTemplate.class), ArgumentMatchers.any(), ArgumentMatchers.any());

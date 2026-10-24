@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 import type { Page, Query } from "@/components/query/QueryPage";
-import type { AnnouncementCreated, AnnouncementDraft, AnnouncementImage, AnnouncementItem, AnnouncementList, AnnouncementPreview, AnnouncementTargets } from "./types";
+import type { AnnouncementCreated, AnnouncementDraft, AnnouncementImage, AnnouncementItem, AnnouncementList, AnnouncementPreview, AnnouncementTargets, AnnouncementTemplates } from "./types";
 
 // Ordem da tela ("campo" ou "-campo") -> sort da rota; sem escolha vale o padrão do servidor (mais recente primeiro).
 const sortOf = (ordem: string) => (ordem ? `${ordem.replace(/^-/, "")},${ordem.startsWith("-") ? "desc" : "asc"}` : "date,desc");
@@ -18,6 +18,7 @@ export const cancelAnnouncement = (id: string) => api<void>(`/announcements/${id
 
 // RF-COM-02: destinos que o perfil pode escolher, prévia (não grava), criação e imagem (enviada antes, o comunicado guarda só o nome).
 export const fetchTargets = () => api<AnnouncementTargets>("/announcements/targets");
+export const fetchTemplates = () => api<{ templates: AnnouncementTemplates }>("/announcements/templates").then((r) => r.templates);
 export const previewAnnouncement = (draft: AnnouncementDraft) => api<AnnouncementPreview>("/announcements/preview", { method: "POST", body: draft });
 export const createAnnouncement = (draft: AnnouncementDraft) => api<AnnouncementCreated>("/announcements", { method: "POST", body: draft });
 export const uploadAnnouncementImage = (file: File) => {

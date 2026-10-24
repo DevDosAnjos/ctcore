@@ -8,14 +8,14 @@ import java.util.regex.Pattern;
  * RN-COM-05, D6: texto do comunicado com o formato mínimo {@code **negrito**}, {@code - lista} e {@code [texto](https://...)}, guardado como veio.
  * O servidor valida o tamanho e que todo link seja http ou https; o e-mail usa a forma simples ({@link #plain}).
  */
-final class AnnouncementText {
+public final class AnnouncementText {
     static final int MAX = 2000;
     private static final Pattern LINK = Pattern.compile("\\[([^\\]]*)]\\(([^)\\s]*)\\)");
 
     private AnnouncementText() {}
 
     /** Lança 400 no campo {@code body}; devolve o texto como veio. */
-    static String validate(String body) {
+    public static String validate(String body) {
         if (body == null || body.isBlank()) throw new ApiValidationException("body", "obrigatório");
         if (body.length() > MAX) throw new ApiValidationException("body", "no máximo " + MAX + " caracteres");
         Matcher m = LINK.matcher(body);

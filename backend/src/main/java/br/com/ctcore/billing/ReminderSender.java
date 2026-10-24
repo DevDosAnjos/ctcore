@@ -2,6 +2,8 @@ package br.com.ctcore.billing;
 
 import br.com.ctcore.mail.EmailService;
 import br.com.ctcore.mail.EmailTemplate;
+import br.com.ctcore.mail.TextModel;
+import br.com.ctcore.mail.TextModels;
 import java.sql.Types;
 import java.text.NumberFormat;
 import java.time.Clock;
@@ -10,6 +12,7 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -31,8 +34,10 @@ class ReminderSender {
     private final JdbcClient jdbc;
     private final EmailService email;
     private final Clock clock;
+    private final TextModels texts;
 
-    ReminderSender(@Lazy JdbcClient jdbc, EmailService email, Clock clock) {
+    ReminderSender(@Lazy JdbcClient jdbc, EmailService email, Clock clock, TextModels texts) {
+        this.texts = texts;
         this.jdbc = jdbc;
         this.email = email;
         this.clock = clock;
@@ -66,16 +71,25 @@ class ReminderSender {
                 .query(Integer.class).optional().isPresent()) {
             return null;
         }
-        var row = jdbc.sql("select coalesce(ga.email, s.email) as email, c.amount_cents, c.due_on, c.reference_month, c.description "
+        var row = jdbc.sql("select coalesce(ga.email, s.email) as email, c.amount_cents, c.due_on, c.reference_month, c.description, coalesce(ga.name, s.name) as person, u.name as unit_name "
                 + "from charge c join student s on s.organization_id = c.organization_id and s.id = c.student_id "
-                + "left join guardian g on g.organization_id = c.organization_id and g.id = c.payer_guardian_id left join account ga on ga.id = g.account_id "
+                + "join unit u on u.organization_id = c.organization_id and u.id = c.unit_id left join guardian g on g.organization_id = c.organization_id and g.id = c.payer_guardian_id left join account ga on ga.id = g.account_id "
                 + "where c.id = :id and c.organization_id = :org").param("id", chargeId).param("org", org).query().singleRow();
         String to = (String) row.get("email");
         Result result = Result.NO_ADDRESS;
         UUID message = null;
         if (to != null && to.contains("@")) {
             Object[] args = {describe(row.get("description"), row.get("reference_month")), money(row.get("amount_cents")), date(row.get("due_on")), days};
-            message = email.send(org, to.strip(), template, days == null ? Arrays.copyOf(args, 3) : args);
+            TextModel model = TextModel.reminder(template);
+            var own = model == null ? java.util.Optional.<TextModels.Text>empty() : texts.custom(org, model);
+            if (own.isPresent()) {
+                // RN-COM-12: texto próprio da organização; {link_pagamento} sai vazio até haver pagamento online (D4)
+                Map<String, String> values = Map.of("nome", String.valueOf(row.get("person")), "valor", (String) args[1], "vencimento", (String) args[2],
+                        "unidade", String.valueOf(row.get("unit_name")), "descricao", (String) args[0], "link_pagamento", "");
+                message = email.sendText(org, to.strip(), template, TextModels.fill(own.get().subject(), values), TextModels.fill(own.get().body(), values));
+            } else {
+                message = email.send(org, to.strip(), template, days == null ? Arrays.copyOf(args, 3) : args);
+            }
             result = "SKIPPED".equals(jdbc.sql("select status from email_message where id = :id").param("id", message).query(String.class).single())
                     ? Result.EMAIL_PROBLEM : Result.SENT;
         }

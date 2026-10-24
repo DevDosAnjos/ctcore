@@ -232,6 +232,8 @@
     "contrastFail": "Reprovado: o mínimo AA é 4,5 para 1. Escolha uma cor mais escura.",
     "preview": "Prévia do botão",
     "previewButton": "Botão de exemplo",
+    "edit": "Editar",
+    "view": "Ver",
     "save": "Salvar",
     "saving": "Salvando...",
     "saved": "Dados salvos.",
@@ -1381,6 +1383,94 @@
       "read": "Ler o texto"
     }
   },
+  "texts": {
+    "title": "Textos",
+    "intro": "Os e-mails da plataforma que a academia pode personalizar. Sem texto próprio, vale o texto da plataforma.",
+    "groups": {
+      "REMINDERS": "Lembretes de cobrança",
+      "WELCOME": "Boas-vindas",
+      "ANNOUNCEMENTS": "Comunicados"
+    },
+    "models": {
+      "REMINDER_BEFORE": "Lembrete antes do vencimento",
+      "REMINDER_DUE": "Lembrete no dia do vencimento",
+      "REMINDER_OVERDUE": "Lembrete de cobrança em atraso",
+      "WELCOME": "Boas-vindas ao aluno",
+      "ANNOUNCEMENT_CANCELED_CLASS": "Aula cancelada",
+      "ANNOUNCEMENT_TEACHER_CHANGE": "Troca de professor",
+      "ANNOUNCEMENT_SCHEDULE_CHANGE": "Mudança de horário",
+      "ANNOUNCEMENT_NO_CLASS_DAY": "Dia sem aula",
+      "ANNOUNCEMENT_GENERAL": "Aviso geral"
+    },
+    "origin": {
+      "custom": "Texto próprio",
+      "platform": "Texto da plataforma"
+    },
+    "modelsList": "Modelos de {{group}}",
+    "emptyTitle": "Nenhum modelo de texto",
+    "emptyText": "Quando houver textos para personalizar, eles aparecem aqui.",
+    "welcomeNote": "O envio das boas-vindas começa com o convite do portal; o texto já pode ser preparado.",
+    "editor": {
+      "title": "Texto: {{name}}",
+      "subject": "Assunto",
+      "body": "Texto do e-mail",
+      "fields": "Campos automáticos",
+      "fieldsHelp": "Clique para inserir o campo onde o cursor estiver. Ele é trocado pelo dado real no envio.",
+      "insert": "Inserir o campo {{field}}",
+      "linkNote": "Enquanto não houver pagamento online, o campo link_pagamento sai vazio.",
+      "readOnly": "Você pode consultar os textos, mas só o Coordenador altera.",
+      "updated": "Texto próprio salvo em {{date}} por {{by}}."
+    },
+    "fieldLabels": {
+      "nome": "nome",
+      "valor": "valor",
+      "vencimento": "vencimento",
+      "unidade": "unidade",
+      "descricao": "descrição",
+      "link_pagamento": "link de pagamento",
+      "turma": "turma",
+      "data": "data",
+      "horario": "horário",
+      "periodo": "período",
+      "motivo": "motivo"
+    },
+    "sample": {
+      "nome": "Maria Souza",
+      "valor": "R$ 150,00",
+      "vencimento": "10/11/2026",
+      "unidade": "Unidade Centro",
+      "descricao": "Mensalidade 11/2026",
+      "link_pagamento": "",
+      "turma": "Jiu-Jitsu Adulto",
+      "data": "15/11/2026",
+      "horario": "19:00",
+      "periodo": "15/11/2026",
+      "motivo": "feriado"
+    },
+    "preview": {
+      "title": "Prévia com dados de exemplo",
+      "subject": "Assunto: {{subject}}",
+      "footer": "feito com ctcore"
+    },
+    "edit": "Editar",
+    "view": "Ver",
+    "save": "Salvar",
+    "saved": "Texto salvo.",
+    "reset": "Voltar ao texto da plataforma",
+    "resetConfirm": {
+      "title": "Voltar ao texto da plataforma",
+      "summary": "O texto próprio de {{name}} será apagado e os próximos e-mails usarão o texto da plataforma.",
+      "confirm": "Voltar ao padrão"
+    },
+    "resetDone": "O texto da plataforma voltou a valer.",
+    "errors": {
+      "subject": "Confira o assunto: não pode ficar vazio, passar do limite de caracteres nem ter campo automático que este modelo não aceita.",
+      "body": "Confira o texto: não pode ficar vazio, passar de 2000 caracteres, ter campo automático que este modelo não aceita, chave sem fecho ou link que não comece com http:// ou https://.",
+      "same": "O texto é igual ao da plataforma. Para usá-lo, volte ao texto da plataforma.",
+      "generic": "Não foi possível salvar. Nada foi alterado. Tente de novo.",
+      "resetGeneric": "Não foi possível voltar ao texto da plataforma. Nada foi alterado. Tente de novo."
+    }
+  },
   "ageRanges": {
     "title": "Faixas etárias",
     "intro": "As faixas organizam turmas, aulas experimentais e o diretório. A idade de cada aluno continua calculada pelo nascimento.",
@@ -1659,6 +1749,8 @@
     "directoryHelp": "A unidade pode ser encontrada por quem procura uma academia.",
     "trialLink": "Link público de aula experimental",
     "selfRegistrationLink": "Link público de autocadastro",
+    "edit": "Editar",
+    "view": "Ver",
     "save": "Salvar",
     "saving": "Salvando...",
     "saved": "Dados salvos.",
@@ -1702,6 +1794,7 @@
       "modalities": "Modalidades",
       "ageRanges": "Faixas etárias",
       "terms": "Termos",
+      "texts": "Textos",
       "staffUsers": "Usuários da gestão",
       "units": "Unidades",
       "subscription": "Assinatura e faturas",
@@ -2245,14 +2338,7 @@
         "file": "Use uma imagem válida, de até 5 MB.",
         "other": "Confira os dados do comunicado."
       },
-      "templates": {
-        "CANCELED_CLASS": { "title": "Aula cancelada", "body": "A aula de {{turma}} do dia {{data}}, às {{horario}}, foi cancelada. Avisaremos quando houver reposição." },
-        "TEACHER_CHANGE": { "title": "Troca de professor", "body": "A aula de {{turma}} terá outro professor a partir de {{data}}." },
-        "SCHEDULE_CHANGE": { "title": "Mudança de horário", "body": "A aula de {{turma}} muda de horário a partir de {{data}}. O novo horário é {{horario}}." },
-        "NO_CLASS_DAY": { "title": "Dia sem aula", "body": "Não haverá aula em {{periodo}}: {{motivo}}." },
-        "GENERAL": { "title": "Aviso geral", "body": "" }
-      },
-      "placeholders": { "date": "[data]", "time": "[horário]", "period": "[período]", "reason": "[motivo]", "target": "[turma]" }
+      "placeholders": { "date": "[data]", "time": "[horário]", "period": "[período]", "reason": "[motivo]", "target": "[turma]", "unit": "[unidade]" }
     },
     "emptyTitle": "Nenhum comunicado ainda",
     "emptyText": "Os comunicados enviados e agendados aparecem aqui.",

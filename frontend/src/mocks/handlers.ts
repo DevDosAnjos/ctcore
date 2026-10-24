@@ -105,6 +105,7 @@ export const resetMockSession = () => {
   modalityRequests = [];
   ageRanges = initialAgeRanges();
   termsVersions = { ENROLLMENT: [], IMAGE_USE: [] };
+  textCustoms = {};
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -180,6 +181,46 @@ const TERMS_TEMPLATES: Record<string, string> = {
 let termsVersions: Record<string, MockTermsVersion[]> = { ENROLLMENT: [], IMAGE_USE: [] };
 const termsCurrent = (kind: string): MockTermsVersion =>
   termsVersions[kind][0] ?? { version: 0, body: TERMS_TEMPLATES[kind], reaccept: false, publishedAt: null, publishedBy: null };
+// Textos dos modelos de e-mail (RF-COM-03, #83), em memória: sem texto próprio vale o da plataforma. Mesmas validações do servidor.
+type MockTextModel = { group: string; fields: string[]; subject: string; body: string };
+const REMINDER_FIELDS = ["nome", "valor", "vencimento", "unidade", "descricao", "link_pagamento"];
+const TEXT_MODELS: Record<string, MockTextModel> = {
+  REMINDER_BEFORE: { group: "REMINDERS", fields: REMINDER_FIELDS, subject: "Lembrete: sua cobrança vence em breve", body: "Lembrete de cobrança: {descricao}, no valor de {valor}, com vencimento em {vencimento}." },
+  REMINDER_DUE: { group: "REMINDERS", fields: REMINDER_FIELDS, subject: "Lembrete: sua cobrança vence hoje", body: "Sua cobrança vence hoje: {descricao}, no valor de {valor}, com vencimento em {vencimento}." },
+  REMINDER_OVERDUE: { group: "REMINDERS", fields: REMINDER_FIELDS, subject: "Lembrete: você tem uma cobrança em atraso", body: "Há uma cobrança em atraso: {descricao}, no valor de {valor}, com vencimento em {vencimento}. Procure a academia para regularizar." },
+  WELCOME: { group: "WELCOME", fields: ["nome", "unidade"], subject: "Bem-vindo(a) à {unidade}", body: "Olá, {nome}! Seja bem-vindo(a) à {unidade}. Estamos felizes em ter você com a gente." },
+  ANNOUNCEMENT_CANCELED_CLASS: { group: "ANNOUNCEMENTS", fields: ["unidade", "turma", "data", "horario"], subject: "Aula cancelada", body: "A aula de {turma} do dia {data}, às {horario}, foi cancelada. Avisaremos quando houver reposição." },
+  ANNOUNCEMENT_TEACHER_CHANGE: { group: "ANNOUNCEMENTS", fields: ["unidade", "turma", "data"], subject: "Troca de professor", body: "A aula de {turma} terá outro professor a partir de {data}." },
+  ANNOUNCEMENT_SCHEDULE_CHANGE: { group: "ANNOUNCEMENTS", fields: ["unidade", "turma", "data", "horario"], subject: "Mudança de horário", body: "A aula de {turma} muda de horário a partir de {data}. O novo horário é {horario}." },
+  ANNOUNCEMENT_NO_CLASS_DAY: { group: "ANNOUNCEMENTS", fields: ["unidade", "periodo", "motivo"], subject: "Dia sem aula", body: "Não haverá aula em {periodo}: {motivo}." },
+  ANNOUNCEMENT_GENERAL: { group: "ANNOUNCEMENTS", fields: ["unidade"], subject: "Aviso geral", body: "" },
+};
+type MockTextCustom = { subject: string; body: string; updatedAt: string; updatedBy: string };
+let textCustoms: Record<string, MockTextCustom> = {};
+const textItem = (key: string) => {
+  const m = TEXT_MODELS[key];
+  const c = textCustoms[key];
+  return {
+    key,
+    group: m.group,
+    fields: m.fields,
+    platform: { subject: m.subject, body: m.body },
+    custom: c ? { subject: c.subject, body: c.body } : null,
+    updatedAt: c?.updatedAt ?? null,
+    updatedBy: c?.updatedBy ?? null,
+  };
+};
+const checkText = (key: string, field: "subject" | "body", text: string, max: number): Response | null => {
+  const bad = (message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+  if (!text) return bad("obrigatório");
+  if (text.length > max) return bad(`no máximo ${max} caracteres`);
+  for (const m of text.matchAll(/\{([^{}]*)\}/g)) if (!TEXT_MODELS[key].fields.includes(m[1])) return bad(`campo automático desconhecido: {${m[1]}}`);
+  if (/[{}]/.test(text.replace(/\{[^{}]*\}/g, ""))) return bad("chave { } sem fecho");
+  if (field === "body" && TEXT_MODELS[key].group === "ANNOUNCEMENTS") {
+    for (const l of text.matchAll(/\[[^\]]*\]\(([^)\s]*)\)/g)) if (!/^https?:\/\//i.test(l[1])) return bad("o link precisa começar com http:// ou https://");
+  }
+  return null;
+};
 const sortedAgeRanges = () => [...ageRanges].sort((a, b) => a.minAge - b.minAge || a.name.localeCompare(b.name));
 const checkAgeRange = (body: AgeRangeInput, id: string | null): MockAgeRange | Response => {
   const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
@@ -1757,6 +1798,45 @@ export const routes: Route[] = [
       const created = { version: termsCurrent(kind).version + 1, body: text, reaccept: input.reaccept, publishedAt: new Date().toISOString(), publishedBy: current.account.name };
       termsVersions[kind] = [created, ...termsVersions[kind]];
       return HttpResponse.json(created, { status: 201 });
+    },
+  },
+  {
+    method: "get",
+    path: "/organization/texts",
+    resolver: () => {
+      const denied = organizationAccess(false);
+      if (denied) return denied;
+      return HttpResponse.json({ canManage: activeRole() === "COORDINATOR", models: Object.keys(TEXT_MODELS).map(textItem) });
+    },
+  },
+  {
+    method: "put",
+    path: "/organization/texts/{key}",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const key = params.key as string;
+      if (!(key in TEXT_MODELS)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const input = (await request.json()) as { subject?: string; body?: string };
+      const subject = input.subject?.trim() ?? "";
+      const body = input.body?.trim() ?? "";
+      const invalid = checkText(key, "subject", subject, TEXT_MODELS[key].group === "ANNOUNCEMENTS" ? 120 : 150) ?? checkText(key, "body", body, 2000);
+      if (invalid) return invalid;
+      if (subject === TEXT_MODELS[key].subject && body === TEXT_MODELS[key].body) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "body", message: "igual ao texto da plataforma" }]);
+      textCustoms[key] = { subject, body, updatedAt: new Date().toISOString(), updatedBy: current.account.name };
+      return HttpResponse.json(textItem(key));
+    },
+  },
+  {
+    method: "delete",
+    path: "/organization/texts/{key}",
+    resolver: ({ params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const key = params.key as string;
+      if (!(key in TEXT_MODELS)) return error(404, "NOT_FOUND", "Não encontrado.");
+      delete textCustoms[key];
+      return new HttpResponse(null, { status: 204 });
     },
   },
   {
@@ -4005,6 +4085,22 @@ export const routes: Route[] = [
       if (!found.scheduled) return error(409, "ANNOUNCEMENT_ALREADY_SENT", "Este comunicado já foi enviado e não pode ser cancelado.");
       mockAnnouncements = mockAnnouncements.filter((a) => a.id !== found.id);
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RF-COM-02, RN-COM-12 (#83): o título e o texto em uso de cada tipo de comunicado.
+    method: "get",
+    path: "/announcements/templates",
+    resolver: () => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const templates = Object.fromEntries(
+        Object.keys(TEXT_MODELS).filter((k) => TEXT_MODELS[k].group === "ANNOUNCEMENTS").map((k) => {
+          const i = textItem(k);
+          return [k.replace("ANNOUNCEMENT_", ""), { title: (i.custom ?? i.platform).subject, body: (i.custom ?? i.platform).body }];
+        }),
+      );
+      return HttpResponse.json({ templates });
     },
   },
   {

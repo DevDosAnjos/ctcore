@@ -805,6 +805,52 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /organization/texts:
+    get:
+      summary: Modelos de e-mail que a organização pode editar, com o texto da plataforma e o próprio (RF-COM-03, RN-COM-12). Coordenador e Administrador.
+      description: |
+        Catálogo fixo de 9 modelos: três lembretes de cobrança, boas-vindas e o texto inicial dos cinco tipos de comunicado. Cada um traz `fields` (os campos automáticos
+        que aceita, escritos `{campo}`), `platform` (assunto e texto da plataforma), `custom` (o da organização, ou nulo) e, com texto próprio, `updatedAt` e `updatedBy`.
+        `canManage` é verdadeiro só para o Coordenador. Professor, Aluno e Responsável recebem 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Os modelos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TextModelList' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /organization/texts/{key}:
+    put:
+      summary: Grava o texto próprio de um modelo, substituindo o anterior (RF-COM-03, RN-COM-12). Só o Coordenador.
+      description: |
+        `subject` de 1 a 150 caracteres (120 nos comunicados) e `body` de 1 a 2000, depois de aparar as pontas. Campo automático desconhecido ou que o modelo não
+        aceita, `{` ou `}` sem fecho e texto igual ao da plataforma: 400 no campo. O texto de comunicado aceita o formato mínimo (link só http ou https).
+        Chave fora do catálogo: 404. Grava `texts.updated` na auditoria com o antes e o depois.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: key, in: path, required: true, schema: { $ref: '#/components/schemas/TextModelKey' } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TextModelInput' } } }
+      responses:
+        '200':
+          description: O modelo com o texto próprio.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TextModel' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Volta ao texto da plataforma (RF-COM-03). Só o Coordenador.
+      description: Apaga o texto próprio do modelo. Sem texto próprio, 204 sem efeito. Chave fora do catálogo, 404. Grava `texts.reset` na auditoria quando apagou.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: key, in: path, required: true, schema: { $ref: '#/components/schemas/TextModelKey' } }
+      responses:
+        '204': { description: O modelo voltou ao texto da plataforma. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /announcements:
     get:
       summary: Comunicados (RF-COM-01). Coordenador, Administrador e Professor com a permissão de comunicados.
@@ -872,6 +918,19 @@ paths:
         '200':
           description: Destinos.
           content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementTargets' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /announcements/templates:
+    get:
+      summary: Título e texto iniciais de cada tipo de comunicado (RF-COM-02, RN-COM-04, RN-COM-12).
+      description: |
+        Por tipo, o título e o texto em uso: o próprio da organização ou, sem ele, o da plataforma. Os campos automáticos vêm escritos `{campo}` (`{turma}`, `{data}`,
+        `{horario}`, `{periodo}`, `{motivo}`, `{unidade}`); quem preenche é a tela. Quem tem a permissão de comunicados lê; sem ela, 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Os cinco tipos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementTemplates' } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /announcements/preview:
@@ -3284,6 +3343,51 @@ components:
       properties:
         body: { type: string, minLength: 20, maxLength: 20000 }
         reaccept: { type: boolean }
+    TextModelKey:
+      type: string
+      enum: [REMINDER_BEFORE, REMINDER_DUE, REMINDER_OVERDUE, WELCOME, ANNOUNCEMENT_CANCELED_CLASS, ANNOUNCEMENT_TEACHER_CHANGE, ANNOUNCEMENT_SCHEDULE_CHANGE, ANNOUNCEMENT_NO_CLASS_DAY, ANNOUNCEMENT_GENERAL]
+    TextModelText:
+      type: object
+      required: [subject, body]
+      properties:
+        subject: { type: string }
+        body: { type: string }
+    TextModel:
+      type: object
+      required: [key, group, fields, platform, custom, updatedAt, updatedBy]
+      properties:
+        key: { $ref: '#/components/schemas/TextModelKey' }
+        group: { type: string, enum: [REMINDERS, WELCOME, ANNOUNCEMENTS] }
+        fields: { type: array, items: { type: string }, description: 'Campos automáticos aceitos, sem as chaves (ex.: nome).' }
+        platform: { $ref: '#/components/schemas/TextModelText' }
+        custom: { allOf: [{ $ref: '#/components/schemas/TextModelText' }], nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+        updatedBy: { type: string, nullable: true }
+    TextModelList:
+      type: object
+      required: [canManage, models]
+      properties:
+        canManage: { type: boolean }
+        models: { type: array, items: { $ref: '#/components/schemas/TextModel' } }
+    TextModelInput:
+      type: object
+      required: [subject, body]
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 150 }
+        body: { type: string, minLength: 1, maxLength: 2000 }
+    AnnouncementTemplates:
+      type: object
+      required: [templates]
+      properties:
+        templates:
+          type: object
+          description: 'Um item por tipo de comunicado (CANCELED_CLASS, TEACHER_CHANGE, SCHEDULE_CHANGE, NO_CLASS_DAY, GENERAL).'
+          additionalProperties:
+            type: object
+            required: [title, body]
+            properties:
+              title: { type: string }
+              body: { type: string }
     PaymentInput:
       type: object
       required: [method]
