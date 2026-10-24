@@ -30,7 +30,7 @@ test("@critical Coordenador abre a Agenda", async ({ page }) => {
   await page.getByRole("link", { name: /Jiu-Jitsu Adulto/ }).first().click();
   await expect(page.getByRole("heading", { name: "Jiu-Jitsu Adulto", level: 1 })).toBeVisible();
   await expect(page.getByRole("link", { name: "Ver turma" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Avisar turma" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Avisar turma" })).toBeVisible();
 
   // RF-AGE-03: edita o horário desta aula e, em seguida, cancela outra.
   await page.getByRole("button", { name: "Editar aula" }).click();

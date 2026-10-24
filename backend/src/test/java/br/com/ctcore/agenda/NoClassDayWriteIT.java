@@ -179,7 +179,7 @@ class NoClassDayWriteIT extends NoClassDayBase {
         assertThat(created.get(0).get("notice").get("sendAt").asText()).isNotBlank();
         Map<String, Object> now = body(TODAY.plusDays(10).toString(), TODAY.plusDays(10).toString(), "Agora", t.unitId());
         now.put("notice", Map.of("mode", "NOW"));
-        assertThat(body(post(now, coord), 201).get(0).get("notice").get("status").asText()).isEqualTo("NOT_NOTIFIED");
+        assertThat(body(post(now, coord), 201).get(0).get("notice").get("status").asText()).isEqualTo("SENT");
         Map<String, Object> bare = body(TODAY.plusDays(20).toString(), TODAY.plusDays(20).toString(), "Sem aviso", t.unitId());
         bare.remove("notice");
         assertThat(body(post(bare, coord), 201).get(0).get("notice").get("mode").asText()).isEqualTo("NONE");

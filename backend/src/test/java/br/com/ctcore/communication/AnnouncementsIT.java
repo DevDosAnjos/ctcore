@@ -192,4 +192,27 @@ class AnnouncementsIT extends AnnouncementBase {
         assertThat(send(HttpMethod.DELETE, "/announcements/" + all, coordinator).getStatus()).isEqualTo(204);
         assertThat(count("select count(*) from announcement")).isEqualTo(1);
     }
+
+    @Test
+    @DisplayName("#82 CA21: comunicado CLASSES traz o nome das duas turmas, o filtro por qualquer uma o encontra e o Professor titular de uma delas o vê; o de outra turma não")
+    void classes() throws Exception {
+        Tenant t = tenant();
+        AccountPrincipal coordinator = account(t, Role.COORDINATOR);
+        AccountPrincipal first = account(t, Role.TEACHER), stranger = account(t, Role.TEACHER);
+        UUID one = klass(t, "Turma Um", teacher(t, first)), two = klass(t, "Turma Dois", teacher(t, null));
+        teacher(t, stranger);
+        UUID id = announcement(t, coordinator, "CLASSES", t.unitId(), null, "NO_CLASS_DAY", "Sem aula", null, "2026-10-05T15:00:00Z");
+        for (UUID k : new UUID[] {one, two}) {
+            adminJdbc().update("insert into announcement_class (organization_id, announcement_id, class_id) values (?, ?, ?)", t.orgId(), id, k);
+        }
+        JsonNode item = ok(send(HttpMethod.GET, "/announcements", coordinator), 200).get("items").get(0);
+        assertThat(item.get("target").get("kind").asText()).isEqualTo("CLASSES");
+        assertThat(item.get("target").get("name").asText()).isEqualTo("Turma Dois, Turma Um");
+        assertThat(item.get("target").get("id").isNull()).isTrue();
+        assertThat(titles("?classId=" + one, coordinator)).containsExactly("Sem aula");
+        assertThat(titles("?classId=" + two, coordinator)).containsExactly("Sem aula");
+        assertThat(titles("?classId=" + UUID.randomUUID(), coordinator)).isEmpty();
+        assertThat(titles("", first)).containsExactly("Sem aula");
+        assertThat(titles("", stranger)).isEmpty();
+    }
 }

@@ -269,12 +269,13 @@ class SeedDataIT extends PostgresIT {
     }
 
     @Test
-    @DisplayName("RF-COM-01, #81: seed cria 3 comunicados (2 enviados, 1 agendado) sem duplicar")
+    @DisplayName("RF-COM-01, #81: seed cria 4 comunicados (2 enviados, 2 agendados, um deles para duas turmas) sem duplicar")
     void announcementsSeed() throws IOException {
         apply(jdbc, SEED_DIR);
         apply(jdbc, SEED_DIR);
         assertThat(jdbc.queryForObject("select count(*) from announcement where sent_at is not null", Integer.class)).isEqualTo(2);
-        assertThat(jdbc.queryForObject("select count(*) from announcement where sent_at is null", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from announcement where sent_at is null", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from announcement_class", Integer.class)).isEqualTo(2);
     }
 
     @Test

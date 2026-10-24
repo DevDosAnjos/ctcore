@@ -1177,6 +1177,7 @@ type MockAnnouncement = {
   date: string;
   kind: "CLASS" | "MODALITY" | "UNIT" | "ORGANIZATION";
   classId: string | null;
+  modalityId?: string | null;
   unitId: string | null;
   type: string;
   title: string;
@@ -1209,6 +1210,48 @@ const announcementInReach = (a: MockAnnouncement) => {
 const announcementDay = (a: MockAnnouncement) => isoDay(new Date(Date.parse(a.date) - 3 * 3_600_000));
 const ANNOUNCEMENT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ANNOUNCEMENT_DAY = /^\d{4}-\d{2}-\d{2}$/;
+// RF-COM-02 (#82): entrada de `preview` e `POST /announcements`, o destino conferido pelo perfil (RN-COM-01) e os canais.
+type AnnouncementBody = { targetKind?: string; classId?: string; modalityId?: string; unitId?: string; type?: string; title?: string; body?: string; channels?: unknown; imageName?: string; pinnedUntil?: string; sendAt?: string };
+const announcementChannels = (b: AnnouncementBody) => ["PORTAL", ...((b.channels as string[] | undefined) ?? [])].filter((c, i, all) => all.indexOf(c) === i);
+const announcementChannelsBad = (b: AnnouncementBody) => {
+  const list = b.channels === undefined ? [] : b.channels;
+  if (!Array.isArray(list) || list.some((c) => !["PORTAL", "EMAIL", "WHATSAPP"].includes(c as string))) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "channels", message: "canal inválido" }]);
+  return null;
+};
+const announcementTarget = (b: AnnouncementBody) => {
+  const role = activeRole();
+  const manager = role === "COORDINATOR" || role === "ADMINISTRATOR";
+  const forbidden = () => error(403, "FORBIDDEN", "Sem permissão.");
+  const unitOk = (id: string | undefined) => (role === "COORDINATOR" ? true : id === ADMIN_UNIT);
+  const missing = () => error(404, "NOT_FOUND", "Não encontrado.");
+  const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+  switch (b.targetKind) {
+    case "CLASS": {
+      const c = b.classId ? mockClasses.find((x) => x.id === b.classId) : undefined;
+      if (!c) return b.classId ? missing() : bad("classId", "obrigatório");
+      const own = role === "TEACHER" && (c.head === TEACHER_ANA || c.assistants.includes(TEACHER_ANA));
+      if (!own && !(manager && unitOk(c.unitId))) return forbidden();
+      if (c.status !== "ACTIVE") return bad("classId", "turma desativada");
+      return { kind: "CLASS" as const, classId: c.id, modalityId: null, unitId: c.unitId, groupLink: c.groupLink ?? null, recipients: 8 };
+    }
+    case "MODALITY": {
+      if (!b.modalityId || !b.unitId) return bad(b.modalityId ? "unitId" : "modalityId", "obrigatório");
+      if (!manager || !unitOk(b.unitId)) return forbidden();
+      if (!modalityCatalog.some((m) => m.id === b.modalityId) || !units.some((u) => u.id === b.unitId)) return missing();
+      return { kind: "MODALITY" as const, classId: null, modalityId: b.modalityId, unitId: b.unitId, groupLink: null, recipients: 15 };
+    }
+    case "UNIT": {
+      if (!b.unitId) return bad("unitId", "obrigatório");
+      if (!manager || !unitOk(b.unitId)) return forbidden();
+      if (!units.some((u) => u.id === b.unitId)) return missing();
+      return { kind: "UNIT" as const, classId: null, modalityId: null, unitId: b.unitId, groupLink: null, recipients: 25 };
+    }
+    case "ORGANIZATION":
+      return role === "COORDINATOR" ? { kind: "ORGANIZATION" as const, classId: null, modalityId: null, unitId: null, groupLink: null, recipients: 40 } : forbidden();
+    default:
+      return bad("targetKind", "destino inválido");
+  }
+};
 export const routes: Route[] = [
   {
     method: "post",
@@ -3927,6 +3970,10 @@ export const routes: Route[] = [
           const c = mockClasses.find((x) => x.id === a.classId)!;
           return { kind: a.kind, id: c.id, name: c.name };
         }
+        if (a.kind === "MODALITY") {
+          const m = modalityCatalog.find((x) => x.id === a.modalityId);
+          return { kind: a.kind, id: m?.id ?? null, name: m?.name ?? null };
+        }
         const u = units.find((x) => x.id === a.unitId);
         return { kind: a.kind, id: u?.id ?? null, name: u?.name ?? null };
       };
@@ -3958,6 +4005,99 @@ export const routes: Route[] = [
       if (!found.scheduled) return error(409, "ANNOUNCEMENT_ALREADY_SENT", "Este comunicado já foi enviado e não pode ser cancelado.");
       mockAnnouncements = mockAnnouncements.filter((a) => a.id !== found.id);
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RF-COM-02 (#82): destinos que o perfil pode escolher. Coordenador: tudo e "todas as unidades"; Administrador: a unidade dele; Professor: só as turmas dele.
+    method: "get",
+    path: "/announcements/targets",
+    resolver: () => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const role = activeRole();
+      const classes = mockClasses.filter((c) => c.status === "ACTIVE" && (role === "COORDINATOR" || (role === "ADMINISTRATOR" && c.unitId === ADMIN_UNIT) || (role === "TEACHER" && (c.head === TEACHER_ANA || c.assistants.includes(TEACHER_ANA)))));
+      const manager = role !== "TEACHER";
+      const reach = units.filter((u) => u.active && (role === "COORDINATOR" || u.id === ADMIN_UNIT));
+      const modalities = manager ? [...new Map(classes.map((c) => [`${c.modalityId}:${c.unitId}`, { id: c.modalityId, name: modalityCatalog.find((m) => m.id === c.modalityId)?.name ?? "", unitId: c.unitId }])).values()] : [];
+      return HttpResponse.json({
+        units: manager ? reach.map((u) => ({ id: u.id, name: u.name })) : [],
+        classes: classes.map((c) => ({ id: c.id, name: c.name, unitId: c.unitId, modalityId: c.modalityId, groupLink: c.groupLink ?? null })),
+        modalities,
+        organization: role === "COORDINATOR",
+      });
+    },
+  },
+  {
+    // RF-COM-02 (#82): prévia sem gravar. Contagens fixas por tipo de destino (o simulado não tem alunos por turma).
+    method: "post",
+    path: "/announcements/preview",
+    resolver: async ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const body = (await request.json()) as AnnouncementBody;
+      const bad = announcementChannelsBad(body);
+      if (bad) return bad;
+      const target = announcementTarget(body);
+      if (target instanceof Response) return target;
+      const channels = announcementChannels(body);
+      const whatsapp = !channels.includes("WHATSAPP") ? null : target.kind === "CLASS" && target.groupLink ? { mode: "GROUP", groupLink: target.groupLink } : { mode: "CONVERSATION", groupLink: null };
+      return HttpResponse.json({ recipients: target.recipients, portal: target.recipients, email: Math.max(target.recipients - 2, 0), whatsapp, channels });
+    },
+  },
+  {
+    // RF-COM-02 (#82): cria o comunicado (enviado agora ou agendado). Limite de 20 por dia e por unidade (409), 403 fora do alcance, 400 com o campo.
+    method: "post",
+    path: "/announcements",
+    resolver: async ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const body = (await request.json()) as AnnouncementBody;
+      const fieldBad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+      const channelsBad = announcementChannelsBad(body);
+      if (channelsBad) return channelsBad;
+      if (typeof body.type !== "string" || !ANNOUNCEMENT_TYPES.includes(body.type)) return fieldBad("type", "tipo de comunicado inválido");
+      const title = (body.title ?? "").trim();
+      if (title.length < 1 || title.length > 120) return fieldBad("title", "de 1 a 120 caracteres");
+      const text = body.body ?? "";
+      if (text.trim().length < 1 || text.length > 2000) return fieldBad("body", "de 1 a 2000 caracteres");
+      if (/\]\((?!https?:\/\/)[^)]*\)/i.test(text)) return fieldBad("body", "só links http ou https");
+      if (body.pinnedUntil && (!ANNOUNCEMENT_DAY.test(body.pinnedUntil) || body.pinnedUntil < isoDay(new Date()))) return fieldBad("pinnedUntil", "hoje ou depois");
+      let when = new Date();
+      if (body.sendAt) {
+        when = new Date(body.sendAt);
+        if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return fieldBad("sendAt", "precisa ser no futuro");
+      }
+      if (body.imageName && !/^announcement-[0-9a-f-]+\.(png|jpg|jpeg|webp)$/i.test(body.imageName)) return fieldBad("imageName", "imagem não encontrada");
+      const target = announcementTarget(body);
+      if (target instanceof Response) return target;
+      const iso = when.toISOString();
+      const day = announcementDay({ date: iso } as MockAnnouncement);
+      if (mockAnnouncements.filter((a) => a.unitId === target.unitId && announcementDay(a) === day).length >= 20) {
+        return error(409, "ANNOUNCEMENT_DAILY_LIMIT", "Esta unidade já atingiu o limite de 20 comunicados por dia.");
+      }
+      const scheduled = !!body.sendAt;
+      const created: MockAnnouncement = {
+        id: crypto.randomUUID(), date: iso, kind: target.kind, classId: target.classId, modalityId: target.modalityId, unitId: target.unitId, type: body.type, title,
+        author: current.account.name, authorId: current.account.id, scheduled, recipients: target.recipients, reads: 0,
+      };
+      mockAnnouncements = [...mockAnnouncements, created];
+      return HttpResponse.json({ id: created.id, status: scheduled ? "SCHEDULED" : "SENT", recipients: scheduled ? null : target.recipients }, { status: 201 });
+    },
+  },
+  {
+    // RF-COM-02 (#82): guarda a imagem do comunicado. O simulado não guarda o arquivo: devolve o nome e a imagem de 1 pixel. Vazio, grande ou que não é imagem: 400 em `file`.
+    method: "post",
+    path: "/announcements/image",
+    resolver: async ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      // Multipart lido como texto (o parser do Node não aceita o File do jsdom nos testes): cabeçalho da parte, linha em branco, conteúdo.
+      const raw = await request.text();
+      const part = /Content-Type:\s*(\S+)\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(raw);
+      if (!raw.includes('name="file"') || !part|| !part[1].startsWith("image/") || part[2].length === 0 || part[2].length > 5 * 1024 * 1024) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "file", message: "envie uma imagem de até 5 MB" }]);
+      }
+      return HttpResponse.json({ name: `announcement-${crypto.randomUUID()}.png`, url: MOCK_LOGO });
     },
   },
 ];

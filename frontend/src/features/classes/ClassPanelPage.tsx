@@ -38,6 +38,7 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
   const { permissions } = usePermissions();
   const canManage = !!permissions && permissions.CLASSES_MANAGE !== "NONE";
   const group = safeLink(klass.groupLink);
+  const canNotify = !!permissions && permissions.ANNOUNCEMENTS !== "NONE" && klass.status === "ACTIVE";
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,9 +61,15 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
         <Button variant="outline" className="min-h-11" disabled>
           {t("classes.panel.viewStudents")}
         </Button>
-        <Button variant="outline" className="min-h-11" disabled>
-          {t("classes.panel.notify")}
-        </Button>
+        {canNotify ? (
+          <Button variant="outline" className="min-h-11" asChild>
+            <Link to={`/comunicados/novo?classId=${klass.id}`}>{t("classes.panel.notify")}</Link>
+          </Button>
+        ) : (
+          <Button variant="outline" className="min-h-11" disabled>
+            {t("classes.panel.notify")}
+          </Button>
+        )}
         {group ? (
           <Button variant="outline" className="min-h-11" asChild>
             <a href={group} target="_blank" rel="noopener noreferrer">

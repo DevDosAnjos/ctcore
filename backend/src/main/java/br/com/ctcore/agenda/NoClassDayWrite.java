@@ -11,6 +11,8 @@ import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.audit.AuditActor;
 import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
+import br.com.ctcore.communication.AnnouncementWrite;
+import br.com.ctcore.communication.AnnouncementWrite.DayNotice;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
@@ -37,8 +39,10 @@ public class NoClassDayWrite {
     private final OrganizationTransactions transactions;
     private final NoClassDays days;
     private final AuditService audit;
+    private final AnnouncementWrite announcements;
 
-    public NoClassDayWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, NoClassDays days, AuditService audit) {
+    public NoClassDayWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, NoClassDays days, AuditService audit, AnnouncementWrite announcements) {
+        this.announcements = announcements;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.days = days;
@@ -95,6 +99,7 @@ public class NoClassDayWrite {
                         .param("status", noticeStatus(p.mode())).param("mode", p.mode()).param("at", at(p.sendAt())).param("by", who.accountId()).update();
                 saveClasses(org, id, p.classIds());
                 int cancelled = cancel(org, id, origin, p.reason(), days.affected(org, u, p.start(), p.end(), p.classIds()));
+                announcements.noClassDayNotice(org, who.accountId(), new DayNotice(id, u.id(), p.start(), p.end(), p.reason(), p.classIds(), p.mode(), p.sendAt()));
                 Map<String, Object> next = new LinkedHashMap<>();
                 next.put("startsOn", p.start().toString());
                 next.put("endsOn", p.end().toString());
@@ -153,6 +158,7 @@ public class NoClassDayWrite {
             jdbc.sql("delete from no_class_day_class where no_class_day_id = :id and organization_id = :org").param("id", id).param("org", org).update();
             saveClasses(org, id, p.classIds());
             int cancelled = cancel(org, id, s.origin(), p.reason(), days.affected(org, u, p.start(), p.end(), p.classIds()));
+            if (!sent) announcements.noClassDayNotice(org, who.accountId(), new DayNotice(id, u.id(), p.start(), p.end(), p.reason(), p.classIds(), mode, sendAt));
             Item after = days.items(who, u, "and d.id = :id", Map.of("id", id), days.today(u)).get(0);
             Map<String, Object> next = days.snapshot(after);
             next.put("releasedLessons", released);
@@ -170,7 +176,7 @@ public class NoClassDayWrite {
         }
     }
 
-    /** R11: apaga o dia e devolve as aulas que ele cancelou; {@code notify} só fica na auditoria até a Sprint 09. */
+    /** R11: apaga o dia e devolve as aulas que ele cancelou; {@code notify} avisa que as aulas voltaram se o dia já foi avisado (D7). */
     public void delete(AccountPrincipal who, UUID id, boolean notify, String ip) {
         transactions.execute(() -> {
             UUID org = who.organizationId();
@@ -178,6 +184,7 @@ public class NoClassDayWrite {
             UnitCtx u = days.unit(who, s.unitId());
             Item before = days.items(who, u, "and d.id = :id", Map.of("id", id), days.today(u)).get(0);
             int released = release(org, id);
+            announcements.noClassDayRemoved(org, who.accountId(), id, notify);
             jdbc.sql("delete from no_class_day where id = :id and organization_id = :org").param("id", id).param("org", org).update();
             Map<String, Object> next = new LinkedHashMap<>();
             next.put("notify", notify);
