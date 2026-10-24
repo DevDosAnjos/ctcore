@@ -3,6 +3,9 @@
 #
 #   bash infra/scripts/aguardar-ci.sh <PR> [SHA]    (rodar em segundo plano)
 #
+# Nunca roda em primeiro plano: o CI pode passar dos 10 min de um comando em primeiro plano e o
+# terminal se perde. Ao sair, grava "<código> <última linha>" em ${TMPDIR:-/tmp}/aguardar-ci-pr<N>.resultado.
+#
 # Códigos de saída:
 #   0  passou          todos os checks do PR passaram (gh pr checks saiu com 0)
 #   1  falhou          `gh pr checks` devolveu 1 e o run concluiu em failure, cancelled, timed_out ou
@@ -13,7 +16,8 @@
 #                      uma vez (`gh run rerun <run> --job <id>`); se travar de novo, validar local,
 #                      comentar no PR e parar para o dono decidir o merge
 #   3  tempo estourou  passou o limite sem terminar e sem fantasma
-#   4  já há watcher   outro aguardar-ci.sh está rodando para este PR; não iniciar outro
+#   4  já há watcher   outro aguardar-ci.sh está rodando para este PR; não iniciar outro. A saída traz
+#                      o pid, o arquivo de resultado (ler com cat) e `kill <pid>` para encerrá-lo
 #   5  erro            uso errado, head do PR mudou (push novo), head que não chegou ao SHA esperado
 #                      em 3 ciclos, ou 3 falhas seguidas do gh
 #   6  passou, com fantasma de exibição   run concluído com success e job ci-gate com success, mas
@@ -38,14 +42,29 @@ max_falhas=3
 
 # Um watcher por PR: diretório de trava com o pid; trava de processo morto é refeita.
 trava="${TMPDIR:-/tmp}/aguardar-ci-pr$pr.lock"
+resultado="${TMPDIR:-/tmp}/aguardar-ci-pr$pr.resultado"
 if ! mkdir "$trava" 2>/dev/null; then
   if kill -0 "$(cat "$trava/pid" 2>/dev/null)" 2>/dev/null; then
-    echo "já há watcher para o PR #$pr (pid $(cat "$trava/pid"))"; exit 4
+    outro=$(cat "$trava/pid")
+    echo "já há watcher para o PR #$pr (pid $outro)"
+    echo "resultado quando ele terminar: $resultado"
+    echo "para encerrá-lo: kill $outro"; exit 4
   fi
   rm -rf "$trava"; mkdir "$trava" || exit 5
 fi
 echo $$ > "$trava/pid"
-trap 'rm -rf "$trava"' EXIT
+rm -f "$resultado"   # resultado velho não vale para este run
+ultima=""
+dizer() { ultima="$1"; echo "$1"; }
+fim() {
+  local code=$?
+  if [ -z "$ultima" ]; then
+    case $code in 0) ultima="passou" ;; 1) ultima="falhou" ;; 2) ultima="job fantasma" ;; 3) ultima="tempo estourou" ;; *) ultima="erro" ;; esac
+  fi
+  echo "$code $ultima" > "$resultado"
+  rm -rf "$trava"
+}
+trap fim EXIT
 
 inicio=$SECONDS
 run=""
@@ -68,11 +87,11 @@ ciclo() {
   if [ -n "$esperado" ] && [ "$atual" != "$esperado" ] && [ -z "$sha" ]; then
     # head ainda não chegou (corrida após o push): só esperar, sem fixar o head nem procurar run
     atrasos=$((atrasos + 1))
-    [ "$atrasos" -lt 3 ] || { echo "o head do PR #$pr não chegou a $esperado (visto: $atual)"; exit 5; }
+    [ "$atrasos" -lt 3 ] || { dizer "o head do PR #$pr não chegou a $esperado (visto: $atual)"; exit 5; }
     echo "head do PR ainda é $atual, esperando $esperado ($atrasos/3)"; return 0
   fi
   [ -n "$sha" ] || sha=$atual
-  [ "$atual" = "$sha" ] || { echo "o head do PR #$pr mudou; reiniciar a espera"; exit 5; }
+  [ "$atual" = "$sha" ] || { dizer "o head do PR #$pr mudou; reiniciar a espera"; exit 5; }
 
   # Run mais recente do CI para este commit; a tentativa certa é a última do run (gh view já a devolve).
   if [ -z "$run" ]; then
@@ -89,19 +108,19 @@ ciclo() {
       1) # o gh devolve 1 também para erro genérico (rede): só vale falha se o run concluiu mal
          info=$(gh run view "$run" --json conclusion --jq .conclusion) || return 10
          case "$info" in failure|cancelled|timed_out|action_required) ;; *) return 10 ;; esac
-         echo "run $run: ver gh run view $run --log-failed"; exit 1 ;;
+         dizer "run $run: ver gh run view $run --log-failed"; exit 1 ;;
       8) # pendente na exibição: com o run em success e o ci-gate em success, são fantasmas de exibição
          info=$(gh run view "$run" --json conclusion,jobs --jq '[.conclusion, ([.jobs[] | select(.name == "ci-gate") | .conclusion] | first // "")] | join(" ")') || return 10
          if [ "$info" = "success success" ]; then
-           echo "run $run success e ci-gate success; checks pendentes são fantasmas de exibição:"; fantasmas; exit 6
+           dizer "run $run success e ci-gate success; checks pendentes são fantasmas de exibição:"; fantasmas; exit 6
          fi
          f=$(fantasmas) || return 10
-         [ -z "$f" ] || { echo "run $run concluído sem ci-gate verde, com job fantasma:"; echo "$f"; exit 2; } ;;
+         [ -z "$f" ] || { dizer "run $run concluído sem ci-gate verde, com job fantasma:"; echo "$f"; exit 2; } ;;
       *) return 10 ;;           # código inesperado do gh (rede, 5xx): falha passageira
     esac
   else
     f=$(fantasmas) || return 10
-    [ -z "$f" ] || { echo "job fantasma no run $run:"; echo "$f"; exit 2; }
+    [ -z "$f" ] || { dizer "job fantasma no run $run:"; echo "$f"; exit 2; }
   fi
   return 0
 }
@@ -112,14 +131,14 @@ while :; do
   if [ "$rc" -eq 10 ]; then
     falhas=$((falhas + 1))
     echo "falha passageira do gh ($falhas/$max_falhas)"
-    [ "$falhas" -lt "$max_falhas" ] || { echo "$max_falhas falhas seguidas do gh"; exit 5; }
+    [ "$falhas" -lt "$max_falhas" ] || { dizer "$max_falhas falhas seguidas do gh"; exit 5; }
   else
     falhas=0
   fi
 
   if (( SECONDS - inicio >= limite )); then
-    echo "limite de ${limite}s estourado (run ${run:-nenhum})"
-    if [ -n "$run" ] && f=$(fantasmas) && [ -n "$f" ]; then echo "job fantasma:"; echo "$f"; exit 2; fi
+    dizer "limite de ${limite}s estourado (run ${run:-nenhum})"
+    if [ -n "$run" ] && f=$(fantasmas) && [ -n "$f" ]; then dizer "job fantasma:"; echo "$f"; exit 2; fi
     exit 3
   fi
   sleep "$intervalo"
