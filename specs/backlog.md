@@ -100,10 +100,11 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 83 | RF-COM-03 · Configurações › Textos | issue #83 | Sprint 09 | — | agente | feito |
 | 84 | RF-NOT-01 · Painel do sino (notificações) | issue #84 | Sprint 09 | — | agente | feito |
 | 342 | Afirmar que o aluno com bolsa de 100% continua Ativo | issue #342 | Sprint 09 | — | agente | feito |
-| 343 | Cache do Playwright que valha para PR novo e instalação do Chromium estável | issue #343 | Sprint 09 | — | agente | a fazer |
+| 343 | Cache do Playwright que valha para PR novo e instalação do Chromium estável | issue #343 | Sprint 09 | — | agente | feito |
 | 344 | aguardar-ci.sh: resultado recuperável de um watcher órfão | issue #344 | Sprint 09 | — | agente | feito |
 | 352 | Cobertura de billing cai para 0,99 conforme o horário: o ramo "Cobrança" do ChargeNoticeJob só é coberto pelo agendador por acaso | issue #352 | Sprint 09 | — | agente | feito |
 | 358 | AuditServiceIT.writesDiffWithoutSecrets instável: '4111' coincide com carimbo de hora do log | issue #358 | Sprint 09 | — | agente | feito |
+| 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | a fazer |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | a fazer |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |

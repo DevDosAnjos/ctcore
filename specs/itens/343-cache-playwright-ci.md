@@ -36,7 +36,7 @@ O passo de instalação do Chromium no job `e2e` do CI deixa de depender do espe
 
 - [x] T1: editar o job `e2e` em `.github/workflows/ci.yml` (container, remoção dos passos de instalação e cache, conferência de versão) — cobre CA1, CA2, CA3 — prova: `docker run --rm -v "$PWD:/w" rhysd/actionlint:1.7.7 -color /w/.github/workflows/ci.yml` (imagem removida depois) e `bash infra/scripts/changed-areas.test.sh`.
 - [x] T2: atualizar `README.md` e `AGENTS.md` — cobre CA5 — prova: `grep -n "playwright install" README.md AGENTS.md` sem referência ao CI.
-- [ ] T3: abrir o PR, ler no log o tempo do passo de container e do `e2e`, e registrar tempos antes (da issue) e depois nos 5 primeiros PRs seguintes (este e os próximos 4, na verificação/entrega) — cobre CA4 — prova: `gh run view <id> --json jobs` com `startedAt/completedAt` por passo.
+- [x] T3: abrir o PR, ler no log o tempo do passo de container e do `e2e`, e registrar tempos antes (da issue) e depois nos 5 primeiros PRs seguintes (este e os próximos 4, na verificação/entrega) — cobre CA4 — prova: `gh run view <id> --json jobs` com `startedAt/completedAt` por passo.
 
 ## 6. Decisões
 
@@ -89,10 +89,16 @@ Pendência: CA1, CA4 e T3 só fecham com o PR aberto e medido. Não é limitaç�
 
 ## Medição do CA4 (CI)
 
-Limite: 5 PRs. Medido: 1. Faltam 4. CA4 segue NÃO CONFERIDO até fechar; a verificação não dá `OK` antes.
+Limite: 5 PRs. Medido: 1 (#361). Os demais ficam na #363.
 
 | PR | Run | Inicializar containers | Conferência de versão | `npm run e2e` | Job `e2e` inteiro | CI |
 |---|---|---|---|---|---|---|
 | #361 | 40087704834 | 33 s | 0 s | 42 s | 89 s | verde |
+| #364 | 40090311740 | sem medição (job e2e skipped, sem mudança no front-end) | — | — | — | verde |
+| #365 | 40093207930 | sem medição (job e2e skipped, sem mudança no front-end) | — | — | — | verde |
 
 Critério por PR: container + conferência abaixo de 60 s (33 s: passou) e `e2e` abaixo de 7 min (89 s: passou). Antes (issue): 22 s a 695 s.
+
+## Decisão do dono (24/10/2026)
+
+O dono aceitou fechar o #343 com a medição do #361. Os PRs #364 e #365 não rodaram o `e2e` e não contam. O CA4 continua na #363, que conta só PRs que rodem o `e2e`, até completar 5 (1 de 5 hoje). Se uma medição futura estourar o limite, a #363 vira prioridade, com a alternativa da D1 (cache em `push` para `dev`).
