@@ -257,6 +257,8 @@ describe("assistente Nova matrícula (RF-MAT-01, #67)", () => {
           feesCents: { cash: 0, pix: 0, bankSlip: 0, creditCard: 0, debitCard: 0, automaticDebit: 0, manualPix: 0, terminalCard: 0, transfer: 0 },
           pixKey: null,
           reminderDays: [3],
+          remindersEnabled: true,
+          remindersHour: 9,
           teacherPermissions: { announcements: true, agendaEdit: false, studentContacts: true, trialClasses: true, studentRecord: true },
           directoryEnabled: true,
           trialLinkEnabled: true,

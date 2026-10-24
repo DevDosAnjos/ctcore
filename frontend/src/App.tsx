@@ -14,6 +14,7 @@ import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { OrganizationSettingsPage } from "@/features/organization/OrganizationSettingsPage";
 import { AgeRangesPage } from "@/features/age-ranges/AgeRangesPage";
 import { TermsPage } from "@/features/terms/TermsPage";
+import { TextsPage } from "@/features/texts/TextsPage";
 import { ModalitiesPage } from "@/features/modalities/ModalitiesPage";
 import { NewUnitPage } from "@/features/units/NewUnitPage";
 import { ScopeLine } from "@/features/units/UnitSwitcher";
@@ -25,6 +26,9 @@ import { StudentsPage } from "@/features/students/StudentsPage";
 import { ChargesPage } from "@/features/charges/ChargesPage";
 import { ChargePreviewPage } from "@/features/charges/ChargePreviewPage";
 import { DailyReceiptsPage } from "@/features/charges/DailyReceiptsPage";
+import { OverduePage } from "@/features/charges/OverduePage";
+import { AnnouncementsPage } from "@/features/announcements/AnnouncementsPage";
+import { NewAnnouncementPage } from "@/features/announcements/NewAnnouncementPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
@@ -104,6 +108,8 @@ export function App() {
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR", "TEACHER"]} />}>
             <Route path="/agenda" element={<AgendaPage />} />
             <Route path="/agenda/aulas/:id" element={<LessonPanelPage />} />
+            <Route path="/comunicados" element={<AnnouncementsPage />} />
+            <Route path="/comunicados/novo" element={<NewAnnouncementPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/dias-sem-aula" element={<NoClassDaysPage />} />
@@ -117,6 +123,7 @@ export function App() {
             <Route path="/cobrancas" element={<ChargesPage />} />
             <Route path="/cobrancas/previa" element={<ChargePreviewPage />} />
             <Route path="/cobrancas/recebimentos" element={<DailyReceiptsPage />} />
+            <Route path="/cobrancas/atrasados" element={<OverduePage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />
@@ -124,6 +131,7 @@ export function App() {
             <Route path="/configuracoes/modalidades" element={<ModalitiesPage />} />
             <Route path="/configuracoes/faixas-etarias" element={<AgeRangesPage />} />
             <Route path="/configuracoes/termos" element={<TermsPage />} />
+            <Route path="/configuracoes/textos" element={<TextsPage />} />
             <Route path="/configuracoes/usuarios" element={<UsersPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR"]} />}>

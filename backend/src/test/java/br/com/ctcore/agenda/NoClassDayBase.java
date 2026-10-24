@@ -28,8 +28,17 @@ abstract class NoClassDayBase extends AgendaBase {
     @AfterEach
     void cleanAudit() {
         adminJdbc().execute("alter table audit_log disable trigger user");
-        adminJdbc().update("delete from audit_log where action like 'no_class_day.%' or action = 'lesson.generated'");
+        for (String table : new String[] {"announcement_class", "announcement", "email_message"}) adminJdbc().update("delete from " + table);
+        adminJdbc().update("delete from audit_log where action like 'no_class_day.%' or action like 'announcement.%' or action = 'lesson.generated'");
         adminJdbc().execute("alter table audit_log enable trigger user");
+    }
+
+    /** O comunicado do dia grava a autora (FK para account): o principal sintético ganha a conta. */
+    @Override
+    protected AccountPrincipal who(Tenant t, Role role) {
+        AccountPrincipal p = super.who(t, role);
+        adminJdbc().update("insert into account (id, email, name, status) values (?, ?, 'Autora Sintética', 'ACTIVE')", p.accountId(), "agenda-" + p.accountId() + "@example.com");
+        return p;
     }
 
     protected Tenant secondUnit(Tenant t) {

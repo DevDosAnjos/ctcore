@@ -20,7 +20,7 @@ const put = async (id: string, body: unknown, ifMatch?: string | null) => {
 const declared = (path: string, method: string) => Object.keys(openapi.paths[path][method].responses);
 const keys = (name: string) => Object.keys(openapi.components.schemas[name].properties).sort();
 
-type Body = { name: string; cnpj?: string; settings: { dueDays: number[]; enrollmentFeeEnabled: boolean; enrollmentFeeCents: number; feesCents: Record<string, number>; pixKey: string | null; reminderDays: number[] } };
+type Body = { name: string; cnpj?: string; settings: { dueDays: number[]; enrollmentFeeEnabled: boolean; enrollmentFeeCents: number; feesCents: Record<string, number>; pixKey: string | null; reminderDays: number[]; remindersEnabled?: boolean; remindersHour?: number } };
 const body = (change: (b: Body & Record<string, unknown>) => void = () => {}) => {
   const b = {
     name: "Unidade Centro",
@@ -31,6 +31,8 @@ const body = (change: (b: Body & Record<string, unknown>) => void = () => {}) =>
       feesCents: { cash: 0, pix: 199, bankSlip: 0, creditCard: 0, debitCard: 0, automaticDebit: 0, manualPix: 0, terminalCard: 0, transfer: 0 },
       pixKey: null,
       reminderDays: [3, -3],
+      remindersEnabled: true,
+      remindersHour: 9,
       teacherPermissions: { announcements: true, agendaEdit: false, studentContacts: true, trialClasses: true, studentRecord: true },
       directoryEnabled: true,
       trialLinkEnabled: true,
@@ -81,6 +83,10 @@ describe("configurações da unidade x OpenAPI (CA22)", () => {
       [(b) => (b.settings.feesCents.pix = -1), "settings.feesCents.pix"],
       [(b) => (b.settings.pixKey = "abc"), "settings.pixKey"],
       [(b) => (b.settings.reminderDays = [1, 1]), "settings.reminderDays"],
+      [(b) => (b.settings.remindersHour = 24), "settings.remindersHour"],
+      [(b) => (b.settings.remindersHour = -1), "settings.remindersHour"],
+      [(b) => delete b.settings.remindersHour, "settings.remindersHour"],
+      [(b) => delete b.settings.remindersEnabled, "settings.remindersEnabled"],
     ];
     for (const [change, field] of cases) {
       const res = await put(FIRST, body(change));

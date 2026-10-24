@@ -42,9 +42,11 @@ class AuthController {
     private final InviteService invites;
     private final EmailChangeService emailChanges;
     private final MessageSource messages;
+    private final EmailPreferences preferences;
 
     AuthController(AuthService auth, SessionService sessions, InviteService invites, EmailChangeService emailChanges,
-            MessageSource messages) {
+            MessageSource messages, EmailPreferences preferences) {
+        this.preferences = preferences;
         this.auth = auth;
         this.sessions = sessions;
         this.invites = invites;
@@ -165,5 +167,23 @@ class AuthController {
     ResponseEntity<Void> endOtherSessions(@AuthenticationPrincipal AccountPrincipal principal, HttpServletRequest request) {
         sessions.endOthers(require(principal).accountId(), principal.sessionId(), request.getRemoteAddr());
         return ResponseEntity.noContent().build();
+    }
+
+    record EmailPreferencesRequest(Object announcements) {}
+
+    /** RN-COM-13: only a portal link (student, guardian) reads and changes its own choice. */
+    @GetMapping("/email-preferences")
+    EmailPreferences.View emailPreferences(@AuthenticationPrincipal AccountPrincipal principal) {
+        return preferences.get(require(principal));
+    }
+
+    @PutMapping("/email-preferences")
+    EmailPreferences.View changeEmailPreferences(@AuthenticationPrincipal AccountPrincipal principal, @RequestBody EmailPreferencesRequest r,
+            HttpServletRequest request) {
+        require(principal);
+        if (!(r.announcements() instanceof Boolean value)) {
+            throw new br.com.ctcore.api.error.ApiStatusException(br.com.ctcore.api.error.ErrorCode.UNPROCESSABLE);
+        }
+        return preferences.set(principal, value, request.getRemoteAddr());
     }
 }

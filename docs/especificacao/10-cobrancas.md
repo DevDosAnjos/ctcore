@@ -56,10 +56,10 @@ Gerar, acompanhar e receber o que os alunos devem à unidade. Os meios online e 
 
 ### Lembretes
 
-- **RN-COB-17.** Lembretes por e-mail (e push, quando existir): 3 dias antes, no dia, 3 e 10 dias depois do vencimento, configuráveis por unidade (ligar, desligar, canais, horário). Mais um aviso fixo 5 dias antes do bloqueio; se o aluno não abriu os e-mails anteriores, esse aviso também vai por SMS.
+- **RN-COB-17.** Lembretes por e-mail: 3 dias antes, no dia, 3 e 10 dias depois do vencimento, configuráveis por unidade. Cada lembrete sai no dia exato, na hora da unidade, uma só vez; dia perdido não é recuperado e não se lembra dia anterior à criação da cobrança. Há um interruptor geral da unidade, mais a hora e os dias; desligar um lembrete é tirar o dia da lista, e todos os campos são obrigatórios ao salvar. Canais: só e-mail até a Sprint 22, quando a regra de canais (e push) volta a valer. Mais um aviso fixo 5 dias antes do bloqueio, só para mensalidade, parcela e diferença de reajuste, em unidade com conta de pagamento conectada; se o aluno não abriu os e-mails anteriores, esse aviso também vai por SMS (até o provedor registrar abertura, sai sempre que há telefone). O envio manual de lembrete é só por e-mail, para qualquer cobrança aberta; recusa cobrança não aberta (`NOT_OPEN`) e repetição em menos de 24 horas (`RECENT`), e não depende do interruptor da unidade.
 - **RN-COB-18.** Lembretes de menor vão para o responsável financeiro.
 - **RN-COB-19.** Lembretes param quando a cobrança é paga, cancelada, renegociada ou fica em conferência.
-- **RN-COB-20.** SMS: no máximo 3 por aluno por mês, contando todos os tipos (ver `00` §11).
+- **RN-COB-20.** SMS: no máximo 3 por aluno e por mês, contando todos os tipos (o aviso de bloqueio inclusive) (ver `00` §11).
 - **RN-COB-21.** O link de pagamento nos e-mails de cobrança não expira: abre a cobrança atual da pessoa e pede login se não houver sessão. Se a cobrança já foi paga, mostra o recibo.
 
 ### Situação financeira do aluno

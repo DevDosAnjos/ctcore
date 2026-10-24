@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ function Content() {
   const { status, data, last, retry } = useNoClassDays(unitId);
   const options = data ?? last;
   const role = state.status === "ready" ? state.session.links.find((l) => l.id === state.session.activeLinkId)?.role : undefined;
+  const canNotify = !!permissions && permissions.ANNOUNCEMENTS !== "NONE";
   const canManage = !!permissions && permissions.NO_CLASS_DAYS !== "NONE" && !!options?.unit;
   const period = (d: NoClassDayItem) => (d.startsOn === d.endsOn ? t("noClassDays.list.single", { date: br(d.startsOn) }) : t("noClassDays.list.period", { from: br(d.startsOn), to: br(d.endsOn) }));
 
@@ -101,6 +103,11 @@ function Content() {
                     <p className="break-words text-sm">{d.allClasses ? t("noClassDays.list.allClasses") : t("noClassDays.list.classes", { names: d.classes.map((c) => c.name).join(", ") })}</p>
                     <p className="text-sm">{t("noClassDays.list.notice", { status: t(`noClassDays.noticeStatus.${d.notice.status}`) })}</p>
                     <p className="text-sm">{t("noClassDays.list.cancelled", { count: d.cancelledLessons })}</p>
+                    {canNotify && d.notice.status === "NOT_NOTIFIED" && (
+                      <Button variant="outline" className="min-h-11 self-start" asChild>
+                        <Link to={`/comunicados/novo?${new URLSearchParams({ type: "NO_CLASS_DAY", unitId: d.unit.id, startsOn: d.startsOn, endsOn: d.endsOn, reason: d.reason, noClassDayId: d.id })}`}>{t("noClassDays.list.notify")}</Link>
+                      </Button>
+                    )}
                     {canManage && d.canEdit && (
                       <div className="flex flex-wrap gap-2">
                         <Button variant="outline" className="min-h-11" onClick={() => setDialog({ kind: "edit", item: d })}>

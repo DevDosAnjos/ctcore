@@ -23,7 +23,7 @@ class UnitUpdateValidationTest {
 
     private static Settings settings() {
         return new Settings(List.of(1, 5, 10, 15), false, 0L, fees(), null, List.of(-3, 0, 3, 10), new TeacherPermissions(true, true, true, true, false),
-                false, true, true);
+                false, true, true, true, 9);
     }
 
     private static UnitUpdate valid(UnaryOperator<Settings> change) {
@@ -41,7 +41,7 @@ class UnitUpdateValidationTest {
 
     private static Settings with(Settings s, List<Integer> due, boolean feeOn, Long fee, Map<String, Long> fees, String pix, List<Integer> reminders,
             TeacherPermissions teacher, Boolean directory) {
-        return new Settings(due, feeOn, fee, fees, pix, reminders, teacher, directory, true, true);
+        return new Settings(due, feeOn, fee, fees, pix, reminders, teacher, directory, true, true, true, 9);
     }
 
     @Test
@@ -132,5 +132,20 @@ class UnitUpdateValidationTest {
                 "settings.teacherPermissions.studentRecord");
         refuses(valid(s -> with(s, s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), s.teacherPermissions(), null)),
                 "settings.directoryEnabled");
+    }
+
+    @Test
+    @DisplayName("RF-COB-09: hora de lembrete 0 e 23 passam; 24, -1 e ausente, ou interruptor ausente, apontam o campo")
+    void reminderSwitch() {
+        for (int ok : new int[] {0, 23}) {
+            assertThat(valid(s -> new Settings(s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), s.teacherPermissions(), false, true, true,
+                    false, ok)).validated().settings().remindersHour()).isEqualTo(ok);
+        }
+        for (Integer bad : new Integer[] {24, -1, null}) {
+            refuses(valid(s -> new Settings(s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), s.teacherPermissions(), false, true, true,
+                    true, bad)), "settings.remindersHour");
+        }
+        refuses(valid(s -> new Settings(s.dueDays(), false, 0L, s.feesCents(), null, s.reminderDays(), s.teacherPermissions(), false, true, true,
+                null, 9)), "settings.remindersEnabled");
     }
 }

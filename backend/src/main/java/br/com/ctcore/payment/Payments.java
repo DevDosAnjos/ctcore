@@ -8,6 +8,8 @@ import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.isolation.OrganizationTransactions;
+import br.com.ctcore.notification.NotificationType;
+import br.com.ctcore.notification.Notifications;
 import br.com.ctcore.permission.Access;
 import br.com.ctcore.permission.Permission;
 import br.com.ctcore.permission.Permissions;
@@ -34,7 +36,7 @@ public class Payments {
     public record Registered(UUID id, UUID chargeId, long amountCents, String method, OffsetDateTime paidAt, UUID registeredBy, String observation,
             Receipt receipt, String receiptEmail) {}
 
-    private record Done(Registered registered, String email, String reference) {}
+    private record Done(Registered registered, String email, String reference, UUID unitId, String studentName) {}
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
@@ -42,14 +44,17 @@ public class Payments {
     private final AuditService audit;
     private final Clock clock;
     private final ReceiptMailer mailer;
+    private final Notifications notifications;
 
-    public Payments(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, AuditService audit, Clock clock, ReceiptMailer mailer) {
+    public Payments(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Permissions permissions, AuditService audit, Clock clock, ReceiptMailer mailer,
+            Notifications notifications) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.permissions = permissions;
         this.audit = audit;
         this.clock = clock;
         this.mailer = mailer;
+        this.notifications = notifications;
     }
 
     public Registered register(AccountPrincipal who, UUID chargeId, Input in, String ip) {
@@ -95,11 +100,15 @@ public class Payments {
                     + "left join guardian g on g.id = c.payer_guardian_id left join account ga on ga.id = g.account_id where c.id = :id")
                     .param("id", chargeId).query(String.class).optional().orElse(null);
             String reference = !send ? null : jdbc.sql("select reference from public_receipt(:code)").param("code", code).query(String.class).single();
-            return new Done(new Registered(paymentId, chargeId, amount, in.method(), paidAt, who.accountId(), observation, new Receipt(number, code), "NOT_REQUESTED"), to, reference);
+            return new Done(new Registered(paymentId, chargeId, amount, in.method(), paidAt, who.accountId(), observation, new Receipt(number, code), "NOT_REQUESTED"), to, reference, unit,
+                    jdbc.sql("select name from student where id = :id").param("id", charge[1]).query(String.class).single());
         });
         Registered r = done.registered();
+        // RN-NOT-04: depois do commit; a notificação nunca desfaz o pagamento (falha engolida em publish).
+        notifications.publish(who.organizationId(), done.unitId(), NotificationType.PAYMENT_RECEIVED, "charge", chargeId,
+                Map.of("studentName", done.studentName(), "amountCents", r.amountCents()));
         if (!send) return r;
-        String status = mailer.send(done.email(), r.receipt().code(), done.reference(), r.receipt().number());
+        String status = mailer.send(who.organizationId(), done.email(), r.receipt().code(), done.reference(), r.receipt().number());
         return new Registered(r.id(), r.chargeId(), r.amountCents(), r.method(), r.paidAt(), r.registeredBy(), r.observation(), r.receipt(), status);
     }
 }

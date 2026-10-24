@@ -10,6 +10,9 @@ import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
+import br.com.ctcore.mail.EmailService;
+import br.com.ctcore.mail.EmailTemplate;
+import br.com.ctcore.student.PayerEmail;
 import br.com.ctcore.modality.Modalities;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -32,6 +35,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class PlanWrite {
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PlanWrite.class);
     private static final long MAX_CENTS = 99_999_999L;
 
     public record Input(UUID unitId, UUID modalityId, String name, BigDecimal valueCents, Integer weeklyFrequency, Boolean validOtherUnits,
@@ -53,8 +57,13 @@ public class PlanWrite {
     private final Plans plans;
     private final AuditService audit;
     private final Clock clock;
+    private final PayerEmail payers;
+    private final EmailService email;
 
-    public PlanWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Plans plans, AuditService audit, Clock clock) {
+    public PlanWrite(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Plans plans, AuditService audit, Clock clock,
+            PayerEmail payers, EmailService email) {
+        this.payers = payers;
+        this.email = email;
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.plans = plans;
@@ -135,7 +144,8 @@ public class PlanWrite {
     public Plans.Row update(AccountPrincipal who, UUID id, Input input, String ip) {
         plans.requireAccess(who);
         Clean c = clean(input);
-        return transactions.execute(() -> {
+        List<UUID> affected = new java.util.ArrayList<>();
+        Plans.Row row = transactions.execute(() -> {
             Plans.Row before = plans.get(who, id); // permissão, alcance e 404
             lock(who, id);
             if (c.unitId() != null && !c.unitId().equals(before.unit().id())) throw new ApiValidationException("unitId", "a unidade não muda");
@@ -155,6 +165,8 @@ public class PlanWrite {
             Map<String, Object> next = snapshot(before.modality().id().toString(), c.name(), c.valueCents(), c.weeklyFrequency(), other, "ACTIVE");
             if (c.valueCents() != before.valueCents()) {
                 history(who, id, before.unit().id(), c.valueCents());
+                affected.addAll(jdbc.sql("select distinct student_id from enrollment_modality where organization_id = :org and plan_id = :id and status = 'ACTIVE'")
+                        .param("org", who.organizationId()).param("id", id).query(UUID.class).list());
                 var done = plans.applyRepricing(who, before.unit().id(), id, c.valueCents(), c.unpaidCharges().equals("ADJUST"), c.paidFutureDifference());
                 next.put("unpaidCharges", c.unpaidCharges());
                 next.put("paidFutureDifference", c.paidFutureDifference());
@@ -169,6 +181,20 @@ public class PlanWrite {
                             before.status()), next, null, ip));
             return plans.get(who, id);
         });
+        notifyRate(who.organizationId(), row.name(), c.valueCents(), affected);
+        return row;
+    }
+
+    /** RN-PLA-04: depois do commit, avisa o pagador de cada aluno ativo no plano; falha de envio nunca desfaz a alteração. */
+    private void notifyRate(UUID org, String plan, long cents, List<UUID> students) {
+        String value = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.of("pt", "BR")).format(cents / 100.0);
+        for (UUID student : students) {
+            try {
+                payers.forStudent(org, student).ifPresent(to -> email.send(org, to, EmailTemplate.PLAN_RATE_ADJUSTED, plan, value));
+            } catch (RuntimeException e) {
+                LOG.error("plan rate notice failed org={} cause={}", org, e.getClass().getSimpleName());
+            }
+        }
     }
 
     /** RN-PLA-06: repetir a chamada responde igual, sem mudar nem auditar. */

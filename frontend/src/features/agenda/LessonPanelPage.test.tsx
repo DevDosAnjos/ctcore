@@ -134,7 +134,10 @@ describe("LessonPanelPage", () => {
       "href",
       "/turmas/c1",
     );
-    expect(screen.getByRole("button", { name: "Avisar turma" })).toBeDisabled();
+    expect(await screen.findByRole("link", { name: "Avisar turma" })).toHaveAttribute(
+      "href",
+      "/comunicados/novo?classId=c1&type=GENERAL&date=2026-03-10&time=19%3A00",
+    );
     expect(screen.getByRole("button", { name: "Editar aula" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Cancelar aula" })).toBeEnabled();
     expect(
@@ -411,6 +414,7 @@ describe("LessonPanelPage", () => {
         screen.getByText("A aula de Jiu-Jitsu Adulto de 10/03/2026, das 19:00 às 20:00, foi cancelada. Motivo: Chuva forte."),
       ).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Cancelar aula" })).toBeNull();
+      expect(await screen.findByRole("link", { name: "Avisar turma" })).toHaveAttribute("href", expect.stringContaining("type=CANCELED_CLASS"));
     });
 
     it("CA11: motivo por código é traduzido; sem grupo não há WhatsApp; 409 aparece na janela", async () => {

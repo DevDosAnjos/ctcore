@@ -62,6 +62,7 @@ const initialSessions = () => [
   { id: "00000000-0000-0000-0000-000000000032", device: "Safari em iOS", city: "São Paulo" as string | null, createdAt: "2026-10-10T08:00:00Z", lastUsedAt: "2026-10-16T20:00:00Z", current: false },
 ];
 let sessions = initialSessions();
+let announcementEmail = true;
 
 // Sessão simulada: abre com um login bem-sucedido. Senha "errada" dá 401, "limite" dá 429.
 let loggedIn = false;
@@ -89,18 +90,24 @@ export const resetMockSession = () => {
   mockProofs.clear();
   mockStartedUnits.length = 0;
   mockCharges = [];
+  mockReminders = [];
+  mockAnnouncements = initialAnnouncements();
   nextDueOverride.clear();
   mockReceipts = [];
   studentLog = {};
   for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
   guardianCpfs["00000000-0000-0000-0000-000000000801"] = "98765432100";
   sessions = initialSessions();
+  announcementEmail = true;
   activeModalities.clear();
   unitModalities.clear();
   graduations.clear();
   modalityRequests = [];
   ageRanges = initialAgeRanges();
   termsVersions = { ENROLLMENT: [], IMAGE_USE: [] };
+  textCustoms = {};
+  mockNotifications = initialNotifications();
+  notificationReceiveAll = false;
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -126,6 +133,7 @@ let organization = { ...initialOrganization };
 const MOCK_LOGO =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAHnOcQAAAAABJRU5ErkJggg==";
 const activeRole = () => current.links.find((l) => l.id === current.activeLinkId)?.role;
+const isPortal = () => activeRole() === "STUDENT" || activeRole() === "GUARDIAN";
 // Leitura: Coordenador e Administrador; escrita: só o Coordenador. Professor e portal: 403 (FORBIDDEN).
 const organizationAccess = (write: boolean) => {
   if (!loggedIn) return unauthenticated();
@@ -175,6 +183,46 @@ const TERMS_TEMPLATES: Record<string, string> = {
 let termsVersions: Record<string, MockTermsVersion[]> = { ENROLLMENT: [], IMAGE_USE: [] };
 const termsCurrent = (kind: string): MockTermsVersion =>
   termsVersions[kind][0] ?? { version: 0, body: TERMS_TEMPLATES[kind], reaccept: false, publishedAt: null, publishedBy: null };
+// Textos dos modelos de e-mail (RF-COM-03, #83), em memória: sem texto próprio vale o da plataforma. Mesmas validações do servidor.
+type MockTextModel = { group: string; fields: string[]; subject: string; body: string };
+const REMINDER_FIELDS = ["nome", "valor", "vencimento", "unidade", "descricao", "link_pagamento"];
+const TEXT_MODELS: Record<string, MockTextModel> = {
+  REMINDER_BEFORE: { group: "REMINDERS", fields: REMINDER_FIELDS, subject: "Lembrete: sua cobrança vence em breve", body: "Lembrete de cobrança: {descricao}, no valor de {valor}, com vencimento em {vencimento}." },
+  REMINDER_DUE: { group: "REMINDERS", fields: REMINDER_FIELDS, subject: "Lembrete: sua cobrança vence hoje", body: "Sua cobrança vence hoje: {descricao}, no valor de {valor}, com vencimento em {vencimento}." },
+  REMINDER_OVERDUE: { group: "REMINDERS", fields: REMINDER_FIELDS, subject: "Lembrete: você tem uma cobrança em atraso", body: "Há uma cobrança em atraso: {descricao}, no valor de {valor}, com vencimento em {vencimento}. Procure a academia para regularizar." },
+  WELCOME: { group: "WELCOME", fields: ["nome", "unidade"], subject: "Bem-vindo(a) à {unidade}", body: "Olá, {nome}! Seja bem-vindo(a) à {unidade}. Estamos felizes em ter você com a gente." },
+  ANNOUNCEMENT_CANCELED_CLASS: { group: "ANNOUNCEMENTS", fields: ["unidade", "turma", "data", "horario"], subject: "Aula cancelada", body: "A aula de {turma} do dia {data}, às {horario}, foi cancelada. Avisaremos quando houver reposição." },
+  ANNOUNCEMENT_TEACHER_CHANGE: { group: "ANNOUNCEMENTS", fields: ["unidade", "turma", "data"], subject: "Troca de professor", body: "A aula de {turma} terá outro professor a partir de {data}." },
+  ANNOUNCEMENT_SCHEDULE_CHANGE: { group: "ANNOUNCEMENTS", fields: ["unidade", "turma", "data", "horario"], subject: "Mudança de horário", body: "A aula de {turma} muda de horário a partir de {data}. O novo horário é {horario}." },
+  ANNOUNCEMENT_NO_CLASS_DAY: { group: "ANNOUNCEMENTS", fields: ["unidade", "periodo", "motivo"], subject: "Dia sem aula", body: "Não haverá aula em {periodo}: {motivo}." },
+  ANNOUNCEMENT_GENERAL: { group: "ANNOUNCEMENTS", fields: ["unidade"], subject: "Aviso geral", body: "" },
+};
+type MockTextCustom = { subject: string; body: string; updatedAt: string; updatedBy: string };
+let textCustoms: Record<string, MockTextCustom> = {};
+const textItem = (key: string) => {
+  const m = TEXT_MODELS[key];
+  const c = textCustoms[key];
+  return {
+    key,
+    group: m.group,
+    fields: m.fields,
+    platform: { subject: m.subject, body: m.body },
+    custom: c ? { subject: c.subject, body: c.body } : null,
+    updatedAt: c?.updatedAt ?? null,
+    updatedBy: c?.updatedBy ?? null,
+  };
+};
+const checkText = (key: string, field: "subject" | "body", text: string, max: number): Response | null => {
+  const bad = (message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+  if (!text) return bad("obrigatório");
+  if (text.length > max) return bad(`no máximo ${max} caracteres`);
+  for (const m of text.matchAll(/\{([^{}]*)\}/g)) if (!TEXT_MODELS[key].fields.includes(m[1])) return bad(`campo automático desconhecido: {${m[1]}}`);
+  if (/[{}]/.test(text.replace(/\{[^{}]*\}/g, ""))) return bad("chave { } sem fecho");
+  if (field === "body" && TEXT_MODELS[key].group === "ANNOUNCEMENTS") {
+    for (const l of text.matchAll(/\[[^\]]*\]\(([^)\s]*)\)/g)) if (!/^https?:\/\//i.test(l[1])) return bad("o link precisa começar com http:// ou https://");
+  }
+  return null;
+};
 const sortedAgeRanges = () => [...ageRanges].sort((a, b) => a.minAge - b.minAge || a.name.localeCompare(b.name));
 const checkAgeRange = (body: AgeRangeInput, id: string | null): MockAgeRange | Response => {
   const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
@@ -286,6 +334,8 @@ const defaultUnitSettings = () => ({
   pixKey: null as string | null,
   paymentAccount: "NOT_CONNECTED" as "CONNECTED" | "NOT_CONNECTED",
   reminderDays: [-3, 0, 3, 10],
+  remindersEnabled: true,
+  remindersHour: 9,
   teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true, studentRecord: false },
   directoryEnabled: false,
   trialLinkEnabled: true,
@@ -767,6 +817,16 @@ const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; f
 type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
 let mockCharges: MockCharge[] = [];
 let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null; by?: { id: string; name: string } }[] = [];
+// RF-COB-06 (#79): histórico de lembretes por cobrança, em memória; só o envio manual por e-mail existe no simulado.
+type MockReminder = { chargeId: string; kind: "MANUAL"; channel: "EMAIL"; status: "SENT" | "SKIPPED"; reason: "NO_ADDRESS" | "EMAIL_PROBLEM" | null; createdAt: string; sentBy: { id: string; name: string | null } };
+let mockReminders: MockReminder[] = [];
+const remindersOf = (id: string) => mockReminders.filter((r) => r.chargeId === id).map((r) => ({ kind: r.kind, channel: r.channel, status: r.status, reason: r.reason, createdAt: r.createdAt, sentBy: r.sentBy })).reverse();
+// Pagador: responsável financeiro do menor, senão o próprio aluno.
+const payerOf = (studentId: string) => {
+  const s = mockStudents.find((x) => x.id === studentId)!;
+  const g = s.minor ? s.guardians.find((x) => x.financial) : undefined;
+  return g ? { name: g.name, email: g.email as string | null, phone: g.phone as string | null, problem: g.emailProblem } : { name: s.name, email: s.email, phone: s.phone, problem: s.emailProblem };
+};
 const chargeRowView = (c: MockCharge, today: string) => {
   const student = mockStudents.find((s) => s.id === c.studentId)!;
   const row = mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId);
@@ -808,7 +868,7 @@ const chargeDetail = (c: MockCharge) => {
     payments: receipt
       ? [{ id: receipt.code, amountCents: receipt.amountCents, method: receipt.method ?? "CASH", origin: "MANAGEMENT", paidAt: receipt.paidAt, registeredBy: { id: session.account.id, name: session.account.name }, observation: receipt.observation ?? null, status: "CONFIRMED", receipt: { number: receipt.number, code: receipt.code } }]
       : [],
-    reminders: [], actions: { cancel: open, renegotiate: open, registerPayment: open, sendReminder: false, refund: false },
+    reminders: remindersOf(c.id), actions: { cancel: open, renegotiate: open, registerPayment: open, sendReminder: open, refund: false },
   };
 };
 const cancelMock = (c: MockCharge, reason: string) => {
@@ -1154,7 +1214,167 @@ const guardianRow = (g: Partial<StudentGuardianInput> | undefined, financial: bo
 };
 const sortedGuardians = (list: StudentGuardianRow[]) => [...list].sort((a, b) => Number(b.financial) - Number(a.financial) || a.name.localeCompare(b.name));
 
+// RF-COM-01 (#81): comunicados simulados. Autor "Vera" é a conta de `many` (a única que o simulado põe como Professor); `reads` e `recipients` já vêm contados.
+type MockAnnouncement = {
+  id: string;
+  date: string;
+  kind: "CLASS" | "MODALITY" | "UNIT" | "ORGANIZATION";
+  classId: string | null;
+  modalityId?: string | null;
+  unitId: string | null;
+  type: string;
+  title: string;
+  author: string;
+  authorId: string;
+  scheduled: boolean;
+  recipients: number;
+  reads: number;
+};
+const ANNOUNCEMENT_TYPES = ["CANCELED_CLASS", "TEACHER_CHANGE", "SCHEDULE_CHANGE", "NO_CLASS_DAY", "GENERAL"];
+const initialAnnouncements = (): MockAnnouncement[] => [
+  { id: "00000000-0000-0000-0000-000000000a01", date: "2026-10-20T13:00:00Z", kind: "CLASS", classId: "00000000-0000-0000-0000-000000000601", unitId: ADMIN_UNIT, type: "CANCELED_CLASS", title: "Aula de sexta cancelada", author: "Ana", authorId: session.account.id, scheduled: false, recipients: 12, reads: 5 },
+  { id: "00000000-0000-0000-0000-000000000a02", date: "2026-10-22T12:00:00Z", kind: "ORGANIZATION", classId: null, unitId: null, type: "GENERAL", title: "Recesso de fim de ano", author: "Ana", authorId: session.account.id, scheduled: false, recipients: 40, reads: 18 },
+  { id: "00000000-0000-0000-0000-000000000a03", date: "2099-01-01T12:00:00Z", kind: "UNIT", classId: null, unitId: ADMIN_UNIT, type: "SCHEDULE_CHANGE", title: "Novo horário a partir de novembro", author: "Ana", authorId: session.account.id, scheduled: true, recipients: 0, reads: 0 },
+  { id: "00000000-0000-0000-0000-000000000a04", date: "2099-02-01T12:00:00Z", kind: "CLASS", classId: "00000000-0000-0000-0000-000000000601", unitId: ADMIN_UNIT, type: "TEACHER_CHANGE", title: "Professor substituto", author: "Vera", authorId: many.account.id, scheduled: true, recipients: 0, reads: 0 },
+];
+let mockAnnouncements = initialAnnouncements();
+// 401 sem sessão; 403 no portal (a gestão toda tem ANNOUNCEMENTS). O Professor vê o que enviou e o das turmas dele (TEACHER_ANA); o Administrador, as da unidade dele.
+const announcementAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  return isPortal() ? error(403, "FORBIDDEN", "Sem permissão.") : null;
+};
+const announcementInReach = (a: MockAnnouncement) => {
+  const role = activeRole();
+  if (role === "COORDINATOR") return true;
+  if (role === "ADMINISTRATOR") return a.unitId === ADMIN_UNIT;
+  return a.authorId === current.account.id || mockClasses.some((c) => c.id === a.classId && (c.head === TEACHER_ANA || c.assistants.includes(TEACHER_ANA)));
+};
+// Data na unidade: o fuso do simulado é o de São Paulo (-03:00).
+const announcementDay = (a: MockAnnouncement) => isoDay(new Date(Date.parse(a.date) - 3 * 3_600_000));
+const ANNOUNCEMENT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ANNOUNCEMENT_DAY = /^\d{4}-\d{2}-\d{2}$/;
+// RF-COM-02 (#82): entrada de `preview` e `POST /announcements`, o destino conferido pelo perfil (RN-COM-01) e os canais.
+type AnnouncementBody = { targetKind?: string; classId?: string; modalityId?: string; unitId?: string; type?: string; title?: string; body?: string; channels?: unknown; imageName?: string; pinnedUntil?: string; sendAt?: string };
+const announcementChannels = (b: AnnouncementBody) => ["PORTAL", ...((b.channels as string[] | undefined) ?? [])].filter((c, i, all) => all.indexOf(c) === i);
+const announcementChannelsBad = (b: AnnouncementBody) => {
+  const list = b.channels === undefined ? [] : b.channels;
+  if (!Array.isArray(list) || list.some((c) => !["PORTAL", "EMAIL", "WHATSAPP"].includes(c as string))) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "channels", message: "canal inválido" }]);
+  return null;
+};
+const announcementTarget = (b: AnnouncementBody) => {
+  const role = activeRole();
+  const manager = role === "COORDINATOR" || role === "ADMINISTRATOR";
+  const forbidden = () => error(403, "FORBIDDEN", "Sem permissão.");
+  const unitOk = (id: string | undefined) => (role === "COORDINATOR" ? true : id === ADMIN_UNIT);
+  const missing = () => error(404, "NOT_FOUND", "Não encontrado.");
+  const bad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+  switch (b.targetKind) {
+    case "CLASS": {
+      const c = b.classId ? mockClasses.find((x) => x.id === b.classId) : undefined;
+      if (!c) return b.classId ? missing() : bad("classId", "obrigatório");
+      const own = role === "TEACHER" && (c.head === TEACHER_ANA || c.assistants.includes(TEACHER_ANA));
+      if (!own && !(manager && unitOk(c.unitId))) return forbidden();
+      if (c.status !== "ACTIVE") return bad("classId", "turma desativada");
+      return { kind: "CLASS" as const, classId: c.id, modalityId: null, unitId: c.unitId, groupLink: c.groupLink ?? null, recipients: 8 };
+    }
+    case "MODALITY": {
+      if (!b.modalityId || !b.unitId) return bad(b.modalityId ? "unitId" : "modalityId", "obrigatório");
+      if (!manager || !unitOk(b.unitId)) return forbidden();
+      if (!modalityCatalog.some((m) => m.id === b.modalityId) || !units.some((u) => u.id === b.unitId)) return missing();
+      return { kind: "MODALITY" as const, classId: null, modalityId: b.modalityId, unitId: b.unitId, groupLink: null, recipients: 15 };
+    }
+    case "UNIT": {
+      if (!b.unitId) return bad("unitId", "obrigatório");
+      if (!manager || !unitOk(b.unitId)) return forbidden();
+      if (!units.some((u) => u.id === b.unitId)) return missing();
+      return { kind: "UNIT" as const, classId: null, modalityId: null, unitId: b.unitId, groupLink: null, recipients: 25 };
+    }
+    case "ORGANIZATION":
+      return role === "COORDINATOR" ? { kind: "ORGANIZATION" as const, classId: null, modalityId: null, unitId: null, groupLink: null, recipients: 40 } : forbidden();
+    default:
+      return bad("targetKind", "destino inválido");
+  }
+};
+// Notificações (RF-NOT-01, #84), em memória: uma lista do vínculo ativo. Professor recebe lista vazia; Aluno e Responsável, 403; só o Coordenador muda "receber tudo".
+type MockNotification = { id: string; type: string; createdAt: string; readAt: string | null; refType: string; refId: string; params: Record<string, unknown> };
+const notificationAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+const initialNotifications = (): MockNotification[] => [
+  { id: "00000000-0000-0000-0000-000000000a01", type: "PAYMENT_RECEIVED", createdAt: notificationAgo(1), readAt: null, refType: "charge", refId: "00000000-0000-0000-0000-000000000b01", params: { studentName: "Maria Souza", amountCents: 15000 } },
+  { id: "00000000-0000-0000-0000-000000000a02", type: "HIGH_BENEFIT", createdAt: notificationAgo(2), readAt: null, refType: "benefit", refId: "00000000-0000-0000-0000-000000000b02", params: { studentName: "João Lima", studentId: "00000000-0000-0000-0000-000000000b05" } },
+  { id: "00000000-0000-0000-0000-000000000a03", type: "EMAIL_PROBLEM", createdAt: notificationAgo(3 * 1440), readAt: new Date().toISOString(), refType: "student", refId: "00000000-0000-0000-0000-000000000b03", params: {} },
+  { id: "00000000-0000-0000-0000-000000000a04", type: "INVITE_PENDING", createdAt: notificationAgo(4 * 1440), readAt: null, refType: "invite", refId: "00000000-0000-0000-0000-000000000b04", params: { personName: "Paula Reis" } },
+  { id: "00000000-0000-0000-0000-000000000a05", type: "STUDENT_MAJORITY", createdAt: notificationAgo(9 * 1440), readAt: null, refType: "student", refId: "00000000-0000-0000-0000-000000000b06", params: { studentName: "Ana Prado" } },
+];
+let mockNotifications = initialNotifications();
+let notificationReceiveAll = false;
+const notificationAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  return isPortal() ? error(403, "FORBIDDEN", "Sem permissão.") : null;
+};
+const notificationDay = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+const notificationGroup = (iso: string) => {
+  const days = Math.round((Date.parse(notificationDay(new Date().toISOString())) - Date.parse(notificationDay(iso))) / 86_400_000);
+  return days <= 0 ? "TODAY" : days <= 6 ? "WEEK" : null;
+};
+const visibleNotifications = () => (activeRole() === "TEACHER" ? [] : mockNotifications);
+const unreadNotifications = () => visibleNotifications().filter((n) => n.readAt === null).length;
 export const routes: Route[] = [
+  {
+    method: "get",
+    path: "/notifications",
+    resolver: ({ request }) => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      const filter = new URL(request.url).searchParams.get("filter") ?? "all";
+      if (filter !== "all" && filter !== "unread") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "filter", message: "all ou unread" }]);
+      const items = visibleNotifications()
+        .filter((n) => filter === "all" || n.readAt === null)
+        .map((n) => ({ ...n, group: notificationGroup(n.createdAt) }))
+        .filter((n) => n.group !== null)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return HttpResponse.json({ items, unreadCount: unreadNotifications() });
+    },
+  },
+  {
+    method: "get",
+    path: "/notifications/unread-count",
+    resolver: () => notificationAccess() ?? HttpResponse.json({ count: unreadNotifications() }),
+  },
+  {
+    method: "post",
+    path: "/notifications/read-all",
+    resolver: () => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      const changed = unreadNotifications();
+      const now = new Date().toISOString();
+      mockNotifications = mockNotifications.map((n) => (n.readAt === null ? { ...n, readAt: now } : n));
+      return HttpResponse.json({ changed });
+    },
+  },
+  {
+    method: "get",
+    path: "/notifications/preferences",
+    resolver: () => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      const coordinator = activeRole() === "COORDINATOR";
+      return HttpResponse.json({ receiveAll: coordinator && notificationReceiveAll, canReceiveAll: coordinator });
+    },
+  },
+  {
+    method: "put",
+    path: "/notifications/preferences",
+    resolver: async ({ request }) => {
+      const denied = notificationAccess();
+      if (denied) return denied;
+      if (activeRole() !== "COORDINATOR") return error(403, "FORBIDDEN", "Sem permissão.");
+      const input = (await request.json()) as { receiveAll?: unknown };
+      if (typeof input.receiveAll !== "boolean") return error(422, "UNPROCESSABLE", "Não foi possível processar.", [{ field: "receiveAll", message: "deve ser verdadeiro ou falso" }]);
+      notificationReceiveAll = input.receiveAll;
+      return HttpResponse.json({ receiveAll: notificationReceiveAll, canReceiveAll: true });
+    },
+  },
   {
     method: "post",
     path: "/auth/login",
@@ -1292,6 +1512,27 @@ export const routes: Route[] = [
       if (params.code !== "valido") return error(410, "EMAIL_CHANGE_INVALID", "Link inválido.");
       current = { ...current, account: { ...current.account, email: "novo@exemplo.com" } };
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  // Preferência de e-mail (RN-COM-13): só vínculo de portal; gestão 403; valor não booleano 422.
+  {
+    method: "get",
+    path: "/auth/email-preferences",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      return isPortal() ? HttpResponse.json({ announcements: announcementEmail }) : error(403, "FORBIDDEN", "Sem permissão.");
+    },
+  },
+  {
+    method: "put",
+    path: "/auth/email-preferences",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      if (!isPortal()) return error(403, "FORBIDDEN", "Sem permissão.");
+      const body = (await request.json()) as { announcements?: unknown };
+      if (typeof body.announcements !== "boolean") return error(422, "UNPROCESSABLE", "Informe verdadeiro ou falso.");
+      announcementEmail = body.announcements;
+      return HttpResponse.json({ announcements: announcementEmail });
     },
   },
   // Sessões da conta (RF-ACE-04): a atual e mais uma, em outro aparelho.
@@ -1642,6 +1883,45 @@ export const routes: Route[] = [
   },
   {
     method: "get",
+    path: "/organization/texts",
+    resolver: () => {
+      const denied = organizationAccess(false);
+      if (denied) return denied;
+      return HttpResponse.json({ canManage: activeRole() === "COORDINATOR", models: Object.keys(TEXT_MODELS).map(textItem) });
+    },
+  },
+  {
+    method: "put",
+    path: "/organization/texts/{key}",
+    resolver: async ({ request, params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const key = params.key as string;
+      if (!(key in TEXT_MODELS)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const input = (await request.json()) as { subject?: string; body?: string };
+      const subject = input.subject?.trim() ?? "";
+      const body = input.body?.trim() ?? "";
+      const invalid = checkText(key, "subject", subject, TEXT_MODELS[key].group === "ANNOUNCEMENTS" ? 120 : 150) ?? checkText(key, "body", body, 2000);
+      if (invalid) return invalid;
+      if (subject === TEXT_MODELS[key].subject && body === TEXT_MODELS[key].body) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "body", message: "igual ao texto da plataforma" }]);
+      textCustoms[key] = { subject, body, updatedAt: new Date().toISOString(), updatedBy: current.account.name };
+      return HttpResponse.json(textItem(key));
+    },
+  },
+  {
+    method: "delete",
+    path: "/organization/texts/{key}",
+    resolver: ({ params }) => {
+      const denied = organizationAccess(true);
+      if (denied) return denied;
+      const key = params.key as string;
+      if (!(key in TEXT_MODELS)) return error(404, "NOT_FOUND", "Não encontrado.");
+      delete textCustoms[key];
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    method: "get",
     path: "/age-ranges",
     resolver: () => organizationAccess(false) ?? HttpResponse.json({ canManage: activeRole() === "COORDINATOR", items: sortedAgeRanges() }),
   },
@@ -1820,6 +2100,8 @@ export const routes: Route[] = [
         if (!(cents >= 0 && cents <= 100000)) bad.push({ field: `settings.feesCents.${key}`, message: "entre 0 e R$ 1.000,00" });
       }
       const reminders: number[] = s.reminderDays ?? [];
+      if (typeof s.remindersEnabled !== "boolean") bad.push({ field: "settings.remindersEnabled", message: "obrigatório" });
+      if (!Number.isInteger(s.remindersHour) || s.remindersHour < 0 || s.remindersHour > 23) bad.push({ field: "settings.remindersHour", message: "valor entre 0 e 23" });
       if (new Set(reminders).size !== reminders.length || reminders.length > 8 || reminders.some((d) => d < -30 || d > 60)) bad.push({ field: "settings.reminderDays", message: "valores entre -30 e 60" });
       if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
       const stale = precondition(request, unitDetail(id).version);
@@ -3132,6 +3414,72 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-COB-06 (#79): cobranças em atraso; mesma regra de "Em atraso" da lista. Administrador só a unidade dele; sem conta conectada, `daysToBlock` é nulo.
+    method: "get",
+    path: "/charges/overdue",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const [sortField, sortDir] = (p.get("sort") || "daysLate,desc").split(",");
+      const bad: { field: string; message: string }[] = [];
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (!["daysLate", "amount", "student"].includes(sortField) || !["asc", "desc"].includes(sortDir)) bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
+      const unitId = p.get("unitId");
+      if (unitId !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(unitId)) bad.push({ field: "unitId", message: "id inválido" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      if (unitId && !units.some((u) => u.id === unitId)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const today = isoDay(new Date());
+      const days = (a: string, b: string) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const found = mockCharges
+        .filter((c) => c.status === "OPEN" && chargeSituation(c, today) === "OVERDUE" && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT) && (!unitId || c.unitId === unitId))
+        .map((c) => {
+          const v = chargeRowView(c, today);
+          const payer = payerOf(c.studentId);
+          const last = mockReminders.filter((r) => r.chargeId === c.id && r.status === "SENT").pop();
+          return {
+            id: c.id, student: v.student, unit: v.unit, type: c.type, referenceMonth: c.referenceMonth, description: c.description, amountCents: c.amountCents, dueOn: c.dueOn,
+            daysLate: days(today, c.dueOn), daysToBlock: null, lastReminder: last ? { at: last.createdAt, channel: last.channel } : null, payer: { name: payer.name, phone: payer.phone },
+          };
+        })
+        .filter((r) => teacherKey(r.student.name).includes(q))
+        .sort((a, b) => {
+          const by = sortField === "amount" ? a.amountCents - b.amountCents : sortField === "student" ? teacherKey(a.student.name).localeCompare(teacherKey(b.student.name)) : a.daysLate - b.daysLate;
+          return (sortDir === "asc" ? by : -by) || a.id.localeCompare(b.id);
+        });
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-COB-06 (#79): lembrete manual por e-mail; resultado por cobrança, na ordem do pedido. Cobrança fora do alcance derruba o pedido inteiro (404).
+    method: "post",
+    path: "/charges/reminders",
+    resolver: async ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const ids = ((await request.json().catch(() => ({}))) as { chargeIds?: unknown }).chargeIds;
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!Array.isArray(ids) || ids.length < 1 || ids.length > 100 || new Set(ids).size !== ids.length || !ids.every((i) => typeof i === "string" && uuid.test(i)))
+        return studentBad("chargeIds", "de 1 a 100 ids de cobrança, sem repetir");
+      const found = (ids as string[]).map((id) => mockCharges.find((c) => c.id === id && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT)));
+      if (found.some((c) => !c)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const now = Date.now();
+      const results = found.map((c) => {
+        if (c!.status !== "OPEN") return { chargeId: c!.id, result: "NOT_OPEN" };
+        if (mockReminders.some((r) => r.chargeId === c!.id && r.status === "SENT" && now - Date.parse(r.createdAt) < 86_400_000)) return { chargeId: c!.id, result: "RECENT" };
+        const payer = payerOf(c!.studentId);
+        const reason = !payer.email ? "NO_ADDRESS" : payer.problem ? "EMAIL_PROBLEM" : null;
+        mockReminders.push({ chargeId: c!.id, kind: "MANUAL", channel: "EMAIL", status: reason ? "SKIPPED" : "SENT", reason, createdAt: new Date(now).toISOString(), sentBy: { id: session.account.id, name: session.account.name } });
+        return { chargeId: c!.id, result: reason ?? "SENT" };
+      });
+      return HttpResponse.json({ results });
+    },
+  },
+  {
     // RF-COB-02 (#73): painel da cobrança; Coordenador e Administrador da unidade.
     method: "get",
     path: "/charges/{id}",
@@ -3748,6 +4096,185 @@ export const routes: Route[] = [
       const adult = mockStudents.find((s) => s.id === STUDENT_ADULT)!;
       const minor = mockStudents.find((s) => s.id === STUDENT_MINOR)!;
       return HttpResponse.json(role === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
+    },
+  },
+  {
+    // RF-COM-01 (#81): lista de comunicados com filtros, alcance por perfil e contagens; o agendado traz `recipients` nulo e `reads` 0.
+    method: "get",
+    path: "/announcements",
+    resolver: ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const [sortField, sortDir] = (p.get("sort") || "date,desc").split(",");
+      const from = p.get("from");
+      const to = p.get("to");
+      const type = p.get("type");
+      const classId = p.get("classId");
+      const unitId = p.get("unitId");
+      const bad: { field: string; message: string }[] = [];
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (!["date", "title", "type"].includes(sortField) || !["asc", "desc"].includes(sortDir)) bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
+      if (from && !ANNOUNCEMENT_DAY.test(from)) bad.push({ field: "from", message: "use AAAA-MM-DD" });
+      if (to && !ANNOUNCEMENT_DAY.test(to)) bad.push({ field: "to", message: "use AAAA-MM-DD" });
+      if (from && to && ANNOUNCEMENT_DAY.test(from) && ANNOUNCEMENT_DAY.test(to) && to < from) bad.push({ field: "to", message: "não pode ser anterior a from" });
+      if (type !== null && !ANNOUNCEMENT_TYPES.includes(type)) bad.push({ field: "type", message: "tipo de comunicado inválido" });
+      if (classId !== null && !ANNOUNCEMENT_UUID.test(classId)) bad.push({ field: "classId", message: "id inválido" });
+      if (unitId !== null && !ANNOUNCEMENT_UUID.test(unitId)) bad.push({ field: "unitId", message: "id inválido" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      if (unitId && !units.some((u) => u.id === unitId)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const targetOf = (a: MockAnnouncement) => {
+        if (a.kind === "CLASS") {
+          const c = mockClasses.find((x) => x.id === a.classId)!;
+          return { kind: a.kind, id: c.id, name: c.name };
+        }
+        if (a.kind === "MODALITY") {
+          const m = modalityCatalog.find((x) => x.id === a.modalityId);
+          return { kind: a.kind, id: m?.id ?? null, name: m?.name ?? null };
+        }
+        const u = units.find((x) => x.id === a.unitId);
+        return { kind: a.kind, id: u?.id ?? null, name: u?.name ?? null };
+      };
+      const found = mockAnnouncements
+        .filter((a) => announcementInReach(a) && (!from || announcementDay(a) >= from) && (!to || announcementDay(a) <= to) && (!type || a.type === type) && (!classId || a.classId === classId) && (!unitId || a.unitId === unitId))
+        .sort((a, b) => {
+          const by = sortField === "title" ? a.title.localeCompare(b.title) : sortField === "type" ? a.type.localeCompare(b.type) : a.date.localeCompare(b.date);
+          return (sortDir === "asc" ? by : -by) || a.id.localeCompare(b.id);
+        });
+      const items = found.slice((page - 1) * size, page * size).map((a) => ({
+        id: a.id, date: a.date, target: targetOf(a), title: a.title, type: a.type, author: a.author, status: a.scheduled ? "SCHEDULED" : "SENT",
+        recipients: a.scheduled ? null : a.recipients, reads: a.scheduled ? 0 : a.reads,
+      }));
+      return HttpResponse.json({ items, page, size, total: found.length });
+    },
+  },
+  {
+    // RF-COM-01 (#81): cancela o agendado. Enviado: 409; Administrador só na unidade dele; Professor só o que ele agendou; id desconhecido: 404.
+    method: "delete",
+    path: "/announcements/{id}",
+    resolver: ({ params }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const found = mockAnnouncements.find((a) => a.id === params.id);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      const role = activeRole();
+      const allowed = role === "COORDINATOR" || (role === "ADMINISTRATOR" && found.unitId === ADMIN_UNIT) || (role === "TEACHER" && found.authorId === current.account.id);
+      if (!allowed) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (!found.scheduled) return error(409, "ANNOUNCEMENT_ALREADY_SENT", "Este comunicado já foi enviado e não pode ser cancelado.");
+      mockAnnouncements = mockAnnouncements.filter((a) => a.id !== found.id);
+      return new HttpResponse(null, { status: 204 });
+    },
+  },
+  {
+    // RF-COM-02, RN-COM-12 (#83): o título e o texto em uso de cada tipo de comunicado.
+    method: "get",
+    path: "/announcements/templates",
+    resolver: () => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const templates = Object.fromEntries(
+        Object.keys(TEXT_MODELS).filter((k) => TEXT_MODELS[k].group === "ANNOUNCEMENTS").map((k) => {
+          const i = textItem(k);
+          return [k.replace("ANNOUNCEMENT_", ""), { title: (i.custom ?? i.platform).subject, body: (i.custom ?? i.platform).body }];
+        }),
+      );
+      return HttpResponse.json({ templates });
+    },
+  },
+  {
+    // RF-COM-02 (#82): destinos que o perfil pode escolher. Coordenador: tudo e "todas as unidades"; Administrador: a unidade dele; Professor: só as turmas dele.
+    method: "get",
+    path: "/announcements/targets",
+    resolver: () => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const role = activeRole();
+      const classes = mockClasses.filter((c) => c.status === "ACTIVE" && (role === "COORDINATOR" || (role === "ADMINISTRATOR" && c.unitId === ADMIN_UNIT) || (role === "TEACHER" && (c.head === TEACHER_ANA || c.assistants.includes(TEACHER_ANA)))));
+      const manager = role !== "TEACHER";
+      const reach = units.filter((u) => u.active && (role === "COORDINATOR" || u.id === ADMIN_UNIT));
+      const modalities = manager ? [...new Map(classes.map((c) => [`${c.modalityId}:${c.unitId}`, { id: c.modalityId, name: modalityCatalog.find((m) => m.id === c.modalityId)?.name ?? "", unitId: c.unitId }])).values()] : [];
+      return HttpResponse.json({
+        units: manager ? reach.map((u) => ({ id: u.id, name: u.name })) : [],
+        classes: classes.map((c) => ({ id: c.id, name: c.name, unitId: c.unitId, modalityId: c.modalityId, groupLink: c.groupLink ?? null })),
+        modalities,
+        organization: role === "COORDINATOR",
+      });
+    },
+  },
+  {
+    // RF-COM-02 (#82): prévia sem gravar. Contagens fixas por tipo de destino (o simulado não tem alunos por turma).
+    method: "post",
+    path: "/announcements/preview",
+    resolver: async ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const body = (await request.json()) as AnnouncementBody;
+      const bad = announcementChannelsBad(body);
+      if (bad) return bad;
+      const target = announcementTarget(body);
+      if (target instanceof Response) return target;
+      const channels = announcementChannels(body);
+      const whatsapp = !channels.includes("WHATSAPP") ? null : target.kind === "CLASS" && target.groupLink ? { mode: "GROUP", groupLink: target.groupLink } : { mode: "CONVERSATION", groupLink: null };
+      return HttpResponse.json({ recipients: target.recipients, portal: target.recipients, email: Math.max(target.recipients - 2, 0), whatsapp, channels });
+    },
+  },
+  {
+    // RF-COM-02 (#82): cria o comunicado (enviado agora ou agendado). Limite de 20 por dia e por unidade (409), 403 fora do alcance, 400 com o campo.
+    method: "post",
+    path: "/announcements",
+    resolver: async ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const body = (await request.json()) as AnnouncementBody;
+      const fieldBad = (field: string, message: string) => error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field, message }]);
+      const channelsBad = announcementChannelsBad(body);
+      if (channelsBad) return channelsBad;
+      if (typeof body.type !== "string" || !ANNOUNCEMENT_TYPES.includes(body.type)) return fieldBad("type", "tipo de comunicado inválido");
+      const title = (body.title ?? "").trim();
+      if (title.length < 1 || title.length > 120) return fieldBad("title", "de 1 a 120 caracteres");
+      const text = body.body ?? "";
+      if (text.trim().length < 1 || text.length > 2000) return fieldBad("body", "de 1 a 2000 caracteres");
+      if (/\]\((?!https?:\/\/)[^)]*\)/i.test(text)) return fieldBad("body", "só links http ou https");
+      if (body.pinnedUntil && (!ANNOUNCEMENT_DAY.test(body.pinnedUntil) || body.pinnedUntil < isoDay(new Date()))) return fieldBad("pinnedUntil", "hoje ou depois");
+      let when = new Date();
+      if (body.sendAt) {
+        when = new Date(body.sendAt);
+        if (Number.isNaN(when.getTime()) || when.getTime() <= Date.now()) return fieldBad("sendAt", "precisa ser no futuro");
+      }
+      if (body.imageName && !/^announcement-[0-9a-f-]+\.(png|jpg|jpeg|webp)$/i.test(body.imageName)) return fieldBad("imageName", "imagem não encontrada");
+      const target = announcementTarget(body);
+      if (target instanceof Response) return target;
+      const iso = when.toISOString();
+      const day = announcementDay({ date: iso } as MockAnnouncement);
+      if (mockAnnouncements.filter((a) => a.unitId === target.unitId && announcementDay(a) === day).length >= 20) {
+        return error(409, "ANNOUNCEMENT_DAILY_LIMIT", "Esta unidade já atingiu o limite de 20 comunicados por dia.");
+      }
+      const scheduled = !!body.sendAt;
+      const created: MockAnnouncement = {
+        id: crypto.randomUUID(), date: iso, kind: target.kind, classId: target.classId, modalityId: target.modalityId, unitId: target.unitId, type: body.type, title,
+        author: current.account.name, authorId: current.account.id, scheduled, recipients: target.recipients, reads: 0,
+      };
+      mockAnnouncements = [...mockAnnouncements, created];
+      return HttpResponse.json({ id: created.id, status: scheduled ? "SCHEDULED" : "SENT", recipients: scheduled ? null : target.recipients }, { status: 201 });
+    },
+  },
+  {
+    // RF-COM-02 (#82): guarda a imagem do comunicado. O simulado não guarda o arquivo: devolve o nome e a imagem de 1 pixel. Vazio, grande ou que não é imagem: 400 em `file`.
+    method: "post",
+    path: "/announcements/image",
+    resolver: async ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      // Multipart lido como texto (o parser do Node não aceita o File do jsdom nos testes): cabeçalho da parte, linha em branco, conteúdo.
+      const raw = await request.text();
+      const part = /Content-Type:\s*(\S+)\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(raw);
+      if (!raw.includes('name="file"') || !part|| !part[1].startsWith("image/") || part[2].length === 0 || part[2].length > 5 * 1024 * 1024) {
+        return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "file", message: "envie uma imagem de até 5 MB" }]);
+      }
+      return HttpResponse.json({ name: `announcement-${crypto.randomUUID()}.png`, url: MOCK_LOGO });
     },
   },
 ];

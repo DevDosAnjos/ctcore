@@ -10,6 +10,7 @@ import {
 } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { usePermissions } from "@/features/permissions/usePermissions";
 import { StudentSimpleList } from "@/features/students/StudentSimpleList";
 import { br } from "./agendaDates";
 import { CancelLessonDialog } from "./CancelLessonDialog";
@@ -60,6 +61,10 @@ function Panel({
   const [dialog, setDialog] = useState<"edit" | "cancel">();
   const group = safeLink(lesson.groupLink);
   const cancelled = lesson.status === "CANCELLED";
+  const { permissions } = usePermissions();
+  const canNotify = !!permissions && permissions.ANNOUNCEMENTS !== "NONE" && !!lesson.class;
+  // RF-COM-02: abre o comunicado já preenchido (aula cancelada ou aviso geral), com a turma, a data e o horário.
+  const noticeLink = `/comunicados/novo?${new URLSearchParams({ classId: lesson.class?.id ?? "", type: cancelled ? "CANCELED_CLASS" : "GENERAL", date: lesson.date, time: lesson.startsAt })}`;
   const color = `hsl(${modalityHue(lesson.modality.id)} 60% 45%)`;
   return (
     <div className="flex flex-col gap-4">
@@ -89,9 +94,15 @@ function Panel({
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" className="min-h-11" disabled>
-          {t("agenda.panel.notify")}
-        </Button>
+        {canNotify ? (
+          <Button variant="outline" className="min-h-11" asChild>
+            <Link to={noticeLink}>{t("agenda.panel.notify")}</Link>
+          </Button>
+        ) : (
+          <Button variant="outline" className="min-h-11" disabled>
+            {t("agenda.panel.notify")}
+          </Button>
+        )}
         {lesson.canEdit && (
           <Button
             variant="outline"

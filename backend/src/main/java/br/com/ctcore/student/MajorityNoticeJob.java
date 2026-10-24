@@ -6,6 +6,8 @@ import br.com.ctcore.identity.ScopedAudit;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.mail.EmailService;
 import br.com.ctcore.mail.EmailTemplate;
+import br.com.ctcore.notification.NotificationType;
+import br.com.ctcore.notification.Notifications;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -34,18 +36,23 @@ public class MajorityNoticeJob {
 
     private record Notice(String email, String studentName) {}
 
+    private record Majority(UUID id, UUID unitId, String studentName) {}
+
     private final OrganizationTransactions transactions;
     private final JdbcClient jdbc;
     private final EmailService email;
     private final ScopedAudit audit;
     private final Clock clock;
+    private final Notifications notifications;
 
-    public MajorityNoticeJob(@Lazy OrganizationTransactions transactions, @Lazy JdbcClient jdbc, EmailService email, ScopedAudit audit, Clock clock) {
+    public MajorityNoticeJob(@Lazy OrganizationTransactions transactions, @Lazy JdbcClient jdbc, EmailService email, ScopedAudit audit, Clock clock,
+            Notifications notifications) {
         this.transactions = transactions;
         this.jdbc = jdbc;
         this.email = email;
         this.audit = audit;
         this.clock = clock;
+        this.notifications = notifications;
     }
 
     @Scheduled(cron = "0 30 3 * * *", zone = "UTC")
@@ -60,8 +67,12 @@ public class MajorityNoticeJob {
         for (UUID org : jdbc.sql("select active_organization_ids()").query(UUID.class).list()) {
             try {
                 List<Notice> notices = new ArrayList<>();
-                int done = transactions.provision(org, () -> notify(org, notices));
+                List<Majority> majors = new ArrayList<>();
+                int done = transactions.provision(org, () -> notify(org, notices, majors));
                 for (Notice n : notices) email.send(n.email(), EmailTemplate.STUDENT_MAJORITY, n.studentName());
+                for (Majority m : majors) {
+                    notifications.publish(org, m.unitId(), NotificationType.STUDENT_MAJORITY, "student", m.id(), Map.of("studentName", m.studentName()));
+                }
                 total += done;
             } catch (RuntimeException e) {
                 LOG.error("student majority notice failed org={}", org, e);
@@ -70,18 +81,19 @@ public class MajorityNoticeJob {
         return total;
     }
 
-    private int notify(UUID org, List<Notice> notices) {
+    private int notify(UUID org, List<Notice> notices, List<Majority> majors) {
         OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         // Cadastrado menor: o cadastro é anterior ao 18º aniversário.
         // S8, R28: "hoje" e o dia do cadastro são os do fuso da unidade de cadastro.
-        var due = jdbc.sql("select s.id, s.name from student s join unit u on u.id = s.registered_unit_id and u.organization_id = s.organization_id "
+        var due = jdbc.sql("select s.id, s.name, s.registered_unit_id from student s join unit u on u.id = s.registered_unit_id and u.organization_id = s.organization_id "
                 + "where s.organization_id = :org and s.majority_notice_at is null "
                 + "and (s.birth_date + interval '18 years')::date <= (cast(:now as timestamptz) at time zone u.timezone)::date "
                 + "and (s.created_at at time zone u.timezone)::date < (s.birth_date + interval '18 years')::date "
                 + "order by s.id").param("org", org).param("now", now)
-                .query((rs, n) -> new Object[]{rs.getObject(1, UUID.class), rs.getString(2)}).list();
+                .query((rs, n) -> new Object[]{rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, UUID.class)}).list();
         for (Object[] s : due) {
             UUID id = (UUID) s[0];
+            majors.add(new Majority(id, (UUID) s[2], (String) s[1]));
             jdbc.sql("update student set majority_notice_at = :now where id = :id").param("now", now).param("id", id).update();
             for (String to : jdbc.sql("select a.email from student_guardian sg join guardian g on g.organization_id = sg.organization_id and g.id = sg.guardian_id "
                     + "join account a on a.id = g.account_id where sg.organization_id = :org and sg.student_id = :id and g.email_problem_at is null "

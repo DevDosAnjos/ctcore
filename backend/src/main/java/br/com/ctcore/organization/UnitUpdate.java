@@ -19,9 +19,12 @@ public record UnitUpdate(String name, String postalCode, String address, String 
 
     public record Settings(List<Integer> dueDays, Boolean enrollmentFeeEnabled, Long enrollmentFeeCents, Map<String, Long> feesCents,
             String pixKey, List<Integer> reminderDays, TeacherPermissions teacherPermissions, Boolean directoryEnabled,
-            Boolean trialLinkEnabled, Boolean selfRegistrationLinkEnabled) {
+            Boolean trialLinkEnabled, Boolean selfRegistrationLinkEnabled, Boolean remindersEnabled, Integer remindersHour) {
 
         Settings validated() {
+            boolean remindersOn = required("settings.remindersEnabled", remindersEnabled);
+            int hour = required("settings.remindersHour", remindersHour);
+            if (hour < 0 || hour > 23) throw new ApiValidationException("settings.remindersHour", "valor entre 0 e 23");
             List<Integer> due = days("settings.dueDays", dueDays, 1, 28, 28, false);
             boolean feeOn = required("settings.enrollmentFeeEnabled", enrollmentFeeEnabled);
             long enrollment = 0;
@@ -47,7 +50,7 @@ public record UnitUpdate(String name, String postalCode, String address, String 
                     required("settings.teacherPermissions.studentRecord", t.studentRecord()));
             return new Settings(due, feeOn, enrollment, fees, pix, reminders, teacher, required("settings.directoryEnabled", directoryEnabled),
                     required("settings.trialLinkEnabled", trialLinkEnabled),
-                    required("settings.selfRegistrationLinkEnabled", selfRegistrationLinkEnabled));
+                    required("settings.selfRegistrationLinkEnabled", selfRegistrationLinkEnabled), remindersOn, hour);
         }
     }
 

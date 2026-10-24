@@ -10,10 +10,11 @@ import { CancelChargeDialog } from "./CancelChargeDialog";
 import { RegisterPaymentDialog } from "@/features/payments/RegisterPaymentDialog";
 import { receiptStaffPdfUrl } from "@/features/payments/usePayment";
 import { RenegotiateDialog } from "./RenegotiateDialog";
+import { SendReminderDialog } from "./SendReminderDialog";
 import type { ChargeDetail, ChargeRef } from "./types";
 import { useChargeDetail } from "./useChargeActions";
 
-const DISABLED = ["sendReminder", "refund"] as const;
+const DISABLED = ["refund"] as const;
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -38,7 +39,7 @@ function Refs({ refs }: { refs: ChargeRef[] }) {
 function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: boolean; onChanged: () => void }) {
   const { t } = useTranslation();
   const reference = useReference();
-  const [dialog, setDialog] = useState<"cancel" | "renegotiate" | "pay">();
+  const [dialog, setDialog] = useState<"cancel" | "renegotiate" | "pay" | "remind">();
   const [paid, setPaid] = useState(false);
   const { charge, composition, actions } = d;
   const done = () => onChanged();
@@ -121,7 +122,25 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
       </Block>
 
       <Block title={t("charges.panel.reminders")}>
-        {d.reminders.length === 0 && <p className="text-sm text-muted-foreground">{t("charges.panel.noReminders")}</p>}
+        {d.reminders.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t("charges.panel.noReminders")}</p>
+        ) : (
+          <ul className="flex flex-col gap-2 text-sm">
+            {d.reminders.map((r, i) => (
+              <li key={i} className="rounded-md border p-2">
+                <p className="break-words">
+                  {t("charges.panel.reminderLine", {
+                    date: formatDateTime(r.createdAt),
+                    kind: t(`charges.reminder.kind.${r.kind}`),
+                    channel: t(`charges.reminder.channel.${r.channel}`),
+                    result: t(`charges.reminder.status.${r.reason ?? r.status}`),
+                  })}
+                </p>
+                {r.sentBy?.name && <p className="text-muted-foreground">{t("charges.panel.reminderBy", { name: r.sentBy.name })}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
       </Block>
 
       <div className="flex flex-col gap-2">
@@ -152,6 +171,16 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
             </p>
           )}
         </div>
+        <div className="flex flex-col">
+          <Button type="button" variant="outline" className="min-h-11 self-start" disabled={!actions.sendReminder} aria-describedby={actions.sendReminder ? undefined : "why-sendReminder"} onClick={() => setDialog("remind")}>
+            {t("charges.panel.sendReminder")}
+          </Button>
+          {!actions.sendReminder && (
+            <p id="why-sendReminder" className="text-sm text-muted-foreground">
+              {t("charges.panel.disabled.sendReminder")}
+            </p>
+          )}
+        </div>
         {DISABLED.map((k) => (
           <div key={k} className="flex flex-col">
             <Button type="button" variant="outline" className="min-h-11 self-start" disabled aria-describedby={`why-${k}`}>
@@ -177,6 +206,7 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
           }}
         />
       )}
+      {dialog === "remind" && <SendReminderDialog targets={[{ id: charge.id, label: reference(charge) }]} onClose={() => setDialog(undefined)} onDone={done} />}
       {dialog === "renegotiate" && <RenegotiateDialog charges={[charge]} onClose={() => setDialog(undefined)} onDone={done} />}
     </div>
   );

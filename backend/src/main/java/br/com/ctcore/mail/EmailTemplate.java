@@ -1,29 +1,55 @@
 package br.com.ctcore.mail;
 
-/** Message key prefix ({@code .subject} and {@code .body} in messages.properties) and whether the text carries a secret code. */
+/**
+ * RN-COM-11 registry: message key prefix ({@code .subject} and {@code .body} in messages.properties), whether the text carries a secret code,
+ * whether the first argument is a link, and the category (RN-COM-13: only {@link Kind#ANNOUNCEMENT} can be turned off by the receiver).
+ */
 public enum EmailTemplate {
-    INVITE("mail.invite", true, true),
-    PASSWORD_RESET("mail.reset", true, true),
-    EMAIL_CHANGE("mail.email-change", true, true),
-    EMAIL_CHANGED("mail.email-changed", false, false),
-    PASSWORD_CHANGED("mail.password-changed", false, false),
-    NEW_ACCESS("mail.new-access", false, false),
-    COORDINATION_TRANSFERRED("mail.coordination-transferred", false, false),
+    INVITE("mail.invite", true, true, Kind.ALWAYS),
+    PASSWORD_RESET("mail.reset", true, true, Kind.ALWAYS),
+    EMAIL_CHANGE("mail.email-change", true, true, Kind.ALWAYS),
+    EMAIL_CHANGED("mail.email-changed", false, false, Kind.ALWAYS),
+    PASSWORD_CHANGED("mail.password-changed", false, false, Kind.ALWAYS),
+    NEW_ACCESS("mail.new-access", false, false, Kind.ALWAYS),
+    COORDINATION_TRANSFERRED("mail.coordination-transferred", false, false, Kind.ALWAYS),
     /** RN-RSP-05: neutro, sem nome do aluno nem motivo. */
-    GUARDIAN_UNLINKED("mail.guardian-unlinked", false, false),
+    GUARDIAN_UNLINKED("mail.guardian-unlinked", false, false, Kind.ALWAYS),
     /** RN-RSP-07: o aluno cadastrado menor completou 18 anos. */
-    STUDENT_MAJORITY("mail.student-majority", false, false),
+    STUDENT_MAJORITY("mail.student-majority", false, false, Kind.ALWAYS),
     /** RF-COB-04: recibo do pagamento no balcão; o primeiro argumento é o link do PDF. */
-    PAYMENT_CONFIRMED("mail.payment-confirmed", false, true);
+    PAYMENT_CONFIRMED("mail.payment-confirmed", false, true, Kind.ALWAYS),
+    /** RN-COM-11: cobrança em aberto (descrição, valor, vencimento). */
+    CHARGE_CREATED("mail.charge-created", false, false, Kind.ALWAYS),
+    /** RN-PLA-04: novo valor do plano (nome do plano, valor). */
+    PLAN_RATE_ADJUSTED("mail.plan-rate-adjusted", false, false, Kind.ALWAYS),
+    /** Cobrança da diferença de reajuste (descrição, valor, vencimento). */
+    READJUSTMENT_DIFF("mail.readjustment-diff", false, false, Kind.ALWAYS),
+    /** RN-COB-17: lembretes de cobrança (descrição, valor, vencimento); o aviso de bloqueio leva também os dias que faltam. */
+    REMINDER_BEFORE("mail.reminder-before", false, false, Kind.ALWAYS),
+    REMINDER_DUE("mail.reminder-due", false, false, Kind.ALWAYS),
+    REMINDER_OVERDUE("mail.reminder-overdue", false, false, Kind.ALWAYS),
+    BLOCK_WARNING("mail.block-warning", false, false, Kind.ALWAYS),
+    /** RN-COM-13: comunicado da academia, o único que o aluno ou responsável desliga (texto). */
+    ANNOUNCEMENT("mail.announcement", false, false, Kind.ANNOUNCEMENT),
+    /** RN-NOT-02: aviso urgente ao gestor; assunto e texto por tipo (chaves {@code notification.<TIPO>}; a geral é o modelo do registro), via {@code sendText}, sem dado de pessoa. */
+    NOTIFICATION_URGENT("notification.urgent", false, false, Kind.ALWAYS);
+
+    public enum Kind { ALWAYS, ANNOUNCEMENT }
 
     final String key;
     final boolean secret;
     /** The first argument is a link, shown also as a full-width button. */
     final boolean link;
+    final Kind kind;
 
-    EmailTemplate(String key, boolean secret, boolean link) {
+    EmailTemplate(String key, boolean secret, boolean link, Kind kind) {
         this.key = key;
         this.secret = secret;
         this.link = link;
+        this.kind = kind;
+    }
+
+    public Kind kind() {
+        return kind;
     }
 }

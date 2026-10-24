@@ -65,8 +65,8 @@ O workflow `CI` (`.github/workflows/ci.yml`) roda em todo PR para `dev` e `main`
 | Etapa | Roda quando | O que exige |
 | --- | --- | --- |
 | `backend` | `backend/` muda | `mvnw verify`: build, testes `*Test` e `*IT`, contrato OpenAPI, cobertura de linhas 80% (100% nos pacotes `billing`, `payment`, `subscription`, `deactivation`, `isolation`) |
-| `frontend` | `frontend/` muda | lint, tipos, build, Vitest com axe nos dois temas, cobertura de linhas 80% (100% em `src/features/{billing,payments,subscription,deactivation}`) |
-| `e2e` | `frontend/` muda | Playwright: fluxos `@critical`; no PR para `main`, a suíte completa |
+| `frontend` | `frontend/` muda | lint, tipos, build, Vitest com axe nos dois temas, cobertura de linhas 80% (100% em `src/features/{billing,charges,payments,subscription,deactivation}`) |
+| `e2e` | `frontend/` muda | Playwright na imagem oficial `mcr.microsoft.com/playwright:v1.64.1-noble` (sem `playwright install`): fluxos `@critical`; no PR para `main`, a suíte completa. Ao atualizar `@playwright/test`, a tag da imagem muda junto no `ci.yml`; um passo reprova se as versões divergirem |
 | `security` | sempre | gitleaks (segredos no histórico do PR; falso positivo só por impressão digital em `.gitleaksignore`, com o motivo) e OSV-Scanner (dependências Maven e npm com severidade alta, crítica ou sem nota; filtro em `infra/scripts/osv-high.sh`, provado por `osv-high.test.sh` no próprio job) |
 
 Cada job tem limite de tempo (`timeout-minutes`, logo após `runs-on`): `changes` e `ci-gate` 5 min; `security`, `frontend`, `image-backend` e `image-frontend` 10 min; `backend` e `e2e` 15 min; em `publish.yml`, `changes` e `image` 10 min. Se um job passar a estourar, ajuste o `timeout-minutes` dele em `.github/workflows/ci.yml` ou `.github/workflows/publish.yml`.

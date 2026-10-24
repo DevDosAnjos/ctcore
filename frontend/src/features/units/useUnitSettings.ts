@@ -23,6 +23,8 @@ export interface UnitSettingsData {
   pixKey: string | null;
   paymentAccount: "CONNECTED" | "NOT_CONNECTED";
   reminderDays: number[];
+  remindersEnabled: boolean;
+  remindersHour: number;
   teacherPermissions: Record<TeacherKey, boolean>;
   directoryEnabled: boolean;
   trialLinkEnabled: boolean;

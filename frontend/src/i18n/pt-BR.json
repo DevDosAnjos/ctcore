@@ -232,6 +232,8 @@
     "contrastFail": "Reprovado: o mínimo AA é 4,5 para 1. Escolha uma cor mais escura.",
     "preview": "Prévia do botão",
     "previewButton": "Botão de exemplo",
+    "edit": "Editar",
+    "view": "Ver",
     "save": "Salvar",
     "saving": "Salvando...",
     "saved": "Dados salvos.",
@@ -960,7 +962,8 @@
       "cancelled_one": "{{count}} aula cancelada",
       "cancelled_other": "{{count}} aulas canceladas",
       "edit": "Editar",
-      "undo": "Desfazer"
+      "undo": "Desfazer",
+      "notify": "Avisar"
     },
     "origins": {
       "HOLIDAY": "Feriado",
@@ -993,6 +996,7 @@
       "classesOneUnit": "Para limitar a turmas, escolha uma só unidade.",
       "classesRequired": "Escolha ao menos uma turma.",
       "preview": "Aulas que serão canceladas",
+      "previewLabel": "Prévia do envio",
       "previewLoading": "Conferindo as aulas…",
       "previewEmpty": "Nenhuma aula será cancelada neste período.",
       "previewUnit": "{{name}}: {{count}} aulas",
@@ -1379,6 +1383,94 @@
       "read": "Ler o texto"
     }
   },
+  "texts": {
+    "title": "Textos",
+    "intro": "Os e-mails da plataforma que a academia pode personalizar. Sem texto próprio, vale o texto da plataforma.",
+    "groups": {
+      "REMINDERS": "Lembretes de cobrança",
+      "WELCOME": "Boas-vindas",
+      "ANNOUNCEMENTS": "Comunicados"
+    },
+    "models": {
+      "REMINDER_BEFORE": "Lembrete antes do vencimento",
+      "REMINDER_DUE": "Lembrete no dia do vencimento",
+      "REMINDER_OVERDUE": "Lembrete de cobrança em atraso",
+      "WELCOME": "Boas-vindas ao aluno",
+      "ANNOUNCEMENT_CANCELED_CLASS": "Aula cancelada",
+      "ANNOUNCEMENT_TEACHER_CHANGE": "Troca de professor",
+      "ANNOUNCEMENT_SCHEDULE_CHANGE": "Mudança de horário",
+      "ANNOUNCEMENT_NO_CLASS_DAY": "Dia sem aula",
+      "ANNOUNCEMENT_GENERAL": "Aviso geral"
+    },
+    "origin": {
+      "custom": "Texto próprio",
+      "platform": "Texto da plataforma"
+    },
+    "modelsList": "Modelos de {{group}}",
+    "emptyTitle": "Nenhum modelo de texto",
+    "emptyText": "Quando houver textos para personalizar, eles aparecem aqui.",
+    "welcomeNote": "O envio das boas-vindas começa com o convite do portal; o texto já pode ser preparado.",
+    "editor": {
+      "title": "Texto: {{name}}",
+      "subject": "Assunto",
+      "body": "Texto do e-mail",
+      "fields": "Campos automáticos",
+      "fieldsHelp": "Clique para inserir o campo onde o cursor estiver. Ele é trocado pelo dado real no envio.",
+      "insert": "Inserir o campo {{field}}",
+      "linkNote": "Enquanto não houver pagamento online, o campo link_pagamento sai vazio.",
+      "readOnly": "Você pode consultar os textos, mas só o Coordenador altera.",
+      "updated": "Texto próprio salvo em {{date}} por {{by}}."
+    },
+    "fieldLabels": {
+      "nome": "nome",
+      "valor": "valor",
+      "vencimento": "vencimento",
+      "unidade": "unidade",
+      "descricao": "descrição",
+      "link_pagamento": "link de pagamento",
+      "turma": "turma",
+      "data": "data",
+      "horario": "horário",
+      "periodo": "período",
+      "motivo": "motivo"
+    },
+    "sample": {
+      "nome": "Maria Souza",
+      "valor": "R$ 150,00",
+      "vencimento": "10/11/2026",
+      "unidade": "Unidade Centro",
+      "descricao": "Mensalidade 11/2026",
+      "link_pagamento": "",
+      "turma": "Jiu-Jitsu Adulto",
+      "data": "15/11/2026",
+      "horario": "19:00",
+      "periodo": "15/11/2026",
+      "motivo": "feriado"
+    },
+    "preview": {
+      "title": "Prévia com dados de exemplo",
+      "subject": "Assunto: {{subject}}",
+      "footer": "feito com ctcore"
+    },
+    "edit": "Editar",
+    "view": "Ver",
+    "save": "Salvar",
+    "saved": "Texto salvo.",
+    "reset": "Voltar ao texto da plataforma",
+    "resetConfirm": {
+      "title": "Voltar ao texto da plataforma",
+      "summary": "O texto próprio de {{name}} será apagado e os próximos e-mails usarão o texto da plataforma.",
+      "confirm": "Voltar ao padrão"
+    },
+    "resetDone": "O texto da plataforma voltou a valer.",
+    "errors": {
+      "subject": "Confira o assunto: não pode ficar vazio, passar do limite de caracteres nem ter campo automático que este modelo não aceita.",
+      "body": "Confira o texto: não pode ficar vazio, passar de 2000 caracteres, ter campo automático que este modelo não aceita, chave sem fecho ou link que não comece com http:// ou https://.",
+      "same": "O texto é igual ao da plataforma. Para usá-lo, volte ao texto da plataforma.",
+      "generic": "Não foi possível salvar. Nada foi alterado. Tente de novo.",
+      "resetGeneric": "Não foi possível voltar ao texto da plataforma. Nada foi alterado. Tente de novo."
+    }
+  },
   "ageRanges": {
     "title": "Faixas etárias",
     "intro": "As faixas organizam turmas, aulas experimentais e o diretório. A idade de cada aluno continua calculada pelo nascimento.",
@@ -1635,6 +1727,16 @@
     "reminders": "Dias de lembrete",
     "remindersHelp": "Dias em relação ao vencimento, separados por vírgula: negativo é antes, positivo é depois. Exemplo: -3, 0, 3, 10.",
     "remindersInvalid": "Use números inteiros de -30 a 60, sem repetir, no máximo {{max}}.",
+    "remindersEnabled": "Enviar lembretes automáticos",
+    "remindersEnabledField": "Lembretes automáticos",
+    "remindersEnabledHelp": "Liga e desliga todos os lembretes automáticos de cobrança desta unidade.",
+    "remindersHour": "Hora dos lembretes",
+    "remindersHourHelp": "De 0 a 23, no horário da unidade.",
+    "remindersHourInvalid": "Informe um número inteiro de 0 a 23.",
+    "remindersOff": "Nenhum lembrete automático será enviado. O aviso de bloqueio e o envio manual de lembretes continuam funcionando.",
+    "remindersDefault": "Padrão: 3 dias antes, no dia, 3 e 10 dias depois do vencimento.",
+    "remindersChannel": "Canal: e-mail.",
+    "remindersBlockNotice": "Aviso fixo: 5 dias antes do bloqueio por inadimplência. Ele não é configurável e não depende deste interruptor.",
     "teacherHelp": "O que o Professor pode fazer nesta unidade.",
     "teacher": {
       "announcements": "Enviar comunicados",
@@ -1647,6 +1749,8 @@
     "directoryHelp": "A unidade pode ser encontrada por quem procura uma academia.",
     "trialLink": "Link público de aula experimental",
     "selfRegistrationLink": "Link público de autocadastro",
+    "edit": "Editar",
+    "view": "Ver",
     "save": "Salvar",
     "saving": "Salvando...",
     "saved": "Dados salvos.",
@@ -1690,6 +1794,7 @@
       "modalities": "Modalidades",
       "ageRanges": "Faixas etárias",
       "terms": "Termos",
+      "texts": "Textos",
       "staffUsers": "Usuários da gestão",
       "units": "Unidades",
       "subscription": "Assinatura e faturas",
@@ -1996,6 +2101,8 @@
       "downloadReceipt": "Baixar recibo",
       "reminders": "Lembretes enviados",
       "noReminders": "Nenhum lembrete enviado",
+      "reminderLine": "{{date}} · {{kind}} · {{channel}} · {{result}}",
+      "reminderBy": "por {{name}}",
       "cancel": "Cancelar cobrança",
       "renegotiate": "Renegociar",
       "seeStudent": "Ver aluno",
@@ -2004,9 +2111,72 @@
       "refund": "Estornar",
       "disabled": {
         "registerPayment": "Só cobranças em aberto recebem pagamento.",
-        "sendReminder": "Disponível quando o envio de lembretes for entregue.",
+        "sendReminder": "Só cobranças em aberto recebem lembrete.",
         "refund": "Disponível quando o estorno for entregue."
       }
+    },
+    "reminder": {
+      "title": "Enviar lembrete",
+      "summary_one": "Enviar o lembrete por e-mail desta cobrança?",
+      "summary_other": "Enviar o lembrete por e-mail das {{count}} cobranças selecionadas?",
+      "effect": "O lembrete vai ao e-mail do pagador. Cobrança que já recebeu lembrete nas últimas 24 horas não recebe outro.",
+      "submit": "Enviar",
+      "kind": {
+        "SCHEDULED": "Automático",
+        "BLOCK_WARNING": "Aviso de bloqueio",
+        "MANUAL": "Manual"
+      },
+      "channel": {
+        "EMAIL": "E-mail",
+        "SMS": "SMS"
+      },
+      "status": {
+        "SENT": "Enviado",
+        "NO_ADDRESS": "Sem e-mail",
+        "EMAIL_PROBLEM": "E-mail com problema",
+        "NO_PHONE": "Sem telefone",
+        "SMS_LIMIT": "Limite de SMS do mês",
+        "SKIPPED": "Não enviado"
+      },
+      "result": {
+        "SENT": "Enviado",
+        "NO_ADDRESS": "Sem e-mail",
+        "EMAIL_PROBLEM": "E-mail com problema",
+        "RECENT": "Enviado há pouco",
+        "NOT_OPEN": "Não está aberta"
+      }
+    },
+    "overdue": {
+      "open": "Em atraso",
+      "title": "Cobranças em atraso",
+      "intro": "Cobranças em aberto vencidas, com os dias de atraso e o último lembrete. Selecione e envie lembrete por e-mail, ou abra o WhatsApp de cada pagador.",
+      "back": "Voltar às cobranças",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "selectAll": "Selecionar todas da página",
+      "selectOne": "Selecionar {{student}}",
+      "selected_one": "{{count}} selecionada",
+      "selected_other": "{{count}} selecionadas",
+      "send": "Enviar lembrete",
+      "tooMany": "Selecione no máximo 100 cobranças por envio.",
+      "never": "Nunca",
+      "lastReminder": "{{date}} · {{channel}}",
+      "daysLate_one": "{{count}} dia",
+      "daysLate_other": "{{count}} dias",
+      "reference": "{{type}} · {{month}}",
+      "columns": {
+        "select": "Seleção",
+        "student": "Aluno",
+        "unit": "Unidade",
+        "reference": "Referente a",
+        "dueOn": "Vencimento",
+        "amount": "Valor",
+        "daysLate": "Dias de atraso",
+        "lastReminder": "Último lembrete",
+        "daysToBlock": "Dias até o bloqueio",
+        "whatsapp": "WhatsApp"
+      },
+      "whatsappMessage": "Olá, {{payer}}! Aqui é da {{unit}}. A cobrança de {{student}}, no valor de {{amount}}, venceu em {{due}} e segue em aberto. Qualquer dúvida, é só responder esta mensagem."
     },
     "daily": {
       "open": "Recebimentos do dia",
@@ -2103,6 +2273,125 @@
       "line": "Parcela {{n}}: {{amount}} em {{due}}",
       "sum": "Total: {{amount}}",
       "submit": "Renegociar"
+    }
+  },
+  "announcements": {
+    "title": "Comunicados",
+    "intro": "Avisos enviados aos alunos e responsáveis, os agendados e quantos já os abriram.",
+    "newAction": "Novo comunicado",
+    "sentNotice": "Comunicado enviado.",
+    "scheduledNotice": "Comunicado agendado.",
+    "openGroup": "Abrir o grupo da turma",
+    "new": {
+      "title": "Novo comunicado",
+      "intro": "Escolha para quem o aviso vai, escreva o texto e veja quantas pessoas o recebem antes de enviar.",
+      "back": "Voltar aos comunicados",
+      "emptyTitle": "Nenhum destino liberado",
+      "emptyText": "Você não tem turmas liberadas para enviar comunicado.",
+      "target": "Destino",
+      "targetPlaceholder": "Escolha o destino",
+      "targetGroups": { "units": "Unidades", "modalities": "Modalidades", "classes": "Turmas" },
+      "organization": "Todas as unidades",
+      "modalityOption": "{{modality}} · {{unit}}",
+      "type": "Tipo",
+      "typeChange": "Trocar para \"{{type}}\" substitui o título e o texto que você escreveu.",
+      "typeChangeYes": "Trocar o texto",
+      "typeChangeNo": "Manter meu texto",
+      "titleField": "Título",
+      "bodyField": "Texto",
+      "bodyHelp": "Use **negrito**, listas com \"- \" e links [texto](https://...).",
+      "image": "Imagem (opcional)",
+      "imageAlt": "Imagem do comunicado",
+      "imageRemove": "Remover imagem",
+      "imageUploading": "Enviando a imagem...",
+      "channels": "Canais",
+      "channelPortal": "Portal do aluno (sempre)",
+      "channelEmail": "E-mail",
+      "channelWhatsapp": "WhatsApp",
+      "pinnedUntil": "Fixar até",
+      "pinnedHelp": "Opcional. O aviso fica no topo do portal até essa data.",
+      "when": "Quando enviar",
+      "now": "Enviar agora",
+      "schedule": "Agendar",
+      "sendAt": "Data e hora do envio",
+      "preview": "Este aviso vai para {{count}} pessoas",
+      "previewOne": "Este aviso vai para 1 pessoa",
+      "previewChannels": "Por portal ({{portal}}), e-mail ({{email}}){{whatsapp}}",
+      "previewWhatsappGroup": " e WhatsApp (grupo da turma)",
+      "previewWhatsappConversation": " e WhatsApp (conversa)",
+      "previewLabel": "Prévia do envio",
+      "previewLoading": "Contando os destinatários...",
+      "previewError": "Não foi possível contar os destinatários. Tente mudar o destino ou os canais.",
+      "send": "Enviar comunicado",
+      "scheduleSend": "Agendar comunicado",
+      "sending": "Enviando...",
+      "errorForbidden": "Você não pode enviar comunicado para este destino.",
+      "errorLimit": "Esta unidade já atingiu o limite de 20 comunicados por dia. Escolha outro dia.",
+      "errorGeneric": "Não foi possível enviar. Nada foi enviado; tente de novo.",
+      "fields": {
+        "title": "Informe o título, de 1 a 120 caracteres.",
+        "body": "Informe o texto, de 1 a 2.000 caracteres, só com links http ou https.",
+        "pinnedUntil": "Use hoje ou uma data futura.",
+        "sendAt": "Escolha uma data e hora futuras.",
+        "channels": "Escolha canais válidos.",
+        "type": "Escolha o tipo do comunicado.",
+        "file": "Use uma imagem válida, de até 5 MB.",
+        "other": "Confira os dados do comunicado."
+      },
+      "placeholders": { "date": "[data]", "time": "[horário]", "period": "[período]", "reason": "[motivo]", "target": "[turma]", "unit": "[unidade]" }
+    },
+    "emptyTitle": "Nenhum comunicado ainda",
+    "emptyText": "Os comunicados enviados e agendados aparecem aqui.",
+    "noResultTitle": "Nenhum comunicado com estes filtros",
+    "noResultText": "Tente outro período, turma ou tipo.",
+    "filters": {
+      "from": "De",
+      "to": "Até",
+      "class": "Turma",
+      "allClasses": "Todas as turmas",
+      "type": "Tipo",
+      "allTypes": "Todos os tipos"
+    },
+    "columns": {
+      "date": "Data",
+      "target": "Destino",
+      "title": "Título",
+      "type": "Tipo",
+      "author": "Autor",
+      "status": "Situação",
+      "recipients": "Destinatários",
+      "reads": "Lidos",
+      "actions": "Ações"
+    },
+    "target": {
+      "CLASS": "Turma {{name}}",
+      "CLASSES": "Turmas {{name}}",
+      "MODALITY": "Modalidade {{name}}",
+      "UNIT": "Unidade {{name}}",
+      "ORGANIZATION": "Todas as unidades"
+    },
+    "types": {
+      "CANCELED_CLASS": "Aula cancelada",
+      "TEACHER_CHANGE": "Troca de professor",
+      "SCHEDULE_CHANGE": "Mudança de horário",
+      "NO_CLASS_DAY": "Dia sem aula",
+      "GENERAL": "Aviso geral"
+    },
+    "status": {
+      "SCHEDULED": "Agendado",
+      "SENT": "Enviado"
+    },
+    "cancel": {
+      "action": "Cancelar agendamento",
+      "actionFor": "Cancelar agendamento de {{title}}",
+      "title": "Cancelar agendamento",
+      "summary": "O comunicado \"{{title}}\" ainda não saiu e será apagado. Ninguém receberá esse aviso.",
+      "submit": "Cancelar agendamento",
+      "keep": "Manter",
+      "sent": "Este comunicado já foi enviado e não pode ser cancelado. Nada foi alterado.",
+      "gone": "Este comunicado não existe mais. A lista foi atualizada.",
+      "forbidden": "Você não pode cancelar este comunicado.",
+      "error": "Não foi possível cancelar. Nada foi alterado; tente de novo."
     }
   },
   "publicReceipt": {
@@ -2247,6 +2536,53 @@
       "done": "E-mail alterado. Use o endereço novo para entrar.",
       "invalid": "Este link venceu, já foi usado ou não é desta conta. Peça um novo na tela Minha conta.",
       "back": "Ir para Minha conta"
+    }
+  },
+  "notifications": {
+    "title": "Notificações",
+    "bell": {
+      "label": "Notificações",
+      "withCount": "Notificações, {{count}} não lidas"
+    },
+    "unreadMark": "Não lida:",
+    "filters": {
+      "label": "Filtrar notificações",
+      "all": "Todas ({{count}})",
+      "unread": "Não lidas ({{count}})"
+    },
+    "groups": {
+      "TODAY": "Hoje",
+      "WEEK": "Esta semana"
+    },
+    "markAll": "Marcar todas como lidas",
+    "allRead": {
+      "title": "Tudo lido",
+      "text": "Você não tem notificações não lidas."
+    },
+    "empty": {
+      "title": "Nenhuma notificação",
+      "text": "Quando algo precisar da sua atenção, aparece aqui."
+    },
+    "receiveAll": {
+      "label": "Receber tudo",
+      "hint": "Receber também os avisos de todas as unidades."
+    },
+    "failed": "Não foi possível concluir. Nada foi alterado; tente de novo.",
+    "time": {
+      "now": "agora",
+      "minutes": "há {{count}} min",
+      "hours": "há {{count}} h",
+      "days": "há {{count}} dias"
+    },
+    "types": {
+      "PAYMENT_RECEIVED": { "text": "{{studentName}} pagou {{amount}}.", "action": "Ver cobranças" },
+      "HIGH_BENEFIT": { "text": "Benefício acima de 50% concedido a {{studentName}}.", "action": "Ver benefícios" },
+      "STUDENT_MAJORITY": { "text": "{{studentName}} completou 18 anos.", "action": "Ver aluno" },
+      "EMAIL_PROBLEM": { "text": "Um e-mail de aluno ou responsável está com problema.", "action": "Ver aluno" },
+      "INVITE_PENDING": { "text": "O convite de {{personName}} segue sem aceite há 7 dias.", "action": "Ver usuários" },
+      "CLOSURE_REQUEST": { "text": "Há um pedido de encerramento aguardando decisão.", "action": "Abrir configurações" },
+      "MP_DISCONNECTED": { "text": "A conexão de pagamentos da academia caiu.", "action": "Abrir configurações" },
+      "SUBSCRIPTION_OVERDUE": { "text": "A assinatura do CTCore está em atraso.", "action": "Abrir configurações" }
     }
   },
   "format": {

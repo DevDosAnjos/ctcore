@@ -83,7 +83,7 @@ export function AppLayout({
             </Dialog.Portal>
           </Dialog.Root>
           <span className="text-lg font-semibold md:hidden">{t("app.name")}</span>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
             {headerExtra}
             <ThemeToggle />
           </div>

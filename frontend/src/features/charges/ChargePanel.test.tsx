@@ -46,7 +46,7 @@ function setup(opts: { role?: string; detail?: () => Response | Promise<Response
   const mutate = async ({ request }: { request: Request }) => {
     const url = new URL(request.url).pathname;
     posts.push({ url, body: await request.json() });
-    return opts.post ? opts.post(url) : HttpResponse.json(url.endsWith("renegotiate") ? [row({ id: "n1", type: "INSTALLMENT", status: "PENDING" })] : detail());
+    return opts.post ? opts.post(url) : HttpResponse.json(url.endsWith("reminders") ? { results: [{ chargeId: "c1", result: "SENT" }] } : url.endsWith("renegotiate") ? [row({ id: "n1", type: "INSTALLMENT", status: "PENDING" })] : detail());
   };
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(role))),
@@ -62,6 +62,7 @@ function setup(opts: { role?: string; detail?: () => Response | Promise<Response
     http.get("/api/v1/charges/c1", () => (opts.detail ? opts.detail() : HttpResponse.json(detail()))),
     http.post("/api/v1/charges/c1/cancel", mutate),
     http.post("/api/v1/charges/renegotiate", mutate),
+    http.post("/api/v1/charges/reminders", mutate),
   );
   return render(
     <ThemeProvider>
@@ -91,7 +92,7 @@ describe("ChargePanel (RF-COB-02)", () => {
     expect(within(panel).getByText("Nenhum lembrete enviado")).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Cancelar cobrança" })).toBeEnabled();
     expect(within(panel).getByRole("button", { name: "Renegociar" })).toBeEnabled();
-    for (const [name, why] of [["Registrar pagamento", /cobranças em aberto/], ["Enviar lembrete", /envio de lembretes/], ["Estornar", /estorno/]] as const) {
+    for (const [name, why] of [["Registrar pagamento", /recebem pagamento/], ["Enviar lembrete", /recebem lembrete/], ["Estornar", /estorno/]] as const) {
       const button = within(panel).getByRole("button", { name });
       expect(button).toBeDisabled();
       expect(button).toHaveAccessibleDescription(why);
@@ -351,6 +352,58 @@ describe("ChargePanel (RF-COB-02)", () => {
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Cobrança" })).toBeNull());
     expect(window.location.search).toBe("");
+  });
+
+  it("CA28: Enviar lembrete confirma, chama a rota com a cobrança, mostra o resultado e recarrega o painel com o histórico", async () => {
+    const user = userEvent.setup();
+    let sent = false;
+    const open = { ...detail().actions, sendReminder: true };
+    setup({
+      detail: () =>
+        HttpResponse.json(
+          detail({
+            actions: open,
+            reminders: sent ? [{ kind: "MANUAL", channel: "EMAIL", status: "SENT", reason: null, createdAt: "2026-03-10T15:00:00Z", sentBy: { id: "a", name: "Bia Admin" } }] : [],
+          }),
+        ),
+      post: () => {
+        sent = true;
+        return HttpResponse.json({ results: [{ chargeId: "c1", result: "SENT" }] });
+      },
+    });
+    const panel = await openPanel(user);
+    expect(await within(panel).findByText("Nenhum lembrete enviado")).toBeInTheDocument();
+    await user.click(within(panel).getByRole("button", { name: "Enviar lembrete" }));
+    const dialog = await screen.findByRole("dialog", { name: "Enviar lembrete" });
+    await user.click(within(dialog).getByRole("button", { name: "Enviar" }));
+    expect(await within(dialog).findByText("Enviado")).toBeInTheDocument();
+    expect(posts).toEqual([{ url: "/api/v1/charges/reminders", body: { chargeIds: ["c1"] } }]);
+    await user.click(within(dialog).getAllByRole("button", { name: "Fechar" })[0]);
+    expect(await within(panel).findByText(/Manual · E-mail · Enviado/)).toBeInTheDocument();
+    expect(within(panel).getByText("por Bia Admin")).toBeInTheDocument();
+    expect(within(panel).queryByText("Nenhum lembrete enviado")).toBeNull();
+  });
+
+  it("CA28: o histórico mostra o motivo de quem não recebeu e o botão não habilita em cobrança paga", async () => {
+    setup({ detail: () => HttpResponse.json(detail({ reminders: [{ kind: "SCHEDULED", channel: "EMAIL", status: "SKIPPED", reason: "NO_ADDRESS", createdAt: "2026-03-02T12:00:00Z", sentBy: null }], actions: { ...detail().actions, sendReminder: false } })) });
+    const panel = await openPanel();
+    expect(await within(panel).findByText(/Automático · E-mail · Sem e-mail/)).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: "Enviar lembrete" })).toBeDisabled();
+  });
+
+  it("CA28: erro do servidor no envio mostra a mensagem e a janela segue aberta; a janela passa no axe nos dois temas", async () => {
+    for (const dark of [false, true]) {
+      setDevicePrefersDark(dark);
+      const { unmount } = setup({ detail: () => HttpResponse.json(detail({ actions: { ...detail().actions, sendReminder: true } })), post: () => HttpResponse.json({ code: "X", fields: [] }, { status: 500 }) });
+      const user = userEvent.setup();
+      const panel = await openPanel(user);
+      await user.click(await within(panel).findByRole("button", { name: "Enviar lembrete" }));
+      const dialog = await screen.findByRole("dialog", { name: "Enviar lembrete" });
+      await user.click(within(dialog).getByRole("button", { name: "Enviar" }));
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent("Nada foi alterado");
+      expect(await axeViolations(dialog)).toEqual([]);
+      unmount();
+    }
   });
 
 });

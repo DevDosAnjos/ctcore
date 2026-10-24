@@ -31,7 +31,7 @@ export interface ChargeList {
   totals: { count: number; amountCents: number };
 }
 
-// Espelha ChargeDetail do OpenAPI (RF-COB-02). Valores em centavos; `reminders` vem vazio até o item de lembretes.
+// Espelha ChargeDetail do OpenAPI (RF-COB-02). Valores em centavos; `reminders` é o histórico de lembretes (RF-COB-06).
 export type StoredStatus = "OPEN" | "IN_REVIEW" | "PAID" | "CANCELED" | "RENEGOTIATED" | "REFUNDED";
 export interface ChargeRef {
   id: string;
@@ -52,6 +52,14 @@ export interface ChargePayment {
   status: "CONFIRMED" | "REFUNDED";
   receipt: { number: number; code: string } | null;
 }
+export interface ChargeReminder {
+  kind: "SCHEDULED" | "BLOCK_WARNING" | "MANUAL";
+  channel: "EMAIL" | "SMS";
+  status: "SENT" | "SKIPPED";
+  reason: "NO_ADDRESS" | "EMAIL_PROBLEM" | "NO_PHONE" | "SMS_LIMIT" | null;
+  createdAt: string;
+  sentBy: { id: string; name: string | null } | null;
+}
 export interface ChargeDetail {
   charge: ChargeRow;
   toleranceDays: number;
@@ -69,7 +77,7 @@ export interface ChargeDetail {
   canceledAt: string | null;
   canceledBy: { id: string; name: string | null } | null;
   payments: ChargePayment[];
-  reminders: unknown[];
+  reminders: ChargeReminder[];
   actions: { cancel: boolean; renegotiate: boolean; registerPayment: boolean; sendReminder: boolean; refund: boolean };
 }
 export interface RenegotiateInput {
@@ -154,4 +162,31 @@ export interface DailyReceipts {
     amountCents: number;
     receiptNumber: number;
   }[];
+}
+
+// Espelha OverdueCharge, OverdueList e ReminderResults do OpenAPI (RF-COB-06). Valores em centavos.
+export type ReminderOutcome = "SENT" | "NO_ADDRESS" | "EMAIL_PROBLEM" | "NOT_OPEN" | "RECENT";
+export interface OverdueCharge {
+  id: string;
+  student: { id: string; name: string; photoUrl: string | null };
+  unit: { id: string; name: string };
+  type: ChargeType;
+  referenceMonth: string | null;
+  description: string | null;
+  amountCents: number;
+  dueOn: string;
+  daysLate: number;
+  daysToBlock: number | null;
+  lastReminder: { at: string; channel: "EMAIL" | "SMS" } | null;
+  payer: { name: string; phone: string | null };
+}
+export interface OverdueList {
+  items: OverdueCharge[];
+  page: number;
+  size: number;
+  total: number;
+}
+export interface ReminderResult {
+  chargeId: string;
+  result: ReminderOutcome;
 }

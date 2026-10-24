@@ -283,6 +283,31 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { description: "Sessão não encontrada (NOT_FOUND).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { description: "É a sessão em uso (SESSION_CURRENT).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/email-preferences:
+    get:
+      summary: Preferência de e-mail do vínculo ativo (RN-COM-13).
+      description: Só vínculo de portal (Aluno ou Responsável); gestão responde 403. Começa ligada. Só os comunicados da academia são desligáveis; qualquer outro e-mail automático chega sempre.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Escolha do vínculo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/EmailPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      summary: Liga ou desliga os comunicados da academia no vínculo ativo (RN-COM-13).
+      description: Grava auditoria `account.email_preferences_changed` sem dado pessoal. Valor que não seja booleano responde 422.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EmailPreferences' } } }
+      responses:
+        '200':
+          description: Escolha gravada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/EmailPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: 'announcements ausente ou que não seja booleano (UNPROCESSABLE).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /permissions:
     get:
       summary: Permissões efetivas do vínculo ativo, para montar o menu (RNF-05, D4 da #27).
@@ -780,13 +805,249 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /organization/texts:
+    get:
+      summary: Modelos de e-mail que a organização pode editar, com o texto da plataforma e o próprio (RF-COM-03, RN-COM-12). Coordenador e Administrador.
+      description: |
+        Catálogo fixo de 9 modelos: três lembretes de cobrança, boas-vindas e o texto inicial dos cinco tipos de comunicado. Cada um traz `fields` (os campos automáticos
+        que aceita, escritos `{campo}`), `platform` (assunto e texto da plataforma), `custom` (o da organização, ou nulo) e, com texto próprio, `updatedAt` e `updatedBy`.
+        `canManage` é verdadeiro só para o Coordenador. Professor, Aluno e Responsável recebem 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Os modelos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TextModelList' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /organization/texts/{key}:
+    put:
+      summary: Grava o texto próprio de um modelo, substituindo o anterior (RF-COM-03, RN-COM-12). Só o Coordenador.
+      description: |
+        `subject` de 1 a 150 caracteres (120 nos comunicados) e `body` de 1 a 2000, depois de aparar as pontas. Campo automático desconhecido ou que o modelo não
+        aceita, `{` ou `}` sem fecho e texto igual ao da plataforma: 400 no campo. O texto de comunicado aceita o formato mínimo (link só http ou https).
+        Chave fora do catálogo: 404. Grava `texts.updated` na auditoria com o antes e o depois.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: key, in: path, required: true, schema: { $ref: '#/components/schemas/TextModelKey' } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/TextModelInput' } } }
+      responses:
+        '200':
+          description: O modelo com o texto próprio.
+          content: { application/json: { schema: { $ref: '#/components/schemas/TextModel' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: Volta ao texto da plataforma (RF-COM-03). Só o Coordenador.
+      description: Apaga o texto próprio do modelo. Sem texto próprio, 204 sem efeito. Chave fora do catálogo, 404. Grava `texts.reset` na auditoria quando apagou.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: key, in: path, required: true, schema: { $ref: '#/components/schemas/TextModelKey' } }
+      responses:
+        '204': { description: O modelo voltou ao texto da plataforma. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /announcements:
+    get:
+      summary: Comunicados (RF-COM-01). Coordenador, Administrador e Professor com a permissão de comunicados.
+      description: |
+        Página de comunicados com data (instante do envio ou do agendamento), destino (`target`: turma, modalidade, unidade ou todas as unidades, com o nome), título,
+        tipo, autor (nome), situação (`SCHEDULED` ou `SENT`), `recipients` (só depois do envio; nulo no agendado) e `reads` (alunos distintos que abriram; a leitura do
+        responsável conta como a do aluno menor, uma vez; 0 no agendado). Alcance: o Coordenador vê os da organização; o Administrador, os das unidades dele (nunca o de
+        "todas as unidades"); o Professor, os que enviou e os destinados às suas turmas. Sem a permissão de comunicados: 403. Filtros opcionais e combináveis: `from` e `to`
+        (data na unidade, inclusivos; `to` antes de `from`: 400), `classId`, `type` (um dos cinco tipos; outro valor: 400) e `unitId` (de outra organização: 404; do
+        Administrador fora do alcance: lista vazia). `sort` por `date`, `title` ou `type`; padrão `date,desc`. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - { name: classId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: type, in: query, required: false, schema: { $ref: '#/components/schemas/AnnouncementType' } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: "`campo,asc|desc` com campo `date`, `title` ou `type`; desempate por id.", schema: { type: string } }
+      responses:
+        '200':
+          description: Página de comunicados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Cria e envia ou agenda um comunicado (RF-COM-02). Coordenador, Administrador e Professor com a permissão de comunicados.
+      description: |
+        Sem `sendAt`, envia agora (201 `SENT`, `recipients` com o número de pessoas); com `sendAt` no futuro, agenda (201 `SCHEDULED`, `recipients` nulo) e uma tarefa
+        envia no horário. O portal é sempre um canal; `EMAIL` manda o e-mail a quem não desligou os avisos da academia e não está "Com problema"; `WHATSAPP` só fica
+        registrado (a pessoa envia pelo grupo ou pela conversa); `PUSH` é recusado (400, campo `channels`). Destino: `targetKind` `CLASS` (com `classId`),
+        `MODALITY` (com `modalityId` e `unitId`), `UNIT` (com `unitId`) ou `ORGANIZATION` (todas as unidades). Quem envia para quê (RN-COM-01): o Coordenador para qualquer
+        destino; o Administrador para turma, modalidade ou unidade das unidades dele (`ORGANIZATION` e outra unidade: 403); o Professor só para turma sua, na unidade
+        em que a permissão está ligada (qualquer outro destino: 403). Destino de outra organização ou inexistente: 404; turma desativada: 400 no campo `classId`.
+        Texto: negrito `**texto**`, lista `- item` e link `[texto](https://...)`, de 1 a 2.000 caracteres; link que não seja http ou https: 400 no campo `body`.
+        `title` de 1 a 120. `pinnedUntil` é uma data de hoje em diante na data da unidade. `imageName` é o nome devolvido por `POST /announcements/image`
+        nesta organização. Limite de 20 comunicados por dia por unidade, contado pelo dia do envio ou do agendamento na data da unidade, com os agendados (e
+        `ORGANIZATION` com o seu próprio limite de 20): o 21º é 409 `ANNOUNCEMENT_DAILY_LIMIT`, sem gravar nada. Entrada inválida: 400 com o campo. Grava
+        `announcement.create` na auditoria com título, tipo, destino e canais, sem o texto do corpo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementDraft' } } }
+      responses:
+        '201':
+          description: Comunicado enviado ou agendado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementCreated' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /announcements/targets:
+    get:
+      summary: Destinos que o perfil pode escolher (RF-COM-02, RN-COM-01).
+      description: |
+        Unidades, turmas ativas e modalidades oferecidas por unidade que a sessão pode escolher, e `organization` (verdadeiro só para o Coordenador, "todas as
+        unidades"). Coordenador: tudo da organização. Administrador: só as unidades dele. Professor: só as suas turmas (titular ou auxiliar) das unidades em que a
+        permissão de comunicados está ligada, sem unidades nem modalidades. Sem a permissão: 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Destinos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementTargets' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /announcements/templates:
+    get:
+      summary: Título e texto iniciais de cada tipo de comunicado (RF-COM-02, RN-COM-04, RN-COM-12).
+      description: |
+        Por tipo, o título e o texto em uso: o próprio da organização ou, sem ele, o da plataforma. Os campos automáticos vêm escritos `{campo}` (`{turma}`, `{data}`,
+        `{horario}`, `{periodo}`, `{motivo}`, `{unidade}`); quem preenche é a tela. Quem tem a permissão de comunicados lê; sem ela, 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Os cinco tipos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementTemplates' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /announcements/preview:
+    post:
+      summary: Prévia do comunicado (RF-COM-02, RN-COM-09). Não grava nada.
+      description: |
+        Recebe o destino e os canais (os mesmos campos de `POST /announcements`; título, texto e tipo não são lidos) e devolve para quantas pessoas o aviso vai:
+        `recipients` (pessoas distintas; do aluno menor de 18 anos, os responsáveis), `portal` (igual a `recipients`), `email` (quem tem endereço, não desligou os
+        avisos da academia e não está "Com problema"), `whatsapp` (`GROUP` com o `groupLink` da turma, `CONVERSATION`, ou nulo sem o canal) e `channels`. Mesmas
+        regras de destino e permissão do `POST`; `PUSH` e canal desconhecido: 400.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementDraft' } } }
+      responses:
+        '200':
+          description: Prévia.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementPreview' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /announcements/image:
+    post:
+      summary: Guarda a imagem de um comunicado (RF-COM-02).
+      description: |
+        Campo `file` com PNG, JPEG ou WebP (qualquer dimensão) e até 5 MB; o tipo é conferido pelo conteúdo. Outro tipo, arquivo vazio, corrompido ou grande
+        demais: 400 no campo `file`. Devolve o `name` (para `imageName` do `POST /announcements`) e a `url` temporária assinada. Sem a permissão de comunicados:
+        403. Grava `announcement.image.upload`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Imagem guardada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementImage' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+  /announcements/{id}:
+    delete:
+      summary: Cancela um comunicado agendado (RF-COM-01, RN-COM-06).
+      description: |
+        Apaga o comunicado agendado, que nunca saiu. Quem cancela: Coordenador e Administrador da unidade do comunicado; o Professor, só o que ele mesmo agendou.
+        Comunicado enviado não é apagado nem editado: 409 `ANNOUNCEMENT_ALREADY_SENT`. Comunicado de outra organização ou inexistente: 404 (repetir o cancelamento
+        também dá 404). Administrador de outra unidade, Professor sem a permissão ou que não é o autor, Aluno e Responsável: 403. Grava `announcement.cancel` na
+        auditoria com título e destino, sem o texto do corpo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Cancelado. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /charges/overdue:
+    get:
+      summary: Cobranças em atraso (RF-COB-06). Coordenador e Administrador da unidade.
+      description: |
+        As cobranças em atraso (mesma regra de "Em atraso" de `GET /charges`, RN-COB-07: abertas e passadas do vencimento mais a tolerância), do alcance de quem chama
+        (o Coordenador vê todas; o Administrador só as das unidades dele, e `unitId` fora do alcance devolve lista vazia). Cada linha traz aluno, unidade, tipo,
+        referência, vencimento, valor gravado em centavos (sem juros), `daysLate` (hoje na unidade menos o vencimento), `lastReminder` (data e canal do último lembrete
+        enviado, ou nulo), `daysToBlock` (dias até o bloqueio, nunca negativo, ou nulo para avulsa, taxa de matrícula e unidade sem conta conectada) e o pagador
+        (responsável financeiro do menor; nome e telefone). `unitId` de outra organização: 404. `sort` fora de `daysLate`, `amount`, `student`: 400. Padrão
+        `sort=daysLate,desc`. Professor, Aluno e Responsável: 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: q, in: query, required: false, description: Nome do aluno (sem acento nem caixa)., schema: { type: string } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+        - { name: sort, in: query, required: false, description: "`campo,asc|desc` com campo `daysLate`, `amount` ou `student`; desempate por id.", schema: { type: string } }
+      responses:
+        '200':
+          description: Página de cobranças em atraso.
+          content: { application/json: { schema: { $ref: '#/components/schemas/OverdueList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /charges/reminders:
+    post:
+      summary: Envia lembrete por e-mail de uma ou mais cobranças (RF-COB-06). Coordenador e Administrador da unidade.
+      description: |
+        `chargeIds` de 1 a 100, sem repetir (400 no campo `chargeIds`). Cobrança de outra organização ou de unidade fora do alcance: 404 para o pedido inteiro e nada é
+        enviado. O resultado vem por cobrança, na ordem do pedido: `SENT`, `NO_ADDRESS` (sem e-mail), `EMAIL_PROBLEM` (endereço "Com problema"), `NOT_OPEN` (paga,
+        cancelada, renegociada, estornada ou em conferência) e `RECENT` (outro lembrete manual há menos de 24 horas). O modelo segue a data (antes, no dia ou depois
+        do vencimento) e o envio não depende de a unidade ter ligado os lembretes automáticos. Grava `charge.reminder_sent` na auditoria por cobrança que gerou
+        histórico (`SENT`, `NO_ADDRESS`, `EMAIL_PROBLEM`), sem endereço, telefone nem texto. Tudo com as linhas travadas.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ReminderRequest' } } }
+      responses:
+        '200':
+          description: O resultado de cada cobrança.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ReminderResults' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /charges/{id}:
     get:
       summary: Painel da cobrança (RF-COB-02). Coordenador e Administrador da unidade.
       description: |
         Os campos da linha de `GET /charges` (`charge`, com a situação calculada) mais tolerância, composição (plano, benefício e valor final, em centavos),
         pagador (aluno ou responsável financeiro), cobrança de origem, as parcelas que a substituíram, motivo, quem cancelou e quando, pagamentos (com recibo),
-        `reminders` (sempre vazio até o item de lembretes) e `actions` (`registerPayment` é verdadeiro só na cobrança em aberto; `sendReminder` e `refund` ficam `false` até os itens que os entregam).
+        `reminders` (histórico de lembretes, o mais recente primeiro) e `actions` (`cancel`, `renegotiate`, `registerPayment` e `sendReminder` são verdadeiros só na cobrança em aberto; `refund` fica `false` até o item que o entrega).
         Professor, Aluno e Responsável: 403. Cobrança inexistente, de outra organização ou de unidade fora do alcance: 404. Só lê; não audita.
       security: [{ sessionCookie: [] }]
       parameters:
@@ -2642,6 +2903,89 @@ paths:
         '429':
           description: Limite de reenvios do dia (TOO_MANY_REQUESTS).
           content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /notifications:
+    get:
+      summary: Notificações do vínculo ativo, dos últimos 7 dias, com o contador de não lidas (RF-NOT-01, RN-NOT-01). Coordenador, Administrador e Professor.
+      description: |
+        Hoje e os 6 dias anteriores no fuso da unidade da notificação, do mais novo ao mais velho; `group` é `TODAY` ou `WEEK`. `filter=unread` só traz as
+        não lidas. `unreadCount` conta as não lidas de qualquer data. `params` traz só o necessário para o texto (nome, valor em centavos), nunca CPF,
+        e-mail ou telefone. O Professor recebe lista vazia (nenhum tipo atual é de turma). Aluno e Responsável: 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: filter, in: query, required: false, schema: { type: string, enum: [all, unread], default: all } }
+      responses:
+        '200':
+          description: Notificações e contador.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/unread-count:
+    get:
+      summary: Só o contador de não lidas do vínculo ativo (RN-NOT-01), barato para a barra superior.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Contador.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/read-all:
+    post:
+      summary: Marca como lidas todas as notificações do vínculo ativo (RF-NOT-01).
+      description: Responde 200 com quantas mudaram; repetir responde 0. Grava `notification.read_all` na auditoria, sem texto de notificação.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      responses:
+        '200':
+          description: Quantas mudaram.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [changed]
+                properties:
+                  changed: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /notifications/preferences:
+    get:
+      summary: Preferência "receber tudo" do vínculo ativo (RN-NOT-03).
+      description: "`canReceiveAll` é verdadeiro só para o Coordenador; para os demais perfis de gestão, `receiveAll` vem falso."
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Preferência.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      summary: Liga ou desliga "receber tudo" (RN-NOT-03). Só o Coordenador.
+      description: |
+        Com a chave ligada o Coordenador passa a receber também as notificações de unidade. Outro perfil de gestão: 403. `receiveAll` ausente ou que
+        não seja booleano: 422. Grava `notification.preferences_updated` na auditoria.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receiveAll]
+              properties:
+                receiveAll: { type: boolean }
+      responses:
+        '200':
+          description: Preferência gravada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/NotificationPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: 'receiveAll ausente ou que não seja booleano (UNPROCESSABLE).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /portal/students:
     get:
       summary: Cartões dos alunos do portal (RN-RSP-03, RN-LGP-03). Responsável e Aluno.
@@ -2813,6 +3157,11 @@ components:
         newEmail: { type: string, format: email, maxLength: 254 }
         password: { type: string, format: password }
         code: { type: string, description: Obrigatório quando as duas etapas estão ligadas. }
+    EmailPreferences:
+      type: object
+      required: [announcements]
+      properties:
+        announcements: { type: boolean, description: Recebe os comunicados da academia neste vínculo. }
     AccountSession:
       type: object
       required: [id, device, createdAt, lastUsedAt, current]
@@ -2894,6 +3243,8 @@ components:
             - AGE_RANGE_NAME_TAKEN
             - TERMS_VERSION_CONFLICT
             - CHARGE_NOT_PAYABLE
+            - ANNOUNCEMENT_ALREADY_SENT
+            - ANNOUNCEMENT_DAILY_LIMIT
             - STAFF_LIMIT_REACHED
             - ALREADY_LINKED
             - HAS_PRIMARY_STUDENTS
@@ -3075,6 +3426,78 @@ components:
       properties:
         body: { type: string, minLength: 20, maxLength: 20000 }
         reaccept: { type: boolean }
+    NotificationType:
+      type: string
+      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE]
+    Notification:
+      type: object
+      required: [id, type, group, createdAt, readAt, refType, refId, params]
+      properties:
+        id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/NotificationType' }
+        group: { type: string, enum: [TODAY, WEEK] }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: string, format: date-time, nullable: true }
+        refType: { type: string, nullable: true, description: "Objeto de origem: charge, benefit, student, guardian, invite." }
+        refId: { type: string, format: uuid, nullable: true }
+        params: { type: object, additionalProperties: true, description: "Valores para o texto (studentName, personName, amountCents)." }
+    NotificationList:
+      type: object
+      required: [items, unreadCount]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        unreadCount: { type: integer, minimum: 0 }
+    NotificationPreferences:
+      type: object
+      required: [receiveAll, canReceiveAll]
+      properties:
+        receiveAll: { type: boolean }
+        canReceiveAll: { type: boolean }
+    TextModelKey:
+      type: string
+      enum: [REMINDER_BEFORE, REMINDER_DUE, REMINDER_OVERDUE, WELCOME, ANNOUNCEMENT_CANCELED_CLASS, ANNOUNCEMENT_TEACHER_CHANGE, ANNOUNCEMENT_SCHEDULE_CHANGE, ANNOUNCEMENT_NO_CLASS_DAY, ANNOUNCEMENT_GENERAL]
+    TextModelText:
+      type: object
+      required: [subject, body]
+      properties:
+        subject: { type: string }
+        body: { type: string }
+    TextModel:
+      type: object
+      required: [key, group, fields, platform, custom, updatedAt, updatedBy]
+      properties:
+        key: { $ref: '#/components/schemas/TextModelKey' }
+        group: { type: string, enum: [REMINDERS, WELCOME, ANNOUNCEMENTS] }
+        fields: { type: array, items: { type: string }, description: 'Campos automáticos aceitos, sem as chaves (ex.: nome).' }
+        platform: { $ref: '#/components/schemas/TextModelText' }
+        custom: { allOf: [{ $ref: '#/components/schemas/TextModelText' }], nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+        updatedBy: { type: string, nullable: true }
+    TextModelList:
+      type: object
+      required: [canManage, models]
+      properties:
+        canManage: { type: boolean }
+        models: { type: array, items: { $ref: '#/components/schemas/TextModel' } }
+    TextModelInput:
+      type: object
+      required: [subject, body]
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 150 }
+        body: { type: string, minLength: 1, maxLength: 2000 }
+    AnnouncementTemplates:
+      type: object
+      required: [templates]
+      properties:
+        templates:
+          type: object
+          description: 'Um item por tipo de comunicado (CANCELED_CLASS, TEACHER_CHANGE, SCHEDULE_CHANGE, NO_CLASS_DAY, GENERAL).'
+          additionalProperties:
+            type: object
+            required: [title, body]
+            properties:
+              title: { type: string }
+              body: { type: string }
     PaymentInput:
       type: object
       required: [method]
@@ -3938,7 +4361,7 @@ components:
     UnitSettingsView:
       type: object
       required: [dueDays, enrollmentFeeEnabled, enrollmentFeeCents, feesCents, pixKey, paymentAccount, reminderDays, teacherPermissions,
-        directoryEnabled, trialLinkEnabled, selfRegistrationLinkEnabled]
+        directoryEnabled, trialLinkEnabled, selfRegistrationLinkEnabled, remindersEnabled, remindersHour]
       properties:
         dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
         enrollmentFeeEnabled: { type: boolean }
@@ -3951,6 +4374,8 @@ components:
         directoryEnabled: { type: boolean }
         trialLinkEnabled: { type: boolean }
         selfRegistrationLinkEnabled: { type: boolean }
+        remindersEnabled: { type: boolean }
+        remindersHour: { type: integer, minimum: 0, maximum: 23, description: Hora cheia de envio dos lembretes (hora da unidade). }
     UnitDetail:
       type: object
       required: [id, name, shortName, postalCode, address, city, latitude, longitude, phone, email, whatsapp, cnpj, active, settings, version, lastChange]
@@ -3974,7 +4399,7 @@ components:
     UnitUpdateSettings:
       type: object
       required: [dueDays, enrollmentFeeEnabled, feesCents, reminderDays, teacherPermissions, directoryEnabled, trialLinkEnabled,
-        selfRegistrationLinkEnabled]
+        selfRegistrationLinkEnabled, remindersEnabled, remindersHour]
       properties:
         dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
         enrollmentFeeEnabled: { type: boolean }
@@ -3986,6 +4411,8 @@ components:
         directoryEnabled: { type: boolean }
         trialLinkEnabled: { type: boolean }
         selfRegistrationLinkEnabled: { type: boolean }
+        remindersEnabled: { type: boolean }
+        remindersHour: { type: integer, minimum: 0, maximum: 23, description: Hora cheia de envio dos lembretes (hora da unidade). }
     UnitUpdate:
       type: object
       required: [name, settings]
@@ -4223,6 +4650,165 @@ components:
         dueOn: { type: string, format: date }
         amountCents: { type: integer, format: int64 }
         status: { type: string, enum: [OPEN, IN_REVIEW, PAID, CANCELED, RENEGOTIATED, REFUNDED], description: Situação gravada. }
+    ChargeReminder:
+      type: object
+      required: [kind, channel, status, reason, createdAt, sentBy]
+      properties:
+        kind: { type: string, enum: [SCHEDULED, BLOCK_WARNING, MANUAL] }
+        channel: { type: string, enum: [EMAIL, SMS] }
+        status: { type: string, enum: [SENT, SKIPPED] }
+        reason: { type: string, nullable: true, enum: [NO_ADDRESS, EMAIL_PROBLEM, NO_PHONE, SMS_LIMIT], description: "Por que não foi enviado; nulo quando enviado." }
+        createdAt: { type: string, format: date-time }
+        sentBy: { type: object, nullable: true, required: [id, name], description: "Quem enviou, só no manual.", properties: { id: { type: string, format: uuid }, name: { type: string, nullable: true } } }
+    OverdueCharge:
+      type: object
+      required: [id, student, unit, type, referenceMonth, description, amountCents, dueOn, daysLate, daysToBlock, lastReminder, payer]
+      properties:
+        id: { type: string, format: uuid }
+        student:
+          type: object
+          required: [id, name, photoUrl]
+          properties: { id: { type: string, format: uuid }, name: { type: string }, photoUrl: { type: string, nullable: true } }
+        unit: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+        type: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] }
+        referenceMonth: { type: string, format: date, nullable: true }
+        description: { type: string, nullable: true }
+        amountCents: { type: integer, format: int64 }
+        dueOn: { type: string, format: date }
+        daysLate: { type: integer, minimum: 1 }
+        daysToBlock: { type: integer, minimum: 0, nullable: true }
+        lastReminder:
+          type: object
+          nullable: true
+          required: [at, channel]
+          properties: { at: { type: string, format: date-time }, channel: { type: string, enum: [EMAIL, SMS] } }
+        payer:
+          type: object
+          required: [name, phone]
+          description: Responsável financeiro do menor, ou o próprio aluno.
+          properties: { name: { type: string }, phone: { type: string, nullable: true } }
+    OverdueList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/OverdueCharge' } }
+    AnnouncementType:
+      type: string
+      enum: [CANCELED_CLASS, TEACHER_CHANGE, SCHEDULE_CHANGE, NO_CLASS_DAY, GENERAL]
+    AnnouncementStatus:
+      type: string
+      enum: [SCHEDULED, SENT]
+    AnnouncementItem:
+      type: object
+      required: [id, date, target, title, type, author, status, recipients, reads]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date-time, description: Instante do envio ou do agendamento. }
+        target:
+          type: object
+          required: [kind, id, name]
+          description: Destino. Em `ORGANIZATION` (todas as unidades) `id` e `name` são nulos.
+          properties:
+            kind: { type: string, enum: [CLASS, CLASSES, MODALITY, UNIT, ORGANIZATION] }
+            id: { type: string, format: uuid, nullable: true }
+            name: { type: string, nullable: true, description: 'Em `CLASSES` (dia sem aula), as turmas separadas por vírgula e `id` nulo.' }
+        title: { type: string }
+        type: { $ref: '#/components/schemas/AnnouncementType' }
+        author: { type: string }
+        status: { $ref: '#/components/schemas/AnnouncementStatus' }
+        recipients: { type: integer, minimum: 0, nullable: true, description: Só depois do envio. }
+        reads: { type: integer, format: int64, minimum: 0 }
+    AnnouncementDraft:
+      type: object
+      required: [targetKind]
+      description: Entrada de `POST /announcements/preview` e de `POST /announcements`. A prévia lê só o destino e os canais.
+      properties:
+        targetKind: { type: string, enum: [CLASS, MODALITY, UNIT, ORGANIZATION] }
+        classId: { type: string, format: uuid, nullable: true, description: Obrigatório em `CLASS`. }
+        modalityId: { type: string, format: uuid, nullable: true, description: Obrigatório em `MODALITY`. }
+        unitId: { type: string, format: uuid, nullable: true, description: Obrigatório em `MODALITY` e `UNIT`. }
+        type: { $ref: '#/components/schemas/AnnouncementType' }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        body: { type: string, minLength: 1, maxLength: 2000, description: 'Texto com `**negrito**`, `- lista` e `[texto](https://...)`.' }
+        channels: { type: array, uniqueItems: true, items: { type: string, enum: [PORTAL, EMAIL, WHATSAPP] }, description: 'O portal é sempre incluído; `PUSH` é recusado.' }
+        imageName: { type: string, nullable: true, description: Nome devolvido por `POST /announcements/image`. }
+        pinnedUntil: { type: string, format: date, nullable: true, description: 'Hoje ou depois, na data da unidade.' }
+        sendAt: { type: string, format: date-time, nullable: true, description: 'Instante futuro; ausente envia agora.' }
+        noClassDayId: { type: string, format: uuid, nullable: true, description: 'Liga um comunicado `NO_CLASS_DAY` feito à mão a um dia sem aula ainda não avisado.' }
+    AnnouncementCreated:
+      type: object
+      required: [id, status, recipients]
+      properties:
+        id: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/AnnouncementStatus' }
+        recipients: { type: integer, minimum: 0, nullable: true, description: Nulo no agendado. }
+    AnnouncementPreview:
+      type: object
+      required: [recipients, portal, email, whatsapp, channels]
+      properties:
+        recipients: { type: integer, minimum: 0 }
+        portal: { type: integer, minimum: 0 }
+        email: { type: integer, minimum: 0 }
+        whatsapp:
+          type: object
+          nullable: true
+          required: [mode, groupLink]
+          properties:
+            mode: { type: string, enum: [GROUP, CONVERSATION] }
+            groupLink: { type: string, nullable: true, description: Só em `GROUP`. }
+        channels: { type: array, items: { type: string, enum: [PORTAL, EMAIL, WHATSAPP] } }
+    AnnouncementTargets:
+      type: object
+      required: [units, classes, modalities, organization]
+      properties:
+        units:
+          type: array
+          items: { type: object, required: [id, name], properties: { id: { type: string, format: uuid }, name: { type: string } } }
+        classes:
+          type: array
+          items:
+            type: object
+            required: [id, name, unitId, modalityId, groupLink]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              unitId: { type: string, format: uuid }
+              modalityId: { type: string, format: uuid }
+              groupLink: { type: string, nullable: true }
+        modalities:
+          type: array
+          items: { type: object, required: [id, name, unitId], properties: { id: { type: string, format: uuid }, name: { type: string }, unitId: { type: string, format: uuid } } }
+        organization: { type: boolean, description: 'Verdadeiro só para o Coordenador ("todas as unidades").' }
+    AnnouncementImage:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string }
+        url: { type: string, description: URL temporária assinada. }
+    AnnouncementList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/AnnouncementItem' } }
+    ReminderRequest:
+      type: object
+      required: [chargeIds]
+      properties:
+        chargeIds: { type: array, minItems: 1, maxItems: 100, uniqueItems: true, items: { type: string, format: uuid } }
+    ReminderResults:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            required: [chargeId, result]
+            properties:
+              chargeId: { type: string, format: uuid }
+              result: { type: string, enum: [SENT, NO_ADDRESS, EMAIL_PROBLEM, NOT_OPEN, RECENT] }
     ChargeDetail:
       type: object
       required: [charge, toleranceDays, composition, payer, origin, replacedBy, reason, canceledAt, canceledBy, payments, reminders, actions]
@@ -4265,7 +4851,7 @@ components:
               observation: { type: string, nullable: true }
               status: { type: string, enum: [CONFIRMED, REFUNDED] }
               receipt: { type: object, nullable: true, required: [number, code], properties: { number: { type: integer }, code: { type: string } } }
-        reminders: { type: array, items: { type: object }, description: Sempre vazio até o item de lembretes. }
+        reminders: { type: array, items: { $ref: '#/components/schemas/ChargeReminder' }, description: "Histórico de lembretes, o mais recente primeiro." }
         actions:
           type: object
           required: [cancel, renegotiate, registerPayment, sendReminder, refund]

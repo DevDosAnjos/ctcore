@@ -43,6 +43,8 @@ const detail = (id: string, name: string): UnitDetail => ({
     pixKey: null,
     paymentAccount: "NOT_CONNECTED",
     reminderDays: [-3, 0, 3, 10],
+    remindersEnabled: true,
+    remindersHour: 9,
     teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true, studentRecord: false },
     directoryEnabled: false,
     trialLinkEnabled: true,
@@ -392,5 +394,86 @@ describe("UnitSettingsPage: última alteração e edição simultânea (RF-ORG-0
     const dialog = await screen.findByRole("dialog", { name: DIALOG });
     await within(dialog).findByRole("button", { name: "Sobrescrever" });
     expect(await axeViolations(document.body)).toEqual([]);
+  });
+});
+
+describe("UnitSettingsPage: lembretes automáticos (RF-COB-09)", () => {
+  it("CA7 / CA10: mostra interruptor, hora, dias, padrão e aviso fixo; salvar envia os três campos", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR");
+    await ready();
+    expect(screen.getByRole("checkbox", { name: /Enviar lembretes automáticos/ })).toBeChecked();
+    expect(screen.getByLabelText("Hora dos lembretes")).toHaveValue("9");
+    expect(screen.getByLabelText("Dias de lembrete")).toHaveValue("-3, 0, 3, 10");
+    expect(screen.getByText(/Padrão: 3 dias antes/)).toBeInTheDocument();
+    expect(screen.getByText(/Aviso fixo: 5 dias antes do bloqueio/)).toBeInTheDocument();
+    await user.clear(screen.getByLabelText("Hora dos lembretes"));
+    await user.type(screen.getByLabelText("Hora dos lembretes"), "14");
+    await user.click(save());
+    expect(await screen.findByText("Dados salvos.")).toBeInTheDocument();
+    expect(puts[0]!.body.settings).toMatchObject({ remindersEnabled: true, remindersHour: 14, reminderDays: [-3, 0, 3, 10] });
+  });
+
+  it("CA8: hora 25 ou vazia mostra o erro no campo, bloqueia o envio e o Enter leva o foco ao campo", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR");
+    await ready();
+    const hour = screen.getByLabelText("Hora dos lembretes");
+    await user.clear(hour);
+    await user.type(hour, "25");
+    expect(screen.getByText("Informe um número inteiro de 0 a 23.")).toBeInTheDocument();
+    expect(hour).toHaveAttribute("aria-invalid", "true");
+    expect(save()).toBeDisabled();
+    await user.type(screen.getByLabelText("Nome da unidade"), "{Enter}");
+    expect(hour).toHaveFocus();
+    expect(puts).toHaveLength(0);
+    await user.clear(hour);
+    expect(screen.getByText("Informe um número inteiro de 0 a 23.")).toBeInTheDocument();
+  });
+
+  it("CA9: desligado, hora e dias ficam desabilitados com o aviso; ao ligar voltam editáveis com os valores", async () => {
+    const user = userEvent.setup();
+    setup("COORDINATOR");
+    await ready();
+    await user.click(screen.getByRole("checkbox", { name: /Enviar lembretes automáticos/ }));
+    expect(screen.getByLabelText("Hora dos lembretes")).toBeDisabled();
+    expect(screen.getByLabelText("Dias de lembrete")).toBeDisabled();
+    expect(screen.getByText(/Nenhum lembrete automático será enviado/)).toBeInTheDocument();
+    await user.click(screen.getByRole("checkbox", { name: /Enviar lembretes automáticos/ }));
+    expect(screen.getByLabelText("Hora dos lembretes")).toBeEnabled();
+    expect(screen.getByLabelText("Hora dos lembretes")).toHaveValue("9");
+    expect(screen.getByLabelText("Dias de lembrete")).toHaveValue("-3, 0, 3, 10");
+    expect(screen.queryByText(/Nenhum lembrete automático será enviado/)).not.toBeInTheDocument();
+  });
+
+  it("CA11: o conflito lista Lembretes automáticos e Hora dos lembretes", async () => {
+    const user = userEvent.setup();
+    conflicting();
+    await ready();
+    stored[A] = { ...stored[A]!, settings: { ...stored[A]!.settings, remindersEnabled: false, remindersHour: 14 } };
+    await user.type(screen.getByLabelText("Nome da unidade"), "!");
+    await user.click(save());
+    const dialog = await screen.findByRole("dialog", { name: DIALOG });
+    const on = (await within(dialog).findByText("Lembretes automáticos")).closest("li")!;
+    expect(on).toHaveTextContent("Seu valor: Sim");
+    expect(on).toHaveTextContent("Valor atual: Não");
+    expect(within(dialog).getByText("Hora dos lembretes").closest("li")).toHaveTextContent("Valor atual: 14");
+  });
+
+  it.each([
+    ["claro", false],
+    ["escuro", true],
+  ])("CA12: a 360 px, com lembretes desligados e com erro, não tem violações no axe no tema %s", async (_n, dark) => {
+    const user = userEvent.setup();
+    setDevicePrefersDark(dark);
+    window.innerWidth = 360;
+    const { container } = setup("COORDINATOR");
+    await ready();
+    await user.click(screen.getByRole("checkbox", { name: /Enviar lembretes automáticos/ }));
+    expect(await axeViolations(container)).toEqual([]);
+    await user.click(screen.getByRole("checkbox", { name: /Enviar lembretes automáticos/ }));
+    await user.clear(screen.getByLabelText("Hora dos lembretes"));
+    await user.type(screen.getByLabelText("Hora dos lembretes"), "25");
+    expect(await axeViolations(container)).toEqual([]);
   });
 });
