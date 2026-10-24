@@ -62,7 +62,7 @@ public class ChargeNoticeJob {
                 try {
                     done += transactions.provision(org, () -> notice(org, id, now));
                 } catch (RuntimeException e) {
-                    LOG.error("charge notice failed org={} charge={}", org, id, e);
+                    LOG.error("charge notice failed org={} charge={} cause={}", org, id, e.getClass().getSimpleName());
                 }
             }
         }

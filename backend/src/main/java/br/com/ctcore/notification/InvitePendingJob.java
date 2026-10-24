@@ -58,7 +58,7 @@ public class InvitePendingJob {
                 }
                 total += pending.size();
             } catch (RuntimeException e) {
-                LOG.error("invite pending notice failed org={}", org, e);
+                LOG.error("invite pending notice failed org={} cause={}", org, e.getClass().getSimpleName());
             }
         }
         return total;

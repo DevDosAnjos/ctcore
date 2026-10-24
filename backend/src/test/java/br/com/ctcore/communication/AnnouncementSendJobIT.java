@@ -7,6 +7,10 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
 import br.com.ctcore.identity.AccountPrincipal;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
 import br.com.ctcore.identity.Role;
 import br.com.ctcore.isolation.OrganizationTransactions;
 import java.time.Clock;
@@ -60,9 +64,18 @@ class AnnouncementSendJobIT extends AnnouncementBase {
         UUID teacher = teacher(t, null), klass = klass(t, "Turma Erro", teacher);
         UUID bad = scheduled(t, author, klass, "Falha", "2026-10-01T12:00:00Z"), good = scheduled(t, author, klass, "Bom", "2026-10-02T12:00:00Z");
         AnnouncementSender failing = spy(sender);
-        doThrow(new IllegalStateException("falha sintética")).when(failing).dispatch(any(), eq(bad), any());
-
-        assertThat(job(failing).runOnce()).isEqualTo(1);
+        doThrow(new IllegalStateException("falha sintética anuncio-erro@example.test")).when(failing).dispatch(any(), eq(bad), any());
+        Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        root.addAppender(logs);
+        try {
+            assertThat(job(failing).runOnce()).isEqualTo(1);
+        } finally {
+            root.detachAppender(logs);
+        }
+        assertThat(logs.list).anySatisfy(e -> assertThat(e.getFormattedMessage()).contains("announcement send failed").contains("cause=IllegalStateException"));
+        assertThat(logs.list).noneMatch(e -> e.getFormattedMessage().contains("anuncio-erro") || e.getThrowableProxy() != null);
         assertThat(count("select count(*) from announcement where id = ? and sent_at is not null", good)).isEqualTo(1);
         assertThat(count("select count(*) from announcement where id = ? and sent_at is null", bad)).isEqualTo(1);
     }

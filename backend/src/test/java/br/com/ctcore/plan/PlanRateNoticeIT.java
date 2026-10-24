@@ -4,7 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.ctcore.billing.BillingFixtures;
 import br.com.ctcore.organization.OrganizationBase;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.LoggerFactory;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +22,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 /** RN-PLA-04 (R3): mudar o valor do plano avisa o pagador de cada aluno ativo nele; nome sozinho ou transação desfeita não envia nada. */
 class PlanRateNoticeIT extends OrganizationBase {
     @Autowired ObjectMapper json;
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean br.com.ctcore.mail.EmailService emailSpy;
 
     @AfterEach
     void clean() {
@@ -59,6 +64,27 @@ class PlanRateNoticeIT extends OrganizationBase {
 
     private List<String> sent(Setup s) {
         return adminJdbc().queryForList("select to_email from email_message where template = 'PLAN_RATE_ADJUSTED' and organization_id = ?", String.class, s.t().orgId());
+    }
+
+    @Test
+    @DisplayName("R2: falha no envio do aviso de reajuste vai ao log só com a classe da exceção, sem o endereço")
+    void failureLogsOnlyClass() throws Exception {
+        var s = setup();
+        org.mockito.Mockito.doThrow(new IllegalStateException("falha rate-0@example.com")).when(emailSpy)
+                .send(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        ListAppender<ILoggingEvent> logs = new ListAppender<>();
+        logs.start();
+        root.addAppender(logs);
+        try {
+            assertThat(put(s, null, 17000)).isEqualTo(200);
+        } finally {
+            root.detachAppender(logs);
+            org.mockito.Mockito.reset(emailSpy);
+        }
+        assertThat(logs.list).anySatisfy(e -> assertThat(e.getFormattedMessage()).contains("plan rate notice failed").contains("cause=IllegalStateException"));
+        assertThat(logs.list).noneMatch(e -> e.getFormattedMessage().contains("@example.com") || e.getThrowableProxy() != null);
     }
 
     @Test
