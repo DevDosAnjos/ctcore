@@ -25,8 +25,10 @@ class ChargeController {
     private final ChargeActions actions;
 
     private final OneOffCharges oneOff;
+    private final OverdueCharges overdue;
 
-    ChargeController(MonthlyGeneration generation, Charges charges, ChargeActions actions, OneOffCharges oneOff) {
+    ChargeController(MonthlyGeneration generation, Charges charges, ChargeActions actions, OneOffCharges oneOff, OverdueCharges overdue) {
+        this.overdue = overdue;
         this.oneOff = oneOff;
         this.actions = actions;
         this.generation = generation;
@@ -42,6 +44,19 @@ class ChargeController {
             @RequestParam(required = false) String sort) {
         return charges.list(who, new Charges.Filter(q, unitId, quick, from, to, status, type, modalityId, classId, studentId),
                 PageRequest.of(page, size, sort, Charges.SORT_FIELDS));
+    }
+
+    /** RF-COB-06: cobranças em atraso, com dias de atraso, último lembrete e dias até o bloqueio. Antes de {@code /charges/{id}}. */
+    @GetMapping("/api/v1/charges/overdue")
+    OverdueCharges.OverdueList overdue(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) String q, @RequestParam(required = false) UUID unitId,
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer size, @RequestParam(required = false) String sort) {
+        return overdue.list(who, new OverdueCharges.Filter(q, unitId), PageRequest.of(page, size, sort, OverdueCharges.SORT_FIELDS));
+    }
+
+    /** RF-COB-06: lembrete manual por e-mail de uma ou mais cobranças; o resultado vem por cobrança. */
+    @PostMapping("/api/v1/charges/reminders")
+    OverdueCharges.SendResults reminders(@AuthenticationPrincipal AccountPrincipal who, @RequestBody OverdueCharges.ReminderRequest input, HttpServletRequest request) {
+        return overdue.send(who, input.chargeIds(), request.getRemoteAddr());
     }
 
     /** RF-COB-02: o painel da cobrança. */

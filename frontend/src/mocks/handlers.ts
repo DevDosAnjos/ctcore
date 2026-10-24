@@ -90,6 +90,7 @@ export const resetMockSession = () => {
   mockProofs.clear();
   mockStartedUnits.length = 0;
   mockCharges = [];
+  mockReminders = [];
   nextDueOverride.clear();
   mockReceipts = [];
   studentLog = {};
@@ -770,6 +771,16 @@ const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; f
 type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
 let mockCharges: MockCharge[] = [];
 let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null; by?: { id: string; name: string } }[] = [];
+// RF-COB-06 (#79): histórico de lembretes por cobrança, em memória; só o envio manual por e-mail existe no simulado.
+type MockReminder = { chargeId: string; kind: "MANUAL"; channel: "EMAIL"; status: "SENT" | "SKIPPED"; reason: "NO_ADDRESS" | "EMAIL_PROBLEM" | null; createdAt: string; sentBy: { id: string; name: string | null } };
+let mockReminders: MockReminder[] = [];
+const remindersOf = (id: string) => mockReminders.filter((r) => r.chargeId === id).map((r) => ({ kind: r.kind, channel: r.channel, status: r.status, reason: r.reason, createdAt: r.createdAt, sentBy: r.sentBy })).reverse();
+// Pagador: responsável financeiro do menor, senão o próprio aluno.
+const payerOf = (studentId: string) => {
+  const s = mockStudents.find((x) => x.id === studentId)!;
+  const g = s.minor ? s.guardians.find((x) => x.financial) : undefined;
+  return g ? { name: g.name, email: g.email as string | null, phone: g.phone as string | null, problem: g.emailProblem } : { name: s.name, email: s.email, phone: s.phone, problem: s.emailProblem };
+};
 const chargeRowView = (c: MockCharge, today: string) => {
   const student = mockStudents.find((s) => s.id === c.studentId)!;
   const row = mockEnrollments[c.studentId]?.modalities.find((m) => m.id === c.modalityRowId);
@@ -811,7 +822,7 @@ const chargeDetail = (c: MockCharge) => {
     payments: receipt
       ? [{ id: receipt.code, amountCents: receipt.amountCents, method: receipt.method ?? "CASH", origin: "MANAGEMENT", paidAt: receipt.paidAt, registeredBy: { id: session.account.id, name: session.account.name }, observation: receipt.observation ?? null, status: "CONFIRMED", receipt: { number: receipt.number, code: receipt.code } }]
       : [],
-    reminders: [], actions: { cancel: open, renegotiate: open, registerPayment: open, sendReminder: false, refund: false },
+    reminders: remindersOf(c.id), actions: { cancel: open, renegotiate: open, registerPayment: open, sendReminder: open, refund: false },
   };
 };
 const cancelMock = (c: MockCharge, reason: string) => {
@@ -3153,6 +3164,72 @@ export const routes: Route[] = [
       charge.status = "PAID";
       mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "", method: body.method, observation: body.observation ?? null, by: { id: session.account.id, name: session.account.name } });
       return HttpResponse.json({ id: crypto.randomUUID(), chargeId: charge.id, amountCents: charge.amountCents, method: body.method, paidAt, registeredBy: session.account.id, observation: body.observation ?? null, receipt: { number, code }, receiptEmail: body.sendReceipt ? "SENT" : "NOT_REQUESTED" }, { status: 201 });
+    },
+  },
+  {
+    // RF-COB-06 (#79): cobranças em atraso; mesma regra de "Em atraso" da lista. Administrador só a unidade dele; sem conta conectada, `daysToBlock` é nulo.
+    method: "get",
+    path: "/charges/overdue",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const [sortField, sortDir] = (p.get("sort") || "daysLate,desc").split(",");
+      const bad: { field: string; message: string }[] = [];
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (!["daysLate", "amount", "student"].includes(sortField) || !["asc", "desc"].includes(sortDir)) bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
+      const unitId = p.get("unitId");
+      if (unitId !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(unitId)) bad.push({ field: "unitId", message: "id inválido" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      if (unitId && !units.some((u) => u.id === unitId)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const today = isoDay(new Date());
+      const days = (a: string, b: string) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86_400_000);
+      const q = teacherKey((p.get("q") ?? "").trim());
+      const found = mockCharges
+        .filter((c) => c.status === "OPEN" && chargeSituation(c, today) === "OVERDUE" && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT) && (!unitId || c.unitId === unitId))
+        .map((c) => {
+          const v = chargeRowView(c, today);
+          const payer = payerOf(c.studentId);
+          const last = mockReminders.filter((r) => r.chargeId === c.id && r.status === "SENT").pop();
+          return {
+            id: c.id, student: v.student, unit: v.unit, type: c.type, referenceMonth: c.referenceMonth, description: c.description, amountCents: c.amountCents, dueOn: c.dueOn,
+            daysLate: days(today, c.dueOn), daysToBlock: null, lastReminder: last ? { at: last.createdAt, channel: last.channel } : null, payer: { name: payer.name, phone: payer.phone },
+          };
+        })
+        .filter((r) => teacherKey(r.student.name).includes(q))
+        .sort((a, b) => {
+          const by = sortField === "amount" ? a.amountCents - b.amountCents : sortField === "student" ? teacherKey(a.student.name).localeCompare(teacherKey(b.student.name)) : a.daysLate - b.daysLate;
+          return (sortDir === "asc" ? by : -by) || a.id.localeCompare(b.id);
+        });
+      return HttpResponse.json({ items: found.slice((page - 1) * size, page * size), page, size, total: found.length });
+    },
+  },
+  {
+    // RF-COB-06 (#79): lembrete manual por e-mail; resultado por cobrança, na ordem do pedido. Cobrança fora do alcance derruba o pedido inteiro (404).
+    method: "post",
+    path: "/charges/reminders",
+    resolver: async ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const ids = ((await request.json().catch(() => ({}))) as { chargeIds?: unknown }).chargeIds;
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!Array.isArray(ids) || ids.length < 1 || ids.length > 100 || new Set(ids).size !== ids.length || !ids.every((i) => typeof i === "string" && uuid.test(i)))
+        return studentBad("chargeIds", "de 1 a 100 ids de cobrança, sem repetir");
+      const found = (ids as string[]).map((id) => mockCharges.find((c) => c.id === id && (activeRole() === "COORDINATOR" || c.unitId === ADMIN_UNIT)));
+      if (found.some((c) => !c)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const now = Date.now();
+      const results = found.map((c) => {
+        if (c!.status !== "OPEN") return { chargeId: c!.id, result: "NOT_OPEN" };
+        if (mockReminders.some((r) => r.chargeId === c!.id && r.status === "SENT" && now - Date.parse(r.createdAt) < 86_400_000)) return { chargeId: c!.id, result: "RECENT" };
+        const payer = payerOf(c!.studentId);
+        const reason = !payer.email ? "NO_ADDRESS" : payer.problem ? "EMAIL_PROBLEM" : null;
+        mockReminders.push({ chargeId: c!.id, kind: "MANUAL", channel: "EMAIL", status: reason ? "SKIPPED" : "SENT", reason, createdAt: new Date(now).toISOString(), sentBy: { id: session.account.id, name: session.account.name } });
+        return { chargeId: c!.id, result: reason ?? "SENT" };
+      });
+      return HttpResponse.json({ results });
     },
   },
   {

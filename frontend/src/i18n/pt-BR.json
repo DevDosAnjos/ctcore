@@ -1996,6 +1996,8 @@
       "downloadReceipt": "Baixar recibo",
       "reminders": "Lembretes enviados",
       "noReminders": "Nenhum lembrete enviado",
+      "reminderLine": "{{date}} · {{kind}} · {{channel}} · {{result}}",
+      "reminderBy": "por {{name}}",
       "cancel": "Cancelar cobrança",
       "renegotiate": "Renegociar",
       "seeStudent": "Ver aluno",
@@ -2004,9 +2006,72 @@
       "refund": "Estornar",
       "disabled": {
         "registerPayment": "Só cobranças em aberto recebem pagamento.",
-        "sendReminder": "Disponível quando o envio de lembretes for entregue.",
+        "sendReminder": "Só cobranças em aberto recebem lembrete.",
         "refund": "Disponível quando o estorno for entregue."
       }
+    },
+    "reminder": {
+      "title": "Enviar lembrete",
+      "summary_one": "Enviar o lembrete por e-mail desta cobrança?",
+      "summary_other": "Enviar o lembrete por e-mail das {{count}} cobranças selecionadas?",
+      "effect": "O lembrete vai ao e-mail do pagador. Cobrança que já recebeu lembrete nas últimas 24 horas não recebe outro.",
+      "submit": "Enviar",
+      "kind": {
+        "SCHEDULED": "Automático",
+        "BLOCK_WARNING": "Aviso de bloqueio",
+        "MANUAL": "Manual"
+      },
+      "channel": {
+        "EMAIL": "E-mail",
+        "SMS": "SMS"
+      },
+      "status": {
+        "SENT": "Enviado",
+        "NO_ADDRESS": "Sem e-mail",
+        "EMAIL_PROBLEM": "E-mail com problema",
+        "NO_PHONE": "Sem telefone",
+        "SMS_LIMIT": "Limite de SMS do mês",
+        "SKIPPED": "Não enviado"
+      },
+      "result": {
+        "SENT": "Enviado",
+        "NO_ADDRESS": "Sem e-mail",
+        "EMAIL_PROBLEM": "E-mail com problema",
+        "RECENT": "Enviado há pouco",
+        "NOT_OPEN": "Não está aberta"
+      }
+    },
+    "overdue": {
+      "open": "Em atraso",
+      "title": "Cobranças em atraso",
+      "intro": "Cobranças em aberto vencidas, com os dias de atraso e o último lembrete. Selecione e envie lembrete por e-mail, ou abra o WhatsApp de cada pagador.",
+      "back": "Voltar às cobranças",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades",
+      "selectAll": "Selecionar todas da página",
+      "selectOne": "Selecionar {{student}}",
+      "selected_one": "{{count}} selecionada",
+      "selected_other": "{{count}} selecionadas",
+      "send": "Enviar lembrete",
+      "tooMany": "Selecione no máximo 100 cobranças por envio.",
+      "never": "Nunca",
+      "lastReminder": "{{date}} · {{channel}}",
+      "daysLate_one": "{{count}} dia",
+      "daysLate_other": "{{count}} dias",
+      "reference": "{{type}} · {{month}}",
+      "columns": {
+        "select": "Seleção",
+        "student": "Aluno",
+        "unit": "Unidade",
+        "reference": "Referente a",
+        "dueOn": "Vencimento",
+        "amount": "Valor",
+        "daysLate": "Dias de atraso",
+        "lastReminder": "Último lembrete",
+        "daysToBlock": "Dias até o bloqueio",
+        "whatsapp": "WhatsApp"
+      },
+      "whatsappMessage": "Olá, {{payer}}! Aqui é da {{unit}}. A cobrança de {{student}}, no valor de {{amount}}, venceu em {{due}} e segue em aberto. Qualquer dúvida, é só responder esta mensagem."
     },
     "daily": {
       "open": "Recebimentos do dia",

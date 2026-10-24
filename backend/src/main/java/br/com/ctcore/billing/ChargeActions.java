@@ -52,9 +52,11 @@ public class ChargeActions {
 
     public record Actions(boolean cancel, boolean renegotiate, boolean registerPayment, boolean sendReminder, boolean refund) {}
 
-    /** D1: {@code reminders} fica vazio até a #79. */
+    public record ReminderView(String kind, String channel, String status, String reason, OffsetDateTime createdAt, Named sentBy) {}
+
+
     public record Detail(Charges.Row charge, int toleranceDays, Composition composition, Payer payer, Ref origin, List<Ref> replacedBy, String reason, OffsetDateTime canceledAt,
-            Named canceledBy, List<PaymentView> payments, List<Object> reminders, Actions actions) {}
+            Named canceledBy, List<PaymentView> payments, List<ReminderView> reminders, Actions actions) {}
 
     public record RenegotiateInput(List<UUID> chargeIds, Long amountCents, String firstDueOn, Integer installments, String reason) {}
 
@@ -133,10 +135,14 @@ public class ChargeActions {
                 .query((rs, n) -> new PaymentView(rs.getObject(1, UUID.class), rs.getLong(2), rs.getString(3), rs.getString(4), rs.getObject(5, OffsetDateTime.class),
                         rs.getObject(6, UUID.class) == null ? null : new Named(rs.getObject(6, UUID.class), rs.getString(7)), rs.getString(8), rs.getString(9),
                         rs.getObject(10) == null ? null : new Receipt(rs.getInt(10), rs.getString(11)))).list();
+        List<ReminderView> reminders = jdbc.sql("select r.kind, r.channel, r.status, r.reason, r.created_at, r.sent_by_account_id, a.name from charge_reminder r "
+                + "left join account a on a.id = r.sent_by_account_id where r.organization_id = :org and r.charge_id = :id order by r.created_at desc, r.id")
+                .param("org", org).param("id", id).query((rs, n) -> new ReminderView(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getObject(5, OffsetDateTime.class),
+                        rs.getObject(6, UUID.class) == null ? null : new Named(rs.getObject(6, UUID.class), rs.getString(7)))).list();
         boolean open = "OPEN".equals(x.status());
         return new Detail(row, x.tolerance(), new Composition(x.planId() == null ? null : new Named(x.planId(), x.planName()), x.planCents(), x.benefitType(), x.benefitCents(),
                 row.amountCents()), payer, origin, replaced, x.reason(), x.canceledAt(),
-                x.canceledBy() == null ? null : new Named(x.canceledBy(), x.canceledByName()), payments, List.of(), new Actions(open, open, open, false, false));
+                x.canceledBy() == null ? null : new Named(x.canceledBy(), x.canceledByName()), payments, reminders, new Actions(open, open, open, open, false));
     }
 
     private static Ref ref(java.sql.ResultSet rs, int n) throws java.sql.SQLException {

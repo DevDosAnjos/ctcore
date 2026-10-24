@@ -24,6 +24,11 @@ public enum EmailTemplate {
     PLAN_RATE_ADJUSTED("mail.plan-rate-adjusted", false, false, Kind.ALWAYS),
     /** Cobrança da diferença de reajuste (descrição, valor, vencimento). */
     READJUSTMENT_DIFF("mail.readjustment-diff", false, false, Kind.ALWAYS),
+    /** RN-COB-17: lembretes de cobrança (descrição, valor, vencimento); o aviso de bloqueio leva também os dias que faltam. */
+    REMINDER_BEFORE("mail.reminder-before", false, false, Kind.ALWAYS),
+    REMINDER_DUE("mail.reminder-due", false, false, Kind.ALWAYS),
+    REMINDER_OVERDUE("mail.reminder-overdue", false, false, Kind.ALWAYS),
+    BLOCK_WARNING("mail.block-warning", false, false, Kind.ALWAYS),
     /** RN-COM-13: comunicado da academia, o único que o aluno ou responsável desliga (texto). */
     ANNOUNCEMENT("mail.announcement", false, false, Kind.ANNOUNCEMENT);
 

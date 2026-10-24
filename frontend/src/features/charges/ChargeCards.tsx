@@ -28,7 +28,7 @@ export function StatusBadge({ status }: { status: ChargeSituation }) {
   return <span className={`inline-flex rounded-md px-2 py-0.5 text-sm ${TONE[status]}`}>{t(`charges.status.${status}`)}</span>;
 }
 
-export function StudentCell({ row }: { row: ChargeRow }) {
+export function StudentCell({ row }: { row: Pick<ChargeRow, "student"> }) {
   const { name, photoUrl } = row.student;
   return (
     <span className="flex items-center gap-2">

@@ -55,7 +55,7 @@ describe("painel, cancelar e renegociar x OpenAPI (RF-COB-02, #73, CA21)", () =>
     const panel = await detail(ids[0]);
     expect(Object.keys(panel).sort()).toEqual([...openapi.components.schemas.ChargeDetail.required].sort());
     expect(Object.keys(panel.charge).sort()).toEqual([...openapi.components.schemas.ChargeRow.required].sort());
-    expect(panel).toMatchObject({ payments: [], reminders: [], origin: null, replacedBy: [], actions: { cancel: true, renegotiate: true, registerPayment: true, sendReminder: false, refund: false } });
+    expect(panel).toMatchObject({ payments: [], reminders: [], origin: null, replacedBy: [], actions: { cancel: true, renegotiate: true, registerPayment: true, sendReminder: true, refund: false } });
     for (const bad of [undefined, "   ", "x".repeat(201)]) {
       const res = await send("POST", `/charges/${ids[0]}/cancel`, { reason: bad });
       expect(res.status).toBe(400);
