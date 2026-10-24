@@ -186,6 +186,17 @@ describe("NoClassDaysPage", () => {
     expect(within(dialog).getByText("Unidade: Centro")).toBeInTheDocument();
   });
 
+  it("CA26 (#82): Avisar abre o comunicado do dia ainda não avisado, com a unidade, o período e o motivo; o dia enviado não oferece o botão", async () => {
+    const sent = day({ id: "d2", reason: "Reforma", notice: { mode: "NOW", sendAt: null, status: "SENT" } });
+    setup({ list: () => HttpResponse.json(view({ days: [day(), sent] })) });
+    await ready();
+    const link = await screen.findByRole("link", { name: "Avisar" });
+    const href = new URL(link.getAttribute("href")!, "http://x");
+    expect(href.pathname).toBe("/comunicados/novo");
+    expect(Object.fromEntries(href.searchParams)).toEqual({ type: "NO_CLASS_DAY", unitId: "u1", startsOn: addDays(todayIso(), 5), endsOn: addDays(todayIso(), 6), reason: "Recesso de verão", noClassDayId: "d1" });
+    expect(screen.getAllByRole("link", { name: "Avisar" })).toHaveLength(1);
+  });
+
   it("CA17: editar troca os campos pelo PUT; desfazer pede confirmação e envia o aviso das turmas", async () => {
     const user = userEvent.setup();
     setup();

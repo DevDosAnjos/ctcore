@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
@@ -62,6 +62,8 @@ function Content() {
   const cells = useCells();
   const [cancelling, setCancelling] = useState<AnnouncementItem | null>(null);
   const [version, setVersion] = useState(0);
+  // Confirmação vinda de /comunicados/novo (RF-COM-02): o estado da navegação traz o resultado e o link do grupo, se o WhatsApp foi escolhido.
+  const sent = (useLocation().state as { sent?: { status: "SENT" | "SCHEDULED"; groupLink?: string | null } } | null)?.sent;
 
   const columns: Column<AnnouncementItem>[] = [
     { key: "date", label: t("announcements.columns.date"), sortable: true, render: (a) => formatDateTime(a.date) },
@@ -76,7 +78,7 @@ function Content() {
   ];
   const newButton = (
     <Button asChild className="min-h-11">
-      <Link to="/comunicados/novo">{t("announcements.new")}</Link>
+      <Link to="/comunicados/novo">{t("announcements.newAction")}</Link>
     </Button>
   );
 
@@ -86,6 +88,16 @@ function Content() {
         <h1 className="text-2xl font-semibold">{t("announcements.title")}</h1>
         {newButton}
       </div>
+      {sent && (
+        <p role="status" className="flex flex-wrap items-center gap-3 rounded-md border p-3">
+          {t(sent.status === "SENT" ? "announcements.sentNotice" : "announcements.scheduledNotice")}
+          {sent.groupLink && (
+            <a className="underline" href={sent.groupLink} target="_blank" rel="noopener noreferrer">
+              {t("announcements.openGroup")}
+            </a>
+          )}
+        </p>
+      )}
       <p className="text-muted-foreground">{t("announcements.intro")}</p>
       <QueryPage
         key={version}

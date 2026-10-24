@@ -45,6 +45,10 @@ public class Announcements {
     static final Set<String> TYPES = Set.of("CANCELED_CLASS", "TEACHER_CHANGE", "SCHEDULE_CHANGE", "NO_CLASS_DAY", "GENERAL");
     /** S1: o "todas as unidades" não tem unidade; vale o fuso padrão da V3. */
     private static final String ZONE = "coalesce(u.timezone, 'America/Sao_Paulo')";
+    /** Nome do destino; no CLASSES (dia sem aula), as turmas separadas por vírgula. */
+    private static final String NAME = "case when a.target_kind = 'CLASSES' then (select string_agg(k.name, ', ' order by lower(k.name)) from announcement_class ac "
+            + "join training_class k on k.organization_id = ac.organization_id and k.id = ac.class_id where ac.organization_id = a.organization_id and ac.announcement_id = a.id) "
+            + "else coalesce(c.name, m.name, u.name) end";
     private static final String JOINS = " from announcement a left join unit u on u.organization_id = a.organization_id and u.id = a.unit_id "
             + "left join training_class c on c.organization_id = a.organization_id and c.id = a.class_id left join modality m on m.id = a.modality_id "
             + "join account au on au.id = a.author_account_id where ";
@@ -94,9 +98,8 @@ public class Announcements {
                 where.append(" and a.unit_id in (:reach)");
                 params.put("reach", reach);
             } else if (who.role() == Role.TEACHER) {
-                where.append(" and (a.author_account_id = :acc or a.class_id in (select k.id from training_class k join teacher t on t.organization_id = k.organization_id "
-                        + "and t.account_id = :acc where k.organization_id = :org and (k.head_teacher_id = t.id or exists (select 1 from training_class_assistant s "
-                        + "where s.organization_id = k.organization_id and s.class_id = k.id and s.teacher_id = t.id))))");
+                where.append(" and (a.author_account_id = :acc or a.class_id in (" + AnnouncementTargets.TEACHER_CLASSES + ") or exists (select 1 from announcement_class ac where ac.organization_id = a.organization_id "
+                        + "and ac.announcement_id = a.id and ac.class_id in (" + AnnouncementTargets.TEACHER_CLASSES + ")))");
                 params.put("acc", who.accountId());
             }
             if (f.unitId() != null) {
@@ -104,7 +107,7 @@ public class Announcements {
                 params.put("unit", f.unitId());
             }
             if (f.classId() != null) {
-                where.append(" and a.class_id = :class");
+                where.append(" and (a.class_id = :class or exists (select 1 from announcement_class ac where ac.organization_id = a.organization_id and ac.announcement_id = a.id and ac.class_id = :class))");
                 params.put("class", f.classId());
             }
             if (f.type() != null) {
@@ -131,7 +134,7 @@ public class Announcements {
             params.put("limit", page.size());
             params.put("offset", page.offset());
             // reads em subconsulta: um join duplicaria linhas na paginação.
-            List<Item> items = jdbc.sql("select a.id, coalesce(a.sent_at, a.scheduled_for), a.target_kind, coalesce(c.id, m.id, u.id), coalesce(c.name, m.name, u.name), a.title, a.type, "
+            List<Item> items = jdbc.sql("select a.id, coalesce(a.sent_at, a.scheduled_for), a.target_kind, case when a.target_kind = 'CLASSES' then null else coalesce(c.id, m.id, u.id) end, " + NAME + ", a.title, a.type, "
                     + "coalesce(nullif(btrim(au.name), ''), au.email), a.sent_at is null, a.recipient_count, "
                     + "(select count(*) from announcement_read r where r.announcement_id = a.id and r.organization_id = a.organization_id)" + from_
                     + " order by " + order + ", a.id limit :limit offset :offset").params(params)

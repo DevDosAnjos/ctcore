@@ -5,7 +5,7 @@ export type AnnouncementType = (typeof ANNOUNCEMENT_TYPES)[number];
 export interface AnnouncementItem {
   id: string;
   date: string;
-  target: { kind: "CLASS" | "MODALITY" | "UNIT" | "ORGANIZATION"; id: string | null; name: string | null };
+  target: { kind: "CLASS" | "CLASSES" | "MODALITY" | "UNIT" | "ORGANIZATION"; id: string | null; name: string | null };
   title: string;
   type: AnnouncementType;
   author: string;
@@ -19,4 +19,48 @@ export interface AnnouncementList {
   page: number;
   size: number;
   total: number;
+}
+
+// Espelham AnnouncementTargets, AnnouncementDraft, AnnouncementPreview, AnnouncementCreated e AnnouncementImage (RF-COM-02).
+export type AnnouncementChannel = "PORTAL" | "EMAIL" | "WHATSAPP";
+
+export interface AnnouncementTargets {
+  units: { id: string; name: string }[];
+  classes: { id: string; name: string; unitId: string; modalityId: string; groupLink: string | null }[];
+  modalities: { id: string; name: string; unitId: string }[];
+  organization: boolean;
+}
+
+export interface AnnouncementDraft {
+  targetKind: "CLASS" | "MODALITY" | "UNIT" | "ORGANIZATION";
+  classId?: string;
+  modalityId?: string;
+  unitId?: string;
+  type?: AnnouncementType;
+  title?: string;
+  body?: string;
+  channels: AnnouncementChannel[];
+  imageName?: string;
+  pinnedUntil?: string;
+  sendAt?: string;
+  noClassDayId?: string;
+}
+
+export interface AnnouncementPreview {
+  recipients: number;
+  portal: number;
+  email: number;
+  whatsapp: { mode: "GROUP" | "CONVERSATION"; groupLink: string | null } | null;
+  channels: AnnouncementChannel[];
+}
+
+export interface AnnouncementCreated {
+  id: string;
+  status: "SCHEDULED" | "SENT";
+  recipients: number | null;
+}
+
+export interface AnnouncementImage {
+  name: string;
+  url: string;
 }

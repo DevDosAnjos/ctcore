@@ -19,6 +19,7 @@ class AnnouncementSchemaIT extends OrganizationBase {
     void clean() {
         adminJdbc().update("delete from announcement_read");
         adminJdbc().update("delete from announcement");
+        adminJdbc().update("delete from no_class_day");
         adminJdbc().update("delete from student");
         adminJdbc().update("delete from account where email like 'ann-%@example.com'");
     }
@@ -56,8 +57,10 @@ class AnnouncementSchemaIT extends OrganizationBase {
         assertThatThrownBy(() -> insert(t, t.unitId(), "UNIT", "GENERAL", "x".repeat(121), at, null, null, author)).hasMessageContaining("announcement_title_check");
         assertThatThrownBy(() -> insert(t, t.unitId(), "UNIT", "GENERAL", "A", null, null, null, author)).hasMessageContaining("announcement_state_check");
         assertThatThrownBy(() -> insert(t, t.unitId(), "UNIT", "GENERAL", "A", null, at, null, author)).hasMessageContaining("announcement_state_check");
+        assertThatThrownBy(() -> insert(t, null, "CLASSES", "NO_CLASS_DAY", "A", at, null, null, author)).hasMessageContaining("announcement_target_check");
         insert(t, null, "ORGANIZATION", "GENERAL", "A", at, null, null, author);
-        assertThat(adminJdbc().queryForObject("select count(*) from announcement", Integer.class)).isEqualTo(1);
+        insert(t, t.unitId(), "CLASSES", "NO_CLASS_DAY", "A", at, null, null, author);
+        assertThat(adminJdbc().queryForObject("select count(*) from announcement", Integer.class)).isEqualTo(2);
     }
 
     @Test
@@ -94,12 +97,41 @@ class AnnouncementSchemaIT extends OrganizationBase {
                     + id + "', '" + student + "', '" + author + "')")).hasMessageContaining("row-level security");
             app.rollback(savepoint);
             sql.execute("select set_config('app.organization_id', '" + a.orgId() + "', true)");
-            for (String denied : new String[] {"update announcement set title = 'x'", "update announcement_read set account_id = account_id", "delete from announcement_read"}) {
+            for (String denied : new String[] {"update announcement_read set account_id = account_id", "delete from announcement_read", "update announcement_class set class_id = class_id"}) {
                 savepoint = app.setSavepoint();
                 assertThatThrownBy(() -> sql.executeUpdate(denied)).as(denied).hasMessageContaining("permission denied");
                 app.rollback(savepoint);
             }
             app.rollback();
         }
+    }
+
+    @Test
+    @DisplayName("CA9: o papel operacional altera e apaga o agendado, mas o enviado não muda nem some; só o envio (sent_at) passa; o dia sem aula apagado só zera a ligação")
+    void sentIsFinal() throws Exception {
+        Tenant t = tenant();
+        UUID author = account();
+        UUID sent = announcement(t, author);
+        UUID scheduled = UUID.randomUUID();
+        adminJdbc().update(INSERT, scheduled, t.orgId(), t.unitId(), "UNIT", null, "GENERAL", "Agendado", "2099-01-01T12:00:00Z", null, null, author);
+        UUID day = UUID.randomUUID();
+        adminJdbc().update("insert into no_class_day (id, organization_id, unit_id, starts_on, ends_on, reason, origin) values (?, ?, ?, date '2099-02-01', date '2099-02-01', 'Motivo', 'COORDINATOR')",
+                day, t.orgId(), t.unitId());
+        adminJdbc().update("update announcement set no_class_day_id = ? where id = ?", day, sent);
+        try (Connection app = DriverManager.getConnection(POSTGRES.getJdbcUrl(), "ctcore_app", "synthetic_runtime"); Statement sql = app.createStatement()) {
+            app.setAutoCommit(false);
+            sql.execute("select set_config('app.organization_id', '" + t.orgId() + "', true)");
+            for (String denied : new String[] {"update announcement set title = 'x' where id = '" + sent + "'", "update announcement set sent_at = null where id = '" + sent + "'",
+                    "delete from announcement where id = '" + sent + "'"}) {
+                var savepoint = app.setSavepoint();
+                assertThatThrownBy(() -> sql.executeUpdate(denied)).as(denied).hasMessageContaining("announcement already sent");
+                app.rollback(savepoint);
+            }
+            assertThat(sql.executeUpdate("update announcement set title = 'Novo' where id = '" + scheduled + "'")).isEqualTo(1);
+            assertThat(sql.executeUpdate("update announcement set sent_at = now(), recipient_count = 3 where id = '" + scheduled + "'")).isEqualTo(1);
+            assertThat(sql.executeUpdate("delete from no_class_day where id = '" + day + "'")).isEqualTo(1);
+            app.rollback();
+        }
+        assertThat(adminJdbc().queryForObject("select no_class_day_id from announcement where id = ?", UUID.class, sent)).isEqualTo(day);
     }
 }

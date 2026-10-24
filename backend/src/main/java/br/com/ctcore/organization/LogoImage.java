@@ -12,6 +12,11 @@ public record LogoImage(String extension, String contentType, byte[] bytes) {
 
     /** Lança IllegalArgumentException com a mensagem do campo se o arquivo não for uma logo aceita. */
     public static LogoImage parse(byte[] b) {
+        return parse(b, true);
+    }
+
+    /** {@code square} falso aceita qualquer dimensão (imagem de comunicado, RF-COM-02); formato e 5 MB valem sempre. */
+    public static LogoImage parse(byte[] b, boolean square) {
         if (b == null || b.length == 0) throw new IllegalArgumentException("arquivo vazio");
         if (b.length > MAX_BYTES) throw new IllegalArgumentException("arquivo acima de 5 MB");
         int[] size;
@@ -29,7 +34,7 @@ public record LogoImage(String extension, String contentType, byte[] bytes) {
             throw new IllegalArgumentException("use PNG, JPG ou WebP");
         }
         if (size == null) throw new IllegalArgumentException("imagem corrompida");
-        if (size[0] != SIZE || size[1] != SIZE) throw new IllegalArgumentException("a imagem precisa ter 512 x 512 pixels");
+        if (square && (size[0] != SIZE || size[1] != SIZE)) throw new IllegalArgumentException("a imagem precisa ter 512 x 512 pixels");
         return kind;
     }
 

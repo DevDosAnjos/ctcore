@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
@@ -87,11 +87,22 @@ describe("ClassPanelPage (RF-TUR-02)", () => {
     expect(screen.getByRole("link", { name: "Abrir grupo" })).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("CA8: Ver alunos e Avisar turma ficam desativados; Editar e Desativar estão ativos (CA13)", async () => {
+  it("CA8: Ver alunos fica desativado; Editar e Desativar estão ativos (CA13)", async () => {
     setup();
     await ready();
-    for (const name of ["Ver alunos", "Avisar turma"]) expect(screen.getByRole("button", { name })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Ver alunos" })).toBeDisabled();
     await enabled();
+  });
+
+  it("CA26 (#82): Avisar turma abre o comunicado já com a turma; sem a permissão ou com a turma desativada fica desativado", async () => {
+    setup();
+    await ready();
+    expect(await screen.findByRole("link", { name: "Avisar turma" })).toHaveAttribute("href", "/comunicados/novo?classId=c1");
+    cleanup();
+    setup(() => HttpResponse.json(detail({ status: "INACTIVE" })));
+    await ready();
+    await enabled().catch(() => undefined);
+    expect(screen.getByRole("button", { name: "Avisar turma" })).toBeDisabled();
   });
 
   it.each([[null], ["javascript:alert(1)"], ["data:text/html,x"], ["nao e url"]])("CA8: link de grupo %s não vira botão", async (link) => {

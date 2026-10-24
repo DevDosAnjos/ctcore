@@ -23,10 +23,14 @@ abstract class AnnouncementBase extends OrganizationBase {
 
     @AfterEach
     protected void cleanAnnouncements() {
-        for (String table : new String[] {"announcement_read", "announcement", "training_class_assistant", "training_class_schedule", "training_class", "teacher_unit",
+        for (String table : new String[] {"announcement_read", "announcement", "no_class_day_class", "no_class_day"}) adminJdbc().update("delete from " + table);
+        br.com.ctcore.student.EnrollmentFixtures.clean(adminJdbc());
+        for (String table : new String[] {"training_class_assistant", "training_class_schedule", "training_class", "teacher_unit",
                 "teacher_modality", "teacher", "student_guardian", "guardian", "student", "unit_modality", "organization_modality"}) {
             adminJdbc().update("delete from " + table);
         }
+        adminJdbc().update("delete from email_message");
+        adminJdbc().update("delete from account_link where account_id in (select id from account where email like 'ann-%@example.com' or email like 'gen-%@example.com')");
         adminJdbc().update("delete from account where email like 'ann-%@example.com' or email like 'gen-%@example.com'");
     }
 
@@ -73,6 +77,15 @@ abstract class AnnouncementBase extends OrganizationBase {
         return id;
     }
 
+    /** Turma da unidade dada (a modalidade passa a ser oferecida nela). */
+    protected UUID klassIn(Tenant t, UUID unit, String name, UUID head, String status) {
+        UUID id = UUID.randomUUID(), modality = modality(t);
+        adminJdbc().update("insert into unit_modality (organization_id, unit_id, modality_id, offered) values (?, ?, ?, true) on conflict do nothing", t.orgId(), unit, modality);
+        adminJdbc().update("insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, head_teacher_id, status) values (?, ?, ?, ?, ?, ?, ?, ?)",
+                id, t.orgId(), unit, name, Modalities.normalize(name), modality, head, status);
+        return id;
+    }
+
     /** Enviado em {@code sent} ou, se nulo, agendado para {@code scheduled}. CLASS leva a turma; UNIT leva a unidade; ORGANIZATION não leva nada. */
     protected UUID announcement(Tenant t, AccountPrincipal author, String kind, UUID unit, UUID klass, String type, String title, String scheduled, String sent) {
         UUID id = UUID.randomUUID();
@@ -107,6 +120,18 @@ abstract class AnnouncementBase extends OrganizationBase {
 
     protected UUID student(Tenant t, String birth) {
         return BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Aluno Sintetico", birth);
+    }
+
+    protected MockHttpServletResponse post(String path, Object body, AccountPrincipal who) throws Exception {
+        return call(MockMvcRequestBuilders.post("/api/v1" + path).contentType("application/json").content(json.writeValueAsString(body)), who).getResponse();
+    }
+
+    /** Aluno adulto (ou menor, pelo nascimento) com matrícula na turma, com e-mail opcional. */
+    protected UUID enrolled(Tenant t, UUID klass, UUID teacher, String birth, String email, String status) {
+        UUID student = student(t, birth);
+        if (email != null) adminJdbc().update("update student set email = ? where id = ?", email, student);
+        br.com.ctcore.student.EnrollmentFixtures.enroll(adminJdbc(), t.orgId(), student, t.unitId(), status, adminJdbc().queryForObject("select modality_id from training_class where id = ?", UUID.class, klass), klass, null, teacher);
+        return student;
     }
 
     protected int count(String sql, Object... args) {
