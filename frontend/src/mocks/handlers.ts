@@ -62,6 +62,7 @@ const initialSessions = () => [
   { id: "00000000-0000-0000-0000-000000000032", device: "Safari em iOS", city: "São Paulo" as string | null, createdAt: "2026-10-10T08:00:00Z", lastUsedAt: "2026-10-16T20:00:00Z", current: false },
 ];
 let sessions = initialSessions();
+let announcementEmail = true;
 
 // Sessão simulada: abre com um login bem-sucedido. Senha "errada" dá 401, "limite" dá 429.
 let loggedIn = false;
@@ -95,6 +96,7 @@ export const resetMockSession = () => {
   for (const k of Object.keys(guardianCpfs)) delete guardianCpfs[k];
   guardianCpfs["00000000-0000-0000-0000-000000000801"] = "98765432100";
   sessions = initialSessions();
+  announcementEmail = true;
   activeModalities.clear();
   unitModalities.clear();
   graduations.clear();
@@ -126,6 +128,7 @@ let organization = { ...initialOrganization };
 const MOCK_LOGO =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAHnOcQAAAAABJRU5ErkJggg==";
 const activeRole = () => current.links.find((l) => l.id === current.activeLinkId)?.role;
+const isPortal = () => activeRole() === "STUDENT" || activeRole() === "GUARDIAN";
 // Leitura: Coordenador e Administrador; escrita: só o Coordenador. Professor e portal: 403 (FORBIDDEN).
 const organizationAccess = (write: boolean) => {
   if (!loggedIn) return unauthenticated();
@@ -1292,6 +1295,27 @@ export const routes: Route[] = [
       if (params.code !== "valido") return error(410, "EMAIL_CHANGE_INVALID", "Link inválido.");
       current = { ...current, account: { ...current.account, email: "novo@exemplo.com" } };
       return new HttpResponse(null, { status: 204 });
+    },
+  },
+  // Preferência de e-mail (RN-COM-13): só vínculo de portal; gestão 403; valor não booleano 422.
+  {
+    method: "get",
+    path: "/auth/email-preferences",
+    resolver: () => {
+      if (!loggedIn) return unauthenticated();
+      return isPortal() ? HttpResponse.json({ announcements: announcementEmail }) : error(403, "FORBIDDEN", "Sem permissão.");
+    },
+  },
+  {
+    method: "put",
+    path: "/auth/email-preferences",
+    resolver: async ({ request }) => {
+      if (!loggedIn) return unauthenticated();
+      if (!isPortal()) return error(403, "FORBIDDEN", "Sem permissão.");
+      const body = (await request.json()) as { announcements?: unknown };
+      if (typeof body.announcements !== "boolean") return error(422, "UNPROCESSABLE", "Informe verdadeiro ou falso.");
+      announcementEmail = body.announcements;
+      return HttpResponse.json({ announcements: announcementEmail });
     },
   },
   // Sessões da conta (RF-ACE-04): a atual e mais uma, em outro aparelho.

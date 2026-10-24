@@ -2,6 +2,7 @@ package br.com.ctcore.mail;
 
 import br.com.ctcore.integration.EmailSender;
 import br.com.ctcore.integration.SendResult;
+import br.com.ctcore.isolation.OrganizationTransactions;
 import br.com.ctcore.monitoring.OperationalMetrics;
 import java.time.Clock;
 import java.time.Duration;
@@ -13,6 +14,7 @@ import java.util.Locale;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Lazy;
@@ -36,9 +38,19 @@ public class EmailService {
     private final OperationalMetrics metrics;
     private final int maxAttempts;
     private final List<Duration> backoff;
+    private final OrganizationTransactions transactions;
 
+    /** Without organization scope: only account e-mails ({@link #send(String, EmailTemplate, Object...)}). */
+    public EmailService(JdbcClient jdbc, EmailSender sender, MessageSource messages, Clock clock, OperationalMetrics metrics,
+            int maxAttempts, List<Duration> backoff) {
+        this(jdbc, sender, messages, clock, metrics, maxAttempts, backoff, null);
+    }
+
+    @Autowired
     public EmailService(@Lazy JdbcClient jdbc, EmailSender sender, MessageSource messages, Clock clock, OperationalMetrics metrics,
-            @Value("${ctcore.email.max-attempts}") int maxAttempts, @Value("${ctcore.email.backoff}") List<Duration> backoff) {
+            @Value("${ctcore.email.max-attempts}") int maxAttempts, @Value("${ctcore.email.backoff}") List<Duration> backoff,
+            @Lazy OrganizationTransactions transactions) {
+        this.transactions = transactions;
         this.jdbc = jdbc;
         this.sender = sender;
         this.messages = messages;
@@ -54,16 +66,43 @@ public class EmailService {
 
     /** Stores and sends; never throws because of the sender, so the caller's operation is not undone. */
     public UUID send(String to, EmailTemplate template, Object... args) {
+        return store(null, null, to, template, args);
+    }
+
+    /**
+     * RN-COM-13 / RN-ALU-10: an organization e-mail. The message is SKIPPED (reason in {@code last_error}, never sent) when the address opted
+     * out of announcements (OPT_OUT) or is marked "Com problema" (EMAIL_PROBLEM).
+     */
+    public UUID send(UUID organizationId, String to, EmailTemplate template, Object... args) {
+        String skip = transactions.provision(organizationId, () -> skipReason(organizationId, to, template));
+        return store(organizationId, skip, to, template, args);
+    }
+
+    private String skipReason(UUID org, String to, EmailTemplate template) {
+        if (template.kind == EmailTemplate.Kind.ANNOUNCEMENT && jdbc.sql("select 1 from account_link l join account a on a.id = l.account_id "
+                + "where l.organization_id = :o and lower(a.email) = lower(:e) and not l.announcement_email limit 1")
+                .param("o", org).param("e", to.strip()).query(Integer.class).optional().isPresent()) {
+            return "OPT_OUT";
+        }
+        boolean problem = jdbc.sql("select exists (select 1 from student where organization_id = :o and lower(email) = lower(:e) and email_problem_at is not null) "
+                + "or exists (select 1 from guardian g join account a on a.id = g.account_id where g.organization_id = :o "
+                + "and g.email_problem_at is not null and lower(a.email) = lower(:e))")
+                .param("o", org).param("e", to.strip()).query(Boolean.class).single();
+        return problem ? "EMAIL_PROBLEM" : null;
+    }
+
+    private UUID store(UUID organizationId, String skip, String to, EmailTemplate template, Object... args) {
         String subject = messages.getMessage(template.key + ".subject", null, PT_BR);
         Object[] safe = Arrays.stream(args).map(a -> HtmlUtils.htmlEscape(String.valueOf(a), "UTF-8")).toArray();
         String body = EmailLayout.html(messages.getMessage(template.key + ".body", safe, PT_BR),
                 template.link ? (String) safe[0] : null, messages.getMessage("mail.button", null, PT_BR));
-        boolean on = sender.isEnabled();
+        boolean on = sender.isEnabled() && skip == null;
         OffsetDateTime now = now();
-        UUID id = jdbc.sql("insert into email_message (to_email, template, subject, body, status, next_attempt_at, created_at) "
-                + "values (:to, :t, :s, :b, :st, :now, :now) returning id")
+        UUID id = jdbc.sql("insert into email_message (to_email, template, subject, body, status, next_attempt_at, created_at, organization_id, last_error) "
+                + "values (:to, :t, :s, :b, :st, :now, :now, :org, :err) returning id")
                 .param("to", to).param("t", template.name()).param("s", subject).param("b", on ? body : null)
-                .param("st", on ? "PENDING" : "DISABLED").param("now", now).query(UUID.class).single();
+                .param("st", skip != null ? "SKIPPED" : on ? "PENDING" : "DISABLED").param("now", now)
+                .param("org", organizationId, java.sql.Types.OTHER).param("err", skip).query(UUID.class).single();
         if (on) {
             attempt(id);
         }

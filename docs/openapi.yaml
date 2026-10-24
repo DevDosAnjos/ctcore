@@ -283,6 +283,31 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { description: "Sessão não encontrada (NOT_FOUND).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { description: "É a sessão em uso (SESSION_CURRENT).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /auth/email-preferences:
+    get:
+      summary: Preferência de e-mail do vínculo ativo (RN-COM-13).
+      description: Só vínculo de portal (Aluno ou Responsável); gestão responde 403. Começa ligada. Só os comunicados da academia são desligáveis; qualquer outro e-mail automático chega sempre.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Escolha do vínculo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/EmailPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      summary: Liga ou desliga os comunicados da academia no vínculo ativo (RN-COM-13).
+      description: Grava auditoria `account.email_preferences_changed` sem dado pessoal. Valor que não seja booleano responde 422.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EmailPreferences' } } }
+      responses:
+        '200':
+          description: Escolha gravada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/EmailPreferences' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: 'announcements ausente ou que não seja booleano (UNPROCESSABLE).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /permissions:
     get:
       summary: Permissões efetivas do vínculo ativo, para montar o menu (RNF-05, D4 da #27).
@@ -2813,6 +2838,11 @@ components:
         newEmail: { type: string, format: email, maxLength: 254 }
         password: { type: string, format: password }
         code: { type: string, description: Obrigatório quando as duas etapas estão ligadas. }
+    EmailPreferences:
+      type: object
+      required: [announcements]
+      properties:
+        announcements: { type: boolean, description: Recebe os comunicados da academia neste vínculo. }
     AccountSession:
       type: object
       required: [id, device, createdAt, lastUsedAt, current]
