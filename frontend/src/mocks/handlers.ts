@@ -91,6 +91,7 @@ export const resetMockSession = () => {
   mockStartedUnits.length = 0;
   mockCharges = [];
   mockReminders = [];
+  mockAnnouncements = initialAnnouncements();
   nextDueOverride.clear();
   mockReceipts = [];
   studentLog = {};
@@ -1170,6 +1171,44 @@ const guardianRow = (g: Partial<StudentGuardianInput> | undefined, financial: bo
 };
 const sortedGuardians = (list: StudentGuardianRow[]) => [...list].sort((a, b) => Number(b.financial) - Number(a.financial) || a.name.localeCompare(b.name));
 
+// RF-COM-01 (#81): comunicados simulados. Autor "Vera" é a conta de `many` (a única que o simulado põe como Professor); `reads` e `recipients` já vêm contados.
+type MockAnnouncement = {
+  id: string;
+  date: string;
+  kind: "CLASS" | "MODALITY" | "UNIT" | "ORGANIZATION";
+  classId: string | null;
+  unitId: string | null;
+  type: string;
+  title: string;
+  author: string;
+  authorId: string;
+  scheduled: boolean;
+  recipients: number;
+  reads: number;
+};
+const ANNOUNCEMENT_TYPES = ["CANCELED_CLASS", "TEACHER_CHANGE", "SCHEDULE_CHANGE", "NO_CLASS_DAY", "GENERAL"];
+const initialAnnouncements = (): MockAnnouncement[] => [
+  { id: "00000000-0000-0000-0000-000000000a01", date: "2026-10-20T13:00:00Z", kind: "CLASS", classId: "00000000-0000-0000-0000-000000000601", unitId: ADMIN_UNIT, type: "CANCELED_CLASS", title: "Aula de sexta cancelada", author: "Ana", authorId: session.account.id, scheduled: false, recipients: 12, reads: 5 },
+  { id: "00000000-0000-0000-0000-000000000a02", date: "2026-10-22T12:00:00Z", kind: "ORGANIZATION", classId: null, unitId: null, type: "GENERAL", title: "Recesso de fim de ano", author: "Ana", authorId: session.account.id, scheduled: false, recipients: 40, reads: 18 },
+  { id: "00000000-0000-0000-0000-000000000a03", date: "2099-01-01T12:00:00Z", kind: "UNIT", classId: null, unitId: ADMIN_UNIT, type: "SCHEDULE_CHANGE", title: "Novo horário a partir de novembro", author: "Ana", authorId: session.account.id, scheduled: true, recipients: 0, reads: 0 },
+  { id: "00000000-0000-0000-0000-000000000a04", date: "2099-02-01T12:00:00Z", kind: "CLASS", classId: "00000000-0000-0000-0000-000000000601", unitId: ADMIN_UNIT, type: "TEACHER_CHANGE", title: "Professor substituto", author: "Vera", authorId: many.account.id, scheduled: true, recipients: 0, reads: 0 },
+];
+let mockAnnouncements = initialAnnouncements();
+// 401 sem sessão; 403 no portal (a gestão toda tem ANNOUNCEMENTS). O Professor vê o que enviou e o das turmas dele (TEACHER_ANA); o Administrador, as da unidade dele.
+const announcementAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  return isPortal() ? error(403, "FORBIDDEN", "Sem permissão.") : null;
+};
+const announcementInReach = (a: MockAnnouncement) => {
+  const role = activeRole();
+  if (role === "COORDINATOR") return true;
+  if (role === "ADMINISTRATOR") return a.unitId === ADMIN_UNIT;
+  return a.authorId === current.account.id || mockClasses.some((c) => c.id === a.classId && (c.head === TEACHER_ANA || c.assistants.includes(TEACHER_ANA)));
+};
+// Data na unidade: o fuso do simulado é o de São Paulo (-03:00).
+const announcementDay = (a: MockAnnouncement) => isoDay(new Date(Date.parse(a.date) - 3 * 3_600_000));
+const ANNOUNCEMENT_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ANNOUNCEMENT_DAY = /^\d{4}-\d{2}-\d{2}$/;
 export const routes: Route[] = [
   {
     method: "post",
@@ -3853,6 +3892,72 @@ export const routes: Route[] = [
       const adult = mockStudents.find((s) => s.id === STUDENT_ADULT)!;
       const minor = mockStudents.find((s) => s.id === STUDENT_MINOR)!;
       return HttpResponse.json(role === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
+    },
+  },
+  {
+    // RF-COM-01 (#81): lista de comunicados com filtros, alcance por perfil e contagens; o agendado traz `recipients` nulo e `reads` 0.
+    method: "get",
+    path: "/announcements",
+    resolver: ({ request }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const [sortField, sortDir] = (p.get("sort") || "date,desc").split(",");
+      const from = p.get("from");
+      const to = p.get("to");
+      const type = p.get("type");
+      const classId = p.get("classId");
+      const unitId = p.get("unitId");
+      const bad: { field: string; message: string }[] = [];
+      if (!Number.isInteger(page) || page < 1) bad.push({ field: "page", message: "deve ser 1 ou maior" });
+      if (![25, 50, 100].includes(size)) bad.push({ field: "size", message: "deve ser 25, 50 ou 100" });
+      if (!["date", "title", "type"].includes(sortField) || !["asc", "desc"].includes(sortDir)) bad.push({ field: "sort", message: "use campo,asc ou campo,desc com um campo permitido" });
+      if (from && !ANNOUNCEMENT_DAY.test(from)) bad.push({ field: "from", message: "use AAAA-MM-DD" });
+      if (to && !ANNOUNCEMENT_DAY.test(to)) bad.push({ field: "to", message: "use AAAA-MM-DD" });
+      if (from && to && ANNOUNCEMENT_DAY.test(from) && ANNOUNCEMENT_DAY.test(to) && to < from) bad.push({ field: "to", message: "não pode ser anterior a from" });
+      if (type !== null && !ANNOUNCEMENT_TYPES.includes(type)) bad.push({ field: "type", message: "tipo de comunicado inválido" });
+      if (classId !== null && !ANNOUNCEMENT_UUID.test(classId)) bad.push({ field: "classId", message: "id inválido" });
+      if (unitId !== null && !ANNOUNCEMENT_UUID.test(unitId)) bad.push({ field: "unitId", message: "id inválido" });
+      if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
+      if (unitId && !units.some((u) => u.id === unitId)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const targetOf = (a: MockAnnouncement) => {
+        if (a.kind === "CLASS") {
+          const c = mockClasses.find((x) => x.id === a.classId)!;
+          return { kind: a.kind, id: c.id, name: c.name };
+        }
+        const u = units.find((x) => x.id === a.unitId);
+        return { kind: a.kind, id: u?.id ?? null, name: u?.name ?? null };
+      };
+      const found = mockAnnouncements
+        .filter((a) => announcementInReach(a) && (!from || announcementDay(a) >= from) && (!to || announcementDay(a) <= to) && (!type || a.type === type) && (!classId || a.classId === classId) && (!unitId || a.unitId === unitId))
+        .sort((a, b) => {
+          const by = sortField === "title" ? a.title.localeCompare(b.title) : sortField === "type" ? a.type.localeCompare(b.type) : a.date.localeCompare(b.date);
+          return (sortDir === "asc" ? by : -by) || a.id.localeCompare(b.id);
+        });
+      const items = found.slice((page - 1) * size, page * size).map((a) => ({
+        id: a.id, date: a.date, target: targetOf(a), title: a.title, type: a.type, author: a.author, status: a.scheduled ? "SCHEDULED" : "SENT",
+        recipients: a.scheduled ? null : a.recipients, reads: a.scheduled ? 0 : a.reads,
+      }));
+      return HttpResponse.json({ items, page, size, total: found.length });
+    },
+  },
+  {
+    // RF-COM-01 (#81): cancela o agendado. Enviado: 409; Administrador só na unidade dele; Professor só o que ele agendou; id desconhecido: 404.
+    method: "delete",
+    path: "/announcements/{id}",
+    resolver: ({ params }) => {
+      const denied = announcementAccess();
+      if (denied) return denied;
+      const found = mockAnnouncements.find((a) => a.id === params.id);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      const role = activeRole();
+      const allowed = role === "COORDINATOR" || (role === "ADMINISTRATOR" && found.unitId === ADMIN_UNIT) || (role === "TEACHER" && found.authorId === current.account.id);
+      if (!allowed) return error(403, "FORBIDDEN", "Sem permissão.");
+      if (!found.scheduled) return error(409, "ANNOUNCEMENT_ALREADY_SENT", "Este comunicado já foi enviado e não pode ser cancelado.");
+      mockAnnouncements = mockAnnouncements.filter((a) => a.id !== found.id);
+      return new HttpResponse(null, { status: 204 });
     },
   },
 ];

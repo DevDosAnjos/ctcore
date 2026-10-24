@@ -26,6 +26,7 @@ import { ChargesPage } from "@/features/charges/ChargesPage";
 import { ChargePreviewPage } from "@/features/charges/ChargePreviewPage";
 import { DailyReceiptsPage } from "@/features/charges/DailyReceiptsPage";
 import { OverduePage } from "@/features/charges/OverduePage";
+import { AnnouncementsPage } from "@/features/announcements/AnnouncementsPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
 import { TeacherPanelPage } from "@/features/teachers/TeacherPanelPage";
 import { ClassesPage } from "@/features/classes/ClassesPage";
@@ -105,6 +106,7 @@ export function App() {
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR", "TEACHER"]} />}>
             <Route path="/agenda" element={<AgendaPage />} />
             <Route path="/agenda/aulas/:id" element={<LessonPanelPage />} />
+            <Route path="/comunicados" element={<AnnouncementsPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/dias-sem-aula" element={<NoClassDaysPage />} />

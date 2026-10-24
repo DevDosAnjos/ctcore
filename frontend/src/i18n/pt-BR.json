@@ -2180,6 +2180,63 @@
       "submit": "Renegociar"
     }
   },
+  "announcements": {
+    "title": "Comunicados",
+    "intro": "Avisos enviados aos alunos e responsáveis, os agendados e quantos já os abriram.",
+    "new": "Novo comunicado",
+    "emptyTitle": "Nenhum comunicado ainda",
+    "emptyText": "Os comunicados enviados e agendados aparecem aqui.",
+    "noResultTitle": "Nenhum comunicado com estes filtros",
+    "noResultText": "Tente outro período, turma ou tipo.",
+    "filters": {
+      "from": "De",
+      "to": "Até",
+      "class": "Turma",
+      "allClasses": "Todas as turmas",
+      "type": "Tipo",
+      "allTypes": "Todos os tipos"
+    },
+    "columns": {
+      "date": "Data",
+      "target": "Destino",
+      "title": "Título",
+      "type": "Tipo",
+      "author": "Autor",
+      "status": "Situação",
+      "recipients": "Destinatários",
+      "reads": "Lidos",
+      "actions": "Ações"
+    },
+    "target": {
+      "CLASS": "Turma {{name}}",
+      "MODALITY": "Modalidade {{name}}",
+      "UNIT": "Unidade {{name}}",
+      "ORGANIZATION": "Todas as unidades"
+    },
+    "types": {
+      "CANCELED_CLASS": "Aula cancelada",
+      "TEACHER_CHANGE": "Troca de professor",
+      "SCHEDULE_CHANGE": "Mudança de horário",
+      "NO_CLASS_DAY": "Dia sem aula",
+      "GENERAL": "Aviso geral"
+    },
+    "status": {
+      "SCHEDULED": "Agendado",
+      "SENT": "Enviado"
+    },
+    "cancel": {
+      "action": "Cancelar agendamento",
+      "actionFor": "Cancelar agendamento de {{title}}",
+      "title": "Cancelar agendamento",
+      "summary": "O comunicado \"{{title}}\" ainda não saiu e será apagado. Ninguém receberá esse aviso.",
+      "submit": "Cancelar agendamento",
+      "keep": "Manter",
+      "sent": "Este comunicado já foi enviado e não pode ser cancelado. Nada foi alterado.",
+      "gone": "Este comunicado não existe mais. A lista foi atualizada.",
+      "forbidden": "Você não pode cancelar este comunicado.",
+      "error": "Não foi possível cancelar. Nada foi alterado; tente de novo."
+    }
+  },
   "publicReceipt": {
     "title": "Recibo número {{number}}",
     "unit": "Unidade",
