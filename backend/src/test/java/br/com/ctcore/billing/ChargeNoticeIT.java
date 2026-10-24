@@ -83,7 +83,11 @@ class ChargeNoticeIT extends OrganizationBase {
         charge(t, adult(t, "notice-texto@example.com"), "2026-10-10", "OPEN");
         UUID monthly = charge(t, adult(t, "notice-texto2@example.com"), "2026-10-10", "OPEN");
         adminJdbc().update("update charge set description = null, reference_month = date '2026-10-01' where id = ?", monthly);
+        UUID bare = charge(t, adult(t, "notice-texto3@example.com"), "2026-10-10", "OPEN");
+        adminJdbc().update("update charge set description = null, reference_month = null where id = ?", bare);
         job().runOnce();
+        // Sem descrição e sem mês de referência o aviso usa a descrição "Cobrança" (ramo que antes só o agendador cobria, por acaso, #352).
+        assertThat(sent("notice-texto3%")).hasSize(1);
         // O corpo só fica guardado se o envio estiver desligado ou pendente; aqui conferimos pelo assunto e pelo registro.
         assertThat(sent("notice-texto2%")).hasSize(1);
         assertThat(sent("notice-texto@%")).singleElement().satisfies(r -> assertThat(r.get("subject")).isEqualTo("Você tem uma cobrança em aberto"));
