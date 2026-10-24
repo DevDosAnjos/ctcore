@@ -290,6 +290,8 @@ const defaultUnitSettings = () => ({
   pixKey: null as string | null,
   paymentAccount: "NOT_CONNECTED" as "CONNECTED" | "NOT_CONNECTED",
   reminderDays: [-3, 0, 3, 10],
+  remindersEnabled: true,
+  remindersHour: 9,
   teacherPermissions: { announcements: true, agendaEdit: true, studentContacts: true, trialClasses: true, studentRecord: false },
   directoryEnabled: false,
   trialLinkEnabled: true,
@@ -1855,6 +1857,8 @@ export const routes: Route[] = [
         if (!(cents >= 0 && cents <= 100000)) bad.push({ field: `settings.feesCents.${key}`, message: "entre 0 e R$ 1.000,00" });
       }
       const reminders: number[] = s.reminderDays ?? [];
+      if (typeof s.remindersEnabled !== "boolean") bad.push({ field: "settings.remindersEnabled", message: "obrigatório" });
+      if (!Number.isInteger(s.remindersHour) || s.remindersHour < 0 || s.remindersHour > 23) bad.push({ field: "settings.remindersHour", message: "valor entre 0 e 23" });
       if (new Set(reminders).size !== reminders.length || reminders.length > 8 || reminders.some((d) => d < -30 || d > 60)) bad.push({ field: "settings.reminderDays", message: "valores entre -30 e 60" });
       if (bad.length) return error(400, "VALIDATION_ERROR", "Dados inválidos.", bad);
       const stale = precondition(request, unitDetail(id).version);

@@ -94,7 +94,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 340 | Piso de 100% de linhas em src/features/charges | issue #340 | Sprint 08 | — | agente | feito |
 | 78 | E-mails automáticos e preferências de envio | issue #78 | Sprint 09 | — | agente | feito |
 | 79 | RF-COB-06 · Cobranças em atraso e envio de lembrete | issue #79 | Sprint 09 | — | agente | feito |
-| 80 | RF-COB-09 · Configurações › Unidade › Lembretes | issue #80 | Sprint 09 | — | agente | a fazer |
+| 80 | RF-COB-09 · Configurações › Unidade › Lembretes | issue #80 | Sprint 09 | — | agente | feito |
 | 81 | RF-COM-01 · Comunicação › Comunicados (lista) | issue #81 | Sprint 09 | — | agente | a fazer |
 | 82 | RF-COM-02 · Novo comunicado | issue #82 | Sprint 09 | — | agente | a fazer |
 | 83 | RF-COM-03 · Configurações › Textos | issue #83 | Sprint 09 | — | agente | a fazer |

@@ -4014,7 +4014,7 @@ components:
     UnitSettingsView:
       type: object
       required: [dueDays, enrollmentFeeEnabled, enrollmentFeeCents, feesCents, pixKey, paymentAccount, reminderDays, teacherPermissions,
-        directoryEnabled, trialLinkEnabled, selfRegistrationLinkEnabled]
+        directoryEnabled, trialLinkEnabled, selfRegistrationLinkEnabled, remindersEnabled, remindersHour]
       properties:
         dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
         enrollmentFeeEnabled: { type: boolean }
@@ -4027,6 +4027,8 @@ components:
         directoryEnabled: { type: boolean }
         trialLinkEnabled: { type: boolean }
         selfRegistrationLinkEnabled: { type: boolean }
+        remindersEnabled: { type: boolean }
+        remindersHour: { type: integer, minimum: 0, maximum: 23, description: Hora cheia de envio dos lembretes (hora da unidade). }
     UnitDetail:
       type: object
       required: [id, name, shortName, postalCode, address, city, latitude, longitude, phone, email, whatsapp, cnpj, active, settings, version, lastChange]
@@ -4050,7 +4052,7 @@ components:
     UnitUpdateSettings:
       type: object
       required: [dueDays, enrollmentFeeEnabled, feesCents, reminderDays, teacherPermissions, directoryEnabled, trialLinkEnabled,
-        selfRegistrationLinkEnabled]
+        selfRegistrationLinkEnabled, remindersEnabled, remindersHour]
       properties:
         dueDays: { type: array, items: { type: integer, minimum: 1, maximum: 28 }, minItems: 1, uniqueItems: true }
         enrollmentFeeEnabled: { type: boolean }
@@ -4062,6 +4064,8 @@ components:
         directoryEnabled: { type: boolean }
         trialLinkEnabled: { type: boolean }
         selfRegistrationLinkEnabled: { type: boolean }
+        remindersEnabled: { type: boolean }
+        remindersHour: { type: integer, minimum: 0, maximum: 23, description: Hora cheia de envio dos lembretes (hora da unidade). }
     UnitUpdate:
       type: object
       required: [name, settings]

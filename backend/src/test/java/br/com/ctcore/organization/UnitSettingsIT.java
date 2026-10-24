@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ class UnitSettingsIT extends UnitBase {
                 "phone", "email", "whatsapp", "cnpj", "active", "settings", "version", "lastChange");
         var s = unit.path("settings");
         assertThat(fieldNames(s)).containsExactlyInAnyOrder("dueDays", "enrollmentFeeEnabled", "enrollmentFeeCents", "feesCents", "pixKey",
-                "paymentAccount", "reminderDays", "teacherPermissions", "directoryEnabled", "trialLinkEnabled", "selfRegistrationLinkEnabled");
+                "paymentAccount", "reminderDays", "teacherPermissions", "directoryEnabled", "trialLinkEnabled", "selfRegistrationLinkEnabled", "remindersEnabled", "remindersHour");
         assertThat(s.path("dueDays")).hasSize(4);
         assertThat(fieldNames(s.path("feesCents"))).containsExactlyInAnyOrder("cash", "pix", "bankSlip", "creditCard", "debitCard",
                 "automaticDebit", "manualPix", "terminalCard", "transfer");
@@ -240,5 +241,56 @@ class UnitSettingsIT extends UnitBase {
         org.junit.jupiter.api.Assertions.assertThrows(org.springframework.dao.DataIntegrityViolationException.class,
                 () -> adminJdbc().update("update unit set cnpj = '11.222.333/0001-81' where id = ?", a.unitId()));
         assertThat(adminJdbc().update("update unit set cnpj = '11222333000181' where id = ?", a.unitId())).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("RF-COB-09 CA1 / CA2 / CA3 / CA4 / CA6: padrão 9h ligado; troca grava e audita; hora inválida 400; só dias mantém a hora do corpo; igual não audita")
+    void reminders() throws Exception {
+        var a = tenant();
+        var s = get(a, a.unitId(), coordinator(a)).path("settings");
+        assertThat(s.path("remindersEnabled").asBoolean()).isTrue();
+        assertThat(s.path("remindersHour").asInt()).isEqualTo(9);
+        assertThat(s.path("reminderDays").toString()).isEqualTo("[-3,0,3,10]");
+        assertThat(call(put(a.unitId(), payload()), coordinator(a)).getResponse().getStatus()).isEqualTo(200); // baseline: o nome muda
+        int version = get(a, a.unitId(), coordinator(a)).path("version").asInt();
+        ObjectNode body = payload();
+        ((ObjectNode) body.path("settings")).put("remindersEnabled", false).put("remindersHour", 14);
+        var response = call(put(a.unitId(), body), coordinator(a)).getResponse();
+        assertThat(response.getStatus()).isEqualTo(200);
+        var changed = body(response);
+        assertThat(changed.path("settings").path("remindersEnabled").asBoolean()).isFalse();
+        assertThat(changed.path("settings").path("remindersHour").asInt()).isEqualTo(14);
+        assertThat(changed.path("version").asInt()).isEqualTo(version + 1);
+        var row = adminJdbc().queryForMap("select reminders_enabled, reminders_hour from unit_settings where unit_id = ?", a.unitId());
+        assertThat(row).containsEntry("reminders_enabled", false).containsEntry("reminders_hour", 14);
+        var last = audit(a, "unit.update").stream().filter(r -> r.get("a").toString().contains("remindersHour")).findFirst().orElseThrow();
+        assertThat(last.get("a").toString()).contains("remindersEnabled").contains("remindersHour");
+        assertThat(last.get("b").toString().replace(" ", "")).contains("true").contains("9");
+        // CA6: igual não sobe versão nem audita.
+        int audits = audit(a, "unit.update").size();
+        assertThat(call(put(a.unitId(), body), coordinator(a)).getResponse().getStatus()).isEqualTo(200);
+        assertThat(audit(a, "unit.update")).hasSize(audits);
+        // CA4: só dias; os dois campos do corpo valem (padrão volta).
+        ObjectNode days = payload();
+        ((ObjectNode) days.path("settings")).putArray("reminderDays").add(1);
+        assertThat(call(put(a.unitId(), days), coordinator(a)).getResponse().getStatus()).isEqualTo(200);
+        assertThat(adminJdbc().queryForMap("select reminders_enabled, reminders_hour, reminder_days::text as d from unit_settings where unit_id = ?", a.unitId()))
+                .containsEntry("reminders_enabled", true).containsEntry("reminders_hour", 9).containsEntry("d", "{1}");
+        // CA3: inválidos.
+        String before = unitSnapshot(a);
+        for (var change : List.<Consumer<ObjectNode>>of(n -> ((ObjectNode) n.path("settings")).put("remindersHour", 24),
+                n -> ((ObjectNode) n.path("settings")).put("remindersHour", -1), n -> ((ObjectNode) n.path("settings")).remove("remindersHour"))) {
+            ObjectNode bad = payload();
+            change.accept(bad);
+            var r = call(put(a.unitId(), bad), coordinator(a)).getResponse();
+            assertThat(r.getStatus()).isEqualTo(400);
+            assertThat(r.getContentAsString()).contains("\"field\":\"settings.remindersHour\"");
+        }
+        ObjectNode noSwitch = payload();
+        ((ObjectNode) noSwitch.path("settings")).remove("remindersEnabled");
+        var r = call(put(a.unitId(), noSwitch), coordinator(a)).getResponse();
+        assertThat(r.getStatus()).isEqualTo(400);
+        assertThat(r.getContentAsString()).contains("\"field\":\"settings.remindersEnabled\"");
+        assertThat(unitSnapshot(a)).isEqualTo(before);
     }
 }
