@@ -282,3 +282,74 @@ Ordem sugerida: A1, A2, A3, A6 (antes do PR `dev`→`main`); A4 (antes de a Spri
 - Sprint 22: `EmailBounces.register` e `EmailOpens.register` sem rota; `email_message` sem RLS; a prévia de remetente no domínio da plataforma (RN-COM-10); a regra do SMS por e-mail não aberto.
 - Dívidas com prazo: `osv-scanner.toml` vence em 2027-01-15; `ponytail:` do modelo de termo fixo (RF-PNL-07); quatro `ponytail:` novos (falha do fornecedor não repetida; janela e periodicidade fixas do aviso; dia perdido dos lembretes não recuperado; "unidade mais antiga" por nome em `Notifications.list`); o repositório volta a ser privado antes da Sprint 22 (trava do `AGENTS.md`).
 - Nenhuma issue `depende de você` trava a Sprint 10.
+
+---
+
+### Rodada 2 — DONO — 2026-10-24, estado abb33daa4fed505e9e44491e0fee29d07c645961
+
+#### Resumo e veredito
+
+Desde a rodada 1 (`57124bd`) entraram cinco PRs de item e registro: #369 (#362, barra a 360 px), #370 (#352, registro), #371 (#343, registro e README), #373 (#372, log sem a exceção) e #376 (#374, especificação). O marco passou de 12 para 15 issues, todas `CLOSED`. Os dois BLOQUEIA da rodada 1 estão resolvidos e o clone limpo está verde, com o `e2e` 5 de 5 (antes 3 de 7 vermelhas). Sobram o AJUSTAR R09-4 (encaixes sem destino), que a rodada 1 já marcava como "antes de a Sprint 10 começar", e a decisão D1 do dono. Nenhum dos dois impede o PR `dev` para `main`. Resultado: `DONO`; o PR de `dev` para `main` pode ser aberto.
+
+Estado: `dev` = `origin/dev` = `abb33daa4fed505e9e44491e0fee29d07c645961`, pasta limpa; `main` = `0a6a59d3d9602d5ce1075017f0a3553e5e9a9bf5`. Java 21.0.12 (build; padrão da máquina 25.0.4), Node 24.21.0, Docker 29.8.1. Remoto só com `main` e `dev`; nenhum PR aberto contra `dev`; as branches `item/*` e `docs/*` locais seguem como sobra já mergeada (S9). Nenhuma issue do marco tem `depende de você`. PRs novos: base `dev`, `ci-gate` `SUCCESS`; `Closes #N` em #369, #373 e #376; #370 e #371 são registros de issue já fechada (#352, #343).
+
+#### Reconferência dos achados da rodada 1
+
+| Id | Rodada 1 | Rodada 2 | Evidência |
+|---|---|---|---|
+| R09-1 | BLOQUEIA | RESOLVIDO | `UnitSwitcher.tsx` (carregando vira `sr-only`, erro com `truncate`), `AppLayout.tsx` (`min-w-0 flex-wrap justify-end`), `matricula.spec.ts` mede após `setViewportSize`, após abrir a rota e após o status sumir. No clone: `npm run e2e` 5 execuções, 36 passados em todas; `matricula.spec.ts --repeat-each=30`: 90 de 90 |
+| R09-2 | BLOQUEIA | RESOLVIDO | `352-...md` tem Construção, `### Rodada 1 — OK` e Entrega (registro depois do fato, honesto sobre o que não foi rerodado); no `verify` do clone `billing` tem 0 linhas perdidas |
+| R09-3 | AJUSTAR | RESOLVIDO | diff de `docs/especificacao` (06, 10, 13) traz as decisões: RN-COM-01/02/06/07/08/09/11/12/14, RN-NOT-01/03/04, RN-COB-17/20, RN-AGE-05/10; RN-COM-06 diz que a edição vem no #375, RN-COM-02 e RN-COB-17 dizem a diferença; CA5 do `81-...md` corrigido. O item #374 passou por `CORRIGIR_ESPEC` e fechou em `OK` na rodada 2 |
+| R09-4 | AJUSTAR | MANTIDO | criada só a #375 (editar agendado e limpar imagens, Sprint 13, autor `DevDosAnjos`) e a linha 368 no backlog. Nas issues #176, #177, #122, #93, #86, #87, #96, #85 e #149 não há "Encaixe herdado da Sprint 09" (`gh issue view`, busca no corpo) e o `specs/backlog.md` segue sem bloco da Sprint 09 em "Encaixes para as próximas sprints" |
+| R09-5 | AJUSTAR | RESOLVIDO | os quatro `LOG.error` agora levam `cause={}` com `getClass().getSimpleName()`; testes novos em `ChargeNoticeIT`, `AnnouncementSendJobIT`, `InvitePendingJobIT`, `PlanRateNoticeIT`; todos dentro dos 752 ITs verdes |
+| R09-6 | AJUSTAR | RESOLVIDO | `README.md` lista `billing,charges,payments,subscription,deactivation` |
+| R09-7 | AJUSTAR | RESOLVIDO | `343-...md` com CA4 reescrito ("1 de 5 aceito; o resto na #363"), Rodada 3 `OK` e Entrega; #363 aberta na Sprint 10 |
+
+#### "Pronto quando"
+
+Marco: o bullet geral "todo item" agora PASSOU (360 px sem rolagem na barra: R09-1 resolvido). Os outros quatro seguem PASSOU (rodada 1; o `verify` desta rodada tem 752 ITs, 0 falhas, e o `e2e` `@critical` de cancelamento com aviso passou nas 5 execuções). **Resultado do marco: 5 de 5.**
+
+De todo item: mantido da rodada 1, com cobertura reconferida: back-end 98,45% de linhas (8.249 cobertas, 130 perdidas), 0 perdidas em `billing`, `payment` e `isolation`, "All coverage checks have been met"; front 96,80% de linhas, 136 arquivos, 1176 testes. Ressalvas anteriores iguais (testes citam o CA e não o código da regra; notas de versão não existem, RF-AJU-04 é da Sprint 21). Limitação aceita nova: CA2 a CA4 da #362 (sino `99+`, nome longo, erro das unidades) sem prova de largura própria; o dono aceitou só nesse item e a prova é a #368 (Sprint 10).
+
+#### Clone limpo (`origin/dev@abb33da`, projeto `revs09`)
+
+| Passo | Resultado real |
+|---|---|
+| ambiente | `docker compose up -d --wait` sem `.env`: 3 serviços saudáveis; `prepare-runtime-db.sh` ok |
+| back-end | `verify` BUILD SUCCESS em 17 min 12 s (máquina carregada com o front em paralelo); 162 rápidos e 752 de integração, 0 falhas, 0 ignorados; 98,45% |
+| migrações e readiness | "now at version v47"; `/actuator/health/readiness` `UP` na 8081 |
+| seed | duas execuções, exit 0 nas duas; 20 arquivos de seed (contagens por tabela não comparadas nesta rodada) |
+| front-end | `npm ci` (0 vulnerabilidades), `lint`, `typecheck`, `test:cov`, `build`: exit 0; 1176 testes |
+| e2e | `npm run e2e`: 5 execuções completas, 36 de 36 em todas; `matricula.spec.ts` x30: 90 de 90 |
+| imagens | as duas construídas; back-end UID 10001 (`ctcore`); front-end `/` 200, `/alunos` 200, `/api/x` 404. Não repeti o readiness da imagem do back-end (Dockerfile sem mudança desde a rodada 1). Etiquetas `rev09` removidas |
+| limpeza | `down -v` do projeto `revs09`; nenhum contêiner ou volume `revs09` sobrou; as imagens `ctcore-*:latest` do dono não foram tocadas. Sobrou no scratchpad a pasta do clone com um arquivo de log preso por processo, sem efeito fora dele |
+
+Comparação com a rodada 1: back-end 750 para 752 ITs; `e2e` de 3 de 7 vermelhas para 0 de 5 (e 0 de 90 na repetição); cobertura igual. O tempo do `verify` (17 min) não é comparável: rodou junto com o front. Passos do README que não bastaram: nenhum.
+
+#### CI e proteções
+
+`dev` protegida com `ci-gate` exigido e sem push forçado (`gh api .../branches/dev/protection`); `Publish` em `dev`: seis runs seguidos `success` (de `02983b0` a `abb33da`); nenhum diff de workflow, `osv-scanner.toml`, `pom.xml` ou `package.json` desde a rodada 1; as duas exceções de vulnerabilidade vencem em 2027-01-15; repositório `public`, como o `AGENTS.md` prevê até antes da Sprint 22. Gitleaks local e segredos de publicação: mesmas limitações da rodada 1.
+
+#### Camada técnica sobre o que mudou
+
+Diff `57124bd..dev` em código: quatro linhas de log (`cause=` com a classe), duas classes de front-end (só classes de layout e texto `sr-only` mantendo `role="status"`) e testes. O estado "Carregando unidades..." continua anunciado ao leitor de tela. Sem achado de segurança novo.
+
+#### Achados abertos
+
+- **R09-4 · AJUSTAR · processo** (mantido): destinos dos encaixes da Sprint 09 nas issues seguintes. Proposta A4 da rodada 1 inalterada (blocos para #176, #177, #122, #93, issues que criam cada fato de notificação, #85/#149 e as de pagamento online) mais o bloco "Sprint 09" no `specs/backlog.md`. Prazo: antes de a Sprint 10 começar; não impede o PR `dev` para `main`.
+- **S10 (sugestão)**: o registro da #352 é depois do fato e admite que a regressão completa não foi rodada na época; o `verify` desta rodada cobre isso (`billing` com 0 perdidas).
+
+#### Decisões do dono
+
+**D1 · Convite expirado e não usado continua gerando aviso no sino?** (mantida da rodada 1) — recomendada: sim, manter — motivo: o aviso serve para o Administrador reenviar o convite e ele continua não aceito; hoje leva a Configurações › Usuários, onde o reenvio acontece.
+
+#### Ações do dono
+
+1. Conferir as telas contra os canvases (lista da rodada 1, Ações do dono, item 1) e a barra a 360 px recarregando `/alunos/nova-matricula` em `http://localhost:5173` (`cd frontend && npm run dev`): não deve haver rolagem horizontal.
+2. Decidir D1.
+3. Opcional: apagar as branches locais já mergeadas e `git fetch --prune` (S9).
+4. Abrir o PR de `dev` para `main` com o método "Merge" (nunca squash); depois de revisar, dizer "sim" para liberar a Sprint 10. Antes de a Sprint 10 começar, aplicar o A4 (R09-4).
+
+#### Riscos para a próxima sprint
+
+Iguais aos da rodada 1, mais: a #368 (MSW por teste) e a #363 (medição do CA4 da #343) já estão na Sprint 10; a #375 está na Sprint 13. Sem `depende de você` pendente.
