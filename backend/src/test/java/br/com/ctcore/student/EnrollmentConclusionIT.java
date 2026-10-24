@@ -513,8 +513,11 @@ class EnrollmentConclusionIT extends OrganizationBase {
         // isenção: nenhuma taxa; bolsa de 100%: nenhuma mensalidade
         var exempt = body(benefit(modality(o, 10), "PERCENT", 100));
         unitAsk(exempt, t.unitId()).put("feeExempt", true).put("feeExemptReason", "bolsa da turma");
-        var r2 = ok(post(adult(t), "conclude", exempt, c), 201);
+        var s2 = adult(t);
+        var r2 = ok(post(s2, "conclude", exempt, c), 201);
         assertThat(r2.get("charges")).isEmpty();
+        assertThat(count("select count(*) from enrollment_modality where student_id = ? and status = 'ACTIVE'", s2)).isEqualTo(1);
+        assertThat(count("select count(*) from enrollment_modality where student_id = ? and status <> 'ACTIVE'", s2)).isZero();
     }
 
     @Test

@@ -146,6 +146,8 @@ class MonthlyGenerationIT extends OrganizationBase {
         assertThat(result.created()).isEqualTo(2);
         assertThat(result.skippedZero()).isEqualTo(2);
         assertThat(charges(full)).isEmpty();
+        assertThat(adminJdbc().queryForObject("select status from enrollment_modality where id = ?", String.class, full)).isEqualTo("ACTIVE");
+        assertThat(adminJdbc().queryForObject("select count(*) from enrollment_modality where student_id = ? and status = 'ACTIVE'", Long.class, student(full))).isPositive();
         assertThat(charges(fixed)).isEmpty();
         assertThat(charges(ended)).isEmpty();
         assertThat(charges(expired).get(0).get("amount_cents")).isEqualTo(20000L);
