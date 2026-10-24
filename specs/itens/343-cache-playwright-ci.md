@@ -86,3 +86,13 @@ Mudança desde a rodada 1: só o arquivo do item (a rodada 1 foi gravada nele); 
 Comandos: `git write-tree` do estado atual e `gh pr list`; nada novo a rodar.
 Achados: nenhum obrigatório novo; a sugestão da rodada 1 (sed lendo o próprio ci.yml) segue.
 Pendência: CA1, CA4 e T3 só fecham com o PR aberto e medido. Não é limitação aceita no AGENTS.md; a entrega abre o PR e a verificação é repetida depois.
+
+## Medição do CA4 (CI)
+
+Limite: 5 PRs. Medido: 1. Faltam 4. CA4 segue NÃO CONFERIDO até fechar; a verificação não dá `OK` antes.
+
+| PR | Run | Inicializar containers | Conferência de versão | `npm run e2e` | Job `e2e` inteiro | CI |
+|---|---|---|---|---|---|---|
+| #361 | 40087704834 | 33 s | 0 s | 42 s | 89 s | verde |
+
+Critério por PR: container + conferência abaixo de 60 s (33 s: passou) e `e2e` abaixo de 7 min (89 s: passou). Antes (issue): 22 s a 695 s.
