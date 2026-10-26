@@ -2991,7 +2991,7 @@ paths:
       summary: Cartões dos alunos do portal (RN-RSP-03, RN-LGP-03). Responsável e Aluno.
       description: |
         Um cartão por aluno ligado ao responsável da sessão (em qualquer unidade da organização) e, se a conta também é a de um aluno, o
-        cartão dele com `self` igual a `true`. Só `id`, `name`, `photoUrl` e `self`. Sessão de gestão ou de Professor: 403.
+        cartão dele com `self` igual a `true`. Só `id`, `name`, `photoUrl` e `self`. Sessão de gestão ou de Professor: 403. Com termo de matrícula pendente que a conta deve aceitar: 403 `TERM_PENDING` (RN-POR-03); o aceite está em `/portal/term`.
       security: [{ sessionCookie: [] }]
       responses:
         '200':
@@ -3003,6 +3003,123 @@ paths:
                 items: { $ref: '#/components/schemas/PortalStudentCard' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/term:
+    get:
+      summary: Alunos com termo de matrícula pendente que a conta aceita (RN-MAT-11, RN-MAT-14, RN-POR-03). Responsável e Aluno.
+      description: |
+        Só alunos com matrícula, sem aceite ou com aceite anterior à última versão publicada com reaceite, que a sessão pode aceitar: o próprio aluno adulto
+        ou o responsável financeiro do menor. Cada item traz o texto vigente do termo e do uso de imagem. Sem pendência, lista vazia. Funciona com o termo
+        pendente. Gestão e Professor: 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Pendências.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PortalTermPending' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/students/{id}/term-acceptance:
+    post:
+      summary: Aceita o termo de matrícula, com a caixa opcional de uso de imagem (RN-MAT-11, RN-MAT-12). Responsável e Aluno.
+      description: |
+        Só o aluno adulto (conta dele) ou o responsável financeiro do menor. `version` é obrigatória (400) e deve ser a vigente (409 `TERMS_VERSION_CONFLICT`).
+        Grava conta, versão, data, hora e IP, sem nunca alterar nem apagar, e `term.accepted` (e `image-use.granted`) na auditoria, sem o texto. Repetir o aceite, ou
+        aceitar aluno sem matrícula ou sem pendência, responde 200 sem gravar. Aluno não ligado à conta ou de outra organização: 404; ligado mas que a conta não
+        aceita (responsável não financeiro): 403.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalTermAcceptInput' } } }
+      responses:
+        '201':
+          description: Aceite gravado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalTermAcceptance' } } }
+        '200':
+          description: Nada a gravar (já aceito, sem pendência ou sem matrícula).
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalTermAcceptance' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal/students/{id}/image-use:
+    get:
+      summary: Estado do uso de imagem do aluno (RN-MAT-12). Responsável e Aluno.
+      description: |
+        `granted` é verdadeiro quando o último registro é uma concessão de versão não anterior à última publicada com reaceite; `version` e `body` são os vigentes.
+        Funciona com o termo pendente. Mesmas regras de 404 e 403 do aceite.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Estado atual.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalImageUse' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Concede ou revoga o uso de imagem (RN-MAT-12). Responsável e Aluno.
+      description: |
+        Cada concessão e cada revogação é um registro novo (o histórico fica). Conceder com `version` diferente da vigente: 409 `TERMS_VERSION_CONFLICT`. Pedir o
+        estado em que já está responde 200 sem gravar. Grava `image-use.granted` ou `image-use.revoked` na auditoria. Não bloqueia o portal.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalImageUseInput' } } }
+      responses:
+        '200':
+          description: Estado depois da chamada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalImageUse' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal/modality-confirmations:
+    get:
+      summary: Modalidades novas a confirmar (RN-MAT-13). Responsável e Aluno.
+      description: |
+        Modalidades ativas criadas depois do primeiro aceite do termo do aluno e ainda sem confirmação, dos alunos que a conta aceita (o próprio adulto ou o
+        responsável financeiro do menor), com plano e valor atual em centavos. Com termo pendente: 403 `TERM_PENDING`. Gestão e Professor: 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Pendências de confirmação.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ModalityConfirmationItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/modality-confirmations/{modalityRowId}:
+    post:
+      summary: Confirma a modalidade nova com o plano e o valor mostrados (RN-MAT-13). Responsável e Aluno.
+      description: |
+        Grava conta, data, hora, IP, plano e valor e `modality.confirmed` na auditoria. Nunca altera matrícula, plano nem cobrança. Repetir responde 200 com a mesma
+        confirmação, sem nova linha. Modalidade inexistente, de aluno não ligado à conta ou de outra organização, ou que não está a confirmar (anterior ao aceite ou
+        encerrada): 404; de aluno ligado que a conta não aceita: 403; com termo pendente: 403 `TERM_PENDING`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '201':
+          description: Confirmação gravada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ModalityConfirmed' } } }
+        '200':
+          description: Já confirmada antes.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ModalityConfirmed' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 components:
   securitySchemes:
     sessionCookie:
@@ -3242,6 +3359,7 @@ components:
             - ALREADY_IN_CATALOG
             - AGE_RANGE_NAME_TAKEN
             - TERMS_VERSION_CONFLICT
+            - TERM_PENDING
             - CHARGE_NOT_PAYABLE
             - ANNOUNCEMENT_ALREADY_SENT
             - ANNOUNCEMENT_DAILY_LIMIT
@@ -4504,8 +4622,8 @@ components:
         confirmDuplicate: { type: boolean, description: Confirma a edição apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
     StudentSeal:
       type: string
-      description: "Selo calculado (RF-ALU-02). `NEW` vale até 30 dias da matrícula mais recente (`enrolledAt` ou `reopenedAt`), no fuso da unidade de cadastro. `SCHOLARSHIP` (Bolsista, RF-BEN-02): benefício `PERCENT` ativo e dentro da validade numa modalidade ativa. Termo pendente entra com o termo."
-      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW, SCHOLARSHIP]
+      description: "Selo calculado (RF-ALU-02). `NEW` vale até 30 dias da matrícula mais recente (`enrolledAt` ou `reopenedAt`), no fuso da unidade de cadastro. `SCHOLARSHIP` (Bolsista, RF-BEN-02): benefício `PERCENT` ativo e dentro da validade numa modalidade ativa. `TERM_PENDING` (Termo pendente, RN-MAT-11): aluno com matrícula sem aceite da versão exigida do termo (última versão aceita menor que a maior publicada com reaccept); sai ao aceitar no portal."
+      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW, SCHOLARSHIP, TERM_PENDING]
     StudentRow:
       type: object
       required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, financialStatus, modalities]
@@ -5244,6 +5362,66 @@ components:
         name: { type: string }
         photoUrl: { type: string, nullable: true }
         self: { type: boolean, description: Cartão do próprio aluno ("Você"). }
+    PortalTermText:
+      type: object
+      required: [version, body]
+      properties:
+        version: { type: integer, minimum: 0 }
+        body: { type: string, description: Texto puro com quebras de linha. }
+    PortalImageUse:
+      type: object
+      required: [version, body, granted]
+      properties:
+        version: { type: integer, minimum: 0, description: Versão vigente do termo de uso de imagem. }
+        body: { type: string }
+        granted: { type: boolean, description: 'Verdadeiro quando o último registro é uma concessão de versão não anterior à última publicada com reaceite.' }
+    PortalTermPending:
+      type: object
+      required: [id, name, term, imageUse]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        term: { $ref: '#/components/schemas/PortalTermText' }
+        imageUse: { $ref: '#/components/schemas/PortalImageUse' }
+    PortalTermAcceptInput:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 0, description: Versão vigente do termo de matrícula. }
+        imageUse: { type: boolean, description: 'Caixa opcional do uso de imagem. Ausente ou falso, não concede.' }
+    PortalTermAcceptance:
+      type: object
+      required: [studentId, version, imageUse]
+      properties:
+        studentId: { type: string, format: uuid }
+        version: { type: integer, minimum: 0 }
+        imageUse: { type: boolean, description: Uso de imagem concedido depois da chamada. }
+    PortalImageUseInput:
+      type: object
+      required: [granted]
+      properties:
+        granted: { type: boolean }
+        version: { type: integer, minimum: 0, description: 'Versão vigente. Só confere na concessão e, ausente, vale a vigente.' }
+    ModalityConfirmationItem:
+      type: object
+      required: [modalityRowId, studentId, studentName, modality, unit, planId, plan, planValueCents]
+      properties:
+        modalityRowId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        modality: { type: string }
+        unit: { type: string }
+        planId: { type: string, format: uuid }
+        plan: { type: string }
+        planValueCents: { type: integer, format: int64, minimum: 0, description: 'Valor atual do plano em centavos, sem benefício.' }
+    ModalityConfirmed:
+      type: object
+      required: [modalityRowId, studentId, planId, planValueCents]
+      properties:
+        modalityRowId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        planId: { type: string, format: uuid }
+        planValueCents: { type: integer, format: int64, minimum: 0 }
   responses:
     BadRequest:
       description: Dados inválidos (VALIDATION_ERROR) ou requisição ilegível (MALFORMED_REQUEST).

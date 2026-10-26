@@ -40,10 +40,10 @@ class EnrollmentConclusionIT extends OrganizationBase {
         Mockito.reset(mailer);
         for (String table : new String[] {"receipt", "payment", "receipt_counter", "charge", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment",
                 "student_guardian", "guardian", "student", "plan", "graduation_level", "training_class_schedule", "training_class", "teacher_unit",
-                "teacher_modality", "teacher", "unit_modality", "organization_modality"}) {
+                "teacher_modality", "teacher", "unit_modality", "organization_modality", "text_model"}) {
             adminJdbc().update("delete from " + table);
         }
-        adminJdbc().update("delete from email_message where to_email like '%.example'");
+        adminJdbc().update("delete from email_message where to_email like '%.example' or to_email like 'gen-%'");
         String mine = "(select id from account where email like '%.example')";
         adminJdbc().update("delete from account_invite where account_id in " + mine);
         adminJdbc().update("delete from account_session where account_id in " + mine);
@@ -433,6 +433,37 @@ class EnrollmentConclusionIT extends OrganizationBase {
         br.com.ctcore.billing.BillingFixtures.guardian(adminJdbc(), t.orgId(), minor, true);
         assertThat(ok(post(minor, "conclude", body(modality(o, 10)), c), 201).get("inviteStatus").asText()).isEqualTo("MINOR");
         assertThat(count("select count(*) from email_message where template = 'INVITE'")).isEqualTo(before);
+    }
+
+    @Test
+    @DisplayName("#85 CA23: boas-vindas ao adulto convidado e a cada responsável do menor; texto próprio; falha não desfaz")
+    void welcome() throws Exception {
+        var t = tenant();
+        var o = offer(t, t.unitId(), 0);
+        var c = coordinator(t);
+        String unit = adminJdbc().queryForObject("select name from unit where id = ?", String.class, t.unitId());
+        var adult = adult(t);
+        String email = adminJdbc().queryForObject("select email from student where id = ?", String.class, adult);
+        ok(post(adult, "conclude", body(modality(o, 10)), c), 201);
+        var mails = adminJdbc().queryForList("select subject from email_message where template = 'WELCOME' and to_email = ?", email);
+        assertThat(mails).hasSize(1);
+        assertThat(mails.get(0).get("subject")).isEqualTo("Bem-vindo(a) à " + unit);
+
+        // texto próprio da organização
+        adminJdbc().update("insert into text_model (id, organization_id, key, subject, body, updated_by_account_id) values (?, ?, 'WELCOME', 'Oi {nome}', 'Corpo {unidade}', ?)",
+                UUID.randomUUID(), t.orgId(), c.accountId());
+        var minor = student(t, null, LocalDate.now().minusYears(10));
+        br.com.ctcore.billing.BillingFixtures.guardian(adminJdbc(), t.orgId(), minor, true);
+        br.com.ctcore.billing.BillingFixtures.guardian(adminJdbc(), t.orgId(), minor, false);
+        ok(post(minor, "conclude", body(modality(o, 10)), c), 201);
+        var own = adminJdbc().queryForList("select subject from email_message where template = 'WELCOME' and to_email like 'gen-%'");
+        assertThat(own).hasSize(2).allSatisfy(m -> assertThat(m.get("subject")).isEqualTo("Oi Responsável"));
+
+        // falha no envio do convite: nenhuma boas-vindas e a matrícula fica
+        doThrow(new IllegalStateException("smtp fora")).when(mailer).invite(any(), any());
+        var failing = adult(t);
+        ok(post(failing, "conclude", body(modality(o, 10)), c), 201);
+        assertThat(count("select count(*) from email_message where template = 'WELCOME'")).isEqualTo(3);
     }
 
     @Test

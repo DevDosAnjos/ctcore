@@ -372,7 +372,8 @@
       "EMAIL_PROBLEM": "E-mail com problema",
       "BIRTHDAY_TODAY": "Aniversário hoje",
       "NEW": "Novo",
-      "SCHOLARSHIP": "Bolsista"
+      "SCHOLARSHIP": "Bolsista",
+      "TERM_PENDING": "Termo pendente"
     },
     "edit": {
       "button": "Editar dados",
@@ -2602,5 +2603,28 @@
       "alterado": "Nada foi alterado nos seus dados.",
       "fazer": "Tente de novo em instantes. Se continuar, fale com o suporte."
     }
+  },
+  "portalTerm": {
+    "title": "Termo de matrícula",
+    "intro": "Leia o termo e aceite para continuar usando o portal.",
+    "studentHeading": "Termo de {{name}}",
+    "imageUseTitle": "Uso de imagem (opcional)",
+    "accept": "Li e aceito o termo de matrícula",
+    "imageUse": "Autorizo o uso de imagem, nos termos acima. Posso revogar quando quiser, sem prejuízo da matrícula.",
+    "submit": "Aceitar e continuar",
+    "saving": "Salvando...",
+    "emptyTitle": "Nenhum termo para aceitar",
+    "emptyText": "Você está em dia com os termos.",
+    "emptyAction": "Ir para o início",
+    "errors": {
+      "conflict": "O termo mudou. Leia a nova versão e aceite de novo.",
+      "generic": "Não conseguimos registrar o aceite. Tente de novo."
+    }
+  },
+  "portalConfirm": {
+    "title": "Confirme a modalidade nova",
+    "text": "{{student}} começou em {{modality}} ({{unit}}). Plano {{plan}}, {{value}} por mês. A confirmação não altera a matrícula nem a cobrança.",
+    "confirm": "Confirmar {{modality}}",
+    "error": "Não conseguimos confirmar. Nada foi alterado; tente de novo."
   }
 }

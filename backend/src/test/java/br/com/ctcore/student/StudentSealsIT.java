@@ -30,6 +30,8 @@ class StudentSealsIT extends OrganizationBase {
 
     @AfterEach
     void clean() {
+        adminJdbc().update("delete from term_acceptance");
+        adminJdbc().update("delete from terms_version");
         EnrollmentFixtures.clean(adminJdbc());
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
@@ -78,7 +80,14 @@ class StudentSealsIT extends OrganizationBase {
                 guardian);
     }
 
+    /** Selos do aluno sem o Termo pendente, que todo aluno matriculado e sem aceite tem (os casos dele estão em {@link #termPendingSeal}). */
     private List<String> seals(JsonNode b, String name) {
+        List<String> all = allSeals(b, name);
+        all.remove("TERM_PENDING");
+        return all;
+    }
+
+    private List<String> allSeals(JsonNode b, String name) {
         for (JsonNode i : b.get("items")) {
             if (i.get("name").asText().equals(name)) {
                 List<String> out = new ArrayList<>();
@@ -280,6 +289,47 @@ class StudentSealsIT extends OrganizationBase {
         // Em Tóquio já é 01/07: o mesmo instante de matrícula (31/05 12h30 em Tóquio) fica a 31 dias.
         adminJdbc().update("update unit set timezone = 'Asia/Tokyo' where id = ?", t.unitId());
         assertThat(seals(body("", c), "Trinta Dias")).isEmpty();
+    }
+
+    private void accept(Tenant t, UUID account, UUID student, int version) {
+        adminJdbc().update("insert into term_acceptance (id, organization_id, student_id, kind, event, version, account_id, ip) values (?, ?, ?, 'ENROLLMENT', 'ACCEPTED', ?, ?, '203.0.113.9')",
+                UUID.randomUUID(), t.orgId(), student, version, account);
+    }
+
+    private void publish(Tenant t, UUID account, int version, boolean reaccept) {
+        adminJdbc().update("insert into terms_version (id, organization_id, kind, version, body, reaccept, published_by_account_id) values (?, ?, 'ENROLLMENT', ?, ?, ?, ?)",
+                UUID.randomUUID(), t.orgId(), version, "Texto do termo de teste, com mais de vinte caracteres.", reaccept, account);
+    }
+
+    @Test
+    @DisplayName("CA16 (RN-MAT-11, D2): Termo pendente só para quem tem matrícula e não aceitou a versão exigida; sai ao aceitar, volta com versão reaccept, e aparece na lista, na ficha e no filtro")
+    void termPendingSeal() throws Exception {
+        Tenant t = tenant();
+        var c = who(t, Role.COORDINATOR);
+        today(LocalDate.of(2025, 6, 30));
+        UUID account = UUID.randomUUID();
+        adminJdbc().update("insert into account (id, email, status) values (?, 'termo@ficticia.example', 'ACTIVE')", account);
+        UUID pending = adult(t, "Pendente", "11111111111", "a@ficticia.example"), accepted = adult(t, "Aceitou", "22222222222", "b@ficticia.example"),
+                never = adult(t, "Sem Matricula", "33333333333", "c@ficticia.example");
+        enrolled(t, pending, "2020-01-01T12:00:00-03:00", null);
+        enrolled(t, accepted, "2020-01-01T12:00:00-03:00", null);
+        assertThat(never).isNotNull();
+        publish(t, account, 1, true);
+        accept(t, account, accepted, 1);
+        JsonNode b = body("", c);
+        assertThat(allSeals(b, "Pendente")).contains("TERM_PENDING");
+        assertThat(allSeals(b, "Aceitou")).doesNotContain("TERM_PENDING");
+        assertThat(allSeals(b, "Sem Matricula")).doesNotContain("TERM_PENDING");
+        assertThat(names(body("?seal=TERM_PENDING", c))).containsExactly("Pendente");
+        var record = call(MockMvcRequestBuilders.get("/api/v1/students/" + pending + "/record"), c).getResponse();
+        assertThat(json.readTree(record.getContentAsString()).get("seals").toString()).contains("TERM_PENDING");
+        // versão sem reaccept não gera pendência para quem já aceitou; com reaccept, volta; aceitar a nova tira
+        publish(t, account, 2, false);
+        assertThat(names(body("?seal=TERM_PENDING", c))).containsExactly("Pendente");
+        publish(t, account, 3, true);
+        assertThat(names(body("?seal=TERM_PENDING", c))).containsExactly("Aceitou", "Pendente");
+        accept(t, account, accepted, 3);
+        assertThat(names(body("?seal=TERM_PENDING", c))).containsExactly("Pendente");
     }
 
     private void benefit(Tenant t, UUID row, String type, long value, String validUntil, String status) {
