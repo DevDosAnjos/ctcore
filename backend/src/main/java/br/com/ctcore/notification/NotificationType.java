@@ -12,7 +12,9 @@ public enum NotificationType {
     INVITE_PENDING(Audience.COORDINATORS, false),
     CLOSURE_REQUEST(Audience.COORDINATORS, true),
     MP_DISCONNECTED(Audience.COORDINATORS, true),
-    SUBSCRIPTION_OVERDUE(Audience.COORDINATORS, true);
+    SUBSCRIPTION_OVERDUE(Audience.COORDINATORS, true),
+    /** RF-MAT-04: pedido do portal (troca de turma, nova modalidade, troca de plano ou encerramento); o texto de tela é do front. */
+    PORTAL_REQUEST(Audience.UNIT_ADMINS, false);
 
     public enum Audience { UNIT_ADMINS, COORDINATORS }
 

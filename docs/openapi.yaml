@@ -3120,6 +3120,142 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /portal/students/{id}/request-options:
+    get:
+      summary: O que o aluno pode pedir (RF-MAT-04). Responsável e Aluno.
+      description: |
+        Modalidades ativas do aluno com a turma e o plano atuais, as turmas e os planos que podem ser pedidos (ativos, da mesma unidade e modalidade, menos os atuais)
+        e `closureRequestedAt` quando há pedido de encerramento aberto; mais as ofertas (unidade e modalidade) que ele ainda não tem. Lê qualquer responsável ligado.
+        Aluno não ligado à conta ou de outra organização: 404. Com termo pendente: 403 `TERM_PENDING`. Gestão e Professor: 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Opções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestOptions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/students/{id}/requests:
+    get:
+      summary: Pedidos do aluno (RF-MAT-04). Responsável e Aluno.
+      description: Do mais novo ao mais antigo, com a situação e a resposta da gestão. Mesmas regras de acesso de `request-options`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Pedidos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PortalRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Pede troca de turma, nova modalidade, troca de plano ou encerramento (RF-MAT-04, RN-MAT-16). Aluno adulto e responsável financeiro.
+      description: |
+        Nunca altera matrícula, turma, plano, vencimento nem cobrança; só o pedido de encerramento deixa a modalidade "Encerramento solicitado" e sem nova cobrança
+        (RN-MAT-18). Dados inválidos (tipo, motivo fora da lista, turma ou plano de outra unidade ou modalidade, igual ao atual, modalidade já ativa, mensagem acima de 500
+        caracteres): 400 `VALIDATION_ERROR` com o campo, sem gravar. Pedido igual ainda aberto (mesma modalidade e tipo; ou troca de turma e de plano com encerramento aberto):
+        409 `REQUEST_ALREADY_OPEN`. Responsável não financeiro do menor: 403; aluno não ligado à conta ou de outra organização: 404; termo pendente: 403 `TERM_PENDING`.
+        Grava `portal_request.created` (sem o texto livre) e avisa a gestão (`PORTAL_REQUEST`; no encerramento também `CLOSURE_REQUEST`).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestInput' } } }
+      responses:
+        '201':
+          description: Pedido criado, aberto.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal-requests:
+    get:
+      summary: Lista de pedidos do portal da gestão (RF-MAT-04). Coordenador e Administrador.
+      description: |
+        Por padrão os abertos (`status=OPEN`; `ALL` traz todos), do mais antigo ao mais novo. O Coordenador vê todas as unidades; o Administrador só as do seu alcance
+        (RN-ALU-07), e `unitId` fora dele devolve lista vazia. Professor, Aluno e Responsável: 403. Valor inválido de `status` ou `kind`: 400.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [OPEN, APPROVED, REFUSED, EXPIRED, CLOSED, ALL], default: OPEN } }
+        - { name: kind, in: query, required: false, schema: { $ref: '#/components/schemas/PortalRequestKind' } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de pedidos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal-requests/{id}:
+    get:
+      summary: Um pedido do portal (RF-MAT-04). Coordenador e Administrador.
+      description: "Pedido de outra organização ou de unidade fora do alcance do Administrador: 404. Professor e perfis de portal: 403."
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: O pedido.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal-requests/{id}/approve:
+    post:
+      summary: Aprova o pedido (RN-MAT-16, D4). Coordenador e Administrador.
+      description: |
+        Marca o pedido como `APPROVED` com mensagem opcional ao aluno (e-mail à conta que pediu); a matrícula só muda quando a gestão conclui o fluxo correspondente.
+        Pedido de encerramento não tem aprovação: 400 (a gestão encerra pelo fluxo da matrícula ou recusa). Pedido já decidido ou expirado: 409 `REQUEST_NOT_OPEN`.
+        Grava `portal_request.approved` sem o texto livre.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestDecision' } } }
+      responses:
+        '200':
+          description: Pedido aprovado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal-requests/{id}/refuse:
+    post:
+      summary: Recusa o pedido com mensagem ao aluno (RF-MAT-04). Coordenador e Administrador.
+      description: |
+        `message` obrigatória, de 3 a 500 caracteres (senão 400 e o pedido segue aberto); o pedido fica `REFUSED` e a mensagem vai por e-mail à conta que pediu. Recusar o
+        encerramento devolve a modalidade a Ativa (sem "Encerramento solicitado"). Pedido já decidido ou expirado: 409 `REQUEST_NOT_OPEN`. Grava `portal_request.refused`
+        sem o texto livre.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestDecision' } } }
+      responses:
+        '200':
+          description: Pedido recusado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -3356,6 +3492,7 @@ components:
             - TEACHER_MODALITY_IN_USE
             - MODALITY_NOT_ACTIVE
             - REQUEST_ALREADY_OPEN
+            - REQUEST_NOT_OPEN
             - ALREADY_IN_CATALOG
             - AGE_RANGE_NAME_TAKEN
             - TERMS_VERSION_CONFLICT
@@ -3546,7 +3683,7 @@ components:
         reaccept: { type: boolean }
     NotificationType:
       type: string
-      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE]
+      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE, PORTAL_REQUEST]
     Notification:
       type: object
       required: [id, type, group, createdAt, readAt, refType, refId, params]
@@ -5077,13 +5214,14 @@ components:
           description: Cobranças em aberto da modalidade (RN-MAT-17), da mais antiga para a mais nova.
           items:
             type: object
-            required: [id, referenceMonth, dueOn, amountCents, status]
+            required: [id, referenceMonth, dueOn, amountCents, status, afterRequest]
             properties:
               id: { type: string, format: uuid }
               referenceMonth: { type: string, format: date, nullable: true }
               dueOn: { type: string, format: date }
               amountCents: { type: integer, format: int64 }
               status: { $ref: '#/components/schemas/ChargeSituation' }
+              afterRequest: { type: boolean, description: "Verdadeiro quando há pedido de encerramento aberto e o vencimento é depois da data dele (RN-MAT-18); o servidor cancela estas ao encerrar." }
     EnrollmentNamed:
       type: object
       required: [id, name]
@@ -5092,7 +5230,7 @@ components:
         name: { type: string }
     EnrollmentModality:
       type: object
-      required: [id, unit, modality, primaryClass, otherClasses, plan, nextPlan, dueDay, status, startedAt, endedAt, canEdit]
+      required: [id, unit, modality, primaryClass, otherClasses, plan, nextPlan, dueDay, status, startedAt, endedAt, canEdit, closureRequestedAt]
       properties:
         id: { type: string, format: uuid }
         unit: { $ref: '#/components/schemas/EnrollmentNamed' }
@@ -5106,6 +5244,7 @@ components:
         startedAt: { type: string, format: date-time }
         endedAt: { type: string, format: date-time, nullable: true }
         canEdit: { type: boolean }
+        closureRequestedAt: { type: string, format: date-time, nullable: true, description: "Instante do pedido de encerramento aberto (RN-MAT-18); a modalidade aparece como Encerramento solicitado." }
     Enrollment:
       type: object
       required: [id, status, enrolledAt, reopenedAt, modalities]
@@ -5422,6 +5561,103 @@ components:
         studentId: { type: string, format: uuid }
         planId: { type: string, format: uuid }
         planValueCents: { type: integer, format: int64, minimum: 0 }
+    PortalRequestKind:
+      type: string
+      enum: [CLASS_CHANGE, NEW_MODALITY, PLAN_CHANGE, CLOSURE]
+    PortalRequestStatus:
+      type: string
+      enum: [OPEN, APPROVED, REFUSED, EXPIRED, CLOSED]
+    PortalRequestInput:
+      type: object
+      required: [kind]
+      description: |
+        Campos por tipo. `CLASS_CHANGE`: `modalityRowId` e `targetClassId`. `PLAN_CHANGE`: `modalityRowId` e `targetPlanId`. `NEW_MODALITY`: `targetUnitId` e
+        `targetModalityId`. `CLOSURE`: `modalityRowId` e `reason`. Os campos que não são do tipo são ignorados.
+      properties:
+        kind: { $ref: '#/components/schemas/PortalRequestKind' }
+        modalityRowId: { type: string, format: uuid }
+        targetClassId: { type: string, format: uuid }
+        targetPlanId: { type: string, format: uuid }
+        targetUnitId: { type: string, format: uuid }
+        targetModalityId: { type: string, format: uuid }
+        reason: { type: string, enum: [CITY_CHANGE, FINANCIAL, SCHEDULE, INJURY, DISSATISFACTION, OTHER], description: Motivo do encerramento (RN-MAT-17). }
+        note: { type: string, maxLength: 500, description: "Mensagem opcional do aluno; texto puro, nunca vai para auditoria nem notificação." }
+    PortalRequest:
+      type: object
+      required: [id, kind, status, studentId, studentName, unitId, unit, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: '#/components/schemas/PortalRequestKind' }
+        status: { $ref: '#/components/schemas/PortalRequestStatus' }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        modalityRowId: { type: string, nullable: true, format: uuid }
+        modality: { type: string, nullable: true }
+        targetClassId: { type: string, nullable: true, format: uuid }
+        targetClass: { type: string, nullable: true }
+        targetPlanId: { type: string, nullable: true, format: uuid }
+        targetPlan: { type: string, nullable: true }
+        targetModalityId: { type: string, nullable: true, format: uuid }
+        targetUnitId: { type: string, nullable: true, format: uuid }
+        targetUnit: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        response: { type: string, nullable: true, description: Mensagem da gestão ao decidir. }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: string, nullable: true, format: date-time }
+    PortalRequestList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PortalRequest' } }
+    PortalRequestChoice:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    PortalRequestPlanChoice:
+      type: object
+      required: [id, name, valueCents]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        valueCents: { type: integer, format: int64, minimum: 0 }
+    PortalRequestModality:
+      type: object
+      required: [modalityRowId, modalityId, modality, unitId, unit, currentClass, currentPlan, classes, plans]
+      properties:
+        modalityRowId: { type: string, format: uuid }
+        modalityId: { type: string, format: uuid }
+        modality: { type: string }
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        currentClass: { $ref: '#/components/schemas/PortalRequestChoice' }
+        currentPlan: { $ref: '#/components/schemas/PortalRequestChoice' }
+        closureRequestedAt: { type: string, nullable: true, format: date-time, description: 'Preenchido enquanto há pedido de encerramento aberto ("Encerramento solicitado").' }
+        classes: { type: array, items: { $ref: '#/components/schemas/PortalRequestChoice' }, description: "Turmas ativas da mesma unidade e modalidade, menos a atual." }
+        plans: { type: array, items: { $ref: '#/components/schemas/PortalRequestPlanChoice' }, description: "Planos ativos da mesma unidade e modalidade, menos o atual." }
+    PortalRequestOffer:
+      type: object
+      required: [unitId, unit, modalityId, modality]
+      properties:
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        modalityId: { type: string, format: uuid }
+        modality: { type: string }
+    PortalRequestOptions:
+      type: object
+      required: [modalities, offers]
+      properties:
+        modalities: { type: array, items: { $ref: '#/components/schemas/PortalRequestModality' } }
+        offers: { type: array, items: { $ref: '#/components/schemas/PortalRequestOffer' }, description: "Unidade e modalidade ofertadas que o aluno ainda não tem ativa." }
+    PortalRequestDecision:
+      type: object
+      properties:
+        message: { type: string, maxLength: 500, description: "Mensagem ao aluno. Obrigatória (3 a 500 caracteres) ao recusar; opcional ao aprovar." }
   responses:
     BadRequest:
       description: Dados inválidos (VALIDATION_ERROR) ou requisição ilegível (MALFORMED_REQUEST).

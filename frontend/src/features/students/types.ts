@@ -190,6 +190,8 @@ export interface EnrollmentModality {
   startedAt: string;
   endedAt: string | null;
   canEdit: boolean;
+  /** RN-MAT-18: instante do pedido de encerramento aberto ("Encerramento solicitado"). */
+  closureRequestedAt: string | null;
 }
 export interface Enrollment {
   id: string | null;
@@ -207,6 +209,8 @@ export interface OpenCharge {
   dueOn: string;
   amountCents: number;
   status: ChargeSituation;
+  /** RN-MAT-18: vencimento depois do pedido de encerramento; o servidor cancela ao encerrar. */
+  afterRequest: boolean;
 }
 export interface ChargeDecision {
   chargeId: string;

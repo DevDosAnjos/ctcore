@@ -111,7 +111,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | a fazer |
 | 368 | Testes e2e poderem sobrescrever respostas do MSW por teste (worker.use) | issue #368 | Sprint 10 | — | agente | feito |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | feito |
-| 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
+| 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | feito |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |
 | 88 | RF-POR-01 · Portal: barra e navegação | issue #88 | Sprint 10 | — | agente | a fazer |
 | 89 | RF-POR-02 · Portal: Início | issue #89 | Sprint 10 | — | agente | a fazer |

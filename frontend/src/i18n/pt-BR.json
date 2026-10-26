@@ -489,6 +489,7 @@
           "benefit": "Conceder benefício",
           "end": "Encerrar"
         },
+        "closureRequested": "Encerramento solicitado",
         "readOnly": "Modalidade de outra unidade: só leitura.",
         "errors": {
           "403": "Você não tem permissão para alterar esta modalidade.",
@@ -515,6 +516,8 @@
           "who": "{{student}} · {{modality}} ({{unit}})",
           "charges": "Cobranças em aberto",
           "noCharges": "Nenhuma cobrança em aberto",
+          "afterRequest": "Há um pedido de encerramento do aluno. As cobranças com vencimento depois do pedido são canceladas ao encerrar; as anteriores seguem a sua decisão.",
+          "autoCanceled": "será cancelada",
           "chargeLine": "{{due}} · {{amount}} · {{status}}",
           "keep": "Manter",
           "cancel": "Cancelar",
@@ -1784,6 +1787,7 @@
       "trialClasses": "Aulas experimentais",
       "announcements": "Comunicados",
       "students": "Alunos",
+      "requests": "Pedidos",
       "teachers": "Professores",
       "collections": "Cobranças e pagamentos",
       "plans": "Planos",
@@ -2444,6 +2448,81 @@
       "error": "Não foi possível registrar o pagamento. Nada foi gravado. Tente de novo."
     }
   },
+  "portalRequests": {
+    "title": "Pedidos do portal",
+    "intro": "Pedidos de troca de turma, nova modalidade, troca de plano e encerramento feitos pelos alunos. Um pedido nunca altera a matrícula sozinho: ao aprovar, você conclui o fluxo já preenchido.",
+    "emptyTitle": "Nenhum pedido",
+    "emptyText": "Quando um aluno fizer um pedido pelo portal, ele aparece aqui.",
+    "kinds": {
+      "CLASS_CHANGE": "Troca de turma",
+      "NEW_MODALITY": "Nova modalidade",
+      "PLAN_CHANGE": "Troca de plano",
+      "CLOSURE": "Encerramento"
+    },
+    "statuses": {
+      "OPEN": "Aberto",
+      "APPROVED": "Aprovado",
+      "REFUSED": "Recusado",
+      "EXPIRED": "Expirado",
+      "CLOSED": "Encerrado"
+    },
+    "summary": {
+      "CLASS_CHANGE": "{{modality}}: para a turma {{targetClass}}",
+      "PLAN_CHANGE": "{{modality}}: para o plano {{targetPlan}}",
+      "NEW_MODALITY": "{{modality}} na unidade {{targetUnit}}",
+      "CLOSURE": "{{modality}}: encerrar ({{reason}})"
+    },
+    "filters": {
+      "status": "Situação",
+      "open": "Abertos",
+      "allStatuses": "Todas",
+      "kind": "Tipo",
+      "allKinds": "Todos os tipos",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades"
+    },
+    "columns": {
+      "kind": "Tipo",
+      "student": "Aluno",
+      "unit": "Unidade",
+      "request": "Pedido",
+      "message": "Mensagem",
+      "date": "Data",
+      "status": "Situação",
+      "actions": "Ações"
+    },
+    "cardUnit": "{{unit}} · {{date}}",
+    "actions": {
+      "approve": "Aprovar",
+      "approveFor": "Aprovar pedido de {{student}}",
+      "refuse": "Recusar",
+      "refuseFor": "Recusar pedido de {{student}}",
+      "openRecord": "Abrir ficha",
+      "openRecordFor": "Abrir ficha de {{student}} para encerrar"
+    },
+    "decide": {
+      "who": "{{student}} · {{summary}}",
+      "note": "Mensagem do aluno: {{note}}"
+    },
+    "approve": {
+      "title": "Aprovar pedido",
+      "effect": "O pedido fica aprovado e o aluno é avisado por e-mail. A matrícula só muda quando você concluir o fluxo que vai abrir.",
+      "message": "Mensagem ao aluno (opcional)",
+      "submit": "Aprovar e continuar"
+    },
+    "refuse": {
+      "title": "Recusar pedido",
+      "effect": "O aluno recebe a sua mensagem por e-mail. No pedido de encerramento, a modalidade volta a ficar ativa.",
+      "message": "Mensagem ao aluno",
+      "submit": "Recusar pedido"
+    },
+    "errors": {
+      "403": "Você não tem permissão para decidir este pedido.",
+      "404": "Este pedido não existe mais.",
+      "409": "Este pedido já foi decidido. Atualize a lista.",
+      "generic": "Não conseguimos concluir. Nada foi alterado."
+    }
+  },
   "common": {
     "cancel": "Cancelar",
     "confirm": "Confirmar",
@@ -2581,7 +2660,8 @@
       "STUDENT_MAJORITY": { "text": "{{studentName}} completou 18 anos.", "action": "Ver aluno" },
       "EMAIL_PROBLEM": { "text": "Um e-mail de aluno ou responsável está com problema.", "action": "Ver aluno" },
       "INVITE_PENDING": { "text": "O convite de {{personName}} segue sem aceite há 7 dias.", "action": "Ver usuários" },
-      "CLOSURE_REQUEST": { "text": "Há um pedido de encerramento aguardando decisão.", "action": "Abrir configurações" },
+      "CLOSURE_REQUEST": { "text": "Há um pedido de encerramento aguardando decisão.", "action": "Ver pedidos" },
+      "PORTAL_REQUEST": { "text": "Há um pedido novo do portal aguardando resposta.", "action": "Ver pedidos" },
       "MP_DISCONNECTED": { "text": "A conexão de pagamentos da academia caiu.", "action": "Abrir configurações" },
       "SUBSCRIPTION_OVERDUE": { "text": "A assinatura do CTCore está em atraso.", "action": "Abrir configurações" }
     }
@@ -2619,6 +2699,62 @@
     "errors": {
       "conflict": "O termo mudou. Leia a nova versão e aceite de novo.",
       "generic": "Não conseguimos registrar o aceite. Tente de novo."
+    }
+  },
+  "portalOwn": {
+    "title": "Meus pedidos",
+    "intro": "Peça troca de turma, nova modalidade, troca de plano ou encerramento. O pedido não altera a sua matrícula: a academia responde e conclui com você.",
+    "link": "Meus pedidos",
+    "student": "Aluno",
+    "noStudentTitle": "Nenhum aluno ligado à conta",
+    "noStudentText": "Quando houver um aluno ligado a esta conta, os pedidos aparecem aqui.",
+    "actionsTitle": "Fazer um pedido",
+    "modalityLine": "{{modality}} ({{unit}}) · turma {{klass}} · plano {{plan}}",
+    "closureOpen": "Encerramento solicitado em {{date}}. A academia vai entrar em contato.",
+    "actions": {
+      "CLASS_CHANGE": "Pedir troca de turma",
+      "PLAN_CHANGE": "Pedir troca de plano",
+      "CLOSURE": "Solicitar encerramento",
+      "NEW_MODALITY": "Pedir nova modalidade"
+    },
+    "listTitle": "Pedidos feitos",
+    "emptyTitle": "Nenhum pedido ainda",
+    "emptyText": "Os pedidos que você fizer aparecem aqui, com a resposta da academia.",
+    "statusLine": "{{status}} · {{date}}",
+    "response": "Resposta da academia: {{response}}",
+    "dialog": {
+      "of": "{{modality}} ({{unit}})",
+      "note": "Mensagem (opcional)",
+      "CLASS_CHANGE": {
+        "title": "Pedir troca de turma",
+        "effect": "É só um pedido: a turma só muda quando a academia concluir a troca com você.",
+        "field": "Turma desejada",
+        "submit": "Enviar pedido"
+      },
+      "PLAN_CHANGE": {
+        "title": "Pedir troca de plano",
+        "effect": "É só um pedido: o plano e o valor só mudam quando a academia concluir a troca com você.",
+        "field": "Plano desejado",
+        "submit": "Enviar pedido"
+      },
+      "NEW_MODALITY": {
+        "title": "Pedir nova modalidade",
+        "effect": "É só um pedido: a academia entra em contato para matricular você.",
+        "field": "Modalidade e unidade",
+        "submit": "Enviar pedido"
+      },
+      "CLOSURE": {
+        "title": "Solicitar encerramento",
+        "effect": "A modalidade deixa de gerar novas cobranças. Se a academia não responder em 7 dias, ela é encerrada na data do pedido. As cobranças já vencidas continuam devidas.",
+        "field": "Motivo",
+        "submit": "Solicitar encerramento"
+      }
+    },
+    "errors": {
+      "403": "Só o aluno adulto ou o responsável financeiro pode fazer pedidos.",
+      "404": "Não encontramos este aluno.",
+      "409": "Já existe um pedido igual em aberto.",
+      "generic": "Não conseguimos enviar. Nada foi alterado; tente de novo."
     }
   },
   "portalConfirm": {

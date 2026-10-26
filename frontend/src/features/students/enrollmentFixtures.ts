@@ -15,6 +15,7 @@ export const modalityRow = (over: Partial<EnrollmentModality> = {}): EnrollmentM
   startedAt: "2026-01-10T12:00:00Z",
   endedAt: null,
   canEdit: true,
+  closureRequestedAt: null,
   ...over,
 });
 

@@ -117,6 +117,7 @@ export const resetMockSession = () => {
   portalAccepted.clear();
   portalImage.clear();
   portalConfirmed.clear();
+  mockPortalRequests = [];
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -809,7 +810,7 @@ const enrollmentView = (studentId: string) => {
     modalities: e.modalities.map((m) => ({
       id: m.id, unit: named(m.unitId, units.find((u) => u.id === m.unitId)?.name ?? ""), modality: named(m.modalityId, modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? ""),
       primaryClass: className(m.primaryClassId), otherClasses: m.otherClassIds.map(className), plan: planName(m.planId), nextPlan: m.nextPlanId ? planName(m.nextPlanId) : null,
-      dueDay: m.dueDay, status: m.status, startedAt: m.startedAt, endedAt: m.endedAt, canEdit: activeRole() === "COORDINATOR" || m.unitId === ADMIN_UNIT,
+      dueDay: m.dueDay, status: m.status, startedAt: m.startedAt, endedAt: m.endedAt, canEdit: activeRole() === "COORDINATOR" || m.unitId === ADMIN_UNIT, closureRequestedAt: closureOpenAt(m.id),
     })),
   };
 };
@@ -1130,6 +1131,49 @@ const checkClasses = (unitId: string, modalityId: string, primaryId: string, oth
     if (other === primaryId || c.unitId !== unitId || c.modalityId !== modalityId || c.status !== "ACTIVE") return rule("otherClassIds", "turma inativa, de outra unidade ou modalidade, ou igual à principal");
   }
   return null;
+};
+// Pedidos do portal (#86), em memória. Pedido nunca muda a matrícula; só o de encerramento marca a modalidade ("Encerramento solicitado") até encerrar ou recusar.
+type MockPortalRequest = {
+  id: string; kind: string; status: string; studentId: string; unitId: string; modalityRowId: string | null; targetClassId: string | null; targetPlanId: string | null;
+  targetModalityId: string | null; targetUnitId: string | null; reason: string | null; note: string | null; response: string | null; createdAt: string; decidedAt: string | null;
+};
+let mockPortalRequests: MockPortalRequest[] = [];
+const REQUEST_KINDS = ["CLASS_CHANGE", "NEW_MODALITY", "PLAN_CHANGE", "CLOSURE"];
+const REQUEST_STATUSES = ["OPEN", "APPROVED", "REFUSED", "EXPIRED", "CLOSED"];
+const openClosure = (rowId: string) => mockPortalRequests.find((r) => r.kind === "CLOSURE" && r.status === "OPEN" && r.modalityRowId === rowId);
+const closureOpenAt = (rowId: string) => openClosure(rowId)?.createdAt ?? null;
+const afterClosure = (rowId: string, dueOn: string) => {
+  const at = closureOpenAt(rowId);
+  return at !== null && dueOn > at.slice(0, 10);
+};
+const requestView = (r: MockPortalRequest) => {
+  const row = r.modalityRowId ? (mockEnrollments[r.studentId]?.modalities ?? []).find((m) => m.id === r.modalityRowId) : undefined;
+  const modalityId = r.targetModalityId ?? row?.modalityId;
+  return {
+    id: r.id, kind: r.kind, status: r.status, studentId: r.studentId, studentName: mockStudents.find((s) => s.id === r.studentId)?.name ?? "", unitId: r.unitId,
+    unit: units.find((u) => u.id === r.unitId)?.name ?? "", modalityRowId: r.modalityRowId, modality: modalityCatalog.find((m) => m.id === modalityId)?.name ?? null,
+    targetClassId: r.targetClassId, targetClass: mockClasses.find((c) => c.id === r.targetClassId)?.name ?? null, targetPlanId: r.targetPlanId,
+    targetPlan: mockPlans.find((p) => p.id === r.targetPlanId)?.name ?? null, targetModalityId: r.targetModalityId, targetUnitId: r.targetUnitId,
+    targetUnit: units.find((u) => u.id === r.targetUnitId)?.name ?? null, reason: r.reason, note: r.note, response: r.response, createdAt: r.createdAt, decidedAt: r.decidedAt,
+  };
+};
+// Rotas do portal: termo em dia e aluno ligado à conta (404 fora).
+const portalRequestStudent = (id: string) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  const mine = portalMine();
+  if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return mine.find((s) => s.id === id) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// Gestão: Coordenador e Administrador; o Administrador só alcança a unidade dele (404 fora).
+const requestAdminAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  return activeRole() === "COORDINATOR" || activeRole() === "ADMINISTRATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+const requestFor = (id: string) => {
+  const denied = requestAdminAccess();
+  if (denied) return denied;
+  return mockPortalRequests.find((r) => r.id === id && (activeRole() === "COORDINATOR" || r.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
 };
 // Aceite do termo no portal (#85), em memória. Pendente = aluno com matrícula (ou o adulto da conta "termo@exemplo.com") sem aceite.
 const portalAccepted = new Map<string, string>();
@@ -3906,7 +3950,10 @@ export const routes: Route[] = [
         const bad = d.action === "CANCEL" ? reasonError(d.reason) : null;
         if (bad) return studentBad(`charges[${i}].reason`, bad);
       }
-      for (const d of decisions) if (d.action === "CANCEL") cancelMock(open(d.chargeId)!, d.reason!.trim());
+      // RN-MAT-18 (#86): com pedido de encerramento aberto, as cobranças com vencimento depois dele saem canceladas, sem escolha.
+      for (const c of mockCharges) if (c.modalityRowId === found.row.id && c.status === "OPEN" && afterClosure(found.row.id, c.dueOn)) cancelMock(c, "Encerramento solicitado pelo aluno");
+      for (const d of decisions) if (d.action === "CANCEL" && open(d.chargeId)) cancelMock(open(d.chargeId)!, d.reason!.trim());
+      for (const r of mockPortalRequests) if (r.kind === "CLOSURE" && r.status === "OPEN" && r.modalityRowId === found.row.id) Object.assign(r, { status: "CLOSED", decidedAt: new Date().toISOString() });
       found.row.status = "ENDED";
       found.row.endedAt = new Date().toISOString();
       logStudent(found.student.id, "student.modality_ended", null);
@@ -3924,7 +3971,7 @@ export const routes: Route[] = [
       const openCharges = mockCharges
         .filter((c) => c.modalityRowId === found.row.id && c.status === "OPEN")
         .sort((a, b) => a.dueOn.localeCompare(b.dueOn))
-        .map((c) => ({ id: c.id, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, status: chargeSituation(c, today) }));
+        .map((c) => ({ id: c.id, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, status: chargeSituation(c, today), afterRequest: afterClosure(found.row.id, c.dueOn) }));
       return HttpResponse.json({ openCharges });
     },
   },
@@ -4212,6 +4259,136 @@ export const routes: Route[] = [
       if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
       portalConfirmed.add(found.modalityRowId);
       return HttpResponse.json({ modalityRowId: found.modalityRowId, studentId: found.studentId, planId: found.planId, planValueCents: found.planValueCents }, { status: 201 });
+    },
+  },
+  {
+    // RF-MAT-04 (#86): o que o aluno pode pedir; lê o adulto (Aluno) ou o menor (Responsável).
+    method: "get",
+    path: "/portal/students/{id}/request-options",
+    resolver: ({ params }) => {
+      const student = portalRequestStudent(params.id as string);
+      if (student instanceof Response) return student;
+      const rows = (mockEnrollments[student.id]?.modalities ?? []).filter((m) => m.status === "ACTIVE");
+      const named = (id: string, list: { id: string; name: string }[]) => ({ id, name: list.find((x) => x.id === id)?.name ?? "" });
+      const modalities = rows.map((m) => ({
+        modalityRowId: m.id, modalityId: m.modalityId, modality: modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? "", unitId: m.unitId,
+        unit: units.find((u) => u.id === m.unitId)?.name ?? "", currentClass: named(m.primaryClassId, mockClasses), currentPlan: named(m.planId, mockPlans),
+        closureRequestedAt: closureOpenAt(m.id),
+        classes: mockClasses.filter((c) => c.status === "ACTIVE" && c.unitId === m.unitId && c.modalityId === m.modalityId && c.id !== m.primaryClassId).map((c) => ({ id: c.id, name: c.name })),
+        plans: mockPlans.filter((p) => p.status === "ACTIVE" && p.unitId === m.unitId && modalityCatalog[p.modalityIndex].id === m.modalityId && p.id !== m.planId).map((p) => ({ id: p.id, name: p.name, valueCents: p.valueCents })),
+      }));
+      const offers = units.flatMap((u) =>
+        modalityCatalog.filter((c) => activeModalities.has(c.id) && unitModalities.get(u.id)?.has(c.id) && !rows.some((m) => m.modalityId === c.id)).map((c) => ({ unitId: u.id, unit: u.name, modalityId: c.id, modality: c.name })),
+      );
+      return HttpResponse.json({ modalities, offers });
+    },
+  },
+  {
+    method: "get",
+    path: "/portal/students/{id}/requests",
+    resolver: ({ params }) => {
+      const student = portalRequestStudent(params.id as string);
+      if (student instanceof Response) return student;
+      return HttpResponse.json(mockPortalRequests.filter((r) => r.studentId === student.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(requestView));
+    },
+  },
+  {
+    // RN-MAT-16, RN-MAT-18: cria o pedido; igual ainda aberto, 409; encerramento aberto trava troca de turma e de plano.
+    method: "post",
+    path: "/portal/students/{id}/requests",
+    resolver: async ({ request, params }) => {
+      const student = portalRequestStudent(params.id as string);
+      if (student instanceof Response) return student;
+      const b = ((await request.json().catch(() => ({}))) as Record<string, string | undefined>) ?? {};
+      const kind = b.kind ?? "";
+      if (!REQUEST_KINDS.includes(kind)) return studentBad("kind", "um dos tipos de pedido");
+      if ((b.note ?? "").length > 500) return studentBad("note", "até 500 caracteres");
+      const rows = (mockEnrollments[student.id]?.modalities ?? []).filter((m) => m.status === "ACTIVE");
+      const row = rows.find((m) => m.id === b.modalityRowId);
+      if (kind !== "NEW_MODALITY" && !row) return studentBad("modalityRowId", "modalidade ativa do aluno");
+      const draft: MockPortalRequest = {
+        id: crypto.randomUUID(), kind, status: "OPEN", studentId: student.id, unitId: row?.unitId ?? b.targetUnitId ?? "", modalityRowId: row?.id ?? null, targetClassId: null, targetPlanId: null,
+        targetModalityId: null, targetUnitId: null, reason: null, note: b.note?.trim() || null, response: null, createdAt: new Date().toISOString(), decidedAt: null,
+      };
+      if (kind === "CLASS_CHANGE") {
+        const klass = mockClasses.find((c) => c.id === b.targetClassId);
+        if (!klass || klass.status !== "ACTIVE" || klass.unitId !== row!.unitId || klass.modalityId !== row!.modalityId || klass.id === row!.primaryClassId) return studentBad("targetClassId", "turma ativa da mesma unidade e modalidade, diferente da atual");
+        draft.targetClassId = klass.id;
+      } else if (kind === "PLAN_CHANGE") {
+        const plan = mockPlans.find((p) => p.id === b.targetPlanId);
+        if (!plan || plan.status !== "ACTIVE" || plan.unitId !== row!.unitId || modalityCatalog[plan.modalityIndex].id !== row!.modalityId || plan.id === row!.planId) return studentBad("targetPlanId", "plano ativo da mesma unidade e modalidade, diferente do atual");
+        draft.targetPlanId = plan.id;
+      } else if (kind === "NEW_MODALITY") {
+        if (!units.some((u) => u.id === b.targetUnitId) || !b.targetModalityId || !activeModalities.has(b.targetModalityId) || !unitModalities.get(b.targetUnitId!)?.has(b.targetModalityId)) return studentBad("targetModalityId", "modalidade inativa ou não oferecida pela unidade");
+        if (rows.some((m) => m.modalityId === b.targetModalityId)) return studentBad("targetModalityId", "o aluno já tem esta modalidade ativa");
+        draft.targetUnitId = b.targetUnitId!;
+        draft.targetModalityId = b.targetModalityId;
+      } else {
+        if (!b.reason || !END_REASONS.includes(b.reason)) return studentBad("reason", "um dos motivos da lista");
+        draft.reason = b.reason;
+      }
+      const same = (r: MockPortalRequest) =>
+        r.status === "OPEN" && r.studentId === student.id && r.kind === kind && (kind === "NEW_MODALITY" ? r.targetUnitId === draft.targetUnitId && r.targetModalityId === draft.targetModalityId : r.modalityRowId === draft.modalityRowId);
+      const locked = row && (kind === "CLASS_CHANGE" || kind === "PLAN_CHANGE") && openClosure(row.id);
+      if (locked || mockPortalRequests.some(same)) return error(409, "REQUEST_ALREADY_OPEN", "Já existe um pedido igual em aberto.");
+      mockPortalRequests.push(draft);
+      return HttpResponse.json(requestView(draft), { status: 201 });
+    },
+  },
+  {
+    // RF-MAT-04 (#86): lista da gestão; por padrão os abertos, do mais antigo ao mais novo; o Administrador só vê a unidade dele.
+    method: "get",
+    path: "/portal-requests",
+    resolver: ({ request }) => {
+      const denied = requestAdminAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const status = p.get("status") ?? "OPEN";
+      const kind = p.get("kind");
+      if ((status !== "ALL" && !REQUEST_STATUSES.includes(status)) || (kind && !REQUEST_KINDS.includes(kind))) return error(400, "BAD_REQUEST", "Filtro inválido.");
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const all = mockPortalRequests
+        .filter((r) => (activeRole() === "COORDINATOR" || r.unitId === ADMIN_UNIT) && (status === "ALL" || r.status === status) && (!kind || r.kind === kind) && (!p.get("unitId") || r.unitId === p.get("unitId")))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return HttpResponse.json({ items: all.slice((page - 1) * size, page * size).map(requestView), page, size, total: all.length });
+    },
+  },
+  {
+    method: "get",
+    path: "/portal-requests/{id}",
+    resolver: ({ params }) => {
+      const found = requestFor(params.id as string);
+      return found instanceof Response ? found : HttpResponse.json(requestView(found));
+    },
+  },
+  {
+    // D4: Aprovar só marca o pedido; o encerramento não tem aprovação (400). Já decidido, 409.
+    method: "post",
+    path: "/portal-requests/{id}/approve",
+    resolver: async ({ request, params }) => {
+      const found = requestFor(params.id as string);
+      if (found instanceof Response) return found;
+      const message = (((await request.json().catch(() => ({}))) as { message?: string }) ?? {}).message?.trim() ?? "";
+      if (found.kind === "CLOSURE") return studentBad("kind", "o encerramento não tem aprovação");
+      if (message.length > 500) return studentBad("message", "até 500 caracteres");
+      if (found.status !== "OPEN") return error(409, "REQUEST_NOT_OPEN", "O pedido já foi decidido.");
+      Object.assign(found, { status: "APPROVED", response: message || null, decidedAt: new Date().toISOString() });
+      return HttpResponse.json(requestView(found));
+    },
+  },
+  {
+    // Recusar exige mensagem de 3 a 500 caracteres; no encerramento a modalidade volta a Ativa (o selo sai com o pedido aberto).
+    method: "post",
+    path: "/portal-requests/{id}/refuse",
+    resolver: async ({ request, params }) => {
+      const found = requestFor(params.id as string);
+      if (found instanceof Response) return found;
+      const message = (((await request.json().catch(() => ({}))) as { message?: string }) ?? {}).message?.trim() ?? "";
+      if (message.length < 3 || message.length > 500) return studentBad("message", "de 3 a 500 caracteres");
+      if (found.status !== "OPEN") return error(409, "REQUEST_NOT_OPEN", "O pedido já foi decidido.");
+      Object.assign(found, { status: "REFUSED", response: message, decidedAt: new Date().toISOString() });
+      return HttpResponse.json(requestView(found));
     },
   },
   {

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Route, Routes } from "react-router";
+import { Link, Route, Routes } from "react-router";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { AreaUnavailablePage } from "@/features/auth/AreaUnavailablePage";
@@ -22,6 +22,7 @@ import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 import { BirthdaysCard } from "@/features/students/BirthdaysCard";
 import { EnrollmentWizardPage } from "@/features/students/enrollment-wizard/EnrollmentWizardPage";
+import { PortalRequestsPage } from "@/features/portal-requests/PortalRequestsPage";
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { ChargesPage } from "@/features/charges/ChargesPage";
 import { ChargePreviewPage } from "@/features/charges/ChargePreviewPage";
@@ -44,6 +45,7 @@ import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
 import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
 import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
+import { PortalRequestsPage as PortalOwnRequestsPage } from "@/features/portal/PortalRequestsPage";
 import { PortalTermPage } from "@/features/portal/PortalTermPage";
 import { RequirePortalTerm } from "@/features/portal/RequirePortalTerm";
 import { RequireArea } from "@/features/auth/RequireArea";
@@ -88,6 +90,9 @@ function Home() {
       <main className="mx-auto max-w-3xl px-4 py-6">
         <Welcome />
         <ModalityConfirmations />
+        <Link to="/portal/pedidos" className="mt-6 inline-flex min-h-11 items-center underline">
+          {t("portalOwn.link")}
+        </Link>
       </main>
     </div>
   );
@@ -109,6 +114,7 @@ export function App() {
           <Route element={<RequirePortalTerm />}>
             <Route path="/" element={<Home />} />
             <Route path="/conta" element={<AccountPage />} />
+            <Route path="/portal/pedidos" element={<PortalOwnRequestsPage />} />
           </Route>
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
@@ -127,6 +133,7 @@ export function App() {
             <Route path="/beneficios" element={<BenefitsPage />} />
             <Route path="/alunos/nova-matricula" element={<EnrollmentWizardPage />} />
             <Route path="/alunos/:id?" element={<StudentsPage />} />
+            <Route path="/pedidos" element={<PortalRequestsPage />} />
             <Route path="/cobrancas" element={<ChargesPage />} />
             <Route path="/cobrancas/previa" element={<ChargePreviewPage />} />
             <Route path="/cobrancas/recebimentos" element={<DailyReceiptsPage />} />
