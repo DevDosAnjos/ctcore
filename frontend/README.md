@@ -58,6 +58,19 @@ Duas etapas (#26): no MSW, `duas@exemplo.com` pede o segundo passo (código `123
 
 Os testes ficam em `e2e/` e rodam contra `npm run dev` (MSW ligado, só Chromium). Marque com `@critical` no título o fluxo que deve rodar em todo PR; os sem a marca rodam só no PR para `main`. O relatório sai em `playwright-report/`.
 
+**Trocar a resposta do MSW num teste:** importe `test` e `expect` de `e2e/support/msw` e use `msw.override({ método, caminho do contrato, status, corpo })`. Só vale naquele teste (a fixture chama `resetHandlers` ao fim) e não mexe em `src/mocks/handlers.ts`. O gancho (`window.__mswOverride`) existe só em `npm run dev` com MSW ligado. Registre **antes do login**: o login e o estado do mock vivem na página e se perdem em recarga; antes do `page.goto` vale já para a primeira leitura (ex.: erro de `/units/reachable`).
+
+```ts
+import { expect, test } from "./support/msw";
+
+test("sino 99+", async ({ page, msw }) => {
+  await msw.override({ method: "get", path: "/notifications/unread-count", status: 200, body: { count: 150 } });
+  await page.goto("/entrar");
+  // ...login...
+  await expect(page.getByRole("button", { name: /99\+/ })).toBeVisible();
+});
+```
+
 ## Imagem Docker
 
 `docker build -t ctcore-frontend frontend` (Node 24 gera o `dist`; nginx sem root serve em `8080`). `docker run --rm -p 8082:8080 ctcore-frontend`: `/` e rotas do app (ex.: `/qualquer`) devolvem `index.html`, `/assets/*` inexistente e `/api/*` devolvem 404. O CI constrói esta imagem quando a etapa `frontend` roda. Publicação: README da raiz.
