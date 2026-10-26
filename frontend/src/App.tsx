@@ -43,6 +43,9 @@ import { UsersPage } from "@/features/users/UsersPage";
 import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
 import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
+import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
+import { PortalTermPage } from "@/features/portal/PortalTermPage";
+import { RequirePortalTerm } from "@/features/portal/RequirePortalTerm";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ThemeToggle } from "@/theme/ThemeToggle";
@@ -84,6 +87,7 @@ function Home() {
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">
         <Welcome />
+        <ModalityConfirmations />
       </main>
     </div>
   );
@@ -101,8 +105,11 @@ export function App() {
       <Route element={<RequireSession />}>
         <Route element={<RequireTwoFactor />}>
           <Route path={TWO_FACTOR_REQUIRED_PATH} element={<TwoFactorRequiredPage />} />
-          <Route path="/" element={<Home />} />
-          <Route path="/conta" element={<AccountPage />} />
+          <Route path="/portal/termo" element={<PortalTermPage />} />
+          <Route element={<RequirePortalTerm />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/conta" element={<AccountPage />} />
+          </Route>
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR", "TEACHER"]} />}>

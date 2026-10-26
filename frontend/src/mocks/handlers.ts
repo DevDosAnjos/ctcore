@@ -52,6 +52,12 @@ const accounts: Record<string, ReturnType<typeof withTwoFactor>> = {
   "duas@exemplo.com": withTwoFactor("duas@exemplo.com", true, true),
   "vencida@exemplo.com": withTwoFactor("vencida@exemplo.com", true, true),
   "coord@exemplo.com": withTwoFactor("coord@exemplo.com", false, true),
+  // Aluno adulto com matrícula e termo pendente (#85): o portal leva ao aceite antes de qualquer tela.
+  "termo@exemplo.com": {
+    ...withTwoFactor("termo@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000014", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "STUDENT", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000014",
+  },
 };
 const VALID_CODES = ["123456", "RESERVA001"];
 const backupCodes = () => ({ backupCodes: Array.from({ length: 10 }, (_, i) => `RESERVA${String(i + 1).padStart(3, "0")}`) });
@@ -108,6 +114,9 @@ export const resetMockSession = () => {
   textCustoms = {};
   mockNotifications = initialNotifications();
   notificationReceiveAll = false;
+  portalAccepted.clear();
+  portalImage.clear();
+  portalConfirmed.clear();
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -1122,8 +1131,34 @@ const checkClasses = (unitId: string, modalityId: string, primaryId: string, oth
   }
   return null;
 };
+// Aceite do termo no portal (#85), em memória. Pendente = aluno com matrícula (ou o adulto da conta "termo@exemplo.com") sem aceite.
+const portalAccepted = new Map<string, string>();
+const portalImage = new Map<string, boolean>();
+const portalConfirmed = new Set<string>();
+const TERM_ACCOUNT = "termo@exemplo.com";
+const termEnrolled = (id: string) => enrollmentStatus(id) !== "NONE" || (id === STUDENT_ADULT && current.account.email === TERM_ACCOUNT);
+const termPending = (id: string) => termEnrolled(id) && !portalAccepted.has(id);
+// Rotas do portal: só Aluno e Responsável. O Aluno aceita o adulto; o Responsável, o menor (financeiro).
+const portalAccess = () => (!loggedIn ? unauthenticated() : isPortal() ? null : error(403, "FORBIDDEN", "Sem permissão."));
+const portalMine = () => mockStudents.filter((s) => s.id === (activeRole() === "STUDENT" ? STUDENT_ADULT : STUDENT_MINOR));
+const termText = (kind: "ENROLLMENT" | "IMAGE_USE") => {
+  const { version, body } = termsCurrent(kind);
+  return { version, body };
+};
+const confirmable = (s: StudentDetail) => {
+  const since = portalAccepted.get(s.id);
+  return (mockEnrollments[s.id]?.modalities ?? [])
+    .filter((m) => since && m.status === "ACTIVE" && m.startedAt > since.slice(0, 10) && !portalConfirmed.has(m.id))
+    .map((m) => {
+      const plan = mockPlans.find((p) => p.id === m.planId);
+      return {
+        modalityRowId: m.id, studentId: s.id, studentName: s.name, modality: modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? "",
+        unit: units.find((u) => u.id === m.unitId)?.name ?? "", planId: m.planId, plan: plan?.name ?? "", planValueCents: plan?.valueCents ?? 0,
+      };
+    });
+};
 // RF-ALU-02: selos pelos mesmos critérios do servidor; paga o próprio adulto ou o responsável financeiro do menor (RN-ALU-09, RN-ALU-10).
-const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP"];
+const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP", "TERM_PENDING"];
 const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const guardian = s.minor ? s.guardians.find((g) => g.financial) : undefined;
   const hasCpf = s.minor ? Boolean(guardian && guardianCpfs[guardian.guardianId]) : Boolean(s.cpf);
@@ -1139,7 +1174,7 @@ const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const isNew = latest !== null && Math.floor((now.getTime() - latest) / 86_400_000) <= 30;
   // RF-BEN-02, D10: Bolsista = bolsa percentual ativa (não vencida) numa modalidade ativa.
   const scholarship = benefitRows.some((b) => b.student.id === s.id && b.type === "PERCENT" && b.status === "ACTIVE" && (mockEnrollments[s.id]?.modalities ?? []).some((m) => m.id === b.rowId && m.status === "ACTIVE"));
-  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : seal === "SCHOLARSHIP" ? scholarship : isNew));
+  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : seal === "SCHOLARSHIP" ? scholarship : seal === "TERM_PENDING" ? termPending(s.id) : isNew));
 };
 // RF-BEN-02: validação e alvo da concessão (mesma ordem do servidor: 401/403, 400, 404, 403 fora do alcance, 400 de validade).
 type BenefitBody = { studentId?: string; modalityRowId?: string; type?: string; value?: unknown; reason?: string; decidedBy?: string; validUntil?: string | null; replaceExisting?: boolean; teacherId?: string };
@@ -4089,13 +4124,94 @@ export const routes: Route[] = [
     method: "get",
     path: "/portal/students",
     resolver: () => {
-      if (!loggedIn) return unauthenticated();
-      const role = activeRole();
-      if (role !== "STUDENT" && role !== "GUARDIAN") return error(403, "FORBIDDEN", "Sem permissão.");
+      const denied = portalAccess();
+      if (denied) return denied;
+      // RN-POR-03: com termo pendente que a conta aceita, 403 TERM_PENDING.
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
       const card = (s: StudentDetail, self: boolean) => ({ id: s.id, name: s.name, photoUrl: s.photoUrl, self });
       const adult = mockStudents.find((s) => s.id === STUDENT_ADULT)!;
       const minor = mockStudents.find((s) => s.id === STUDENT_MINOR)!;
-      return HttpResponse.json(role === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
+      return HttpResponse.json(activeRole() === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
+    },
+  },
+  {
+    // RN-MAT-11, RN-MAT-14: pendências de aceite que a conta aceita; funciona com o termo pendente.
+    method: "get",
+    path: "/portal/term",
+    resolver: () => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      return HttpResponse.json(portalMine().filter((s) => termPending(s.id)).map((s) => ({ id: s.id, name: s.name, term: termText("ENROLLMENT"), imageUse: { ...termText("IMAGE_USE"), granted: portalImage.get(s.id) ?? false } })));
+    },
+  },
+  {
+    // RN-MAT-12: versão obrigatória (400) e vigente (409); repetir ou sem pendência, 200 sem gravar; aluno de outra conta, 404.
+    method: "post",
+    path: "/portal/students/{id}/term-acceptance",
+    resolver: async ({ params, request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const body = (await request.json().catch(() => ({}))) as { version?: unknown; imageUse?: boolean };
+      if (!Number.isInteger(body.version)) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "version", message: "obrigatória" }]);
+      const student = portalMine().find((s) => s.id === params.id);
+      if (!student) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (body.version !== termText("ENROLLMENT").version) return error(409, "TERMS_VERSION_CONFLICT", "O termo mudou.");
+      const wrote = termPending(student.id);
+      if (wrote) {
+        portalAccepted.set(student.id, new Date().toISOString());
+        if (body.imageUse) portalImage.set(student.id, true);
+      }
+      return HttpResponse.json({ studentId: student.id, version: body.version, imageUse: portalImage.get(student.id) ?? false }, { status: wrote ? 201 : 200 });
+    },
+  },
+  {
+    method: "get",
+    path: "/portal/students/{id}/image-use",
+    resolver: ({ params }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (!portalMine().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      return HttpResponse.json({ ...termText("IMAGE_USE"), granted: portalImage.get(params.id as string) ?? false });
+    },
+  },
+  {
+    method: "put",
+    path: "/portal/students/{id}/image-use",
+    resolver: async ({ params, request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const body = (await request.json().catch(() => ({}))) as { granted?: unknown; version?: number };
+      if (typeof body.granted !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "granted", message: "obrigatório" }]);
+      if (!portalMine().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (body.granted && body.version !== undefined && body.version !== termText("IMAGE_USE").version) return error(409, "TERMS_VERSION_CONFLICT", "O termo mudou.");
+      portalImage.set(params.id as string, body.granted);
+      return HttpResponse.json({ ...termText("IMAGE_USE"), granted: body.granted });
+    },
+  },
+  {
+    // RN-MAT-13: modalidades ativas criadas depois do aceite e ainda sem confirmação, com o valor atual do plano.
+    method: "get",
+    path: "/portal/modality-confirmations",
+    resolver: () => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const mine = portalMine();
+      if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      return HttpResponse.json(mine.flatMap((s) => confirmable(s)));
+    },
+  },
+  {
+    method: "post",
+    path: "/portal/modality-confirmations/{modalityRowId}",
+    resolver: ({ params }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const mine = portalMine();
+      if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const found = mine.flatMap((s) => confirmable(s)).find((i) => i.modalityRowId === params.modalityRowId);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      portalConfirmed.add(found.modalityRowId);
+      return HttpResponse.json({ modalityRowId: found.modalityRowId, studentId: found.studentId, planId: found.planId, planValueCents: found.planValueCents }, { status: 201 });
     },
   },
   {

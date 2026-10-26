@@ -98,10 +98,11 @@ public class EnrollmentConclusion {
     private final Clock clock;
     private final TrainingClasses classes;
     private final FirstCharges firstCharges;
+    private final WelcomeEmail welcome;
 
     public EnrollmentConclusion(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Students students, Enrollments enrollments,
             BenefitWrite benefits, Permissions permissions, AuditService audit, InviteService invites, OriginProof proofs, Clock clock,
-            TrainingClasses classes, FirstCharges firstCharges) {
+            TrainingClasses classes, FirstCharges firstCharges, WelcomeEmail welcome) {
         this.jdbc = jdbc;
         this.transactions = transactions;
         this.students = students;
@@ -114,6 +115,7 @@ public class EnrollmentConclusion {
         this.clock = clock;
         this.classes = classes;
         this.firstCharges = firstCharges;
+        this.welcome = welcome;
     }
 
     private static ApiStatusException rule(String field, String message) {
@@ -192,6 +194,7 @@ public class EnrollmentConclusion {
         List<Enrollments.ModalityInput> inputs = inputs(req);
         Enrollments.checkInputs(inputs);
         String[] mail = new String[2]; // e-mail e código do convite, para enviar depois do commit
+        Students.Detail[] seen = new Students.Detail[1];
         Concluded done = transactions.execute(() -> {
             UUID org = who.organizationId();
             jdbc.sql("select id from student where organization_id = :org and id = :id for update").param("org", org).param("id", studentId)
@@ -223,15 +226,23 @@ public class EnrollmentConclusion {
             }
             List<FirstCharges.Charge> charges = firstCharges.create(who, studentId, added.rowIds(), terms, ip);
             String invite = invite(who, student, mail);
-            return new Concluded(enrollments.get(who, studentId), summary, true, invite, charges);
+            seen[0] = student;
+            boolean termPending = students.row(org, studentId).map(r -> r.seals().contains(StudentSeal.TERM_PENDING)).orElse(true); // mesmo cálculo do selo (RN-MAT-11)
+            return new Concluded(enrollments.get(who, studentId), summary, termPending, invite, charges);
         });
-        if (mail[1] == null) return done;
+        Students.Detail student = seen[0];
+        String unitName = done.summary().units().get(0).unitName(); // D6: a primeira unidade da matrícula
+        if (mail[1] == null) {
+            if (student.minor()) welcome.send(who.organizationId(), studentId, student.name(), unitName, true, null); // o convite dos responsáveis saiu no cadastro
+            return done;
+        }
         try {
             invites.sendInvite(mail[0], mail[1]);
-            return new Concluded(done.enrollment(), done.summary(), true, "SENT", done.charges());
+            welcome.send(who.organizationId(), studentId, student.name(), unitName, false, mail[0]);
+            return new Concluded(done.enrollment(), done.summary(), done.termPending(), "SENT", done.charges());
         } catch (RuntimeException e) { // R8: a matrícula já está gravada; a falha fica no log (sem e-mail nem código)
             LOG.warn("Student invite e-mail was not sent after enrollment: {}", e.getClass().getSimpleName());
-            return new Concluded(done.enrollment(), done.summary(), true, "FAILED", done.charges());
+            return new Concluded(done.enrollment(), done.summary(), done.termPending(), "FAILED", done.charges());
         }
     }
 
