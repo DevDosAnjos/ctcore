@@ -9,7 +9,8 @@ export function notificationTarget(n: Pick<AppNotification, "type" | "refType" |
     STUDENT_MAJORITY: student,
     EMAIL_PROBLEM: student,
     INVITE_PENDING: "/configuracoes/usuarios",
-    CLOSURE_REQUEST: "/configuracoes/organizacao",
+    CLOSURE_REQUEST: "/pedidos",
+    PORTAL_REQUEST: "/pedidos",
     MP_DISCONNECTED: "/configuracoes/organizacao",
     SUBSCRIPTION_OVERDUE: "/configuracoes/organizacao",
   };

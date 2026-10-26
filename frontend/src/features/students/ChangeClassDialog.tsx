@@ -5,12 +5,13 @@ import { combine, ModalityDialog, OtherClasses, PickSelect, useClassChoices } fr
 import type { EnrollmentModality } from "./types";
 
 // R9 (RN-MAT-15): troca a turma principal e os outros horários; vale na hora. O servidor reconfere as regras e o erro aparece no campo.
-export function ChangeClassDialog({ studentId, row, onClose, onDone }: { studentId: string; row: EnrollmentModality; onClose: () => void; onDone: () => void }) {
+// `initial` é a turma pedida pelo aluno (RN-MAT-16): a janela abre com ela escolhida, e a gestão confere e confirma.
+export function ChangeClassDialog({ studentId, row, initial, onClose, onDone }: { studentId: string; row: EnrollmentModality; initial?: string; onClose: () => void; onDone: () => void }) {
   const { t } = useTranslation();
   const k = "students.record.enrollment.";
   const classes = useClassChoices(row.unit.id, row.modality.id);
-  const [primary, setPrimary] = useState(row.primaryClass.id);
-  const [others, setOthers] = useState(row.otherClasses.map((c) => c.id));
+  const [primary, setPrimary] = useState(initial ?? row.primaryClass.id);
+  const [others, setOthers] = useState(row.otherClasses.map((c) => c.id).filter((id) => id !== initial));
   const { state, retry } = combine(classes);
   const options = classes.data?.items ?? [];
   return (

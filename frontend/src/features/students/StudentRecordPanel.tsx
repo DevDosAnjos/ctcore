@@ -1,5 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useSearchParams } from "react-router";
 import { SidePanel } from "@/components/SidePanel";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { WhatsAppButton } from "@/components/whatsapp";
@@ -103,7 +104,9 @@ function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
   const { t } = useTranslation();
   const { status, data, reload } = useStudentRecord(id);
   const { permissions, status: permStatus } = usePermissions();
-  const [tab, setTab] = useState<Tab>("summary");
+  // R18: a ficha que chega com `?pedido=` abre na matrícula, onde a troca pedida abre preenchida.
+  const asked = useSearchParams()[0].has("pedido");
+  const [tab, setTab] = useState<Tab>(asked ? "enrollment" : "summary");
   const [editing, setEditing] = useState(false);
   // Só a gestão vê o botão; a barreira é o servidor.
   const canEdit = !!permissions && permissions.STUDENT_MANAGE !== "NONE";

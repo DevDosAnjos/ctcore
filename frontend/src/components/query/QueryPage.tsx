@@ -23,6 +23,7 @@ export function QueryPage<T>({
   texts,
   cards,
   footer,
+  search = true,
 }: {
   columns: Column<T>[];
   fetchPage: (q: Query) => Promise<Page<T>>;
@@ -35,6 +36,8 @@ export function QueryPage<T>({
   // Opcionais: abaixo de md a lista sai em cartões no lugar da tabela; `footer` recebe a página carregada (ex.: totais).
   cards?: (row: T) => ReactNode;
   footer?: (page: Page<T>) => ReactNode;
+  /** Falso: sem caixa de busca (a rota não tem `q`). */
+  search?: boolean;
 }) {
   const { t } = useTranslation();
   const { get, set, clear } = useQueryParams();
@@ -129,13 +132,15 @@ export function QueryPage<T>({
   return (
     <div className="flex flex-col gap-3">
       <form role="search" className="flex flex-wrap items-end gap-2" onSubmit={(e) => e.preventDefault()}>
-        <input
-          type="search"
-          aria-label={t("query.search")}
-          className="min-h-11 min-w-0 flex-1 rounded-md border bg-background px-3"
-          value={q}
-          onChange={(e) => set({ q: e.target.value })}
-        />
+        {search && (
+          <input
+            type="search"
+            aria-label={t("query.search")}
+            className="min-h-11 min-w-0 flex-1 rounded-md border bg-background px-3"
+            value={q}
+            onChange={(e) => set({ q: e.target.value })}
+          />
+        )}
         {filters?.({ get, set: (k, v) => set({ [k]: v }), counts: lastCounts })}
       </form>
       {body}

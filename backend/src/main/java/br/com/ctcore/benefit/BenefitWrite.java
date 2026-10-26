@@ -231,17 +231,26 @@ public class BenefitWrite {
 
     /** Dentro de uma transação da organização: encerra o benefício ativo da modalidade encerrada (RN-MAT-17, RN-BEN-01). */
     public void endModalityBenefits(AccountPrincipal who, UUID modalityRowId, String ip) {
+        endModalityBenefits(who.organizationId(), actor(who), modalityRowId, ip);
+    }
+
+    /** Igual ao anterior, para o encerramento automático (ator sistema). */
+    public void endModalityBenefits(UUID org, AuditActor actor, UUID modalityRowId, String ip) {
         for (var b : jdbc.sql("select id, unit_id from benefit where organization_id = :org and enrollment_modality_id = :row and status = 'ACTIVE' order by id for update")
-                .param("org", who.organizationId()).param("row", modalityRowId).query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class))).list()) {
-            endLocked(who, b.getKey(), b.getValue(), "Modalidade encerrada", ip);
+                .param("org", org).param("row", modalityRowId).query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class))).list()) {
+            endLocked(org, actor, b.getKey(), b.getValue(), "Modalidade encerrada", ip);
         }
     }
 
     private void endLocked(AccountPrincipal who, UUID id, UUID unit, String reason, String ip) {
+        endLocked(who.organizationId(), actor(who), id, unit, reason, ip);
+    }
+
+    private void endLocked(UUID org, AuditActor actor, UUID id, UUID unit, String reason, String ip) {
         int n = jdbc.sql("update benefit set status = 'ENDED', ended_at = :now, end_reason = :why where organization_id = :org and id = :id and status = 'ACTIVE'")
-                .param("now", OffsetDateTime.now(clock)).param("why", reason).param("org", who.organizationId()).param("id", id).update();
+                .param("now", OffsetDateTime.now(clock)).param("why", reason).param("org", org).param("id", id).update();
         if (n == 0) throw new ApiStatusException(ErrorCode.CONFLICT);
-        audit.record(new AuditEntry(actor(who), "benefit.ended", "benefit", id.toString(), unit, Map.of("status", "ACTIVE"),
+        audit.record(new AuditEntry(actor, "benefit.ended", "benefit", id.toString(), unit, Map.of("status", "ACTIVE"),
                 Map.of("status", "ENDED", "endReason", reason), null, ip));
     }
 

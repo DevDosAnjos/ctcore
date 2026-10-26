@@ -30,7 +30,11 @@ export const menuCatalog: CatalogGroup[] = [
   },
   {
     id: "people",
-    items: [item("students", "STUDENT_MANAGE", "/alunos", true), item("teachers", "TEACHERS", "/professores", true)],
+    items: [
+      item("students", "STUDENT_MANAGE", "/alunos", true),
+      item("requests", "STUDENT_MANAGE", "/pedidos", true),
+      item("teachers", "TEACHERS", "/professores", true),
+    ],
   },
   {
     id: "finance",

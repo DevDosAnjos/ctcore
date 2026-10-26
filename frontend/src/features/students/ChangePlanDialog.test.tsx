@@ -70,6 +70,16 @@ describe("janela Trocar plano (R10, R25, CA34)", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("R18: com o plano pedido pelo aluno a janela abre com ele escolhido", async () => {
+    server.use(...choiceRoutes());
+    render(
+      <ThemeProvider>
+        <ChangePlanDialog studentId="s1" row={modalityRow()} initial="p2" onClose={onClose} onDone={onDone} />
+      </ThemeProvider>,
+    );
+    expect(await screen.findByLabelText("Plano novo")).toHaveValue("p2");
+  });
+
   it("falha ao carregar pede nova tentativa", async () => {
     server.use(http.get("/api/v1/plans", () => HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 })));
     render(

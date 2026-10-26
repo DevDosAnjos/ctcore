@@ -27,7 +27,7 @@ export function AccountFrame({ children }: { children: ReactNode }) {
   if (MANAGEMENT.includes(role)) return <ManagementLayout activeId="account">{children}</ManagementLayout>;
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
         <Link to="/" className="text-lg font-semibold">
           {t("app.name")}
         </Link>

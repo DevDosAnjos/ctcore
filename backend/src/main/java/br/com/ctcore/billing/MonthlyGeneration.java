@@ -39,7 +39,7 @@ public class MonthlyGeneration {
             + "join modality m on m.id = em.modality_id join plan p on p.id = em.plan_id left join plan np on np.id = em.next_plan_id "
             + "left join benefit b on b.enrollment_modality_id = em.id and b.status = 'ACTIVE' "
             + "left join student_guardian sg on sg.student_id = em.student_id and sg.financial "
-            + "where em.organization_id = :org and em.unit_id = :unit and em.status = 'ACTIVE'";
+            + "where em.organization_id = :org and em.unit_id = :unit and em.status = 'ACTIVE' and not " + Charges.closing("em");
 
     /** Resultado de uma execução; {@code failedUnits} só a tarefa preenche. */
     public record Run(int created, int skippedZero, int skippedExisting, int failedUnits) {
@@ -232,7 +232,7 @@ public class MonthlyGeneration {
         if (permissions.effective(who).get(Permission.COLLECTIONS) == Access.NONE) throw new AccessDeniedException("Permission denied");
         if (in == null || in.count() == null || in.count() < 1 || in.count() > MAX_ADVANCE) throw new ApiValidationException("count", "de 1 a " + MAX_ADVANCE);
         return transactions.execute(() -> {
-            var row = jdbc.sql("select unit_id, status from enrollment_modality where id = :id and student_id = :student and organization_id = :org")
+            var row = jdbc.sql("select unit_id, case when " + Charges.closing("em") + " then 'CLOSING' else status end from enrollment_modality em where id = :id and student_id = :student and organization_id = :org")
                     .param("id", rowId).param("student", studentId).param("org", who.organizationId())
                     .query((rs, n) -> new Object[] {rs.getObject(1, UUID.class), rs.getString(2)}).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
             UUID unit = (UUID) row[0];
@@ -256,7 +256,7 @@ public class MonthlyGeneration {
     }
 
     private Next lockNext(AccountPrincipal who, UUID studentId, UUID rowId) {
-        var row = jdbc.sql("select unit_id, status from enrollment_modality where id = :id and student_id = :student and organization_id = :org")
+        var row = jdbc.sql("select unit_id, case when " + Charges.closing("em") + " then 'CLOSING' else status end from enrollment_modality em where id = :id and student_id = :student and organization_id = :org")
                 .param("id", rowId).param("student", studentId).param("org", who.organizationId())
                 .query((rs, n) -> new Object[] {rs.getObject(1, UUID.class), rs.getString(2)}).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
         UUID unit = (UUID) row[0];

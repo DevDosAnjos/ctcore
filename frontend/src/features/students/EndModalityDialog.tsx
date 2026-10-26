@@ -19,7 +19,10 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
   const [note, setNote] = useState("");
   const [choices, setChoices] = useState<Record<string, Choice>>({});
   const { state, retry } = combine(preview);
-  const charges = preview.data?.openCharges ?? [];
+  const all = preview.data?.openCharges ?? [];
+  // RN-MAT-18 (D6): com pedido de encerramento aberto, o servidor cancela as cobranças com vencimento depois dele; a janela só as mostra.
+  const automatic = all.filter((c) => c.afterRequest);
+  const charges = all.filter((c) => !c.afterRequest);
   const choose = (id: string, change: Partial<Choice>) => setChoices((c) => ({ ...c, [id]: { ...(c[id] ?? { cancel: false, reason: "" }), ...change } }));
   const decisions: ChargeDecision[] = charges.map((c) => (choices[c.id]?.cancel ? { chargeId: c.id, action: "CANCEL", reason: choices[c.id].reason.trim() } : { chargeId: c.id, action: "KEEP" }));
   return (
@@ -41,9 +44,20 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
             <p id={`${noteId}-charges`} className="text-sm font-medium">
               {t(`${k}charges`)}
             </p>
-            {charges.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t(`${k}noCharges`)}</p>
-            ) : (
+            {all.length === 0 && <p className="text-sm text-muted-foreground">{t(`${k}noCharges`)}</p>}
+            {automatic.length > 0 && (
+              <>
+                <p className="text-sm text-muted-foreground">{t(`${k}afterRequest`)}</p>
+                <ul className="flex flex-col gap-1 text-sm">
+                  {automatic.map((c) => (
+                    <li key={c.id} className="rounded-md border p-2">
+                      {t(`${k}chargeLine`, { due: formatDate(c.dueOn), amount: formatCurrency(c.amountCents), status: t(`${k}autoCanceled`) })}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {charges.length > 0 && (
               <ul className="flex flex-col gap-2 text-sm">
                 {charges.map((c) => {
                   const choice = choices[c.id];

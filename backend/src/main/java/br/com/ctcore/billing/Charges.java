@@ -202,13 +202,23 @@ public class Charges {
                 .param("now", OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC)).query(this::map).single();
     }
 
-    public record OpenCharge(UUID id, LocalDate referenceMonth, LocalDate dueOn, long amountCents, String status) {}
+    /** RN-MAT-18: a modalidade (alias dado) tem pedido de encerramento aberto; ela não gera mais cobrança. */
+    public static String closing(String modality) {
+        return "exists (select 1 from portal_request pr where pr.organization_id = " + modality + ".organization_id and pr.enrollment_modality_id = " + modality
+                + ".id and pr.kind = 'CLOSURE' and pr.status = 'OPEN')";
+    }
+
+    /** RN-MAT-18 (D6): vencimento depois da data do pedido de encerramento aberto (data no fuso da unidade). Aliases {@code c} e {@code u}. */
+    private static final String AFTER_REQUEST = "exists (select 1 from portal_request pr where pr.organization_id = c.organization_id and pr.enrollment_modality_id = "
+            + "c.enrollment_modality_id and pr.kind = 'CLOSURE' and pr.status = 'OPEN' and c.due_on > (pr.created_at at time zone u.timezone)::date)";
+
+    public record OpenCharge(UUID id, LocalDate referenceMonth, LocalDate dueOn, long amountCents, String status, boolean afterRequest) {}
 
     /** RN-MAT-17: cobranças em aberto da modalidade, com a situação calculada; chamar dentro da transação da organização. */
     public List<OpenCharge> openOfModality(UUID org, UUID modalityRow) {
-        return jdbc.sql("select c.id, c.reference_month, c.due_on, c.amount_cents, " + SITUATION + FROM + "where c.organization_id = :org and c.enrollment_modality_id = :row "
+        return jdbc.sql("select c.id, c.reference_month, c.due_on, c.amount_cents, " + SITUATION + ", " + AFTER_REQUEST + FROM + "where c.organization_id = :org and c.enrollment_modality_id = :row "
                 + "and c.status = 'OPEN' order by c.due_on, c.reference_month, c.id").param("org", org).param("row", modalityRow).param("now", OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC))
-                .query((rs, n) -> new OpenCharge(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getObject(3, LocalDate.class), rs.getLong(4), rs.getString(5))).list();
+                .query((rs, n) -> new OpenCharge(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getObject(3, LocalDate.class), rs.getLong(4), rs.getString(5), rs.getBoolean(6))).list();
     }
 
     private static String quick(String quick) {

@@ -1,20 +1,22 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { server } from "@/mocks/server";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
-import { enrollmentOf, modalityRow } from "./enrollmentFixtures";
+import { choiceRoutes, enrollmentOf, modalityRow } from "./enrollmentFixtures";
 import { RecordEnrollment } from "./RecordEnrollment";
 import type { Enrollment } from "./types";
 
 type Result = Parameters<typeof RecordEnrollment>[0]["enrollment"];
 const reload = vi.fn();
 const result = (status: Result["status"], data?: Enrollment): Result => ({ status, data, reload });
-const show = (enrollment: Result, canGrant = false) =>
+const show = (enrollment: Result, canGrant = false, path = "/") =>
   render(
     <ThemeProvider>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <RecordEnrollment studentId="s1" studentName="Aluno Teste" canGrant={canGrant} enrollment={enrollment} onChanged={() => {}} />
       </MemoryRouter>
     </ThemeProvider>,
@@ -71,6 +73,33 @@ describe("aba Matrícula e modalidades (R23, R27, CA33)", () => {
     expect(screen.queryByText(/em breve/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Encerrar" }));
     expect(await screen.findByRole("dialog", { name: "Encerrar modalidade" })).toBeInTheDocument();
+  });
+
+  it("RN-MAT-18: a modalidade com pedido de encerramento aberto traz o selo Encerramento solicitado e segue ativa", () => {
+    show(result("ready", enrollmentOf([modalityRow({ closureRequestedAt: "2026-10-20T15:00:00Z" }), modalityRow({ id: "m2" })])));
+    expect(screen.getAllByText("Encerramento solicitado")).toHaveLength(1);
+    expect(screen.getAllByText("Ativa")).toHaveLength(2);
+  });
+
+  it.each([
+    ["CLASS_CHANGE", { targetClassId: "k3", targetPlanId: null }, "Trocar turma de Jiu-Jitsu", "Turma principal", "k3"],
+    ["PLAN_CHANGE", { targetClassId: null, targetPlanId: "p2" }, "Trocar plano de Jiu-Jitsu", "Plano novo", "p2"],
+  ])("R18: a ficha com ?pedido= de %s abre a troca já preenchida com o que o aluno pediu", async (kind, target, title, field, value) => {
+    server.use(
+      ...choiceRoutes(),
+      http.get("/api/v1/portal-requests/r1", () => HttpResponse.json({ id: "r1", kind, status: "APPROVED", studentId: "s1", modalityRowId: "m1", ...target })),
+    );
+    show(result("ready", enrollmentOf([modalityRow()])), false, "/alunos/s1?pedido=r1");
+    const dialog = await screen.findByRole("dialog", { name: title });
+    expect(await within(dialog).findByLabelText(field)).toHaveValue(value);
+  });
+
+  it("R18: pedido de outro aluno ou que não carrega não abre janela", async () => {
+    server.use(http.get("/api/v1/portal-requests/r1", () => HttpResponse.json({ id: "r1", kind: "CLASS_CHANGE", studentId: "outro", modalityRowId: "m1", targetClassId: "k3" })));
+    show(result("ready", enrollmentOf([modalityRow()])), false, "/alunos/s1?pedido=r1");
+    await screen.findByText("Jiu-Jitsu");
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it.each([

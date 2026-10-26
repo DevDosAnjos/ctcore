@@ -76,6 +76,14 @@ describe("assistente Nova matrícula (RF-MAT-01, #67)", () => {
     expect(screen.getByText("Aluno: Aluno Adulto Fictício")).toBeInTheDocument();
   });
 
+  it("R18: o pedido de nova modalidade abre o assistente com unidade e modalidade preenchidas", async () => {
+    server.use(http.get("/api/v1/units/:id/modalities", () => HttpResponse.json({ canManage: true, items: [{ id: "00000000-0000-0000-0000-000000000103", name: "Jiu-Jitsu", offered: true }] })));
+    await setup("COORDINATOR", `/alunos/nova-matricula?aluno=${ADULT_ID}&unidade=00000000-0000-0000-0000-000000000021&modalidade=00000000-0000-0000-0000-000000000103`);
+    expect(await screen.findByText("Etapa 2 de 5")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Unidade")).toHaveValue("00000000-0000-0000-0000-000000000021");
+    await waitFor(() => expect(screen.getByLabelText("Modalidade")).toHaveValue("00000000-0000-0000-0000-000000000103"));
+  });
+
   it("CA19: CPF existente mostra só nome e situação e pede confirmação; CPF novo mostra o cadastro", async () => {
     const user = userEvent.setup();
     await setup();
