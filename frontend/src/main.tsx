@@ -9,8 +9,9 @@ import { ThemeProvider } from "./theme/ThemeProvider";
 
 async function start() {
   if (import.meta.env.DEV && import.meta.env.VITE_USE_MSW !== "false") {
-    const { worker } = await import("./mocks/browser");
+    const { worker, installE2eHook } = await import("./mocks/browser");
     await worker.start({ onUnhandledFrame: "bypass" });
+    installE2eHook(worker);
   }
   createRoot(document.getElementById("root")!).render(
     <StrictMode>

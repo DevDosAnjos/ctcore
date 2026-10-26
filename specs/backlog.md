@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 09. O dono confirmou em 23/10/2026 que revisou a Sprint 08 (Cobranças) e fez o PR dev→main (#348, merge). Só o dono libera a seguinte.
+Sprint liberada: Sprint 10 (Portal do aluno). O dono confirmou em 26/10/2026 que revisou a Sprint 09 (Comunicação) e liberou a Sprint 10. Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -109,7 +109,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 374 | Atualizar a especificação com as decisões da Sprint 09 | issue #374 | Sprint 09 | — | agente | feito |
 | 378 | Encaixes da Sprint 09 no backlog | issue #378 | Sprint 09 | — | agente | feito |
 | 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | a fazer |
-| 368 | Testes e2e poderem sobrescrever respostas do MSW por teste (worker.use) | issue #368 | Sprint 10 | — | agente | a fazer |
+| 368 | Testes e2e poderem sobrescrever respostas do MSW por teste (worker.use) | issue #368 | Sprint 10 | — | agente | feito |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | a fazer |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |
