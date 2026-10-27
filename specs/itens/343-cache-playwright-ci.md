@@ -107,15 +107,23 @@ Achados: nenhum obrigatório; a sugestão da rodada 1 (sed no próprio ci.yml) s
 
 ## Medição do CA4 (CI)
 
-Limite: 5 PRs. Medido: 1 (#361). Os demais ficam na #363.
+Limite: 5 PRs. Medidos: 5 de 5 (#361 e, pela #363, #381, #382, #383 e #384).
 
 | PR | Run | Inicializar containers | Conferência de versão | `npm run e2e` | Job `e2e` inteiro | CI |
 |---|---|---|---|---|---|---|
 | #361 | 40087704834 | 33 s | 0 s | 42 s | 89 s | verde |
 | #364 | 40090311740 | sem medição (job e2e skipped, sem mudança no front-end) | — | — | — | verde |
 | #365 | 40093207930 | sem medição (job e2e skipped, sem mudança no front-end) | — | — | — | verde |
+| #381 | 40370522195 | 26 s | 0 s | 57 s | 105 s | verde |
+| #382 | 40384879996 | 27 s | 0 s | 62 s | 110 s | verde |
+| #383 | 40414792380 | 27 s | 0 s | 69 s | 111 s | verde |
+| #384 | 40430676426 | 37 s | 0 s | 64 s | 118 s | verde |
 
 Critério por PR: container + conferência abaixo de 60 s (33 s: passou) e `e2e` abaixo de 7 min (89 s: passou). Antes (issue): 22 s a 695 s.
+
+Medições da #363 (durações de `startedAt`/`completedAt` por passo, `gh run view <run> --json jobs`): todos os PRs passaram (container + conferência de 26 s a 37 s, abaixo de 60 s; `e2e` de 57 s a 69 s, abaixo de 7 min; job inteiro de 105 s a 118 s, abaixo de 15 min).
+
+Resultado final: 5 de 5 medidos, aprovado. O cache por imagem do Playwright cumpre os limites; a alternativa da D1 (cache em `push` para `dev`) não é necessária.
 
 ## Decisão do dono (24/10/2026)
 

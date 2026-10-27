@@ -108,7 +108,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 372 | Log sem a exceção inteira nos jobs da Sprint 09 | issue #372 | Sprint 09 | — | agente | feito |
 | 374 | Atualizar a especificação com as decisões da Sprint 09 | issue #374 | Sprint 09 | — | agente | feito |
 | 378 | Encaixes da Sprint 09 no backlog | issue #378 | Sprint 09 | — | agente | feito |
-| 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | a fazer |
+| 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | feito |
 | 368 | Testes e2e poderem sobrescrever respostas do MSW por teste (worker.use) | issue #368 | Sprint 10 | — | agente | feito |
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | feito |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | feito |
