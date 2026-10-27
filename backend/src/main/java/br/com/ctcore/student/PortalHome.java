@@ -96,7 +96,7 @@ public class PortalHome {
             ChargeSection charges = payable.contains(selected) ? charges(org, selected, now) : new ChargeSection(List.of(), null);
             boolean reduced = shell.reduced(who);
             if (reduced) return new View(true, students, family, selected, charges, List.of(), new Notices(0, List.of()), List.of());
-            return new View(false, students, family, selected, charges, lessons(org, selected, now), notices(org, selected, now), belts(org, selected, now));
+            return new View(false, students, family, selected, charges, lessons(org, selected, now), notices(org, who.accountId(), selected, now), belts(org, selected, now));
         });
     }
 
@@ -141,15 +141,15 @@ public class PortalHome {
     }
 
     // D4: o fixado vale até o fim de pinned_until, no fuso da unidade do aviso (sem unidade, a da matrícula do aluno).
-    private Notices notices(UUID org, UUID student, OffsetDateTime now) {
+    private Notices notices(UUID org, UUID account, UUID student, OffsetDateTime now) {
         List<Notice> all = jdbc.sql("select a.id, a.title, a.sent_at, coalesce(a.pinned_until >= (cast(:now as timestamptz) at time zone coalesce(ua.timezone, su.timezone))::date, false), "
-                + "not exists (select 1 from announcement_read r where r.organization_id = a.organization_id and r.announcement_id = a.id and r.student_id = :sid), "
+                + PortalShell.unread(":sid") + ", "
                 + "(select ac.name from account ac where ac.id = a.author_account_id) "
                 + "from announcement a join student st on st.organization_id = a.organization_id and st.id = :sid "
                 + "join unit su on su.organization_id = st.organization_id and su.id = st.registered_unit_id "
                 + "left join unit ua on ua.organization_id = a.organization_id and ua.id = a.unit_id "
                 + "where a.organization_id = :org and a.sent_at is not null and exists (select 1 from enrollment_modality em where " + ACTIVE_ROW + " and " + PortalShell.REACH + ")")
-                .param("org", org).param("sid", student).param("now", now)
+                .param("org", org).param("sid", student).param("now", now).param("acc", account)
                 .query((rs, n) -> new Notice(rs.getObject(1, UUID.class), rs.getString(2), rs.getObject(3, OffsetDateTime.class), rs.getBoolean(4), rs.getBoolean(5),
                         rs.getString(6))).list();
         int unread = (int) all.stream().filter(Notice::unread).count();

@@ -276,6 +276,7 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from announcement where sent_at is not null", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from announcement where sent_at is null", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from announcement_class", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from announcement_read", Integer.class)).isEqualTo(1);
     }
 
 

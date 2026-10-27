@@ -2935,6 +2935,46 @@
     "emptyTitle": "Nenhuma aula nesta semana",
     "emptyText": "Quando houver aulas nesta semana, elas aparecem aqui."
   },
+  "portalAnnouncements": {
+    "title": "Avisos",
+    "student": "Aluno",
+    "you": "Você",
+    "filterLabel": "Avisos mostrados",
+    "filter": {
+      "ALL": "Todos",
+      "UNREAD": "Não lidos",
+      "MODALITY": "Por modalidade"
+    },
+    "modality": "Modalidade",
+    "markAll": "Marcar todos como lidos",
+    "cleared_one": "{{count}} aviso marcado como lido.",
+    "cleared_other": "{{count}} avisos marcados como lidos.",
+    "clearFailed": "Não foi possível marcar os avisos como lidos. Tente de novo.",
+    "listLabel": "Lista de avisos",
+    "pinned": "Fixado",
+    "unread": "Não lido",
+    "sentAt": "Enviado em {{date}}",
+    "author": "Por {{name}}",
+    "destination": {
+      "ORGANIZATION": "Para: toda a academia",
+      "UNIT": "Para: {{names}}",
+      "MODALITY": "Para: {{names}}",
+      "CLASS": "Para: turma {{names}}",
+      "CLASSES": "Para: turmas {{names}}"
+    },
+    "pageNav": "Páginas de avisos",
+    "prev": "Página anterior",
+    "next": "Próxima página",
+    "pageOf": "Página {{page}} de {{pages}}",
+    "emptyTitle": "Nenhum aviso",
+    "emptyText": "Quando a academia enviar um aviso para você, ele aparece aqui.",
+    "emptyUnreadTitle": "Nenhum aviso não lido",
+    "emptyUnreadText": "Você está em dia com os avisos.",
+    "dialogTitle": "Aviso",
+    "imageAlt": "Imagem do aviso",
+    "notFoundTitle": "Aviso indisponível",
+    "notFoundText": "Este aviso não está mais disponível para você."
+  },
   "portalCard": {
     "link": "Ver carteirinha",
     "title": "Carteirinha",
@@ -2998,7 +3038,8 @@
       "unreadCount_other": "{{count}} avisos não lidos",
       "pinned": "Fixado",
       "unread": "Não lido",
-      "sentAt": "Enviado em {{date}}"
+      "sentAt": "Enviado em {{date}}",
+      "viewAll": "Ver todos os avisos"
     },
     "belts": {
       "title": "Faixa",

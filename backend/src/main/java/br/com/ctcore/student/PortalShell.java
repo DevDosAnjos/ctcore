@@ -35,11 +35,16 @@ public class PortalShell {
             + "and ac.announcement_id = a.id and (ac.class_id = em.primary_class_id or exists (select 1 from enrollment_modality_class x "
             + "where x.organization_id = em.organization_id and x.modality_row_id = em.id and x.class_id = ac.class_id)))))";
 
-    // Comunicados enviados que alcançam um aluno ligado e ativo que ainda não o leu (um aviso conta uma vez, mesmo com dois filhos).
-    private static final String UNREAD = "select count(*) from announcement a where a.organization_id = :org and a.sent_at is not null and exists ("
+    /** Condição de "não lido" do aluno (expressão SQL, ex. {@code s.id} ou {@code :sid}) e da conta {@code :acc}: sem leitura do aluno e sem marca de "limpo" da conta. Única para sino, Início e lista. */
+    static String unread(String student) {
+        return "not exists (select 1 from announcement_read r where r.organization_id = a.organization_id and r.announcement_id = a.id and r.student_id = " + student + ") "
+                + "and not exists (select 1 from announcement_dismissal d where d.organization_id = a.organization_id and d.announcement_id = a.id and d.account_id = :acc)";
+    }
+
+    // Comunicados enviados que alcançam um aluno ligado e ativo que ainda não o leu (um aviso conta uma vez, mesmo com dois filhos) e que a conta não limpou.
+    static final String UNREAD_FROM = "from announcement a where a.organization_id = :org and a.sent_at is not null and exists ("
             + "select 1 from student s join enrollment_modality em on em.organization_id = s.organization_id and em.student_id = s.id and em.status = 'ACTIVE' "
-            + "where " + LINKED + " and " + REACH + " "
-            + "and not exists (select 1 from announcement_read r where r.organization_id = a.organization_id and r.announcement_id = a.id and r.student_id = s.id))";
+            + "where " + LINKED + " and " + REACH + " and " + unread("s.id") + ")";
 
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
@@ -56,7 +61,7 @@ public class PortalShell {
         OrganizationProfile.Brand brand = organization.brand(who);
         return transactions.execute(() -> {
             boolean reduced = isReduced(who);
-            int unread = reduced ? 0 : jdbc.sql(UNREAD).param("org", who.organizationId()).param("acc", who.accountId()).query(Integer.class).single();
+            int unread = reduced ? 0 : jdbc.sql("select count(*) " + UNREAD_FROM).param("org", who.organizationId()).param("acc", who.accountId()).query(Integer.class).single();
             return new View(brand, reduced, unread);
         });
     }

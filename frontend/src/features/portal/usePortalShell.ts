@@ -11,6 +11,11 @@ export interface PortalShellData {
 /** D5: a moldura é lida na abertura e a cada 60 s (mesmo ritmo do sino da gestão). */
 export const SHELL_POLL_MS = 60_000;
 
+const REFRESH = "portal-shell-refresh";
+
+/** Quem grava leitura de aviso pede a releitura do sino sem esperar os 60 s. */
+export const refreshPortalShell = () => window.dispatchEvent(new Event(REFRESH));
+
 type Loaded = { tick: number; data?: PortalShellData; forbidden?: boolean; failed?: boolean };
 
 // Marca, contador do sino e portal reduzido (RF-POR-01, RN-POR-08). Falha numa releitura mantém o último valor; a primeira leitura mostra o erro.
@@ -36,7 +41,12 @@ export function usePortalShell() {
 
   useEffect(() => {
     const timer = setInterval(() => setTick((n) => n + 1), SHELL_POLL_MS);
-    return () => clearInterval(timer);
+    const now = () => setTick((n) => n + 1);
+    window.addEventListener(REFRESH, now);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(REFRESH, now);
+    };
   }, []);
 
   const current = done?.tick === tick ? done : undefined;
