@@ -3041,6 +3041,30 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /portal/schedule:
+    get:
+      summary: Agenda da semana do aluno (RF-POR-04, RN-POR-02). Responsável e Aluno.
+      description: |
+        Aulas da semana (segunda a domingo) do aluno escolhido: turma principal (`MAIN`), outros horários (`OTHER`) e avulsas visíveis (`ADHOC`), com o mesmo
+        alcance do Início. `scope` `ALL` (padrão) ou `MAIN` (só a turma principal). `week` é qualquer data `yyyy-MM-dd`; vale a segunda-feira dela, padrão a semana de
+        hoje no fuso da unidade de cadastro. Aula cancelada traz `cancelReasonCode` e `cancelReason`; aula alterada traz `changed`, `originalDate`,
+        `originalStartsAt` e `substitute`; `noticeId` é o comunicado enviado mais recente do tipo adequado que alcança a turma e o aluno. `past` vale pelo relógio do
+        fuso da unidade da aula. `noClassDays` traz um item por dia da semana sem aula que vale para o aluno. Com o portal reduzido, 200 com `reduced` e listas vazias.
+        `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Sem professor,
+        presença, frequência, progresso, lista de espera nem cobrança. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: week, in: query, required: false, schema: { type: string, format: date } }
+        - { name: scope, in: query, required: false, schema: { type: string, enum: [ALL, MAIN], default: ALL } }
+      responses:
+        '200':
+          description: Agenda da semana.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalSchedule' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /portal/shell:
     get:
       summary: Moldura do portal (RF-POR-01, RN-POR-08). Responsável e Aluno.
@@ -5814,6 +5838,58 @@ components:
                   color: { type: string }
                   secondaryColor: { type: string, nullable: true }
                   degree: { type: integer, minimum: 0 }
+    PortalSchedule:
+      type: object
+      required: [reduced, students, studentId, scope, weekStart, weekEnd, today, timezone, lessons, noClassDays]
+      properties:
+        reduced: { type: boolean }
+        students:
+          type: array
+          items:
+            type: object
+            required: [id, name, self]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              self: { type: boolean }
+        studentId: { type: string, format: uuid }
+        scope: { type: string, enum: [ALL, MAIN] }
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date }
+        today: { type: string, format: date, description: Data do dia no fuso da unidade de cadastro. }
+        timezone: { type: string, example: America/Sao_Paulo }
+        lessons:
+          type: array
+          items:
+            type: object
+            required: [id, date, startsAt, endsAt, title, kind, status, cancelReasonCode, cancelReason, changed, originalDate, originalStartsAt, substitute, past, noticeId, modality, unit]
+            properties:
+              id: { type: string, format: uuid }
+              date: { type: string, format: date }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+              title: { type: string }
+              kind: { type: string, enum: [MAIN, OTHER, ADHOC] }
+              status: { type: string, enum: [SCHEDULED, CANCELLED] }
+              cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER] }
+              cancelReason: { type: string, nullable: true }
+              changed: { type: boolean, description: Com professor substituto ou alterada à mão. }
+              originalDate: { type: string, format: date, nullable: true }
+              originalStartsAt: { type: string, nullable: true, example: '19:00' }
+              substitute: { type: boolean }
+              past: { type: boolean, description: Já terminou pelo relógio do fuso da unidade da aula. }
+              noticeId: { type: string, format: uuid, nullable: true }
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
+        noClassDays:
+          type: array
+          items:
+            type: object
+            required: [date, reason, unit]
+            properties:
+              date: { type: string, format: date }
+              reason: { type: string }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
     PortalShell:
       type: object
       required: [organization, reduced, unreadAnnouncements]
