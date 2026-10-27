@@ -116,7 +116,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 88 | RF-POR-01 · Portal: barra e navegação | issue #88 | Sprint 10 | — | agente | feito |
 | 89 | RF-POR-02 · Portal: Início | issue #89 | Sprint 10 | — | agente | feito |
 | 90 | RF-POR-03 · Portal: carteirinha | issue #90 | Sprint 10 | — | agente | feito |
-| 91 | RF-POR-04 · Portal: Agenda | issue #91 | Sprint 10 | — | agente | a fazer |
+| 91 | RF-POR-04 · Portal: Agenda | issue #91 | Sprint 10 | — | agente | feito |
 | 92 | RF-POR-05 · Portal: Financeiro | issue #92 | Sprint 10 | — | agente | a fazer |
 | 93 | RF-POR-06 · Portal: Avisos | issue #93 | Sprint 10 | — | agente | a fazer |
 | 94 | RF-POR-07 · Portal: Minhas informações | issue #94 | Sprint 10 | — | agente | a fazer |

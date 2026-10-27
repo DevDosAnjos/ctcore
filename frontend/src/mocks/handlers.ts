@@ -4351,6 +4351,48 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-POR-04 (#91): agenda da semana. Mesmas contas do Início; "reduzido@exemplo.com" é 200 vazio com `reduced`; gestão 403, `studentId` fora da conta 404, `week` ou `scope` inválidos 400.
+    method: "get",
+    path: "/portal/schedule",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const q = new URL(request.url).searchParams;
+      const cards = homeCards();
+      const selected = q.get("studentId") ?? cards[0].id;
+      if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const scope = q.get("scope") ?? "ALL";
+      const asked = q.get("week");
+      const valid = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && isoDay(new Date(`${d}T12:00:00Z`)) === d;
+      if ((scope !== "ALL" && scope !== "MAIN") || (asked !== null && !valid(asked))) return error(400, "VALIDATION_ERROR", "Dados inválidos.");
+      const today = isoDay(new Date());
+      const base = asked ?? today;
+      const monday = addDays(base, -((new Date(`${base}T12:00:00Z`).getUTCDay() + 6) % 7));
+      const head = { reduced: false, students: cards.map((c) => ({ id: c.id, name: c.name, self: c.self })), studentId: selected, scope, weekStart: monday, weekEnd: addDays(monday, 6), today, timezone: "America/Sao_Paulo" };
+      if (current.account.email === REDUCED_ACCOUNT) return HttpResponse.json({ ...head, reduced: true, lessons: [], noClassDays: [] });
+      const jiu = homeRef("Jiu-Jitsu");
+      const judo = homeRef("Judô");
+      const lesson = (id: string, day: number, startsAt: string, endsAt: string, title: string, kind: string, modality: { id: string; name: string }, unit: string, over: object = {}) => {
+        const date = addDays(monday, day);
+        return {
+          id: `00000000-0000-0000-0000-0000000007f${id}`, date, startsAt, endsAt, title, kind, status: "SCHEDULED", cancelReasonCode: null, cancelReason: null, changed: false,
+          originalDate: null, originalStartsAt: null, substitute: false, past: new Date(`${date}T${endsAt}:00`).getTime() <= Date.now(), noticeId: null, modality, unit: homeUnit(unit), ...over,
+        };
+      };
+      const lessons =
+        selected === CHILD_TWO
+          ? [lesson("1", 0, "17:00", "18:00", "Judô Infantil", "MAIN", judo, CENTRO)]
+          : [
+              lesson("2", 1, "19:00", "20:00", "Jiu-Jitsu Adulto", "MAIN", jiu, CENTRO, { changed: true, originalDate: addDays(monday, 0), originalStartsAt: "18:00", noticeId: "00000000-0000-0000-0000-0000000007e1" }),
+              lesson("3", 3, "19:00", "20:00", "Judô Adulto", "OTHER", judo, NORTE, { status: "CANCELLED", cancelReasonCode: "HOLIDAY", noticeId: "00000000-0000-0000-0000-0000000007e2" }),
+              lesson("4", 5, "10:00", "11:00", "Seminário de guarda", "ADHOC", jiu, CENTRO),
+            ];
+      const noClassDays = selected === CHILD_TWO ? [] : [{ date: addDays(monday, 2), reason: "Reforma do tatame", unit: homeUnit(CENTRO) }];
+      return HttpResponse.json({ ...head, lessons: scope === "MAIN" ? lessons.filter((l) => l.kind === "MAIN") : lessons, noClassDays });
+    },
+  },
+  {
     // RN-MAT-11, RN-MAT-14: pendências de aceite que a conta aceita; funciona com o termo pendente.
     method: "get",
     path: "/portal/term",

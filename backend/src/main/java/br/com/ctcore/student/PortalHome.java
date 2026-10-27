@@ -52,8 +52,8 @@ public class PortalHome {
     private static final int NOTICES = 5;
 
     /** Modalidade ativa do aluno {@code :sid} (alias {@code em}). */
-    private static final String ACTIVE_ROW = "em.organization_id = :org and em.student_id = :sid and em.status = 'ACTIVE'";
-    private static final String ROW_CLASS = "(em.primary_class_id = %1$s or exists (select 1 from enrollment_modality_class x where x.organization_id = em.organization_id "
+    static final String ACTIVE_ROW = "em.organization_id = :org and em.student_id = :sid and em.status = 'ACTIVE'";
+    static final String ROW_CLASS = "(em.primary_class_id = %1$s or exists (select 1 from enrollment_modality_class x where x.organization_id = em.organization_id "
             + "and x.modality_row_id = em.id and x.class_id = %1$s))";
 
     private final JdbcClient jdbc;
