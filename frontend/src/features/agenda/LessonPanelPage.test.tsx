@@ -190,13 +190,17 @@ describe("LessonPanelPage", () => {
     const user = userEvent.setup();
     let fail = true;
     const loading = gate();
+    const requested = gate();
     setup({
       respond: async () => {
+        requested.release();
         await loading.opened;
         return fail ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 }) : HttpResponse.json(detail());
       },
     });
-    expect(await screen.findByText("Carregando...")).toBeInTheDocument();
+    // "Carregando..." também aparece na sessão e na rota; só após a requisição da aula é o estado dela.
+    await requested.opened;
+    expect(screen.getByText("Carregando...")).toBeInTheDocument();
     loading.release();
     const retry = await screen.findByRole("button", { name: "Tentar de novo" });
     fail = false;
