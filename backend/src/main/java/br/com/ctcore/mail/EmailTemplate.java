@@ -36,7 +36,9 @@ public enum EmailTemplate {
     /** RN-MAT-11: boas-vindas na conclusão da matrícula; assunto e texto vêm do modelo de texto (próprio ou da plataforma), via {@code sendText}. */
     WELCOME("mail.welcome", false, false, Kind.ALWAYS),
     /** RF-MAT-04: resposta ao pedido do portal; assunto e texto vêm prontos (chaves {@code mail.portal-request.*}), via {@code sendText}. */
-    PORTAL_REQUEST("mail.portal-request", false, false, Kind.ALWAYS);
+    PORTAL_REQUEST("mail.portal-request", false, false, Kind.ALWAYS),
+    /** RN-COM-11: comprovante de Pix recusado (referência da cobrança, motivo); texto pronto via {@code sendText}. */
+    PROOF_REFUSED("mail.proof-refused", false, false, Kind.ALWAYS);
 
     public enum Kind { ALWAYS, ANNOUNCEMENT }
 

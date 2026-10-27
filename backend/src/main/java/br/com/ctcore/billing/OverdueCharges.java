@@ -129,7 +129,7 @@ public class OverdueCharges {
             params.put("offset", page.offset());
             List<Item> items = jdbc.sql("select c.id, s.id, s.name, s.photo, u.id, u.name, c.type, c.reference_month, c.description, c.amount_cents, c.due_on, "
                     + Charges.today("u") + " - c.due_on, case when c.type in ('MONTHLY', 'INSTALLMENT', 'READJUSTMENT_DIFF') and us.payment_account_reference is not null "
-                    + "then greatest(0, c.due_on + os.deactivation_days - " + Charges.today("u") + ") end, lr.created_at, lr.channel, coalesce(g.name, s.name), "
+                    + "then greatest(0, " + Charges.BLOCK_DATE + " - " + Charges.today("u") + ") end, lr.created_at, lr.channel, coalesce(g.name, s.name), "
                     + "case when c.payer_guardian_id is null then s.phone else g.phone end" + from + " order by " + order + ", c.id limit :limit offset :offset")
                     .params(params).query((rs, n) -> new Item(rs.getObject(1, UUID.class), new Charges.StudentRef(rs.getObject(2, UUID.class), rs.getString(3),
                             students.photoUrl(rs.getString(4))), new Charges.Named(rs.getObject(5, UUID.class), rs.getString(6)), rs.getString(7),

@@ -406,4 +406,10 @@ describe("ChargePanel (RF-COB-02)", () => {
     }
   });
 
+  it("R13: cobrança em conferência avisa do comprovante e leva à tela de conferência", async () => {
+    setup({ detail: () => HttpResponse.json(detail({ charge: row({ status: "IN_REVIEW" }), actions: { cancel: false, renegotiate: false, registerPayment: false, sendReminder: false, refund: false } })) });
+    const panel = await openPanel();
+    expect(await within(panel).findByText(/comprovante de Pix aguardando conferência/)).toBeInTheDocument();
+    expect(within(panel).getByRole("link", { name: "Abrir conferência" })).toHaveAttribute("href", "/cobrancas/conferencia");
+  });
 });

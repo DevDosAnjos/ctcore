@@ -11,6 +11,7 @@ export function notificationTarget(n: Pick<AppNotification, "type" | "refType" |
     INVITE_PENDING: "/configuracoes/usuarios",
     CLOSURE_REQUEST: "/pedidos",
     PORTAL_REQUEST: "/pedidos",
+    PAYMENT_PROOF: "/cobrancas/conferencia",
     MP_DISCONNECTED: "/configuracoes/organizacao",
     SUBSCRIPTION_OVERDUE: "/configuracoes/organizacao",
   };
