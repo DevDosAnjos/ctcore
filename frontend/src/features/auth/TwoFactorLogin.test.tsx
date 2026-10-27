@@ -5,6 +5,7 @@ import { MemoryRouter, useLocation } from "react-router";
 import { App } from "@/App";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { portalShellOk } from "@/test/portalShell";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { SessionProvider } from "./SessionProvider";
@@ -167,6 +168,7 @@ describe("Coordenador sem duas etapas (CA24)", () => {
 
   it("quem não é obrigado não vê a página obrigatória", async () => {
     server.use(
+      portalShellOk,
       http.get("/api/v1/auth/session", () =>
         HttpResponse.json({ account: { id: "1", email: "a@x.com" }, links: [], twoFactor: { enabled: true, required: true } }),
       ),

@@ -7,6 +7,7 @@ import { SessionProvider, type SessionView } from "@/features/auth/SessionProvid
 import type { PortalRequest } from "@/features/portal-requests/types";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { portalShellOk } from "@/test/portalShell";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
@@ -32,6 +33,7 @@ function setup(over: { students?: () => Response; requests?: PortalRequest[]; cl
   posted = [];
   window.history.replaceState(null, "", "/portal/pedidos");
   server.use(
+    portalShellOk,
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(over.role ?? "STUDENT"))),
     http.get("/api/v1/portal/term", () => HttpResponse.json([])),
     http.get("/api/v1/portal/students", over.students ?? (() => HttpResponse.json([{ id: "s1", name: "Aluno Adulto Fictício", photoUrl: null, self: true }]))),

@@ -32,6 +32,8 @@ public class OrganizationProfile {
     /** Resposta de GET e das escritas; {@code logoUrl} é a URL temporária assinada, nunca o caminho no armazenamento. */
     public record OrganizationView(String name, String color, String holderDocument, String logoUrl, int version, LastChange lastChange) {}
 
+    public record Brand(String name, String color, String logoUrl) {}
+
     private record Row(String name, String color, String holder, String logo, int version) {}
 
     private record Loaded(Row row, LastChange last) {}
@@ -54,6 +56,14 @@ public class OrganizationProfile {
     public OrganizationView read(AccountPrincipal who) {
         if (permissions.grant(who, Permission.ORGANIZATION_SETTINGS, null) == Access.NONE) throw new AccessDeniedException("Permission denied");
         return view(transactions.execute(() -> loaded(row(who.organizationId()), who)));
+    }
+
+    /** RF-POR-01: só a marca (nome, cor e logo) da organização do vínculo, sem exigir permissão de gestão; quem chama confere o perfil de portal antes. */
+    public Brand brand(AccountPrincipal who) {
+        return transactions.execute(() -> {
+            Row row = row(who.organizationId());
+            return new Brand(row.name(), row.color(), logoUrl(row));
+        });
     }
 
     public OrganizationView update(AccountPrincipal who, String ifMatch, String name, String color, String holderDocument, String ip) {
@@ -149,15 +159,17 @@ public class OrganizationProfile {
 
     private OrganizationView view(Loaded loaded) {
         Row row = loaded.row();
-        String url = null;
-        if (row.logo() != null) {
-            try {
-                url = storage.readUrl(row.logo());
-            } catch (FileStorage.NotFound e) {
-                LOG.warn("Organization logo file is missing from storage");
-            }
+        return new OrganizationView(row.name(), row.color(), row.holder(), logoUrl(row), row.version(), loaded.last());
+    }
+
+    private String logoUrl(Row row) {
+        if (row.logo() == null) return null;
+        try {
+            return storage.readUrl(row.logo());
+        } catch (FileStorage.NotFound e) {
+            LOG.warn("Organization logo file is missing from storage");
+            return null;
         }
-        return new OrganizationView(row.name(), row.color(), row.holder(), url, row.version(), loaded.last());
     }
 
     private static <T> T field(String field, Supplier<T> parse) {

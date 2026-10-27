@@ -3003,6 +3003,20 @@ paths:
                 items: { $ref: '#/components/schemas/PortalStudentCard' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/shell:
+    get:
+      summary: Moldura do portal (RF-POR-01, RN-POR-08). Responsável e Aluno.
+      description: |
+        Marca da organização do vínculo (`logoUrl` é a URL temporária assinada, nulo sem logo), `reduced` (a conta tem aluno matriculado e nenhum com modalidade
+        ativa) e `unreadAnnouncements` (comunicados enviados e ainda não lidos por algum aluno ligado à conta; 0 no portal reduzido). Considera só os alunos
+        da conta da sessão. Gestão e Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Moldura.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalShell' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /portal/term:
     get:
       summary: Alunos com termo de matrícula pendente que a conta aceita (RN-MAT-11, RN-MAT-14, RN-POR-03). Responsável e Aluno.
@@ -5627,6 +5641,19 @@ components:
         name: { type: string }
         photoUrl: { type: string, nullable: true }
         self: { type: boolean, description: Cartão do próprio aluno ("Você"). }
+    PortalShell:
+      type: object
+      required: [organization, reduced, unreadAnnouncements]
+      properties:
+        organization:
+          type: object
+          required: [name, color, logoUrl]
+          properties:
+            name: { type: string }
+            color: { type: string, nullable: true }
+            logoUrl: { type: string, nullable: true }
+        reduced: { type: boolean }
+        unreadAnnouncements: { type: integer, minimum: 0 }
     PortalTermText:
       type: object
       required: [version, body]

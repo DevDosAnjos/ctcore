@@ -113,7 +113,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | feito |
 | 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | feito |
 | 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | feito |
-| 88 | RF-POR-01 · Portal: barra e navegação | issue #88 | Sprint 10 | — | agente | a fazer |
+| 88 | RF-POR-01 · Portal: barra e navegação | issue #88 | Sprint 10 | — | agente | feito |
 | 89 | RF-POR-02 · Portal: Início | issue #89 | Sprint 10 | — | agente | a fazer |
 | 90 | RF-POR-03 · Portal: carteirinha | issue #90 | Sprint 10 | — | agente | a fazer |
 | 91 | RF-POR-04 · Portal: Agenda | issue #91 | Sprint 10 | — | agente | a fazer |

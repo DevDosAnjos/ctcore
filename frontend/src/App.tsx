@@ -6,7 +6,6 @@ import { AreaUnavailablePage } from "@/features/auth/AreaUnavailablePage";
 import { InvitePage } from "@/features/auth/InvitePage";
 import { PublicReceiptPage } from "@/features/payments/PublicReceiptPage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
-import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { RequireSession } from "@/features/auth/RequireSession";
 import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/RequireTwoFactor";
 import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
@@ -42,16 +41,17 @@ import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { LessonPanelPage } from "@/features/agenda/LessonPanelPage";
 import { NoClassDaysPage } from "@/features/noClassDays/NoClassDaysPage";
 import { UsersPage } from "@/features/users/UsersPage";
-import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
 import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
 import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
 import { PortalRequestsPage as PortalOwnRequestsPage } from "@/features/portal/PortalRequestsPage";
+import { PortalLayout } from "@/features/portal/PortalLayout";
+import { PortalSectionPage } from "@/features/portal/PortalSectionPage";
+import { RequireFullPortal } from "@/features/portal/RequireFullPortal";
 import { PortalTermPage } from "@/features/portal/PortalTermPage";
 import { RequirePortalTerm } from "@/features/portal/RequirePortalTerm";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
-import { ThemeToggle } from "@/theme/ThemeToggle";
 
 function Welcome() {
   const { t } = useTranslation();
@@ -79,23 +79,13 @@ function Home() {
     );
   }
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
-        <span className="text-lg font-semibold">{t("app.name")}</span>
-        <div className="flex items-center gap-2">
-          <AccountLink />
-          <ChooseLinkTrigger />
-          <ThemeToggle />
-        </div>
-      </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        <Welcome />
-        <ModalityConfirmations />
-        <Link to="/portal/pedidos" className="mt-6 inline-flex min-h-11 items-center underline">
-          {t("portalOwn.link")}
-        </Link>
-      </main>
-    </div>
+    <PortalLayout>
+      <Welcome />
+      <ModalityConfirmations />
+      <Link to="/portal/pedidos" className="mt-6 inline-flex min-h-11 items-center underline">
+        {t("portalOwn.link")}
+      </Link>
+    </PortalLayout>
   );
 }
 
@@ -116,6 +106,12 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route path="/conta" element={<AccountPage />} />
             <Route path="/portal/pedidos" element={<PortalOwnRequestsPage />} />
+            <Route element={<RequireFullPortal />}>
+              <Route path="/portal/agenda" element={<PortalSectionPage tab="schedule" />} />
+              <Route path="/portal/avisos" element={<PortalSectionPage tab="notices" />} />
+            </Route>
+            <Route path="/portal/financeiro" element={<PortalSectionPage tab="finance" />} />
+            <Route path="/portal/minhas-informacoes" element={<PortalSectionPage tab="info" />} />
           </Route>
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
