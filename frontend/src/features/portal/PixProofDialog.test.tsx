@@ -23,7 +23,7 @@ const pixGet = (res: () => Response) => server.use(http.get("/api/v1/portal/char
 const view = (onClose = () => {}, onSent?: () => void) =>
   render(
     <ThemeProvider>
-      <PixProofDialog chargeId="c1" onClose={onClose} onSent={onSent} />
+      <PixProofDialog chargeIds={["c1"]} onClose={onClose} onSent={onSent} />
     </ThemeProvider>,
   );
 const png = () => new File(["x"], "comprovante.png", { type: "image/png" });
@@ -52,7 +52,7 @@ describe("PixProofDialog (RF-COB-05)", () => {
     await user.upload(dialog.getByLabelText(/Comprovante \(JPG/), png());
     await user.click(submit);
     expect(await dialog.findByText("Comprovante enviado. A cobrança ficou em conferência.")).toBeInTheDocument();
-    expect(send.calls).toEqual([["c1", expect.any(File)]]);
+    expect(send.calls).toEqual([[["c1"], expect.any(File)]]);
     expect(onSent).toHaveBeenCalledOnce();
   });
 
@@ -90,6 +90,16 @@ describe("PixProofDialog (RF-COB-05)", () => {
     pixGet(() => HttpResponse.json({ code: "FORBIDDEN", message: "m", fields: [], traceId: "t" }, { status: 403 }));
     view();
     expect(await screen.findByText("Você não tem acesso")).toBeInTheDocument();
+  });
+
+  it("CA5 (#92): várias cobranças de unidades diferentes mostram que não podem ser pagas juntas", async () => {
+    server.use(http.get("/api/v1/portal/charges/pix-instructions", () => HttpResponse.json({ code: "UNPROCESSABLE", message: "m", fields: [{ field: "ids", message: "mesma unidade" }], traceId: "t" }, { status: 422 })));
+    render(
+      <ThemeProvider>
+        <PixProofDialog chargeIds={["c1", "c2"]} onClose={() => {}} />
+      </ThemeProvider>,
+    );
+    expect(await screen.findByText("Estas cobranças não podem ser pagas juntas")).toBeInTheDocument();
   });
 
   it("CA16: carregando a chave mostra o estado de carregamento", async () => {

@@ -2750,6 +2750,9 @@
     "done": "Comprovante enviado. A cobrança ficou em conferência.",
     "noKeyTitle": "Esta unidade não tem chave Pix cadastrada",
     "noKeyText": "Fale com a academia para pagar de outra forma.",
+    "charges": "Cobranças deste pagamento",
+    "badSelectionTitle": "Estas cobranças não podem ser pagas juntas",
+    "badSelectionText": "Escolha até 20 cobranças da mesma unidade, sem repetir.",
     "notPayableTitle": "Esta cobrança não está aberta",
     "notPayableText": "Ela já está em conferência ou foi paga.",
     "errors": {
@@ -2842,6 +2845,58 @@
     "text": "{{student}} começou em {{modality}} ({{unit}}). Plano {{plan}}, {{value}} por mês. A confirmação não altera a matrícula nem a cobrança.",
     "confirm": "Confirmar {{modality}}",
     "error": "Não conseguimos confirmar. Nada foi alterado; tente de novo."
+  },
+  "portalFinance": {
+    "student": "Aluno",
+    "you": "Você",
+    "family": "Toda a família",
+    "familyTotal": "Total da família em aberto: {{value}}",
+    "open": {
+      "title": "Em aberto",
+      "emptyTitle": "Nenhuma cobrança em aberto",
+      "emptyText": "Quando houver uma cobrança, ela aparece aqui. Se o responsável financeiro cuida dos pagamentos, é ele quem as vê.",
+      "dueOn": "Vence em {{date}}",
+      "pay": "Pagar",
+      "payItem": "Pagar {{what}}",
+      "paySelected": "Pagar selecionadas",
+      "select": "Selecionar {{what}}",
+      "selected": "{{count}} selecionadas · Total {{value}}",
+      "mixedUnits": "Escolha cobranças da mesma unidade para pagar juntas.",
+      "composition": "Composição",
+      "plan": "Plano",
+      "benefit": "Benefício",
+      "final": "Valor final",
+      "unit": "Unidade: {{unit}}",
+      "situation": {
+        "OVERDUE": "Vencida",
+        "DUE_TODAY": "Vence hoje",
+        "DUE_SOON": "Vencendo",
+        "PENDING": "A vencer",
+        "IN_REVIEW": "Em conferência"
+      }
+    },
+    "history": {
+      "title": "Histórico",
+      "year": "Ano",
+      "emptyTitle": "Nenhum histórico neste ano",
+      "emptyText": "As cobranças pagas ou encerradas aparecem aqui.",
+      "dueOn": "Vencimento {{date}}",
+      "paidOn": "Pago em {{date}}",
+      "method": "Meio: {{method}}",
+      "receipt": "Baixar recibo",
+      "receiptItem": "Baixar recibo de {{what}}",
+      "status": {
+        "PAID": "Paga",
+        "REFUNDED": "Estornada",
+        "CANCELED": "Cancelada",
+        "RENEGOTIATED": "Renegociada"
+      }
+    },
+    "autoDebit": {
+      "title": "Débito automático",
+      "inactive": "Inativo",
+      "text": "O débito automático chega junto com o pagamento online. Por enquanto, pague pelo Pix na chave."
+    }
   },
   "portalAgenda": {
     "title": "Agenda",

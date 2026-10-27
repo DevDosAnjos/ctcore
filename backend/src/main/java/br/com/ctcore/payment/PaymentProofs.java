@@ -29,7 +29,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -53,8 +55,13 @@ public class PaymentProofs {
     private static final Logger LOG = LoggerFactory.getLogger(PaymentProofs.class);
     private static final Locale PT_BR = Locale.of("pt", "BR");
     static final String PREFIX = "payment-proof-";
+    private static final int MAX_BATCH = 20;
 
     public record Instructions(UUID chargeId, String pixKey, long amountCents, LocalDate dueOn, String unit) {}
+
+    public record BatchItem(UUID chargeId, String studentName, long amountCents, LocalDate dueOn) {}
+
+    public record BatchInstructions(String pixKey, long totalCents, String unit, List<BatchItem> charges) {}
 
     public record Sent(UUID id, UUID chargeId, String status, Instant sentAt) {}
 
@@ -104,24 +111,28 @@ public class PaymentProofs {
         return new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name());
     }
 
+    private static ApiStatusException rule(String field, String message) {
+        return new ApiStatusException(ErrorCode.UNPROCESSABLE, List.of(new ApiError.Field(field, message)));
+    }
+
     private static ApiStatusException rule(String message) {
-        return new ApiStatusException(ErrorCode.UNPROCESSABLE, List.of(new ApiError.Field("file", message)));
+        return rule("file", message);
     }
 
     // ---- portal (aluno adulto e responsável financeiro) ----
 
-    private record Charge(UUID unitId, UUID studentId, long amountCents, LocalDate dueOn, String status, String studentName, String unit, String pixKey) {}
+    private record Charge(UUID id, UUID unitId, UUID studentId, long amountCents, LocalDate dueOn, String status, String studentName, String unit, String pixKey) {}
 
     /** Cobrança travada (se {@code lock}), com a chave Pix da unidade; 404 se não existe na organização. Dentro da transação. */
     private Charge charge(UUID org, UUID chargeId, boolean lock) {
-        return jdbc.sql("select c.unit_id, c.student_id, c.amount_cents, c.due_on, c.status, s.name, u.name, us.pix_key from charge c "
+        return jdbc.sql("select c.id, c.unit_id, c.student_id, c.amount_cents, c.due_on, c.status, s.name, u.name, us.pix_key from charge c "
                 + "join student s on s.organization_id = c.organization_id and s.id = c.student_id "
                 + "join unit u on u.organization_id = c.organization_id and u.id = c.unit_id "
                 + "left join unit_settings us on us.organization_id = c.organization_id and us.unit_id = c.unit_id "
                 + "where c.id = :id and c.organization_id = :org" + (lock ? " for update of c" : ""))
                 .param("id", chargeId).param("org", org)
-                .query((rs, n) -> new Charge(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getLong(3), rs.getObject(4, LocalDate.class), rs.getString(5),
-                        rs.getString(6), rs.getString(7), rs.getString(8)))
+                .query((rs, n) -> new Charge(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class), rs.getObject(3, UUID.class), rs.getLong(4), rs.getObject(5, LocalDate.class),
+                        rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9)))
                 .optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
     }
 
@@ -134,6 +145,19 @@ public class PaymentProofs {
         return c;
     }
 
+    /** RN-COB-13: 1 a 20 cobranças sem repetição, em ordem de id (a trava sempre na mesma ordem não trava em cruz). */
+    private static List<UUID> selection(List<UUID> ids, String field) {
+        if (ids == null || ids.isEmpty() || ids.size() > MAX_BATCH || new HashSet<>(ids).size() != ids.size()) throw rule(field, "de 1 a " + MAX_BATCH + " cobranças, sem repetir");
+        return ids.stream().sorted().toList();
+    }
+
+    /** Dentro da transação: cada cobrança como em {@link #payable}, todas da mesma unidade (senão 422 em {@code field}). */
+    private List<Charge> payableAll(AccountPrincipal who, List<UUID> sorted, boolean lock, String field) {
+        List<Charge> all = sorted.stream().map(id -> payable(who, id, lock)).toList();
+        if (all.stream().map(Charge::unitId).distinct().count() > 1) throw rule(field, "cobranças de unidades diferentes");
+        return all;
+    }
+
     public Instructions instructions(AccountPrincipal who, UUID chargeId) {
         terms.requireAccepted(who);
         return transactions.execute(() -> {
@@ -142,35 +166,60 @@ public class PaymentProofs {
         });
     }
 
+    public BatchInstructions instructions(AccountPrincipal who, List<UUID> ids) {
+        terms.requireAccepted(who);
+        List<UUID> sorted = selection(ids, "ids");
+        return transactions.execute(() -> {
+            List<Charge> all = payableAll(who, sorted, false, "ids");
+            return new BatchInstructions(all.get(0).pixKey(), all.stream().mapToLong(Charge::amountCents).sum(), all.get(0).unit(),
+                    all.stream().map(c -> new BatchItem(c.id(), c.studentName(), c.amountCents(), c.dueOn())).toList());
+        });
+    }
+
     private record Saved(Sent sent, UUID unitId, String studentName, long amountCents) {}
 
     public Sent send(AccountPrincipal who, UUID chargeId, byte[] content, String ip) {
+        return saveAll(who, List.of(chargeId), content, ip, "chargeIds").get(0).sent();
+    }
+
+    /** Um arquivo, um comprovante por cobrança, todas em conferência ou nenhuma; auditoria e notificação de cada um. */
+    public List<Sent> send(AccountPrincipal who, List<UUID> chargeIds, byte[] content, String ip) {
+        return saveAll(who, selection(chargeIds, "chargeIds"), content, ip, "chargeIds").stream().map(Saved::sent).toList();
+    }
+
+    private List<Saved> saveAll(AccountPrincipal who, List<UUID> sorted, byte[] content, String ip, String field) {
         terms.requireAccepted(who);
         if (content == null || content.length == 0) throw rule("obrigatório");
         if (content.length > FileStorage.MAX_BYTES) throw rule("arquivo acima de 5 MB");
         FileKind kind = FileKind.of(content);
         if (kind == null) throw rule("use JPG, PNG, WebP ou PDF");
-        Saved saved = transactions.execute(() -> {
-            // A trava da cobrança faz a segunda chamada esperar e ver "Em conferência" (R2).
-            Charge c = payable(who, chargeId, true);
-            UUID id = UUID.randomUUID();
-            String key = PREFIX + c.studentId() + "-" + id + "." + kind.extension();
+        List<Saved> saved = transactions.execute(() -> {
+            // A trava das cobranças faz a segunda chamada esperar e ver "Em conferência" (R2).
+            List<Charge> all = payableAll(who, sorted, true, field);
+            String key = PREFIX + all.get(0).studentId() + "-" + UUID.randomUUID() + "." + kind.extension();
             storage.put(key, content, kind.contentType());
             OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
-            jdbc.sql("insert into payment_proof (id, organization_id, charge_id, student_id, unit_id, file_key, content_type, sent_by_account_id, sent_at) "
-                    + "values (:id, :org, :charge, :student, :unit, :key, :type, :by, :at)")
-                    .param("id", id).param("org", who.organizationId()).param("charge", chargeId).param("student", c.studentId()).param("unit", c.unitId())
-                    .param("key", key).param("type", kind.contentType()).param("by", who.accountId()).param("at", now).update();
-            jdbc.sql("update charge set status = 'IN_REVIEW' where id = :id").param("id", chargeId).update();
-            // A chave do arquivo não vai para a auditoria (RN-LGP): só o fato do envio.
-            audit.record(new AuditEntry(actor(who), "payment_proof.sent", "payment_proof", id.toString(), c.unitId(), Map.of("chargeStatus", "OPEN"),
-                    Map.of("chargeId", chargeId.toString(), "chargeStatus", "IN_REVIEW", "status", "PENDING", "type", kind.contentType()), null, ip));
-            return new Saved(new Sent(id, chargeId, "PENDING", now.toInstant()), c.unitId(), c.studentName(), c.amountCents());
+            List<Saved> out = new ArrayList<>();
+            for (Charge c : all) {
+                UUID id = UUID.randomUUID();
+                jdbc.sql("insert into payment_proof (id, organization_id, charge_id, student_id, unit_id, file_key, content_type, sent_by_account_id, sent_at) "
+                        + "values (:id, :org, :charge, :student, :unit, :key, :type, :by, :at)")
+                        .param("id", id).param("org", who.organizationId()).param("charge", c.id()).param("student", c.studentId()).param("unit", c.unitId())
+                        .param("key", key).param("type", kind.contentType()).param("by", who.accountId()).param("at", now).update();
+                jdbc.sql("update charge set status = 'IN_REVIEW' where id = :id").param("id", c.id()).update();
+                // A chave do arquivo não vai para a auditoria (RN-LGP): só o fato do envio.
+                audit.record(new AuditEntry(actor(who), "payment_proof.sent", "payment_proof", id.toString(), c.unitId(), Map.of("chargeStatus", "OPEN"),
+                        Map.of("chargeId", c.id().toString(), "chargeStatus", "IN_REVIEW", "status", "PENDING", "type", kind.contentType()), null, ip));
+                out.add(new Saved(new Sent(id, c.id(), "PENDING", now.toInstant()), c.unitId(), c.studentName(), c.amountCents()));
+            }
+            return out;
         });
         // RN-NOT-04: depois do commit; a notificação nunca desfaz o envio (falha engolida em publish).
-        notifications.publish(who.organizationId(), saved.unitId(), NotificationType.PAYMENT_PROOF, "payment_proof", saved.sent().id(),
-                Map.of("studentName", saved.studentName(), "amountCents", saved.amountCents()));
-        return saved.sent();
+        for (Saved s : saved) {
+            notifications.publish(who.organizationId(), s.unitId(), NotificationType.PAYMENT_PROOF, "payment_proof", s.sent().id(),
+                    Map.of("studentName", s.studentName(), "amountCents", s.amountCents()));
+        }
+        return saved;
     }
 
     // ---- gestão (cobranças completo na unidade) ----

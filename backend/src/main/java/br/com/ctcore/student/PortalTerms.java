@@ -135,6 +135,11 @@ public class PortalTerms {
         acceptable(who, studentId, false);
     }
 
+    /** Aluno ligado à conta e que ela paga (mesma regra de {@link #requirePayer}, sem lançar). Dentro da transação. */
+    public boolean pays(AccountPrincipal who, UUID studentId) {
+        return candidates(who, studentId, false).stream().anyMatch(this::canAccept);
+    }
+
     boolean canAccept(Linked c) {
         return c.minor(LocalDate.ofInstant(clock.instant(), ZoneId.of(c.zone()))) ? c.financial() : c.self();
     }

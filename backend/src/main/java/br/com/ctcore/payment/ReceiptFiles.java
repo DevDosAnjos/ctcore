@@ -10,6 +10,7 @@ import br.com.ctcore.permission.Access;
 import br.com.ctcore.permission.Permission;
 import br.com.ctcore.permission.Permissions;
 import br.com.ctcore.storage.FileStorage;
+import br.com.ctcore.student.PortalTerms;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.util.Set;
@@ -31,8 +32,10 @@ class ReceiptFiles {
     private final FileStorage storage;
     private final OrganizationTransactions transactions;
     private final Permissions permissions;
+    private final PortalTerms terms;
 
-    ReceiptFiles(@Lazy JdbcClient jdbc, @Lazy FileStorage storage, @Lazy OrganizationTransactions transactions, Permissions permissions) {
+    ReceiptFiles(@Lazy JdbcClient jdbc, @Lazy FileStorage storage, @Lazy OrganizationTransactions transactions, Permissions permissions, PortalTerms terms) {
+        this.terms = terms;
         this.jdbc = jdbc;
         this.storage = storage;
         this.transactions = transactions;
@@ -53,6 +56,17 @@ class ReceiptFiles {
                 .param("org", who.organizationId()).query(UUID.class).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND)));
         if (permissions.grant(who, Permission.COLLECTIONS, unit) == Access.NONE) throw new ApiStatusException(ErrorCode.NOT_FOUND);
         return pdf(row, true);
+    }
+
+    /** Portal (RF-POR-05): CPF mascarado, só de recibo de aluno que a conta paga. Qualquer outra coisa dá o mesmo 404. */
+    ResponseEntity<byte[]> portalPdf(AccountPrincipal who, String code) throws IOException {
+        Row row = row(code);
+        if (!row.organization().equals(who.organizationId())) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        boolean pays = transactions.execute(() -> jdbc.sql("select c.student_id from receipt r join payment p on p.organization_id = r.organization_id and p.id = r.payment_id "
+                + "join charge c on c.organization_id = p.organization_id and c.id = p.charge_id where r.code = :code and r.organization_id = :org")
+                .param("code", code).param("org", who.organizationId()).query(UUID.class).optional().map(student -> terms.pays(who, student)).orElse(false));
+        if (!pays) throw new ApiStatusException(ErrorCode.NOT_FOUND);
+        return pdf(row, false);
     }
 
     private Row row(String code) {
