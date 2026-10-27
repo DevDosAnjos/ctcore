@@ -3129,6 +3129,107 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /portal/info:
+    get:
+      summary: Minhas informações do portal (RF-POR-07, RN-POR-01, RN-POR-02, RN-POR-06, RN-POR-07, RN-POR-09, RN-INA-08). Responsável e Aluno.
+      description: |
+        Aba do aluno escolhido (`studentId`, padrão o primeiro cartão; `students` lista os ligados à conta). `personal`: nome, nascimento, CPF mascarado
+        (`***.***.***-NN`, só leitura), foto, telefone, e-mail, endereço e contato de emergência, com `canEdit` e os `editableFields` (nome, CPF, nascimento e e-mail
+        não entram). Vale para qualquer conta ligada ao aluno, não só o pagador. `trainings`: por modalidade ativa, a unidade com o contato dela, a turma principal e
+        os outros horários (dias, horário e nome do professor; nunca o contato do professor). `plans`: plano, benefício vigente (encerrado ou vencido não conta),
+        mensalidade em centavos (`ChargePricing`), dia de vencimento e plano seguinte; só leitura. `graduation`: faixa atual e histórico, do mais novo ao mais antigo.
+        `emailAnnouncements` é a preferência da conta; `terms` traz o aceite do termo de matrícula e o uso de imagem. Com o portal reduzido (RN-INA-08) `reduced` é
+        verdadeiro, `unitContacts` traz só a unidade de cadastro e `trainings`, `plans` e `graduation` vêm vazios. `studentId` de aluno não ligado à conta ou de outra
+        organização: 404. Gestão e Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Resposta `Cache-Control: private, no-store`. Não
+        altera dado. Sem presença, frequência, progresso nem chave de arquivo.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Minhas informações.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfo' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/students/{id}/contact:
+    put:
+      summary: Edita telefone, endereço e contato de emergência pelo portal (RN-ALU-11, RN-ALU-03, RF-POR-07). Responsável e Aluno.
+      description: |
+        Corpo com `phone`, `postalCode`, `street`, `number`, `complement`, `district`, `city`, `state`, `emergencyName`, `emergencyRelationship` e
+        `emergencyPhone`, com as mesmas validações do cadastro (celular com DDD, CEP, UF, endereço completo, contato de emergência completo ou vazio). Campo fora da
+        lista (nome, CPF, nascimento, e-mail ou qualquer outro) é 422 e nada muda. Vale para qualquer conta ligada ao aluno (o próprio adulto ou um dos responsáveis do
+        menor). Aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Grava `student.updated` com
+        ator `PORTAL`, só com os campos mudados (sem o valor); repetir o mesmo corpo não grava. Resposta `Cache-Control: private, no-store`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                phone: { type: string, nullable: true }
+                postalCode: { type: string }
+                street: { type: string }
+                number: { type: string }
+                complement: { type: string, nullable: true }
+                district: { type: string }
+                city: { type: string }
+                state: { type: string }
+                emergencyName: { type: string, nullable: true }
+                emergencyRelationship: { type: string, nullable: true }
+                emergencyPhone: { type: string, nullable: true }
+      responses:
+        '200':
+          description: Dados pessoais atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfoPersonal' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Campo inválido ou não editável (UNPROCESSABLE, com o campo). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /portal/students/{id}/photo:
+    put:
+      summary: Troca a foto do aluno pelo portal (RN-ALU-02, RN-ALU-11, RF-POR-07). Responsável e Aluno.
+      description: |
+        Campo `file` com JPG, PNG ou WebP quadrado (reduzido a 512 px) e até 5 MB, conferido pelo conteúdo. Arquivo inválido: 422 (campo `file`) e a foto anterior
+        permanece. O arquivo antigo é apagado. Aluno não ligado à conta ou de outra organização: 404. Grava `student.photo_updated` com ator `PORTAL`, sem o nome do arquivo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Foto trocada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfoPersonal' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Arquivo inválido ou grande demais (UNPROCESSABLE, campo `file`). Nada muda.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: Remove a foto do aluno pelo portal (RN-ALU-02, RN-ALU-11). Responsável e Aluno.
+      description: Apaga o arquivo e grava `student.photo_removed` com ator `PORTAL`; sem foto, repete sem erro e sem auditoria. Aluno não ligado à conta dá 404.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Foto removida.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfoPersonal' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /portal/schedule:
     get:
       summary: Agenda da semana do aluno (RF-POR-04, RN-POR-02). Responsável e Aluno.
@@ -6059,6 +6160,158 @@ components:
                   color: { type: string }
                   secondaryColor: { type: string, nullable: true }
                   degree: { type: integer, minimum: 0 }
+    PortalInfoPersonal:
+      type: object
+      required: [name, birthDate, maskedCpf, photoUrl, phone, email, address, emergency, canEdit, editableFields]
+      properties:
+        name: { type: string }
+        birthDate: { type: string, format: date }
+        maskedCpf: { type: string, nullable: true, example: '***.***.***-25' }
+        photoUrl: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        address:
+          type: object
+          required: [postalCode, street, number, complement, district, city, state]
+          properties:
+            postalCode: { type: string }
+            street: { type: string }
+            number: { type: string }
+            complement: { type: string, nullable: true }
+            district: { type: string }
+            city: { type: string }
+            state: { type: string }
+        emergency:
+          type: object
+          required: [name, relationship, phone]
+          properties:
+            name: { type: string, nullable: true }
+            relationship: { type: string, nullable: true }
+            phone: { type: string, nullable: true }
+        canEdit: { type: boolean }
+        editableFields:
+          type: array
+          items: { type: string }
+    PortalInfoUnit:
+      type: object
+      required: [id, name, phone, whatsapp, email]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string, nullable: true }
+        whatsapp: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+    PortalInfoClass:
+      type: object
+      required: [clazz, teacherName, schedule]
+      properties:
+        clazz: { $ref: '#/components/schemas/PortalHomeRef' }
+        teacherName: { type: string }
+        schedule:
+          type: array
+          items:
+            type: object
+            required: [weekday, startsAt, endsAt]
+            properties:
+              weekday: { type: integer, minimum: 1, maximum: 7, description: 1 é segunda-feira. }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+    PortalInfoLevel:
+      type: object
+      required: [id, levelName, color, secondaryColor, degree, achievedOn, origin]
+      properties:
+        id: { type: string, format: uuid }
+        levelName: { type: string }
+        color: { type: string }
+        secondaryColor: { type: string, nullable: true }
+        degree: { type: integer, minimum: 0 }
+        achievedOn: { type: string, format: date, nullable: true }
+        origin: { type: boolean, description: Registro de origem (faixa com que o aluno chegou). }
+    PortalInfo:
+      type: object
+      required: [reduced, students, selectedStudentId, personal, unitContacts, trainings, plans, graduation, emailAnnouncements, terms]
+      properties:
+        reduced: { type: boolean }
+        students:
+          type: array
+          items: { $ref: '#/components/schemas/PortalStudentCard' }
+        selectedStudentId: { type: string, format: uuid }
+        personal: { $ref: '#/components/schemas/PortalInfoPersonal' }
+        unitContacts:
+          type: array
+          items: { $ref: '#/components/schemas/PortalInfoUnit' }
+        trainings:
+          type: array
+          items:
+            type: object
+            required: [modality, unit, mainClass, otherClasses]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              unit: { $ref: '#/components/schemas/PortalInfoUnit' }
+              mainClass: { $ref: '#/components/schemas/PortalInfoClass' }
+              otherClasses:
+                type: array
+                items: { $ref: '#/components/schemas/PortalInfoClass' }
+        plans:
+          type: array
+          items:
+            type: object
+            required: [modality, plan, planCents, benefit, benefitCents, monthlyCents, dueDay, nextPlan]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              plan: { $ref: '#/components/schemas/PortalHomeRef' }
+              planCents: { type: integer, format: int64 }
+              benefit:
+                type: object
+                nullable: true
+                required: [type, value, validUntil]
+                properties:
+                  type: { type: string, enum: [PERCENT, AMOUNT] }
+                  value: { type: integer, format: int64 }
+                  validUntil: { type: string, format: date, nullable: true }
+              benefitCents: { type: integer, format: int64, description: Quanto o benefício abate hoje; 0 sem benefício vigente. }
+              monthlyCents: { type: integer, format: int64 }
+              dueDay: { type: integer, minimum: 1, maximum: 28 }
+              nextPlan:
+                type: object
+                nullable: true
+                required: [id, name, valueCents]
+                properties:
+                  id: { type: string, format: uuid }
+                  name: { type: string }
+                  valueCents: { type: integer, format: int64 }
+        graduation:
+          type: array
+          items:
+            type: object
+            required: [modality, belt, history]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              belt:
+                allOf: [{ $ref: '#/components/schemas/PortalInfoLevel' }]
+                nullable: true
+              history:
+                type: array
+                items: { $ref: '#/components/schemas/PortalInfoLevel' }
+        emailAnnouncements: { type: boolean }
+        terms:
+          type: object
+          required: [enrollment, imageUse]
+          properties:
+            enrollment:
+              type: object
+              nullable: true
+              required: [version, acceptedAt]
+              properties:
+                version: { type: integer }
+                acceptedAt: { type: string, format: date-time }
+            imageUse:
+              type: object
+              required: [granted, version, at]
+              properties:
+                granted: { type: boolean }
+                version: { type: integer, nullable: true }
+                at: { type: string, format: date-time, nullable: true }
     PortalSchedule:
       type: object
       required: [reduced, students, studentId, scope, weekStart, weekEnd, today, timezone, lessons, noClassDays]

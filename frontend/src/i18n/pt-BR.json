@@ -2778,11 +2778,7 @@
       "withCount": "Avisos, {{count}} não lidos"
     },
     "person": "{{name}} · {{role}}",
-    "reduced": "Seu acesso está reduzido: você vê Início, Financeiro e Minhas informações. Fale com a academia para voltar a treinar.",
-    "soon": {
-      "title": "Ainda sem conteúdo",
-      "text": "Esta aba chega nas próximas versões."
-    }
+    "reduced": "Seu acesso está reduzido: você vê Início, Financeiro e Minhas informações. Fale com a academia para voltar a treinar."
   },
   "portalOwn": {
     "title": "Meus pedidos",
@@ -3049,6 +3045,135 @@
       "since": "desde {{date}}",
       "new": "Nova",
       "swatch": "Cor da faixa {{level}}"
+    }
+  },
+  "portalInfo": {
+    "title": "Minhas informações",
+    "selector": "Aluno",
+    "you": "Você",
+    "cardLink": "Ver carteirinha",
+    "none": "Não informado",
+    "emptyTitle": "Nenhuma modalidade ativa",
+    "emptyText": "Quando houver uma matrícula ativa, os treinos, o plano e a graduação aparecem aqui.",
+    "personal": {
+      "title": "Dados pessoais",
+      "edit": "Editar contato",
+      "readOnlyHint": "Nome, CPF, nascimento e e-mail só mudam pela academia (o e-mail, em Minha conta).",
+      "name": "Nome",
+      "birthDate": "Nascimento",
+      "cpf": "CPF",
+      "phone": "Telefone",
+      "email": "E-mail",
+      "address": "Endereço",
+      "addressLine": "{{street}}, {{number}}{{complement}} · {{district}} · {{city}}/{{state}} · CEP {{postalCode}}",
+      "emergency": "Contato de emergência",
+      "emergencyLine": "{{name}} ({{relationship}}) · {{phone}}",
+      "photo": "Foto",
+      "photoChoose": "Escolher foto",
+      "photoReplace": "Trocar foto",
+      "photoRemove": "Remover foto",
+      "photoFile": "Arquivo da foto",
+      "photoTypeError": "Use uma imagem PNG, JPG ou WebP.",
+      "photoSizeError": "A foto precisa ter até 5 MB.",
+      "photoFailed": "Não foi possível salvar a foto. Tente de novo.",
+      "cropTitle": "Cortar a foto",
+      "cropHint": "Arraste a imagem ou use os controles para escolher o quadrado.",
+      "cropPreview": "Prévia do corte da foto"
+    },
+    "contact": {
+      "title": "Editar contato",
+      "phone": "Telefone",
+      "postalCode": "CEP",
+      "street": "Logradouro",
+      "number": "Número",
+      "complement": "Complemento",
+      "district": "Bairro",
+      "city": "Cidade",
+      "state": "UF",
+      "stateChoose": "Escolha a UF",
+      "emergency": "Contato de emergência",
+      "emergencyName": "Nome do contato",
+      "emergencyRelationship": "Parentesco",
+      "emergencyPhone": "Telefone do contato",
+      "emergencyAll": "Informe nome, parentesco e telefone do contato, ou deixe os três em branco.",
+      "required": "Preencha este campo.",
+      "postalCodeInvalid": "O CEP tem 8 dígitos.",
+      "invalid": "Confira este campo.",
+      "failed": "Não foi possível salvar. Tente de novo.",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "cancel": "Cancelar"
+    },
+    "units": {
+      "title": "Contato da academia",
+      "phone": "Telefone",
+      "whatsapp": "WhatsApp",
+      "email": "E-mail"
+    },
+    "trainings": {
+      "title": "Treinos",
+      "unit": "Unidade",
+      "main": "Turma principal",
+      "others": "Outros horários",
+      "slot": "{{days}} {{from}}–{{to}}",
+      "classLine": "{{name}} · Prof. {{teacher}}",
+      "noSchedule": "Sem horário definido"
+    },
+    "plans": {
+      "title": "Plano e mensalidade",
+      "plan": "Plano",
+      "benefit": "Benefício",
+      "benefitPercent": "{{value}}% de desconto",
+      "benefitAmount": "{{value}} de desconto",
+      "benefitUntil": "até {{date}}",
+      "noBenefit": "Sem benefício",
+      "monthly": "Mensalidade",
+      "dueDay": "Vencimento",
+      "dueDayValue": "todo dia {{day}}",
+      "next": "Plano seguinte",
+      "nextValue": "{{name}} ({{value}})",
+      "changeHint": "Para mudar de plano, turma ou horário, faça um pedido à academia."
+    },
+    "graduation": {
+      "title": "Graduação",
+      "current": "Faixa atual",
+      "none": "Sem faixa registrada",
+      "history": "Histórico",
+      "line": "{{level}}, grau {{degree}}",
+      "origin": "De origem",
+      "on": "em {{date}}"
+    },
+    "preferences": {
+      "title": "Preferências",
+      "emailAnnouncements": "Receber comunicados por e-mail",
+      "failed": "Não foi possível salvar a preferência. Tente de novo."
+    },
+    "terms": {
+      "title": "Termos aceitos",
+      "enrollment": "Termo de matrícula",
+      "enrollmentAccepted": "Aceito (versão {{version}}) em {{date}}",
+      "enrollmentNone": "Ainda não aceito",
+      "imageUse": "Uso de imagem",
+      "imageGranted": "Concedido (versão {{version}}) em {{date}}",
+      "imageNotGranted": "Não concedido",
+      "revoke": "Revogar uso de imagem",
+      "grant": "Conceder uso de imagem",
+      "failed": "Não foi possível salvar. Tente de novo."
+    },
+    "requests": {
+      "title": "Pedidos à academia",
+      "empty": "Nenhum pedido feito.",
+      "line": "{{kind}} · {{status}} · {{date}}",
+      "make": "Fazer um pedido"
+    },
+    "account": {
+      "title": "Minha conta"
+    },
+    "data": {
+      "title": "Seus dados",
+      "download": "Baixar meus dados",
+      "delete": "Excluir minha conta",
+      "soon": "Estas ações ficam disponíveis em breve."
     }
   }
 }

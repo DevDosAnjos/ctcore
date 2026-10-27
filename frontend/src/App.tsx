@@ -51,7 +51,7 @@ import { PortalCardPage } from "@/features/portal/PortalCardPage";
 import { PortalFinancePage } from "@/features/portal/PortalFinancePage";
 import { PortalHomePage } from "@/features/portal/PortalHomePage";
 import { PortalLayout } from "@/features/portal/PortalLayout";
-import { PortalSectionPage } from "@/features/portal/PortalSectionPage";
+import { PortalInfoPage } from "@/features/portal/PortalInfoPage";
 import { RequireFullPortal } from "@/features/portal/RequireFullPortal";
 import { PortalTermPage } from "@/features/portal/PortalTermPage";
 import { RequirePortalTerm } from "@/features/portal/RequirePortalTerm";
@@ -117,7 +117,7 @@ export function App() {
               <Route path="/portal/avisos" element={<PortalAnnouncementsPage />} />
             </Route>
             <Route path="/portal/financeiro" element={<PortalFinancePage />} />
-            <Route path="/portal/minhas-informacoes" element={<PortalSectionPage tab="info" />} />
+            <Route path="/portal/minhas-informacoes" element={<PortalInfoPage />} />
           </Route>
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
