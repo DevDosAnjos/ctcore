@@ -18,7 +18,10 @@ class PortalStudentController {
     private final PortalShell shell;
     private final PortalHome home;
 
-    PortalStudentController(PortalStudents portal, PortalTerms terms, PortalShell shell, PortalHome home) {
+    private final PortalCard card;
+
+    PortalStudentController(PortalStudents portal, PortalTerms terms, PortalShell shell, PortalHome home, PortalCard card) {
+        this.card = card;
         this.home = home;
         this.terms = terms;
         this.shell = shell;
@@ -41,5 +44,11 @@ class PortalStudentController {
     PortalHome.View home(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) UUID studentId) {
         terms.requireAccepted(who);
         return home.view(who, studentId);
+    }
+
+    @GetMapping("/card")
+    PortalCard.View card(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) UUID studentId) {
+        terms.requireAccepted(who);
+        return card.view(who, studentId);
     }
 }

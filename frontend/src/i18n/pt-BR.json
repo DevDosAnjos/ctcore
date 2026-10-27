@@ -2843,6 +2843,24 @@
     "confirm": "Confirmar {{modality}}",
     "error": "Não conseguimos confirmar. Nada foi alterado; tente de novo."
   },
+  "portalCard": {
+    "link": "Ver carteirinha",
+    "title": "Carteirinha",
+    "selector": "Aluno",
+    "you": "Você",
+    "status": {
+      "ACTIVE": "Ativo",
+      "INACTIVE": "Inativo"
+    },
+    "statusOn": "em {{date}}",
+    "modalitiesTitle": "Modalidades",
+    "noBelt": "Sem faixa registrada",
+    "emptyTitle": "Nenhuma modalidade ativa",
+    "emptyText": "Quando houver uma matrícula ativa, as modalidades aparecem aqui.",
+    "updatedAt": "Atualizada em {{date}}",
+    "offline": "Sem conexão",
+    "cardLabel": "Carteirinha de {{name}}"
+  },
   "portalHome": {
     "family": {
       "label": "Alunos da família",

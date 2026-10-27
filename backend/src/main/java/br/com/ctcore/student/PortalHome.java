@@ -158,7 +158,7 @@ public class PortalHome {
     }
 
     // D5: o registro mais recente de cada modalidade ativa; "Nova" só para registro que não é de origem, dos últimos 14 dias.
-    private List<Belt> belts(UUID org, UUID student, OffsetDateTime now) {
+    List<Belt> belts(UUID org, UUID student, OffsetDateTime now) {
         return jdbc.sql("select * from (select distinct on (g.modality_id) md.id, md.name, gl.name as level_name, gl.color, gl.secondary_color, g.degree, g.achieved_on, "
                 + "(not g.origin and g.created_at >= cast(:now as timestamptz) - interval '14 days') as is_new "
                 + "from student_graduation g join graduation_level gl on gl.id = g.level_id join modality md on md.id = g.modality_id "

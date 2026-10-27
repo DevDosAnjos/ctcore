@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { PortalBelts } from "./PortalBelts";
@@ -30,6 +31,12 @@ export function PortalHomePage() {
   return (
     <>
       <h1 className="text-2xl font-semibold">{t("app.welcomeTitle")}</h1>
+      <Link
+        to={`/portal/carteirinha${(selected ?? strip?.selectedStudentId) ? `?aluno=${selected ?? strip?.selectedStudentId}` : ""}`}
+        className="mt-2 inline-flex min-h-11 items-center underline"
+      >
+        {t("portalCard.link")}
+      </Link>
       <div className="mt-4">
         {strip && strip.students.length > 1 && (
           <PortalFamilyStrip students={strip.students} selected={selected ?? strip.selectedStudentId} familyOpenCents={strip.familyOpenCents} onSelect={choose} />
