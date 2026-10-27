@@ -280,13 +280,17 @@ describe("PortalInfoPage (RF-POR-07)", () => {
     expect(calls).toEqual([]);
   });
 
-  it("CA5: pedidos mostram carregando enquanto busca", async () => {
-    serve(info());
-    setup();
-    server.use(http.get("/api/v1/portal/students/s1/requests", () => new Promise<Response>(() => {})));
-    await screen.findByRole("heading", { name: "Pedidos à academia" });
-    expect(within(card("Pedidos à academia")).getByRole("status")).toBeInTheDocument();
-  });
+  for (const dark of [false, true]) {
+    it(`CA5/CA7: pedidos mostram carregando enquanto busca, sem violações no axe no tema ${dark ? "escuro" : "claro"}`, async () => {
+      setDevicePrefersDark(dark);
+      serve(info());
+      const view = setup();
+      server.use(http.get("/api/v1/portal/students/s1/requests", () => new Promise<Response>(() => {})));
+      await screen.findByRole("heading", { name: "Pedidos à academia" });
+      expect(within(card("Pedidos à academia")).getByRole("status")).toBeInTheDocument();
+      expect(await axeViolations(view.container)).toEqual([]);
+    });
+  }
 
   it("CA5: pedidos mostram sem permissão no 403", async () => {
     serve(info());

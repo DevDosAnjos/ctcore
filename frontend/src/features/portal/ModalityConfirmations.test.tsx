@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { ModalityConfirmations } from "./ModalityConfirmations";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { setDevicePrefersDark } from "@/test/device";
 
 const item = { modalityRowId: "m1", studentId: "s1", studentName: "Aluno Fictício", modality: "Judô", unit: "Centro", planId: "p1", plan: "Judô Mensal", planValueCents: 15000 };
 
@@ -44,7 +45,8 @@ describe("ModalityConfirmations (RN-MAT-13)", () => {
 });
 
 describe("ModalityConfirmations: falha da busca (RF-POR-08, CA6)", () => {
-  it("mostra erro com Tentar de novo e o botão refaz a busca", async () => {
+  it.each([false, true])("mostra erro com Tentar de novo e o botão refaz a busca, sem violações no axe (tema escuro: %s)", async (dark) => {
+    setDevicePrefersDark(dark);
     let fail = true;
     server.use(http.get("/api/v1/portal/modality-confirmations", () => (fail ? new HttpResponse(null, { status: 500 }) : HttpResponse.json([item]))));
     const { container } = render(<ModalityConfirmations />);

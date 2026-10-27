@@ -48,7 +48,7 @@ Fora do escopo: back-end, OpenAPI, MSW e migração (nenhuma rota nova, nenhum d
 - [x] T1: `PortalRequestsSummary` com carregando, erro com "Tentar de novo" e sem permissão; ajustar `PortalInfoPage.test.tsx` — cobre CA5, CA7 — prova: `npm test -- PortalInfoPage` em `frontend/`
 - [x] T2: `ModalityConfirmations` com erro e "Tentar de novo"; ajustar `ModalityConfirmations.test.tsx` — cobre CA6, CA7 — prova: `npm test -- ModalityConfirmations`
 - [x] T3: criar `PortalStates.test.tsx` que percorre as oito rotas do portal para carregando, erro com retry, sem permissão e vazio; corrigir qualquer lacuna que ele revelar — cobre CA1, CA2, CA3, CA4, CA8 — prova: `npm test -- PortalStates`
-- [ ] T4: regressão do front (`lint`, `typecheck`, `test:cov` com 80%) — não cobre critério: confere que nada do portal nem das telas de gestão quebrou — prova: `npm run lint && npm run typecheck && npm run test:cov`
+- [x] T4: regressão do front (`lint`, `typecheck`, `test:cov` com 80%) — não cobre critério: confere que nada do portal nem das telas de gestão quebrou — prova: `npm run lint && npm run typecheck && npm run test:cov`
 
 ## 6. Decisões
 
@@ -72,3 +72,61 @@ Não é do item: nenhum.
 - `npm run lint && npm run typecheck` → passam. `npm run test:cov -- --maxWorkers=2` → 159 arquivos passaram, 1 falhou (1402 testes passaram, 1 falhou): `src/features/agenda/LessonPanelPage.test.tsx` > "CA10: carregando, erro com Tentar de novo, sem permissão e aula não encontrada" (`findByText("Carregando...")` devolve elemento que sai do documento). Os tempos limite da rodada anterior não se repetiram com 2 workers.
 - A falha reproduz isolada (`npx vitest run LessonPanelPage`) e também com `ModalityConfirmations.tsx` na versão de `HEAD` (provado e restaurado), portanto é anterior ao item e não é dele. Arquivos do item não tocam `features/agenda`.
 - Limite de 80% de cobertura não foi lido: a rodada terminou vermelha. T4 continua por marcar; precisa de issue no formato das #318 e #320 para a falha de `LessonPanelPage` (não criada por este agente).
+
+### Regressão final (T4, depois de trazer a #385 para o branch)
+- T4 — arquivos: nenhum — prova: `npm run lint && npm run typecheck && npm run test:cov -- --maxWorkers=2` em `frontend/` → todos passaram (saída 0); cobertura: linhas 96,68%, declarações 93,42%, ramos 87,13%, funções 92,3% (mínimo 80%). A falha de `LessonPanelPage` não se repetiu (corrigida pela #385).
+
+## Verificação
+
+### Rodada 1 — CORRIGIR_CODIGO — 2026-10-27, estado 990620aa894c30671cd98cb277365fd2beff552b
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 | PASSOU | `PortalStates.test.tsx` "carregando enquanto busca" nas 8 rotas; suíte completa verde |
+| CA2 | PASSOU | "erro com Tentar de novo, que refaz a busca" nas 8 rotas |
+| CA3 | PASSOU | "sem permissão no 403, sem dado da resposta" nas 8 rotas |
+| CA4 | PASSOU | "vazio com título próprio" nas rotas com vazio; financeiro só confere o vazio de "em aberto", não o do histórico (sugestão) |
+| CA5 | PASSOU | `PortalInfoPage.test.tsx`: carregando, 403, erro com retry (1 chamada a mais) e vazio "Nenhum pedido feito." |
+| CA6 | PASSOU | `ModalityConfirmations.test.tsx`: erro e retry novos; vazio e pendência nos testes anteriores |
+| CA7 | NÃO CONFERIDO | axe nos dois temas só no erro dos pedidos; `ModalityConfirmations` roda axe só no tema padrão; nenhum teste roda axe no carregando; 360 px sem prova |
+| CA8 | PASSOU | teste percorre as 8 rotas e cobre os 4 estados |
+
+Comandos: `npm run lint && npm run typecheck && npm run test:cov -- --maxWorkers=2` em `frontend/` → saída 0; 160 arquivos e 1403 testes passaram; cobertura acima de 80%. Sem teste instável.
+Achados:
+- obrigatório, código, `frontend/src/features/portal/ModalityConfirmations.test.tsx` (teste "falha da busca") e `PortalInfoPage.test.tsx` (carregando) — esperado: CA7 pede axe sem violação e sem rolagem horizontal em 360 px, no erro e no carregando de CA5 e CA6, nos dois temas; observado: o erro de `ModalityConfirmations` é verificado só no tema padrão (sem `setDevicePrefersDark`), o carregando dos pedidos não passa por `axeViolations`, e não há verificação de largura 360 px; evidência: leitura do diff; corrigir: repetir o teste de erro de `ModalityConfirmations` nos temas claro e escuro, rodar `axeViolations` também no carregando dos pedidos, e registrar como prova de 360 px o que o projeto usa para isso (se for só e2e, dizer na Construção)
+- sugestão, código, `PortalStates.test.tsx` — CA4 pede o vazio de cada seção do financeiro; só "em aberto" (`portalFinance.open.emptyTitle`) é conferido
+- sugestão, especificação — R1 cita `/portal` e a Construção registra desvio para `/`; ajustar o texto de R1
+
+### Correção da rodada 1
+- CA7, achado obrigatório — arquivos: `frontend/src/features/portal/ModalityConfirmations.test.tsx` (erro da busca repetido nos temas claro e escuro, com axe), `frontend/src/features/portal/PortalInfoPage.test.tsx` (carregando dos pedidos com axe nos dois temas) — prova: `npx vitest run portal` → 22 arquivos e 206 testes passaram
+- 360 px: jsdom não faz layout, então não há teste de largura por tela; a prova do projeto é `src/test/a11y.test.tsx` (sem largura fixa acima de 360 px, viewport) e o e2e. Os estados novos usam só `LoadingState` e `ErrorState` e `Card`, sem largura fixa; nenhuma verificação de 360 px nova foi criada.
+- Regressão: `npm run lint && npm run typecheck && npm run test:cov -- --maxWorkers=2` em `frontend/` → saída 0; 160 arquivos e 1405 testes passaram; cobertura linhas 96,68%, declarações 93,42%, ramos 87,13%, funções 92,3%.
+- Sugestões (vazio do histórico no financeiro, texto de R1) não atendidas: opcionais; R1 é da fase 2.
+
+### Rodada 2 — OK — 2026-10-27, estado 58939264294b4fb429e8cce19b92f9cd96e82332
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 | PASSOU | mantido da rodada 1 |
+| CA2 | PASSOU | mantido da rodada 1 |
+| CA3 | PASSOU | mantido da rodada 1 |
+| CA4 | PASSOU | mantido da rodada 1 |
+| CA5 | PASSOU | `PortalInfoPage.test.tsx`: carregando agora com axe nos temas claro e escuro; 403, erro com retry e vazio mantidos |
+| CA6 | PASSOU | `ModalityConfirmations.test.tsx`: erro com retry e axe nos dois temas (`it.each([false, true])`) |
+| CA7 | PASSOU | axe sem violação no erro (pedidos e modalidade) e no carregando dos pedidos, nos dois temas; 360 px por `src/test/a11y.test.tsx` (viewport 360, sem largura fixa acima de 360 px), como declarado na Construção; os estados novos só usam `LoadingState`, `ErrorState` e `Card` |
+| CA8 | PASSOU | mantido da rodada 1 |
+
+Comandos: `npm run lint && npm run typecheck` em `frontend/` → passam. `npx vitest run portal --maxWorkers=2` → 22 arquivos, 206 testes passaram. `npm run test:cov -- --maxWorkers=2` → saída 0; 160 arquivos e 1405 testes passaram; linhas 96,68%, ramos 87,13%, funções 92,3%. Sem teste instável.
+Achados:
+- achado obrigatório da rodada 1 (CA7): resolvido; o diff desde a rodada 1 só altera os dois arquivos de teste citados e o arquivo do item.
+- sugestão, código, `PortalStates.test.tsx` — CA4: só o vazio "em aberto" do financeiro é conferido (mantida)
+- sugestão, especificação — R1 cita `/portal` e a rota é `/` (mantida)
+
+## Entrega
+
+- O que muda: `PortalRequestsSummary` (Minhas informações) ganha carregando, erro com "Tentar de novo" e sem permissão, como bloco, sem derrubar a aba; `ModalityConfirmations` ganha erro com "Tentar de novo". As demais telas do portal já tinham os quatro estados e só ganham o teste de conjunto.
+- Teste novo: `PortalStates.test.tsx` percorre as oito rotas do portal e confere carregando, erro com nova busca, sem permissão e vazio.
+- Verificação: rodada 2 `OK` (estado `58939264294b4fb429e8cce19b92f9cd96e82332`). `lint`, `typecheck` e `test:cov` passam (160 arquivos, 1405 testes; linhas 96,68%, ramos 87,13%, funções 92,3%). Axe nos dois temas no erro e no carregando dos pedidos e da modalidade.
+- Decisões: D1 (bloco em vez de tela inteira) e D3 (só front e teste), registradas na seção Decisões.
+- Limitações: 360 px não tem medição de layout (jsdom não faz layout); a prova é `src/test/a11y.test.tsx` com viewport de 360 px e o e2e. No financeiro, o vazio conferido é só o de "em aberto". R1 cita `/portal`, mas a rota é `/` (sugestão aberta, não bloqueia).
+- Pendência de outro item: nenhuma. A falha de `LessonPanelPage` da rodada 1 foi corrigida pela #385, já mergeada.
