@@ -4,12 +4,12 @@ import { Modal } from "@/components/Modal";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { sendProof, usePixInstructions, type PixInstructions } from "./usePixProof";
 
-type Props = { chargeId: string; onClose: () => void; onSent?: () => void };
+type Props = { chargeIds: string[]; onClose: () => void; onSent?: () => void };
 
-function Form({ data, onClose, onSent }: { data: PixInstructions } & Omit<Props, "chargeId">) {
+function Form({ data, chargeIds, onClose, onSent }: { data: PixInstructions } & Props) {
   const { t } = useTranslation();
   const fileId = useId();
   const [file, setFile] = useState<File>();
@@ -35,7 +35,7 @@ function Form({ data, onClose, onSent }: { data: PixInstructions } & Omit<Props,
     setFieldError(undefined);
     setFormError(undefined);
     try {
-      await sendProof(data.chargeId, file);
+      await sendProof(chargeIds, file);
       setSent(true);
       onSent?.();
     } catch (err) {
@@ -76,6 +76,18 @@ function Form({ data, onClose, onSent }: { data: PixInstructions } & Omit<Props,
         <dt className="text-muted-foreground">{t("pixProof.key")}</dt>
         <dd className="break-all font-medium">{data.pixKey}</dd>
       </dl>
+      {data.charges && (
+        <ul aria-label={t("pixProof.charges")} className="flex flex-col gap-1 text-sm">
+          {data.charges.map((c) => (
+            <li key={c.chargeId} className="flex flex-wrap justify-between gap-x-3">
+              <span className="break-words">
+                {c.studentName} · {formatDate(c.dueOn)}
+              </span>
+              <span>{formatCurrency(c.amountCents)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" className="min-h-11" onClick={() => void copyKey()}>
           {t("pixProof.copy")}
@@ -113,10 +125,10 @@ function Form({ data, onClose, onSent }: { data: PixInstructions } & Omit<Props,
   );
 }
 
-// RF-COB-05: janela "Pix na chave com comprovante". A #92 monta a janela na tela Financeiro do portal; o servidor confere quem paga e o arquivo.
-export function PixProofDialog({ chargeId, onClose, onSent }: Props) {
+// RF-COB-05, RF-POR-05: janela "Pix na chave com comprovante" para uma ou várias cobranças da mesma unidade; o servidor confere quem paga e o arquivo.
+export function PixProofDialog({ chargeIds, onClose, onSent }: Props) {
   const { t } = useTranslation();
-  const { state, reload } = usePixInstructions(chargeId);
+  const { state, reload } = usePixInstructions(chargeIds);
   return (
     <Modal open onOpenChange={(o) => !o && onClose()} title={t("pixProof.title")}>
       {state.status === "loading" && <LoadingState />}
@@ -124,8 +136,9 @@ export function PixProofDialog({ chargeId, onClose, onSent }: Props) {
       {state.status === "error" && <ErrorState onRetry={reload} />}
       {state.status === "notFound" && <EmptyState title={t("pixProof.errors.404")} />}
       {state.status === "noKey" && <EmptyState title={t("pixProof.noKeyTitle")} text={t("pixProof.noKeyText")} />}
+      {state.status === "badSelection" && <EmptyState title={t("pixProof.badSelectionTitle")} text={t("pixProof.badSelectionText")} />}
       {state.status === "notPayable" && <EmptyState title={t("pixProof.notPayableTitle")} text={t("pixProof.notPayableText")} />}
-      {state.status === "ready" && <Form data={state.data} onClose={onClose} onSent={onSent} />}
+      {state.status === "ready" && <Form data={state.data} chargeIds={chargeIds} onClose={onClose} onSent={onSent} />}
     </Modal>
   );
 }

@@ -129,6 +129,7 @@ export const resetMockSession = () => {
   portalAccepted.clear();
   portalImage.clear();
   portalConfirmed.clear();
+  financeReview.clear();
   mockPortalRequests = [];
   mockProofsSent = [];
 };
@@ -1294,6 +1295,100 @@ const portalHome = (studentId: string | null) => {
     ],
   };
   return HttpResponse.json({ ...base, lessons, announcements, belts });
+};
+// Financeiro do portal (#92): as abertas saem das mesmas cobranças do Início (mais um "Kimono" longe do segundo filho); o histórico é fixo.
+// Cobrança que não está em `mockCharges` vai para "Em conferência" por este conjunto.
+const THIRD_CHARGE = "00000000-0000-0000-0000-0000000007c3";
+const financeReview = new Set<string>();
+const financeRaw = (studentId: string) =>
+  [
+    ...homeCharges(studentId),
+    ...(studentId === CHILD_TWO ? [{ id: THIRD_CHARGE, studentId, description: "Kimono", referenceMonth: null, dueOn: dayShift(20), amountCents: 3000, status: "OPEN", unitId: CENTRO, modality: null as { id: string; name: string } | null }] : []),
+  ].map((c) => (financeReview.has(c.id) ? { ...c, status: "IN_REVIEW" } : c));
+const financeOpen = () => homeCards().flatMap((card) => financeRaw(card.id).map((c) => ({ ...c, studentName: card.name })));
+const financeHistory = (studentId: string, year: number) => {
+  if (studentId === STUDENT_MINOR) return [];
+  const cy = new Date().getFullYear();
+  const row = (n: number, y: number, status: string, amountCents: number) => ({
+    id: `00000000-0000-0000-0000-0000${String(y).slice(-2)}00000${n}${studentId.slice(-1)}`,
+    referenceLabel: `Mensalidade · 0${n}/${y}`, dueOn: `${y}-0${n}-05`, amountCents, status,
+    paidAt: status === "PAID" ? `${y}-0${n}-04T15:00:00Z` : null, method: status === "PAID" ? "PIX_KEY" : null,
+    receipt: status === "PAID" ? { number: 100 * (y % 100) + n, code: `RC-MOCK-${y}-${n}` } : null,
+  });
+  const all = [row(3, cy, "PAID", 12000), row(2, cy, "PAID", 12000), row(1, cy - 1, "PAID", 11000), row(2, cy - 1, "CANCELED", 11000)];
+  return all.filter((r) => r.dueOn.startsWith(String(year)));
+};
+const portalFinance = (url: URL) => {
+  const cards = homeCards();
+  const selected = url.searchParams.get("studentId") ?? cards[0].id;
+  if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const cy = new Date().getFullYear();
+  const yearParam = url.searchParams.get("year");
+  const year = yearParam === null ? cy : Number(yearParam);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return studentBad("year", "ano inválido");
+  const family = url.searchParams.get("scope") === "FAMILY";
+  const today = isoDay(new Date());
+  const soon = dayShift(3);
+  const sit = (c: { status: string; dueOn: string }) => (c.status === "IN_REVIEW" ? "IN_REVIEW" : c.dueOn < today ? "OVERDUE" : c.dueOn === today ? "DUE_TODAY" : c.dueOn <= soon ? "DUE_SOON" : "PENDING");
+  const sum = (id: string) => financeRaw(id).reduce((n, c) => n + c.amountCents, 0);
+  const open = financeOpen()
+    .filter((c) => family || c.studentId === selected)
+    .sort((a, b) => Number(sit(b) === "OVERDUE") - Number(sit(a) === "OVERDUE") || a.dueOn.localeCompare(b.dueOn))
+    .map((c) => {
+      const benefitCents = c.id === SECOND_CHARGE ? 1000 : 0;
+      return {
+        id: c.id, studentId: c.studentId, studentName: c.studentName, type: c.referenceMonth ? "MONTHLY" : "ONE_OFF", description: c.description, referenceLabel: c.description || "Cobrança", referenceMonth: c.referenceMonth, dueOn: c.dueOn,
+        situation: sit(c), amountCents: c.amountCents, planCents: c.amountCents + benefitCents, benefitCents, canPay: c.status === "OPEN", modality: c.modality, unit: homeUnit(c.unitId),
+      };
+    });
+  return HttpResponse.json({
+    reduced: current.account.email === REDUCED_ACCOUNT,
+    students: cards.map((c) => ({ ...c, openCents: sum(c.id) })),
+    selectedStudentId: selected,
+    scope: family ? "FAMILY" : "STUDENT",
+    year,
+    years: selected === STUDENT_MINOR ? [] : [cy, cy - 1],
+    familyOpenCents: cards.reduce((n, c) => n + sum(c.id), 0),
+    open,
+    history: family ? [] : financeHistory(selected, year),
+  });
+};
+// Várias cobranças abertas da mesma unidade, de alunos da conta.
+const financeBatch = (ids: string[]) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  if (ids.length === 0 || ids.length > 20 || new Set(ids).size !== ids.length) return rule("ids", "de 1 a 20 cobranças, sem repetir");
+  const all = financeOpen();
+  const found = ids.map((id) => all.find((c) => c.id === id));
+  if (found.some((c) => !c)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const charges = found as NonNullable<(typeof found)[number]>[];
+  if (charges.some((c) => c.status !== "OPEN")) return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
+  if (new Set(charges.map((c) => c.unitId)).size > 1) return rule("ids", "escolha cobranças da mesma unidade");
+  if (!financeKey(charges[0])) return error(422, "PIX_KEY_MISSING", "A unidade não tem chave Pix.");
+  return charges;
+};
+// As cobranças fixas do simulado (fora de `mockCharges`) trazem a chave delas, para a tela poder ser provada sem a gestão cadastrar uma.
+const fixedId = (id: string) => !mockCharges.some((x) => x.id === id) && financeOpen().some((c) => c.id === id);
+const financeKey = (c: { id: string; unitId: string }) => unitPixKey(c.unitId) ?? (fixedId(c.id) ? "pix@alfa.example" : null);
+// Um arquivo (`file`) para uma ou várias cobranças: todas vão para "Em conferência" ou nenhuma. Multipart lido como texto (o parser do Node não aceita o File do jsdom).
+const financeSend = (ids: string[], text: string) => {
+  const charges = financeBatch(ids);
+  if (charges instanceof Response) return charges;
+  const part = /Content-Type:\s*(\S+)\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(text);
+  if (!part || part[2].length === 0) return rule("file", "envie o comprovante");
+  if (part[2].length > 5 * 1024 * 1024) return rule("file", "até 5 MB");
+  if (!PROOF_TYPES.includes(part[1])) return rule("file", "use JPG, PNG, WebP ou PDF");
+  const sentAt = new Date().toISOString();
+  return charges.map((c) => {
+    const real = mockCharges.find((x) => x.id === c.id);
+    const proof: MockPaymentProof = { id: crypto.randomUUID(), chargeId: c.id, studentId: c.studentId, unitId: c.unitId, sentAt, status: "PENDING", contentType: part[1], refusalReason: null, decidedAt: null };
+    if (real) {
+      real.status = "IN_REVIEW";
+      mockProofsSent.push(proof); // a gestão só vê comprovante de cobrança do simulado
+    } else financeReview.add(c.id);
+    return { id: proof.id, chargeId: c.id, status: "PENDING", sentAt };
+  });
 };
 const termText = (kind: "ENROLLMENT" | "IMAGE_USE") => {
   const { version, body } = termsCurrent(kind);
@@ -4316,6 +4411,56 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-POR-05 (#92): Financeiro. Abertas (com a conferência), família, histórico por ano e recibos; o débito automático não tem rota (Sprint 11). Gestão 403, `studentId` fora da conta 404, `year` fora de 2000 a 2100 400.
+    method: "get",
+    path: "/portal/finance",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      return portalFinance(new URL(request.url));
+    },
+  },
+  {
+    // RN-COB-16: PDF do recibo de aluno da conta; código desconhecido 404 igual.
+    method: "get",
+    path: "/portal/receipts/{code}/pdf",
+    resolver: ({ params }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const known = String(params.code).startsWith("RC-MOCK-") || mockReceipts.some((r) => r.code === params.code && portalMine().some((s) => mockCharges.find((c) => c.id === r.chargeId)?.studentId === s.id));
+      if (!known) return error(404, "NOT_FOUND", "Não encontrado.");
+      return new HttpResponse("%PDF-1.4\n%%EOF", { headers: { "Content-Type": "application/pdf", "Cache-Control": "private, no-store" } });
+    },
+  },
+  {
+    // RF-POR-05, RN-COB-13: pagar junto. Chave Pix, total e cobranças.
+    method: "get",
+    path: "/portal/charges/pix-instructions",
+    resolver: ({ request }) => {
+      const ids = (new URL(request.url).searchParams.get("ids") ?? "").split(",").filter(Boolean);
+      const charges = financeBatch(ids);
+      if (charges instanceof Response) return charges;
+      return HttpResponse.json({
+        pixKey: financeKey(charges[0]),
+        totalCents: charges.reduce((n, c) => n + c.amountCents, 0),
+        unit: units.find((u) => u.id === charges[0].unitId)?.name ?? "",
+        charges: charges.map((c) => ({ chargeId: c.id, studentName: c.studentName, amountCents: c.amountCents, dueOn: c.dueOn })),
+      });
+    },
+  },
+  {
+    // Um arquivo (`file`) para várias cobranças (`chargeIds`): todas vão para "Em conferência" ou nenhuma; responde um comprovante por cobrança.
+    method: "post",
+    path: "/portal/charges/proof",
+    resolver: async ({ request }) => {
+      const text = await request.text();
+      const sent = financeSend([...text.matchAll(/name="chargeIds"\r?\n\r?\n([^\r\n]*)/gi)].map((m) => m[1].trim()), text);
+      return sent instanceof Response ? sent : HttpResponse.json(sent, { status: 201 });
+    },
+  },
+  {
     // RF-POR-03 (#90): carteirinha. Mesmas contas do Início; "reduzido@exemplo.com" é o aluno inativo (INACTIVE, sem modalidades, rota continua 200); gestão 403, `studentId` fora da conta 404.
     method: "get",
     path: "/portal/card",
@@ -4607,6 +4752,12 @@ export const routes: Route[] = [
     method: "get",
     path: "/portal/charges/{id}/pix-instructions",
     resolver: ({ params }) => {
+      if (fixedId(params.id as string)) {
+        const fixed = financeBatch([params.id as string]);
+        if (fixed instanceof Response) return fixed;
+        const [f] = fixed;
+        return HttpResponse.json({ chargeId: f.id, pixKey: financeKey(f), amountCents: f.amountCents, dueOn: f.dueOn, unit: units.find((u) => u.id === f.unitId)?.name ?? "" });
+      }
       const c = portalCharge(params.id as string);
       if (c instanceof Response) return c;
       if (c.status !== "OPEN") return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
@@ -4620,6 +4771,10 @@ export const routes: Route[] = [
     method: "post",
     path: "/portal/charges/{id}/proof",
     resolver: async ({ request, params }) => {
+      if (fixedId(params.id as string)) {
+        const sent = financeSend([params.id as string], await request.text());
+        return sent instanceof Response ? sent : HttpResponse.json(sent[0], { status: 201 });
+      }
       const c = portalCharge(params.id as string);
       if (c instanceof Response) return c;
       // Multipart lido como texto (o parser do Node não aceita o File do jsdom nos testes): cabeçalho da parte, linha em branco, conteúdo.

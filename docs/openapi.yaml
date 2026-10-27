@@ -3022,6 +3022,94 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /portal/finance:
+    get:
+      summary: Financeiro do portal (RF-POR-05, RN-POR-02, RN-POR-05, RN-POR-08). Responsável e Aluno.
+      description: |
+        Cobranças em aberto (`OPEN` e `IN_REVIEW`) do aluno escolhido (`studentId`, padrão o primeiro cartão) com a composição guardada na cobrança (`planCents`,
+        `benefitCents`, `amountCents`); vencidas primeiro, depois por vencimento. `situation` é `OVERDUE`, `DUE_TODAY`, `DUE_SOON`, `PENDING` ou `IN_REVIEW`; em
+        conferência `canPay` é falso. `scope=FAMILY` devolve as abertas de todos os alunos que a conta paga, cada uma com aluno e unidade, e o histórico vem vazio;
+        `familyOpenCents` é a soma do que a conta paga. O histórico (`PAID`, `REFUNDED`, `CANCELED`, `RENEGOTIATED`) é do `year` pedido (padrão o ano de hoje no fuso da
+        unidade de cadastro) com data de pagamento, meio e recibo (`receipt.code` baixa o PDF em `/portal/receipts/{code}/pdf`); `years` lista os anos com histórico.
+        `year` fora de 2000 a 2100: 400. Aluno que a conta não paga (menor com responsável não financeiro) vem com listas vazias. `studentId` de aluno não ligado à
+        conta ou de outra organização: 404. Vale também com o portal reduzido (`reduced`). Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: scope, in: query, required: false, schema: { type: string, enum: [STUDENT, FAMILY], default: STUDENT } }
+        - { name: year, in: query, required: false, schema: { type: integer, minimum: 2000, maximum: 2100 } }
+      responses:
+        '200':
+          description: Financeiro.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalFinance' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/receipts/{code}/pdf:
+    get:
+      summary: PDF do recibo de uma cobrança que a conta paga (RF-POR-05, RN-COB-16). Responsável e Aluno.
+      description: |
+        Mesmo recibo do link público, com o CPF de quem pagou mascarado. Só de recibo de aluno que a conta paga; código desconhecido, de aluno de outra conta ou de
+        outra organização: 404 igual. Vale também com o portal reduzido. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Resposta `Cache-Control: private, no-store`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: O PDF.
+          content: { application/pdf: { schema: { type: string, format: binary } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/charges/pix-instructions:
+    get:
+      summary: Chave Pix da unidade para pagar várias cobranças abertas juntas (RF-POR-05, RN-COB-13). Aluno adulto e responsável financeiro.
+      description: |
+        `ids` com 1 a 20 cobranças abertas da mesma unidade, todas de alunos que a conta paga. Devolve a chave Pix, o total e as cobranças. Lista vazia, mais de 20,
+        repetida ou de unidades diferentes: 422 no campo `ids`. Cobrança de aluno não ligado à conta ou de outra organização: 404; responsável não financeiro: 403;
+        fora de aberta: 409 `CHARGE_NOT_PAYABLE`; unidade sem chave Pix: 422 `PIX_KEY_MISSING`. Com termo pendente: 403 `TERM_PENDING`. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: ids, in: query, required: true, style: form, explode: false, schema: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid } } }
+      responses:
+        '200':
+          description: Instruções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PixBatchInstructions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Seleção inválida (campo `ids`) ou unidade sem chave Pix (PIX_KEY_MISSING).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /portal/charges/proof:
+    post:
+      summary: Envia um comprovante do Pix na chave para várias cobranças e põe todas em conferência (RF-POR-05, RN-COB-13). Aluno adulto e responsável financeiro.
+      description: |
+        Multipart com `chargeIds` (1 a 20 cobranças abertas da mesma unidade, de alunos que a conta paga) e `file` (JPG, PNG, WebP ou PDF, até 5 MB, conferido pelo
+        conteúdo). Grava um comprovante pendente por cobrança com o mesmo arquivo, põe todas em `IN_REVIEW` e audita cada envio (`payment_proof.sent`, sem a chave do
+        arquivo), tudo ou nada. Seleção inválida (vazia, mais de 20, repetida ou de unidades diferentes): 422 em `chargeIds`; arquivo ausente, vazio, grande demais ou
+        de outro tipo: 422 em `file`. Cobrança fora de aberta: 409 `CHARGE_NOT_PAYABLE`; aluno não ligado: 404; responsável não financeiro: 403; unidade sem chave Pix:
+        422 `PIX_KEY_MISSING`. Cada comprovante é decidido um a um pela gestão.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [chargeIds, file]
+              properties:
+                chargeIds: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid } }
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Comprovantes enviados, pendentes (um por cobrança).
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/PaymentProofSent' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Seleção ou arquivo inválido, ou unidade sem chave Pix (PIX_KEY_MISSING). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /portal/card:
     get:
       summary: Carteirinha do aluno (RF-POR-03, RN-POR-01, RN-INA-08). Responsável e Aluno.
@@ -5790,6 +5878,75 @@ components:
             unreadCount: { type: integer, minimum: 0 }
             items: { type: array, maxItems: 5, items: { $ref: '#/components/schemas/PortalHomeNotice' } }
         belts: { type: array, items: { $ref: '#/components/schemas/PortalHomeBelt' } }
+    PortalFinance:
+      type: object
+      required: [reduced, students, selectedStudentId, scope, year, years, familyOpenCents, open, history]
+      properties:
+        reduced: { type: boolean }
+        students: { type: array, items: { $ref: '#/components/schemas/PortalHomeStudent' } }
+        selectedStudentId: { type: string, format: uuid, nullable: true }
+        scope: { type: string, enum: [STUDENT, FAMILY] }
+        year: { type: integer, description: Ano do histórico. }
+        years: { type: array, items: { type: integer }, description: 'Anos com histórico, do mais novo ao mais antigo.' }
+        familyOpenCents: { type: integer, format: int64, minimum: 0 }
+        open:
+          type: array
+          items:
+            type: object
+            required: [id, studentId, studentName, type, description, referenceLabel, referenceMonth, dueOn, situation, amountCents, planCents, benefitCents, canPay, modality, unit]
+            properties:
+              id: { type: string, format: uuid }
+              studentId: { type: string, format: uuid }
+              studentName: { type: string }
+              type: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] }
+              description: { type: string, nullable: true }
+              referenceLabel: { type: string }
+              referenceMonth: { type: string, format: date, nullable: true }
+              dueOn: { type: string, format: date }
+              situation: { type: string, enum: [OVERDUE, DUE_TODAY, DUE_SOON, PENDING, IN_REVIEW] }
+              amountCents: { type: integer, format: int64, minimum: 0, description: Valor final. }
+              planCents: { type: integer, format: int64, minimum: 0, description: Valor do plano guardado na cobrança. }
+              benefitCents: { type: integer, format: int64, minimum: 0, description: Benefício guardado na cobrança. }
+              canPay: { type: boolean, description: 'Aberta; falso em conferência.' }
+              modality: { allOf: [{ $ref: '#/components/schemas/PortalHomeRef' }], nullable: true }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
+        history:
+          type: array
+          items:
+            type: object
+            required: [id, referenceLabel, dueOn, amountCents, status, paidAt, method, receipt]
+            properties:
+              id: { type: string, format: uuid }
+              referenceLabel: { type: string }
+              dueOn: { type: string, format: date }
+              amountCents: { type: integer, format: int64, minimum: 0 }
+              status: { type: string, enum: [PAID, REFUNDED, CANCELED, RENEGOTIATED] }
+              paidAt: { type: string, format: date-time, nullable: true }
+              method: { type: string, nullable: true, enum: [PIX_MP, CREDIT_CARD, DEBIT_CARD, BOLETO, PIX_KEY, CASH, CARD_MACHINE, TRANSFER] }
+              receipt:
+                nullable: true
+                type: object
+                required: [number, code]
+                properties:
+                  number: { type: integer }
+                  code: { type: string }
+    PixBatchInstructions:
+      type: object
+      required: [pixKey, totalCents, unit, charges]
+      properties:
+        pixKey: { type: string }
+        totalCents: { type: integer, format: int64, minimum: 0 }
+        unit: { type: string }
+        charges:
+          type: array
+          items:
+            type: object
+            required: [chargeId, studentName, amountCents, dueOn]
+            properties:
+              chargeId: { type: string, format: uuid }
+              studentName: { type: string }
+              amountCents: { type: integer, format: int64 }
+              dueOn: { type: string, format: date }
     PortalCard:
       type: object
       required: [organization, student, students, status, today, generatedAt, timezone, modalities]

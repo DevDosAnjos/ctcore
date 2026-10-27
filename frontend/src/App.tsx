@@ -47,6 +47,7 @@ import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
 import { PortalRequestsPage as PortalOwnRequestsPage } from "@/features/portal/PortalRequestsPage";
 import { PortalAgendaPage } from "@/features/portal/PortalAgendaPage";
 import { PortalCardPage } from "@/features/portal/PortalCardPage";
+import { PortalFinancePage } from "@/features/portal/PortalFinancePage";
 import { PortalHomePage } from "@/features/portal/PortalHomePage";
 import { PortalLayout } from "@/features/portal/PortalLayout";
 import { PortalSectionPage } from "@/features/portal/PortalSectionPage";
@@ -114,7 +115,7 @@ export function App() {
               <Route path="/portal/agenda" element={<PortalAgendaPage />} />
               <Route path="/portal/avisos" element={<PortalSectionPage tab="notices" />} />
             </Route>
-            <Route path="/portal/financeiro" element={<PortalSectionPage tab="finance" />} />
+            <Route path="/portal/financeiro" element={<PortalFinancePage />} />
             <Route path="/portal/minhas-informacoes" element={<PortalSectionPage tab="info" />} />
           </Route>
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />

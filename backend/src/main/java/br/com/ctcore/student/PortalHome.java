@@ -56,6 +56,10 @@ public class PortalHome {
     static final String ROW_CLASS = "(em.primary_class_id = %1$s or exists (select 1 from enrollment_modality_class x where x.organization_id = em.organization_id "
             + "and x.modality_row_id = em.id and x.class_id = %1$s))";
 
+    /** Situação da cobrança em aberto (aliases {@code c} e {@code u}; parâmetro {@code :now}); reusada pelo Financeiro. */
+    static final String SITUATION = "case when c.status = 'IN_REVIEW' then 'IN_REVIEW' when " + Charges.overdue("c", "u") + " then 'OVERDUE' when c.due_on = " + Charges.today("u")
+            + " then 'DUE_TODAY' when c.due_on <= " + Charges.today("u") + " + " + SOON_DAYS + " then 'DUE_SOON' else 'PENDING' end";
+
     private final JdbcClient jdbc;
     private final OrganizationTransactions transactions;
     private final PortalStudents portal;
@@ -96,7 +100,7 @@ public class PortalHome {
         });
     }
 
-    private Map<UUID, Long> openCents(UUID org, List<UUID> ids) {
+    Map<UUID, Long> openCents(UUID org, List<UUID> ids) {
         if (ids.isEmpty()) return Map.of();
         return jdbc.sql("select student_id, sum(amount_cents) from charge where organization_id = :org and student_id in (:ids) and status in ('OPEN', 'IN_REVIEW') "
                 + "group by student_id").param("org", org).param("ids", ids).query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getLong(2))).list().stream()
@@ -105,10 +109,7 @@ public class PortalHome {
 
     // D2: vencidas, que vencem hoje ou em até 3 dias, e as em conferência; "PENDING" é o que ainda está longe (só dá o próximo vencimento).
     private ChargeSection charges(UUID org, UUID student, OffsetDateTime now) {
-        String today = Charges.today("u");
-        List<Charge> all = jdbc.sql("select c.id, c.student_id, c.description, c.reference_month, c.due_on, c.amount_cents, case when c.status = 'IN_REVIEW' then 'IN_REVIEW' "
-                + "when " + Charges.overdue("c", "u") + " then 'OVERDUE' when c.due_on = " + today + " then 'DUE_TODAY' when c.due_on <= " + today + " + " + SOON_DAYS
-                + " then 'DUE_SOON' else 'PENDING' end, md.id, md.name, u.id, u.name "
+        List<Charge> all = jdbc.sql("select c.id, c.student_id, c.description, c.reference_month, c.due_on, c.amount_cents, " + SITUATION + ", md.id, md.name, u.id, u.name "
                 + "from charge c join unit u on u.organization_id = c.organization_id and u.id = c.unit_id "
                 + "left join enrollment_modality em on em.organization_id = c.organization_id and em.id = c.enrollment_modality_id left join modality md on md.id = em.modality_id "
                 + "where c.organization_id = :org and c.student_id = :sid and c.status in ('OPEN', 'IN_REVIEW')")

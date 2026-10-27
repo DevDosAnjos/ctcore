@@ -45,7 +45,7 @@ export function PortalChargeCard({ items, nextDueOn, label, onChanged }: Props) 
           })}
         </ul>
       )}
-      {paying && <PixProofDialog chargeId={paying} onClose={() => setPaying(undefined)} onSent={onChanged} />}
+      {paying && <PixProofDialog chargeIds={[paying]} onClose={() => setPaying(undefined)} onSent={onChanged} />}
     </Card>
   );
 }

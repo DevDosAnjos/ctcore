@@ -13,6 +13,8 @@ import type { PortalShellData } from "./usePortalShell";
 // O Início do portal (#89) lê /portal/home; estes testes só olham a moldura e o termo.
 const emptyHome = { reduced: false, students: [], familyOpenCents: 0, selectedStudentId: null, charges: { items: [], nextDueOn: null }, lessons: [], announcements: { unreadCount: 0, items: [] }, belts: [] };
 
+const emptyFinance = { reduced: false, students: [], selectedStudentId: null, scope: "STUDENT", year: 2026, years: [], familyOpenCents: 0, open: [], history: [] };
+
 const session = (role: string): SessionView => ({
   account: { id: "a", email: "x@x.com", name: "Ana Silva" },
   links: [{ id: "l1", organizationId: "o", organizationName: "Alfa", role, unitIds: [] }],
@@ -28,6 +30,7 @@ function setup(path = "/", over: { role?: string; shell?: () => Response | Promi
     http.get("/api/v1/portal/students", () => HttpResponse.json([])),
     http.get("/api/v1/portal/modality-confirmations", () => HttpResponse.json([])),
     http.get("/api/v1/portal/home", () => HttpResponse.json(emptyHome)),
+    http.get("/api/v1/portal/finance", () => HttpResponse.json(emptyFinance)),
     http.get("/api/v1/auth/sessions", () => HttpResponse.json([])), // sem isto /conta recebia 401 e relia a sessão sem parar
     http.get("/api/v1/portal/shell", over.shell ?? (() => HttpResponse.json(over.data ?? shell()))),
   );
@@ -72,11 +75,11 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
     expect(current()).toEqual(["Início"]);
   });
 
-  it("CA2, CA13: em /portal/financeiro a atual é Financeiro, com a página provisória e um só cabeçalho", async () => {
+  it("CA2, CA13: em /portal/financeiro a atual é Financeiro, com a tela do Financeiro e um só cabeçalho", async () => {
     setup("/portal/financeiro");
     await screen.findByRole("heading", { name: "Financeiro", level: 1 });
     expect(current()).toEqual(["Financeiro"]);
-    expect(screen.getByText("Ainda sem conteúdo")).toBeInTheDocument();
+    expect(await screen.findByText("Nenhuma cobrança em aberto")).toBeInTheDocument();
     expect(screen.getAllByRole("banner")).toHaveLength(1);
   });
 

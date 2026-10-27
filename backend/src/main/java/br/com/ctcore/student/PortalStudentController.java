@@ -22,8 +22,11 @@ class PortalStudentController {
 
     private final PortalCard card;
     private final PortalSchedule schedule;
+    private final PortalFinance finance;
 
-    PortalStudentController(PortalStudents portal, PortalTerms terms, PortalShell shell, PortalHome home, PortalCard card, PortalSchedule schedule) {
+    PortalStudentController(PortalStudents portal, PortalTerms terms, PortalShell shell, PortalHome home, PortalCard card, PortalSchedule schedule,
+            PortalFinance finance) {
+        this.finance = finance;
         this.schedule = schedule;
         this.card = card;
         this.home = home;
@@ -54,6 +57,13 @@ class PortalStudentController {
     PortalCard.View card(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) UUID studentId) {
         terms.requireAccepted(who);
         return card.view(who, studentId);
+    }
+
+    @GetMapping("/finance")
+    PortalFinance.View finance(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) UUID studentId,
+            @RequestParam(required = false) PortalFinance.Scope scope, @RequestParam(required = false) Integer year) {
+        terms.requireAccepted(who);
+        return finance.view(who, studentId, scope, year);
     }
 
     @GetMapping("/schedule")
