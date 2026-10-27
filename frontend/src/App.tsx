@@ -45,6 +45,7 @@ import { AccountPage } from "@/features/account/AccountPage";
 import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
 import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
 import { PortalRequestsPage as PortalOwnRequestsPage } from "@/features/portal/PortalRequestsPage";
+import { PortalHomePage } from "@/features/portal/PortalHomePage";
 import { PortalLayout } from "@/features/portal/PortalLayout";
 import { PortalSectionPage } from "@/features/portal/PortalSectionPage";
 import { RequireFullPortal } from "@/features/portal/RequireFullPortal";
@@ -80,7 +81,7 @@ function Home() {
   }
   return (
     <PortalLayout>
-      <Welcome />
+      <PortalHomePage />
       <ModalityConfirmations />
       <Link to="/portal/pedidos" className="mt-6 inline-flex min-h-11 items-center underline">
         {t("portalOwn.link")}

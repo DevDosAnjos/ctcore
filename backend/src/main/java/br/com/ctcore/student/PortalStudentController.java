@@ -2,9 +2,11 @@ package br.com.ctcore.student;
 
 import br.com.ctcore.identity.AccountPrincipal;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Portal do responsável e do aluno (RN-RSP-03): só leitura dos próprios cartões, depois do aceite do termo (RN-POR-03). */
@@ -14,8 +16,10 @@ class PortalStudentController {
     private final PortalStudents portal;
     private final PortalTerms terms;
     private final PortalShell shell;
+    private final PortalHome home;
 
-    PortalStudentController(PortalStudents portal, PortalTerms terms, PortalShell shell) {
+    PortalStudentController(PortalStudents portal, PortalTerms terms, PortalShell shell, PortalHome home) {
+        this.home = home;
         this.terms = terms;
         this.shell = shell;
         this.portal = portal;
@@ -31,5 +35,11 @@ class PortalStudentController {
     PortalShell.View shell(@AuthenticationPrincipal AccountPrincipal who) {
         terms.requireAccepted(who);
         return shell.view(who);
+    }
+
+    @GetMapping("/home")
+    PortalHome.View home(@AuthenticationPrincipal AccountPrincipal who, @RequestParam(required = false) UUID studentId) {
+        terms.requireAccepted(who);
+        return home.view(who, studentId);
     }
 }

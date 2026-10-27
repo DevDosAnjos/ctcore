@@ -64,6 +64,12 @@ const accounts: Record<string, ReturnType<typeof withTwoFactor>> = {
     links: [{ id: "00000000-0000-0000-0000-000000000015", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "STUDENT", unitIds: [] }],
     activeLinkId: "00000000-0000-0000-0000-000000000015",
   },
+  // Responsável com dois filhos (#89): o Início mostra a faixa de cartões e o total da família.
+  "familia@exemplo.com": {
+    ...withTwoFactor("familia@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000016", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "GUARDIAN", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000016",
+  },
 };
 const VALID_CODES = ["123456", "RESERVA001"];
 const backupCodes = () => ({ backupCodes: Array.from({ length: 10 }, (_, i) => `RESERVA${String(i + 1).padStart(3, "0")}`) });
@@ -1224,6 +1230,71 @@ const termPending = (id: string) => termEnrolled(id) && !portalAccepted.has(id);
 // Rotas do portal: só Aluno e Responsável. O Aluno aceita o adulto; o Responsável, o menor (financeiro).
 const portalAccess = () => (!loggedIn ? unauthenticated() : isPortal() ? null : error(403, "FORBIDDEN", "Sem permissão."));
 const portalMine = () => mockStudents.filter((s) => s.id === (activeRole() === "STUDENT" ? STUDENT_ADULT : STUDENT_MINOR));
+// Início do portal (#89): cartões, cobranças do simulado e conteúdo fixo por aluno. Hoje e prazos pelo relógio do navegador.
+const CHILD_TWO = "00000000-0000-0000-0000-000000000703";
+const REDUCED_CHARGE = "00000000-0000-0000-0000-0000000007c2";
+const SECOND_CHARGE = "00000000-0000-0000-0000-0000000007c1";
+const dayShift = (days: number) => isoDay(new Date(Date.now() + days * 86_400_000));
+const homeRef = (name: string) => ({ id: modalityCatalog.find((m) => m.name === name)!.id, name });
+const homeUnit = (id: string) => ({ id, name: units.find((u) => u.id === id)?.name ?? "" });
+const homeCards = () =>
+  activeRole() === "STUDENT"
+    ? mockStudents.filter((s) => s.id === STUDENT_ADULT).map((s) => ({ id: s.id, name: s.name, photoUrl: null, self: true }))
+    : [...mockStudents.filter((s) => s.id === STUDENT_MINOR).map((s) => ({ id: s.id, name: s.name, photoUrl: null, self: false })), { id: CHILD_TWO, name: "Filho Fictício Dois", photoUrl: null, self: false }];
+const homeCharges = (studentId: string) => {
+  if (studentId === CHILD_TWO) {
+    return [{ id: SECOND_CHARGE, studentId, description: "Mensalidade de Judô", referenceMonth: null, dueOn: dayShift(2), amountCents: 5000, status: "OPEN", unitId: CENTRO, modality: homeRef("Judô") }];
+  }
+  if (current.account.email === REDUCED_ACCOUNT) {
+    return [{ id: REDUCED_CHARGE, studentId, description: "Mensalidade em atraso", referenceMonth: null, dueOn: dayShift(-5), amountCents: 12000, status: "OPEN", unitId: CENTRO, modality: null }];
+  }
+  return mockCharges
+    .filter((c) => c.studentId === studentId && (c.status === "OPEN" || c.status === "IN_REVIEW"))
+    .map((c) => ({ id: c.id, studentId, description: c.description || null, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, status: c.status as string, unitId: c.unitId, modality: null as { id: string; name: string } | null }));
+};
+const portalHome = (studentId: string | null) => {
+  const cards = homeCards();
+  const selected = studentId ?? cards[0].id;
+  if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const reduced = current.account.email === REDUCED_ACCOUNT;
+  const today = isoDay(new Date());
+  const soon = dayShift(3);
+  const all = homeCharges(selected);
+  const sit = (c: { status: string; dueOn: string }) => (c.status === "IN_REVIEW" ? "IN_REVIEW" : c.dueOn < today ? "OVERDUE" : c.dueOn === today ? "DUE_TODAY" : c.dueOn <= soon ? "DUE_SOON" : "PENDING");
+  const items = all
+    .filter((c) => sit(c) !== "PENDING")
+    .sort((a, b) => Number(sit(b) === "OVERDUE") - Number(sit(a) === "OVERDUE") || a.dueOn.localeCompare(b.dueOn))
+    .map((c) => ({ id: c.id, studentId: c.studentId, description: c.description, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, situation: sit(c), canPay: c.status === "OPEN", modality: c.modality, unit: homeUnit(c.unitId) }));
+  const nextDueOn = all.filter((c) => sit(c) === "PENDING").map((c) => c.dueOn).sort()[0] ?? null;
+  const open = (id: string) => homeCharges(id).reduce((sum, c) => sum + c.amountCents, 0);
+  const base = { reduced, students: cards.map((c) => ({ ...c, openCents: open(c.id) })), familyOpenCents: cards.reduce((sum, c) => sum + open(c.id), 0), selectedStudentId: selected, charges: { items, nextDueOn } };
+  if (reduced) return HttpResponse.json({ ...base, lessons: [], announcements: { unreadCount: 0, items: [] }, belts: [] });
+  const jiu = homeRef("Jiu-Jitsu");
+  const judo = homeRef("Judô");
+  const lessons =
+    selected === CHILD_TWO
+      ? [{ id: "00000000-0000-0000-0000-0000000007d1", date: dayShift(1), startsAt: "17:00", endsAt: "18:00", title: "Judô Infantil", status: "SCHEDULED", cancelReason: null, changed: false, adhoc: false, modality: judo, unit: homeUnit(CENTRO) }]
+      : [
+          { id: "00000000-0000-0000-0000-0000000007d2", date: dayShift(1), startsAt: "19:00", endsAt: "20:00", title: "Jiu-Jitsu Adulto", status: "SCHEDULED", cancelReason: null, changed: true, adhoc: false, modality: jiu, unit: homeUnit(CENTRO) },
+          { id: "00000000-0000-0000-0000-0000000007d3", date: dayShift(2), startsAt: "19:00", endsAt: "20:00", title: "Judô Adulto", status: "CANCELLED", cancelReason: "Feriado", changed: false, adhoc: false, modality: judo, unit: homeUnit(NORTE) },
+          { id: "00000000-0000-0000-0000-0000000007d4", date: dayShift(4), startsAt: "10:00", endsAt: "11:00", title: "Seminário de guarda", status: "SCHEDULED", cancelReason: null, changed: false, adhoc: true, modality: jiu, unit: homeUnit(CENTRO) },
+        ];
+  const belts =
+    selected === CHILD_TWO
+      ? [{ modality: judo, levelName: "Branca", color: "#FFFFFF", secondaryColor: null, degree: 0, achievedOn: null, isNew: false }]
+      : [
+          { modality: jiu, levelName: "Azul", color: "#1E40AF", secondaryColor: null, degree: 2, achievedOn: dayShift(-3), isNew: true },
+          { modality: judo, levelName: "Amarela", color: "#FACC15", secondaryColor: null, degree: 0, achievedOn: null, isNew: false },
+        ];
+  const announcements = {
+    unreadCount: 2,
+    items: [
+      { id: "00000000-0000-0000-0000-0000000007e1", title: "Mudança de horário no sábado", sentAt: `${dayShift(-1)}T12:00:00Z`, pinned: true, unread: true, authorName: null },
+      { id: "00000000-0000-0000-0000-0000000007e2", title: "Exame de faixa em dezembro", sentAt: `${dayShift(-2)}T12:00:00Z`, pinned: false, unread: true, authorName: null },
+    ],
+  };
+  return HttpResponse.json({ ...base, lessons, announcements, belts });
+};
 const termText = (kind: "ENROLLMENT" | "IMAGE_USE") => {
   const { version, body } = termsCurrent(kind);
   return { version, body };
@@ -4230,6 +4301,18 @@ export const routes: Route[] = [
       if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
       const reduced = current.account.email === REDUCED_ACCOUNT;
       return HttpResponse.json({ organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl }, reduced, unreadAnnouncements: reduced ? 0 : 3 });
+    },
+  },
+  {
+    // RF-POR-02 (#89): Início do portal. Aluno: o adulto (cobranças reais do simulado); "familia@exemplo.com" é o Responsável com dois filhos; "reduzido@exemplo.com" só vê a cobrança.
+    // O que não vem do simulado (aulas, avisos, faixas e o segundo filho) é fixo; a gestão recebe 403, `studentId` fora da conta 404.
+    method: "get",
+    path: "/portal/home",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      return portalHome(new URL(request.url).searchParams.get("studentId"));
     },
   },
   {

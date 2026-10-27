@@ -10,6 +10,9 @@ import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import type { PortalShellData } from "./usePortalShell";
 
+// O Início do portal (#89) lê /portal/home; estes testes só olham a moldura e o termo.
+const emptyHome = { reduced: false, students: [], familyOpenCents: 0, selectedStudentId: null, charges: { items: [], nextDueOn: null }, lessons: [], announcements: { unreadCount: 0, items: [] }, belts: [] };
+
 const session = (role: string): SessionView => ({
   account: { id: "a", email: "x@x.com", name: "Ana Silva" },
   links: [{ id: "l1", organizationId: "o", organizationName: "Alfa", role, unitIds: [] }],
@@ -24,6 +27,8 @@ function setup(path = "/", over: { role?: string; shell?: () => Response | Promi
     http.get("/api/v1/portal/term", () => HttpResponse.json([])),
     http.get("/api/v1/portal/students", () => HttpResponse.json([])),
     http.get("/api/v1/portal/modality-confirmations", () => HttpResponse.json([])),
+    http.get("/api/v1/portal/home", () => HttpResponse.json(emptyHome)),
+    http.get("/api/v1/auth/sessions", () => HttpResponse.json([])), // sem isto /conta recebia 401 e relia a sessão sem parar
     http.get("/api/v1/portal/shell", over.shell ?? (() => HttpResponse.json(over.data ?? shell()))),
   );
   return render(
@@ -162,6 +167,7 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
   it.each(["/", "/conta", "/portal/pedidos"])("CA13: %s usa a moldura nova, com um só cabeçalho", async (path) => {
     setup(path);
     await ready();
+    if (path === "/") await screen.findByText("Tudo em dia"); // deixa a leitura do Início terminar antes de o teste acabar
     expect(screen.getAllByRole("banner")).toHaveLength(1);
     expect(tabs()).toHaveLength(5);
   });
