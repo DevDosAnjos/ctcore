@@ -280,6 +280,46 @@ describe("PortalInfoPage (RF-POR-07)", () => {
     expect(calls).toEqual([]);
   });
 
+  it("CA5: pedidos mostram carregando enquanto busca", async () => {
+    serve(info());
+    setup();
+    server.use(http.get("/api/v1/portal/students/s1/requests", () => new Promise<Response>(() => {})));
+    await screen.findByRole("heading", { name: "Pedidos à academia" });
+    expect(within(card("Pedidos à academia")).getByRole("status")).toBeInTheDocument();
+  });
+
+  it("CA5: pedidos mostram sem permissão no 403", async () => {
+    serve(info());
+    setup();
+    server.use(http.get("/api/v1/portal/students/s1/requests", () => new HttpResponse(null, { status: 403 })));
+    await screen.findByRole("heading", { name: "Pedidos à academia" });
+    expect(await within(card("Pedidos à academia")).findByRole("heading", { name: "Você não tem acesso" })).toBeInTheDocument();
+  });
+
+  for (const dark of [false, true]) {
+    it(`CA5/CA7: pedidos mostram erro com retry que refaz só essa busca, sem violações no axe no tema ${dark ? "escuro" : "claro"}`, { timeout: 40000 }, async () => {
+      setDevicePrefersDark(dark);
+      let fail = true;
+      let calls = 0;
+      serve(info());
+      const view = setup();
+      server.use(
+        http.get("/api/v1/portal/students/s1/requests", () => {
+          calls++;
+          return fail ? new HttpResponse(null, { status: 500 }) : HttpResponse.json([]);
+        }),
+      );
+      await screen.findByRole("heading", { name: "Pedidos à academia" });
+      const retry = await within(card("Pedidos à academia")).findByRole("button", { name: "Tentar de novo" });
+      expect(await axeViolations(view.container)).toEqual([]);
+      fail = false;
+      const before = calls;
+      await userEvent.click(retry);
+      expect(await within(card("Pedidos à academia")).findByText("Nenhum pedido feito.")).toBeInTheDocument();
+      expect(calls).toBe(before + 1);
+    });
+  }
+
   it("portal reduzido: dados, contato da unidade, preferências, termos e conta; sem treinos, plano, graduação nem pedidos", async () => {
     serve(info({ reduced: true, trainings: [], plans: [], graduation: [] }));
     setup("/portal/minhas-informacoes", true);

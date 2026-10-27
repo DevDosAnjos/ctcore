@@ -42,3 +42,17 @@ describe("ModalityConfirmations (RN-MAT-13)", () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 });
+
+describe("ModalityConfirmations: falha da busca (RF-POR-08, CA6)", () => {
+  it("mostra erro com Tentar de novo e o botão refaz a busca", async () => {
+    let fail = true;
+    server.use(http.get("/api/v1/portal/modality-confirmations", () => (fail ? new HttpResponse(null, { status: 500 }) : HttpResponse.json([item]))));
+    const { container } = render(<ModalityConfirmations />);
+    const retry = await screen.findByRole("button", { name: "Tentar de novo" });
+    expect(await axeViolations(container)).toEqual([]);
+    fail = false;
+    await userEvent.click(retry);
+    expect(await screen.findByRole("button", { name: "Confirmar Judô" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tentar de novo" })).not.toBeInTheDocument();
+  });
+});
