@@ -58,6 +58,12 @@ const accounts: Record<string, ReturnType<typeof withTwoFactor>> = {
     links: [{ id: "00000000-0000-0000-0000-000000000014", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "STUDENT", unitIds: [] }],
     activeLinkId: "00000000-0000-0000-0000-000000000014",
   },
+  // Aluno cujas modalidades acabaram (#88): o portal abre reduzido (sem Agenda nem Avisos), sem termo pendente.
+  "reduzido@exemplo.com": {
+    ...withTwoFactor("reduzido@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000015", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "STUDENT", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000015",
+  },
 };
 const VALID_CODES = ["123456", "RESERVA001"];
 const backupCodes = () => ({ backupCodes: Array.from({ length: 10 }, (_, i) => `RESERVA${String(i + 1).padStart(3, "0")}`) });
@@ -1212,7 +1218,8 @@ const portalAccepted = new Map<string, string>();
 const portalImage = new Map<string, boolean>();
 const portalConfirmed = new Set<string>();
 const TERM_ACCOUNT = "termo@exemplo.com";
-const termEnrolled = (id: string) => enrollmentStatus(id) !== "NONE" || (id === STUDENT_ADULT && current.account.email === TERM_ACCOUNT);
+const REDUCED_ACCOUNT = "reduzido@exemplo.com";
+const termEnrolled = (id: string) => current.account.email !== REDUCED_ACCOUNT && (enrollmentStatus(id) !== "NONE" || (id === STUDENT_ADULT && current.account.email === TERM_ACCOUNT));
 const termPending = (id: string) => termEnrolled(id) && !portalAccepted.has(id);
 // Rotas do portal: só Aluno e Responsável. O Aluno aceita o adulto; o Responsável, o menor (financeiro).
 const portalAccess = () => (!loggedIn ? unauthenticated() : isPortal() ? null : error(403, "FORBIDDEN", "Sem permissão."));
@@ -4211,6 +4218,18 @@ export const routes: Route[] = [
       const adult = mockStudents.find((s) => s.id === STUDENT_ADULT)!;
       const minor = mockStudents.find((s) => s.id === STUDENT_MINOR)!;
       return HttpResponse.json(activeRole() === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
+    },
+  },
+  {
+    // RF-POR-01, RN-POR-08: moldura do portal. "reduzido@exemplo.com" é o aluno sem modalidade ativa (reduced, contador 0); as demais contas têm 3 avisos não lidos.
+    method: "get",
+    path: "/portal/shell",
+    resolver: () => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const reduced = current.account.email === REDUCED_ACCOUNT;
+      return HttpResponse.json({ organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl }, reduced, unreadAnnouncements: reduced ? 0 : 3 });
     },
   },
   {

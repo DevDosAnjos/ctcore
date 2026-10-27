@@ -6,6 +6,7 @@ import { vi } from "vitest";
 import { App } from "@/App";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { portalShellOk } from "@/test/portalShell";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import { SessionProvider } from "./SessionProvider";
@@ -173,7 +174,7 @@ describe("LoginPage", () => {
   });
 
   it("CA7: com sessão, /entrar redireciona sem mostrar o formulário", async () => {
-    server.use(http.get(URL_SESSION, () => HttpResponse.json({ account: { id: "1", email: "a@x.com" }, links: [], twoFactor: { enabled: false, required: false } })));
+    server.use(portalShellOk, http.get(URL_SESSION, () => HttpResponse.json({ account: { id: "1", email: "a@x.com" }, links: [], twoFactor: { enabled: false, required: false } })));
     open("/entrar");
     expect(await screen.findByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Senha")).toBeNull();

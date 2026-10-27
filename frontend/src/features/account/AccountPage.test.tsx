@@ -7,6 +7,7 @@ import { SessionProvider, type SessionView } from "@/features/auth/SessionProvid
 import { mockPermissions } from "@/mocks/permissions";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { portalShellOk } from "@/test/portalShell";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 
@@ -24,6 +25,7 @@ async function setup(role = "COORDINATOR", twoFactor = { enabled: false, require
   let current = session(role, twoFactor);
   server.use(
     ...extra,
+    portalShellOk,
     http.get("/api/v1/auth/session", () => HttpResponse.json(current)),
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
     http.get("/api/v1/units/reachable", () => HttpResponse.json({ allUnits: false, units: [] })),

@@ -2760,6 +2760,27 @@
       "generic": "Não foi possível enviar. Nada foi alterado; tente de novo."
     }
   },
+  "portalShell": {
+    "logoAlt": "Logo da organização",
+    "nav": "Portal",
+    "tabs": {
+      "home": "Início",
+      "schedule": "Agenda",
+      "finance": "Financeiro",
+      "notices": "Avisos",
+      "info": "Minhas informações"
+    },
+    "bell": {
+      "label": "Avisos",
+      "withCount": "Avisos, {{count}} não lidos"
+    },
+    "person": "{{name}} · {{role}}",
+    "reduced": "Seu acesso está reduzido: você vê Início, Financeiro e Minhas informações. Fale com a academia para voltar a treinar.",
+    "soon": {
+      "title": "Ainda sem conteúdo",
+      "text": "Esta aba chega nas próximas versões."
+    }
+  },
   "portalOwn": {
     "title": "Meus pedidos",
     "intro": "Peça troca de turma, nova modalidade, troca de plano ou encerramento. O pedido não altera a sua matrícula: a academia responde e conclui com você.",

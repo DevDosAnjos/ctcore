@@ -6,6 +6,7 @@ import { App } from "@/App";
 import { SessionProvider, type SessionView } from "@/features/auth/SessionProvider";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
+import { portalShellOk } from "@/test/portalShell";
 import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import type { PortalTermPending } from "./usePortalTerm";
@@ -30,6 +31,7 @@ function setup(over: { role?: string; initial?: PortalTermPending[]; get?: () =>
   list = over.initial ?? [pending];
   posts = [];
   server.use(
+    portalShellOk, // só a tela inicial, depois do aceite, lê a moldura
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(over.role ?? "STUDENT"))),
     http.get("/api/v1/portal/term", over.get ?? (() => HttpResponse.json(list))),
     http.get("/api/v1/portal/modality-confirmations", () => HttpResponse.json([])),

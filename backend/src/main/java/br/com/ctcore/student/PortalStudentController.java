@@ -13,9 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 class PortalStudentController {
     private final PortalStudents portal;
     private final PortalTerms terms;
+    private final PortalShell shell;
 
-    PortalStudentController(PortalStudents portal, PortalTerms terms) {
+    PortalStudentController(PortalStudents portal, PortalTerms terms, PortalShell shell) {
         this.terms = terms;
+        this.shell = shell;
         this.portal = portal;
     }
 
@@ -23,5 +25,11 @@ class PortalStudentController {
     List<PortalStudents.Card> students(@AuthenticationPrincipal AccountPrincipal who) {
         terms.requireAccepted(who);
         return portal.cards(who);
+    }
+
+    @GetMapping("/shell")
+    PortalShell.View shell(@AuthenticationPrincipal AccountPrincipal who) {
+        terms.requireAccepted(who);
+        return shell.view(who);
     }
 }
