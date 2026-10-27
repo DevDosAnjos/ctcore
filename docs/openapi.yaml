@@ -3022,6 +3022,25 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /portal/card:
+    get:
+      summary: Carteirinha do aluno (RF-POR-03, RN-POR-01, RN-INA-08). Responsável e Aluno.
+      description: |
+        Foto, nome, marca da organização, selo (`ACTIVE` com ao menos uma modalidade ativa, `INACTIVE` caso contrário), `today` (data do dia no fuso da unidade de
+        cadastro, `timezone`), `generatedAt` e as modalidades ativas com unidade e faixa atual (`belt` nulo sem registro de graduação). `studentId` opcional, padrão
+        o primeiro cartão; `students` lista os alunos ligados para o responsável escolher. Funciona também com o portal reduzido (aluno inativo e ex-aluno veem o
+        selo `INACTIVE`). Sem QR code, presença, frequência, progresso, CPF, telefone nem e-mail. `studentId` de aluno não ligado à conta ou de outra organização:
+        404. Gestão e Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Carteirinha.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalCard' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /portal/shell:
     get:
       summary: Moldura do portal (RF-POR-01, RN-POR-08). Responsável e Aluno.
@@ -5747,6 +5766,54 @@ components:
             unreadCount: { type: integer, minimum: 0 }
             items: { type: array, maxItems: 5, items: { $ref: '#/components/schemas/PortalHomeNotice' } }
         belts: { type: array, items: { $ref: '#/components/schemas/PortalHomeBelt' } }
+    PortalCard:
+      type: object
+      required: [organization, student, students, status, today, generatedAt, timezone, modalities]
+      properties:
+        organization:
+          type: object
+          required: [name, color, logoUrl]
+          properties:
+            name: { type: string }
+            color: { type: string, nullable: true }
+            logoUrl: { type: string, nullable: true }
+        student:
+          type: object
+          required: [id, name, photoUrl]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            photoUrl: { type: string, nullable: true }
+        students:
+          type: array
+          items:
+            type: object
+            required: [id, name, self]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              self: { type: boolean }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        today: { type: string, format: date, description: Data do dia no fuso da unidade de cadastro. }
+        generatedAt: { type: string, format: date-time }
+        timezone: { type: string, example: America/Sao_Paulo }
+        modalities:
+          type: array
+          items:
+            type: object
+            required: [modality, unit, belt]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
+              belt:
+                type: object
+                nullable: true
+                required: [levelName, color, secondaryColor, degree]
+                properties:
+                  levelName: { type: string }
+                  color: { type: string }
+                  secondaryColor: { type: string, nullable: true }
+                  degree: { type: integer, minimum: 0 }
     PortalShell:
       type: object
       required: [organization, reduced, unreadAnnouncements]

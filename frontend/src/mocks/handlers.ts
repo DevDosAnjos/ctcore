@@ -4316,6 +4316,41 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-POR-03 (#90): carteirinha. Mesmas contas do Início; "reduzido@exemplo.com" é o aluno inativo (INACTIVE, sem modalidades, rota continua 200); gestão 403, `studentId` fora da conta 404.
+    method: "get",
+    path: "/portal/card",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const cards = homeCards();
+      const selected = new URL(request.url).searchParams.get("studentId") ?? cards[0].id;
+      const student = cards.find((c) => c.id === selected);
+      if (!student) return error(404, "NOT_FOUND", "Não encontrado.");
+      const jiu = homeRef("Jiu-Jitsu");
+      const judo = homeRef("Judô");
+      const inactive = current.account.email === REDUCED_ACCOUNT;
+      const modalities = inactive
+        ? []
+        : selected === CHILD_TWO
+          ? [{ modality: judo, unit: homeUnit(CENTRO), belt: { levelName: "Branca", color: "#FFFFFF", secondaryColor: null, degree: 0 } }]
+          : [
+              { modality: jiu, unit: homeUnit(CENTRO), belt: { levelName: "Azul", color: "#1E40AF", secondaryColor: null, degree: 2 } },
+              { modality: judo, unit: homeUnit(NORTE), belt: null },
+            ];
+      return HttpResponse.json({
+        organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl },
+        student: { id: student.id, name: student.name, photoUrl: student.photoUrl },
+        students: cards.map((c) => ({ id: c.id, name: c.name, self: c.self })),
+        status: inactive ? "INACTIVE" : "ACTIVE",
+        today: isoDay(new Date()),
+        generatedAt: new Date().toISOString(),
+        timezone: "America/Sao_Paulo",
+        modalities,
+      });
+    },
+  },
+  {
     // RN-MAT-11, RN-MAT-14: pendências de aceite que a conta aceita; funciona com o termo pendente.
     method: "get",
     path: "/portal/term",

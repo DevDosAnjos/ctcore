@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { MemoryRouter } from "react-router";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
 import { setDevicePrefersDark } from "@/test/device";
@@ -34,7 +35,9 @@ const serve = (data: PortalHomeData | (() => Response)) => server.use(http.get("
 const view = () =>
   render(
     <ThemeProvider>
-      <PortalHomePage />
+      <MemoryRouter>
+        <PortalHomePage />
+      </MemoryRouter>
     </ThemeProvider>,
   );
 
@@ -49,6 +52,15 @@ describe("PortalHomePage (RF-POR-02)", () => {
     expect(screen.getByText("Nova")).toBeInTheDocument();
     expect(screen.getByText("Fixado")).toBeInTheDocument();
     expect(screen.getByText("1 aviso não lido")).toBeInTheDocument();
+  });
+
+  it("CA8: o link Ver carteirinha leva ao aluno escolhido", async () => {
+    serve(home({ students: [{ id: "s1", name: "Ana Silva", photoUrl: null, self: true, openCents: 0 }, { id: "s2", name: "Beto Silva", photoUrl: null, self: false, openCents: 0 }], selectedStudentId: "s1" }));
+    const user = userEvent.setup();
+    view();
+    await waitFor(() => expect(screen.getByRole("link", { name: "Ver carteirinha" })).toHaveAttribute("href", "/portal/carteirinha?aluno=s1"));
+    await user.click(await screen.findByRole("button", { name: /Beto Silva/ }));
+    await waitFor(() => expect(screen.getByRole("link", { name: "Ver carteirinha" })).toHaveAttribute("href", "/portal/carteirinha?aluno=s2"));
   });
 
   it("CA2: sem cobrança que peça ação mostra Tudo em dia, com a data do próximo vencimento quando houver", async () => {

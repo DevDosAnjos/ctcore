@@ -45,6 +45,7 @@ import { AccountPage } from "@/features/account/AccountPage";
 import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
 import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
 import { PortalRequestsPage as PortalOwnRequestsPage } from "@/features/portal/PortalRequestsPage";
+import { PortalCardPage } from "@/features/portal/PortalCardPage";
 import { PortalHomePage } from "@/features/portal/PortalHomePage";
 import { PortalLayout } from "@/features/portal/PortalLayout";
 import { PortalSectionPage } from "@/features/portal/PortalSectionPage";
@@ -107,6 +108,7 @@ export function App() {
             <Route path="/" element={<Home />} />
             <Route path="/conta" element={<AccountPage />} />
             <Route path="/portal/pedidos" element={<PortalOwnRequestsPage />} />
+            <Route path="/portal/carteirinha" element={<PortalCardPage />} />
             <Route element={<RequireFullPortal />}>
               <Route path="/portal/agenda" element={<PortalSectionPage tab="schedule" />} />
               <Route path="/portal/avisos" element={<PortalSectionPage tab="notices" />} />
