@@ -163,7 +163,7 @@ public class PortalTerms {
                 .param("org", org).param("kind", kind).query(Integer.class).single();
     }
 
-    private ImageUse imageUse(UUID org, UUID studentId) {
+    ImageUse imageUse(UUID org, UUID studentId) {
         Terms.Version current = terms.current(org, Terms.Kind.IMAGE_USE);
         boolean granted = jdbc.sql("select event = 'ACCEPTED' and version >= :required from term_acceptance where organization_id = :org and student_id = :id and kind = 'IMAGE_USE' "
                 + "order by accepted_at desc, id limit 1").param("required", requiredVersion(org, "IMAGE_USE")).param("org", org).param("id", studentId)

@@ -128,6 +128,7 @@ export const resetMockSession = () => {
   notificationReceiveAll = false;
   portalAccepted.clear();
   portalImage.clear();
+  portalInfoEdits.clear();
   portalConfirmed.clear();
   noticeRead.clear();
   noticeDismissed.clear();
@@ -1244,6 +1245,88 @@ const homeCards = () =>
   activeRole() === "STUDENT"
     ? mockStudents.filter((s) => s.id === STUDENT_ADULT).map((s) => ({ id: s.id, name: s.name, photoUrl: null, self: true }))
     : [...mockStudents.filter((s) => s.id === STUDENT_MINOR).map((s) => ({ id: s.id, name: s.name, photoUrl: null, self: false })), { id: CHILD_TWO, name: "Filho Fictício Dois", photoUrl: null, self: false }];
+// Minhas informações do portal (#94): dados pessoais editáveis em memória (`portalInfoEdits`), o resto é conteúdo fixo por aluno, como no Início.
+const PHOTO_URL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='%23dbeafe'/></svg>";
+const CONTACT_FIELDS = ["phone", "postalCode", "street", "number", "complement", "district", "city", "state", "emergencyName", "emergencyRelationship", "emergencyPhone"];
+const portalInfoEdits = new Map<string, Record<string, string | null>>();
+const infoPersonal = (id: string) => {
+  const base = mockStudents.find((s) => s.id === id);
+  const s: Record<string, string | null> = base
+    ? { name: base.name, birthDate: base.birthDate, cpf: base.cpf, email: base.email, phone: base.phone, postalCode: base.postalCode, street: base.street, number: base.number, complement: base.complement, district: base.district, city: base.city, state: base.state, emergencyName: base.emergencyName, emergencyRelationship: base.emergencyRelationship, emergencyPhone: base.emergencyPhone, photoUrl: base.photoUrl }
+    : { name: "Filho Fictício Dois", birthDate: "2016-08-20", cpf: null, email: null, phone: "21900000003", postalCode: "01001000", street: "Rua Fictícia", number: "3", complement: null, district: "Centro", city: "Rio de Janeiro", state: "RJ", emergencyName: null, emergencyRelationship: null, emergencyPhone: null, photoUrl: null };
+  const v = { ...s, ...portalInfoEdits.get(id) };
+  return {
+    name: v.name, birthDate: v.birthDate, maskedCpf: v.cpf ? `***.***.***-${v.cpf.slice(-2)}` : null, photoUrl: v.photoUrl, phone: v.phone, email: v.email,
+    address: { postalCode: v.postalCode, street: v.street, number: v.number, complement: v.complement, district: v.district, city: v.city, state: v.state },
+    emergency: { name: v.emergencyName, relationship: v.emergencyRelationship, phone: v.emergencyPhone },
+    canEdit: true, editableFields: [...CONTACT_FIELDS, "photo"],
+  };
+};
+const infoGate = (id: string) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return homeCards().some((c) => c.id === id) ? null : error(404, "NOT_FOUND", "Não encontrado.");
+};
+const infoUnit = (id: string) => ({ ...homeUnit(id), phone: "2133334444", whatsapp: id === CENTRO ? "21999990000" : null, email: "contato@exemplo.com" });
+const infoClass = (id: string, name: string, schedule: [number, string, string][]) => ({
+  clazz: { id: `00000000-0000-0000-0000-0000000007b${id}`, name }, teacherName: "Professor Fictício", schedule: schedule.map(([weekday, startsAt, endsAt]) => ({ weekday, startsAt, endsAt })),
+});
+const infoLevel = (id: string, levelName: string, color: string, degree: number, achievedOn: string | null, origin = false) => ({ id: `00000000-0000-0000-0000-0000000007a${id}`, levelName, color, secondaryColor: null, degree, achievedOn, origin });
+const portalInfo = (studentId: string | null) => {
+  const cards = homeCards();
+  const selected = studentId ?? cards[0].id;
+  const gate = infoGate(selected);
+  if (gate) return gate;
+  const reduced = current.account.email === REDUCED_ACCOUNT;
+  const jiu = homeRef("Jiu-Jitsu");
+  const judo = homeRef("Judô");
+  const granted = portalImage.get(selected) ?? false;
+  const head = {
+    reduced, students: cards, selectedStudentId: selected, personal: infoPersonal(selected), emailAnnouncements: announcementEmail,
+    terms: {
+      enrollment: reduced ? null : { version: termText("ENROLLMENT").version, acceptedAt: portalAccepted.get(selected) ?? "2026-01-10T12:00:00.000Z" },
+      imageUse: { granted, version: granted ? termText("IMAGE_USE").version : null, at: granted ? "2026-01-10T12:00:00.000Z" : null },
+    },
+  };
+  if (reduced) return HttpResponse.json({ ...head, unitContacts: [infoUnit(CENTRO)], trainings: [], plans: [], graduation: [] });
+  const second = selected === CHILD_TWO;
+  const trainings = second
+    ? [{ modality: judo, unit: infoUnit(CENTRO), mainClass: infoClass("1", "Judô Infantil", [[1, "17:00", "18:00"]]), otherClasses: [] }]
+    : [
+        { modality: jiu, unit: infoUnit(CENTRO), mainClass: infoClass("2", "Jiu-Jitsu Adulto", [[1, "19:00", "20:00"], [3, "19:00", "20:00"]]), otherClasses: [infoClass("3", "Jiu-Jitsu Livre", [[5, "20:00", "21:00"]])] },
+        { modality: judo, unit: infoUnit(NORTE), mainClass: infoClass("4", "Judô Adulto", [[2, "19:00", "20:00"]]), otherClasses: [] },
+      ];
+  const plans = second
+    ? [{ modality: judo, plan: { id: "00000000-0000-0000-0000-0000000007b9", name: "Judô Mensal" }, planCents: 5000, benefit: null, benefitCents: 0, monthlyCents: 5000, dueDay: 10, nextPlan: null }]
+    : [{ modality: jiu, plan: { id: "00000000-0000-0000-0000-0000000007b8", name: "Jiu-Jitsu Mensal" }, planCents: 20000, benefit: { type: "PERCENT", value: 10, validUntil: null }, benefitCents: 2000, monthlyCents: 18000, dueDay: 5, nextPlan: { id: "00000000-0000-0000-0000-0000000007b7", name: "Jiu-Jitsu Trimestral", valueCents: 54000 } }];
+  const graduation = second
+    ? [{ modality: judo, belt: infoLevel("1", "Branca", "#FFFFFF", 0, null, true), history: [infoLevel("1", "Branca", "#FFFFFF", 0, null, true)] }]
+    : [
+        { modality: jiu, belt: infoLevel("4", "Azul", "#1E40AF", 2, dayShift(-3)), history: [infoLevel("4", "Azul", "#1E40AF", 2, dayShift(-3)), infoLevel("3", "Azul", "#1E40AF", 1, dayShift(-200)), infoLevel("2", "Azul", "#1E40AF", 0, null, true)] },
+        { modality: judo, belt: null, history: [] },
+      ];
+  return HttpResponse.json({ ...head, unitContacts: trainings.map((t) => t.unit), trainings, plans, graduation }, { headers: { "Cache-Control": "private, no-store" } });
+};
+// RN-ALU-11, RN-ALU-03: lista fechada de campos (o resto, 422) e as validações do cadastro; nada muda quando recusa.
+const portalContact = (id: string, body: Record<string, unknown>) => {
+  const gate = infoGate(id);
+  if (gate) return gate;
+  const bad = (field: string, message: string) => error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.", [{ field, message }]);
+  const unknown = Object.keys(body).find((k) => !CONTACT_FIELDS.includes(k));
+  if (unknown) return bad(unknown, "campo não editável");
+  const text = (k: string) => (typeof body[k] === "string" ? (body[k] as string).trim() : "");
+  const phone = text("phone");
+  if (phone && !/^\d{10,11}$/.test(phone)) return bad("phone", "celular com DDD");
+  if (!/^\d{8}$/.test(text("postalCode"))) return bad("postalCode", "8 dígitos");
+  for (const k of ["street", "number", "district", "city"]) if (!text(k) || text(k).length > 120) return bad(k, "obrigatório");
+  if (!/^[A-Z]{2}$/.test(text("state"))) return bad("state", "UF válida");
+  const em = ["emergencyName", "emergencyRelationship", "emergencyPhone"].map(text);
+  if (em.some(Boolean) && !em.every(Boolean)) return bad("emergencyName", "nome, parentesco e telefone, ou nenhum");
+  if (em[2] && !/^\d{10,11}$/.test(em[2])) return bad("emergencyPhone", "celular com DDD");
+  portalInfoEdits.set(id, { ...portalInfoEdits.get(id), ...Object.fromEntries(CONTACT_FIELDS.map((k) => [k, text(k) || null])) });
+  return HttpResponse.json(infoPersonal(id), { headers: { "Cache-Control": "private, no-store" } });
+};
 const homeCharges = (studentId: string) => {
   if (studentId === CHILD_TWO) {
     return [{ id: SECOND_CHARGE, studentId, description: "Mensalidade de Judô", referenceMonth: null, dueOn: dayShift(2), amountCents: 5000, status: "OPEN", unitId: CENTRO, modality: homeRef("Judô") }];
@@ -4526,6 +4609,42 @@ export const routes: Route[] = [
     },
   },
   {
+    // RF-POR-07 (#94): Minhas informações. Mesmas contas do Início; "reduzido@exemplo.com" vem com `reduced` e sem treinos, planos e graduação; gestão 403, `studentId` fora da conta 404.
+    method: "get",
+    path: "/portal/info",
+    resolver: ({ request }) => portalInfo(new URL(request.url).searchParams.get("studentId")),
+  },
+  {
+    // Telefone, endereço e emergência: lista fechada de campos; campo fora dela ou regra do cadastro quebrada, 422 no campo.
+    method: "put",
+    path: "/portal/students/{id}/contact",
+    resolver: async ({ request, params }) => portalContact(String(params.id), ((await request.json().catch(() => ({}))) as Record<string, unknown>) ?? {}),
+  },
+  {
+    // Foto: arquivo (`file`) PNG, JPG ou WebP; outro tipo, 422 no campo `file` e a foto fica.
+    method: "put",
+    path: "/portal/students/{id}/photo",
+    resolver: async ({ request, params }) => {
+      const gate = infoGate(String(params.id));
+      if (gate) return gate;
+      const text = await request.text();
+      const type = /name="file"[^\r\n]*\r?\nContent-Type: ([^\r\n]+)/i.exec(text)?.[1]?.trim();
+      if (!type || !["image/png", "image/jpeg", "image/webp"].includes(type)) return error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.", [{ field: "file", message: "imagem PNG, JPG ou WebP" }]);
+      portalInfoEdits.set(String(params.id), { ...portalInfoEdits.get(String(params.id)), photoUrl: PHOTO_URL });
+      return HttpResponse.json(infoPersonal(String(params.id)));
+    },
+  },
+  {
+    method: "delete",
+    path: "/portal/students/{id}/photo",
+    resolver: ({ params }) => {
+      const gate = infoGate(String(params.id));
+      if (gate) return gate;
+      portalInfoEdits.set(String(params.id), { ...portalInfoEdits.get(String(params.id)), photoUrl: null });
+      return HttpResponse.json(infoPersonal(String(params.id)));
+    },
+  },
+  {
     // RF-POR-03 (#90): carteirinha. Mesmas contas do Início; "reduzido@exemplo.com" é o aluno inativo (INACTIVE, sem modalidades, rota continua 200); gestão 403, `studentId` fora da conta 404.
     method: "get",
     path: "/portal/card",
@@ -4656,7 +4775,7 @@ export const routes: Route[] = [
     resolver: ({ params }) => {
       const denied = portalAccess();
       if (denied) return denied;
-      if (!portalMine().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (!homeCards().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
       return HttpResponse.json({ ...termText("IMAGE_USE"), granted: portalImage.get(params.id as string) ?? false });
     },
   },
@@ -4668,7 +4787,7 @@ export const routes: Route[] = [
       if (denied) return denied;
       const body = (await request.json().catch(() => ({}))) as { granted?: unknown; version?: number };
       if (typeof body.granted !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "granted", message: "obrigatório" }]);
-      if (!portalMine().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (!homeCards().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
       if (body.granted && body.version !== undefined && body.version !== termText("IMAGE_USE").version) return error(409, "TERMS_VERSION_CONFLICT", "O termo mudou.");
       portalImage.set(params.id as string, body.granted);
       return HttpResponse.json({ ...termText("IMAGE_USE"), granted: body.granted });
