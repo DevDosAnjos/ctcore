@@ -208,8 +208,29 @@ Instáveis: nenhum observado nesta rodada.
 
 O que muda: a aba Minhas informações do portal (RF-POR-07). Dados pessoais com telefone, endereço, foto e contato de emergência editáveis pelo próprio portal (nome, CPF e nascimento só leitura); troca de e-mail com confirmação; treinos por modalidade, plano, benefício, mensalidade e vencimento; graduação atual e histórico; preferência de e-mail; termos aceitos e uso de imagem com revogação; pedidos e a situação de cada um; Minha conta (senha, e-mail, duas etapas, sessões). Back-end: `PortalInfo`, `PortalProfile`, `ContactEmailSync`, `AccountEmailChanged`, rotas no `docs/openapi.yaml`. "Baixar meus dados" e "Excluir minha conta" aparecem, sem ação (Sprint 13).
 
-Verificação: rodada 2, OK. `verify` completo com 859 testes e BUILD SUCCESS; `test:cov` com 1367 testes verdes; lint e typecheck verdes; e2e de 81 testes verde na rodada 1.
+Verificação: rodada 3, OK. `verify` completo com 859 testes e BUILD SUCCESS; `test:cov` com 1367 testes verdes; lint e typecheck verdes; e2e de 81 testes verde na rodada 1 (sem mudança de tela desde então).
 
 Decisões: em `StudentEdit.savePhoto`, o acesso é conferido antes da validação do arquivo, para que aluno de outra conta receba 404 e não 422.
 
 Limitações: o envio de foto não é coberto pelo e2e (o recorte depende de imagem real no canvas); a prova é o teste de unidade com simulação. O fluxo de senha dentro da aba não tem teste próprio (reaproveita `/conta`). O `npm run e2e` com workers padrão pode estourar em máquina carregada; conferir no CI.
+
+Falha de CI (PR #396, run 40556618322, job `security`): OSV-Scanner reprovou `com.google.guava:guava@32.1.3-android` com GHSA-xxph-c9ww-hj94, severidade 8.2. A dependência é transitiva e `backend/pom.xml` não muda em relação a `dev`; os demais jobs (backend, frontend, e2e, imagens) passaram. Corrigida na rodada 3 (ver "Correção da entrega"): `dependencyManagement` do `backend/pom.xml` fixa o guava em 33.7.2-jre, só escopo de teste; filtro do `osv-high.sh` intocado.
+
+### Correção da entrega
+
+- Falha de CI do OSV-Scanner (GHSA-xxph-c9ww-hj94, guava 32.1.3-android, 8.2) — arquivos: `backend/pom.xml` (`dependencyManagement` fixa `com.google.guava:guava` em 33.7.2-jre, a versão corrigida; a dependência é transitiva do `swagger-parser`, escopo de teste, sem uso em produção; filtro do `osv-high.sh` intocado) — prova: `./backend/mvnw dependency:tree -Dincludes=com.google.guava` → `guava:33.7.2-jre:test`; `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 859 testes, 0 falhas, JaCoCo verde (inclui `OpenApiContractTest`, que usa o swagger-parser). O OSV-Scanner não rodou localmente; a confirmação é o job `security` do CI.
+
+### Rodada 3 — OK — 2026-10-27, estado 1e1cf3d908d03bd9601c1678fb25348bc181db70
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA18 | PASSOU | mantido da rodada 2 (mudança desde então só em `backend/pom.xml`, com `dependencyManagement` do guava; código de produto e de tela intocados) |
+| Achado da entrega (OSV guava, GHSA-xxph-c9ww-hj94) | PASSOU | `dependency:tree -Dincludes=com.google.guava` → `guava:33.7.2-jre:test` (só escopo de teste, nada vai a produção); filtro `osv-high.sh` intocado |
+
+Comandos:
+- `./backend/mvnw -f backend/pom.xml dependency:tree -Dincludes=com.google.guava` → BUILD SUCCESS, guava 33.7.2-jre:test
+- `./backend/mvnw -f backend/pom.xml verify` → BUILD SUCCESS, 859 testes, 0 falhas (inclui `OpenApiContractTest`, que usa o swagger-parser)
+- front-end não rodado: nada em `frontend/` mudou desde a rodada 2
+Achados:
+- sugestão, processo, o OSV-Scanner não existe nesta máquina; a confirmação de que o alerta sumiu é o job `security` do CI.
+Instáveis: nenhum observado nesta rodada.
