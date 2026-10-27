@@ -121,7 +121,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 93 | RF-POR-06 · Portal: Avisos | issue #93 | Sprint 10 | — | agente | feito |
 | 94 | RF-POR-07 · Portal: Minhas informações | issue #94 | Sprint 10 | — | agente | feito |
 | 385 | Teste LessonPanelPage instável no test:cov: medir e estabilizar (antes da #95: trava a regressão do front) | issue #385 | Sprint 10 | — | agente | feito |
-| 95 | RF-POR-08 · Portal: estados de tela | issue #95 | Sprint 10 | — | agente | a fazer |
+| 95 | RF-POR-08 · Portal: estados de tela | issue #95 | Sprint 10 | — | agente | feito |
 | 386 | Teste e2e comprovantes instável: medir e estabilizar | issue #386 | Sprint 10 | — | agente | a fazer |
 | 388 | Teste e2e "gestão recusa e confirma comprovantes (light)" estoura 30 s na suíte inteira | issue #388 | Sprint 10 | — | agente | a fazer |
 | 390 | ChargeNoticeIT.minor instável: o agendador envia o aviso ao aluno menor antes de o teste ligar o responsável | issue #390 | Sprint 10 | — | agente | a fazer |

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Card } from "@/components/Card";
+import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ChangeEmailForm } from "@/features/account/ChangeEmailForm";
 import { ChangePasswordForm } from "@/features/account/ChangePasswordForm";
@@ -96,6 +97,9 @@ export function PortalRequestsSummary({ studentId }: { studentId: string }) {
   const mine = useMyRequests(studentId);
   return (
     <Card heading="h2" title={t(`${k}title`)}>
+      {mine.status === "loading" && <LoadingState />}
+      {mine.status === "forbidden" && <ForbiddenState />}
+      {mine.status === "error" && <ErrorState onRetry={mine.reload} />}
       {mine.data && mine.data.length === 0 && <p className="text-sm">{t(`${k}empty`)}</p>}
       {mine.data && mine.data.length > 0 && (
         <ul className="flex flex-col divide-y text-sm">

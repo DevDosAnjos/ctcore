@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
+import { ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
@@ -21,16 +22,22 @@ export function ModalityConfirmations() {
   const { t } = useTranslation();
   const [items, setItems] = useState<Item[]>([]);
   const [failed, setFailed] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     let alive = true;
     api<Item[]>("/portal/modality-confirmations").then(
-      (data) => alive && setItems(data),
-      () => undefined,
+      (data) => {
+        if (!alive) return;
+        setLoadFailed(false);
+        setItems(data);
+      },
+      () => alive && setLoadFailed(true),
     );
     return () => {
       alive = false;
     };
-  }, []);
+  }, [tick]);
   const confirm = async (item: Item) => {
     setFailed(false);
     try {
@@ -40,6 +47,12 @@ export function ModalityConfirmations() {
       setFailed(true);
     }
   };
+  if (loadFailed)
+    return (
+      <Card heading="h2" title={t("portalConfirm.title")} className="mt-6">
+        <ErrorState onRetry={() => setTick((n) => n + 1)} />
+      </Card>
+    );
   if (items.length === 0) return null;
   return (
     <Card heading="h2" title={t("portalConfirm.title")} className="mt-6">
