@@ -3256,6 +3256,130 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
+  /portal/charges/{id}/pix-instructions:
+    get:
+      summary: Chave Pix da unidade para pagar uma cobrança aberta (RF-COB-05). Aluno adulto e responsável financeiro.
+      description: |
+        Devolve a chave Pix da unidade, o valor, o vencimento e o nome da unidade. Cobrança de aluno não ligado à conta ou de outra organização: 404; responsável não
+        financeiro do menor: 403; cobrança fora de aberta: 409 `CHARGE_NOT_PAYABLE`; unidade sem chave Pix: 422 `PIX_KEY_MISSING`. Com termo pendente: 403 `TERM_PENDING`.
+        Gestão e Professor: 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Instruções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PixInstructions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Unidade sem chave Pix (PIX_KEY_MISSING).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /portal/charges/{id}/proof:
+    post:
+      summary: Envia o comprovante do Pix na chave e põe a cobrança em conferência (RF-COB-05, RN-COB-13). Aluno adulto e responsável financeiro.
+      description: |
+        Multipart com o campo `file` (JPG, PNG, WebP ou PDF, até 5 MB; o tipo é conferido pelo conteúdo, nunca pela extensão). Arquivo ausente, vazio, grande demais ou de outro tipo:
+        422 com o campo `file`, sem gravar. A cobrança passa de `OPEN` a `IN_REVIEW` (sem lembretes, fora de "Em atraso") e o arquivo fica na pasta da organização, sem link público.
+        Cobrança que não está aberta (inclusive já em conferência): 409 `CHARGE_NOT_PAYABLE`; duas chamadas simultâneas gravam um só comprovante. Unidade sem chave Pix: 422
+        `PIX_KEY_MISSING`. Aluno não ligado à conta ou de outra organização: 404; responsável não financeiro: 403; termo pendente: 403 `TERM_PENDING`.
+        Grava `payment_proof.sent` (sem a chave do arquivo) e avisa os Administradores da unidade (`PAYMENT_PROOF`).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Comprovante enviado, pendente.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofSent' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Arquivo inválido (campo `file`) ou unidade sem chave Pix (PIX_KEY_MISSING). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /payment-proofs:
+    get:
+      summary: Comprovantes pendentes de conferência (RF-COB-05). Coordenador e Administrador.
+      description: |
+        Só os pendentes, do mais antigo ao mais novo, com a imagem em URL assinada e temporária (`imageUrl`, nula se o arquivo sumiu do armazenamento). O Coordenador vê
+        todas as unidades; o Administrador só as do seu alcance, e `unitId` fora dele devolve lista vazia. Exige cobranças completo na unidade: Professor, Aluno e
+        Responsável: 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de comprovantes.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofList' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /payment-proofs/{id}:
+    get:
+      summary: Um comprovante (RF-COB-05). Coordenador e Administrador.
+      description: "Comprovante de outra organização ou de unidade fora do alcance do Administrador: 404. Professor e perfis de portal: 403."
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: O comprovante.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProof' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payment-proofs/{id}/confirm:
+    post:
+      summary: Confirma o comprovante e registra o pagamento (RN-COB-13). Coordenador e Administrador.
+      description: |
+        Cria o pagamento da cobrança (meio `PIX_KEY`, origem `PORTAL`, valor da cobrança, data do envio do comprovante, lançado por quem confirmou) com recibo numerado,
+        marca a cobrança `PAID` e o comprovante `CONFIRMED`. `sendReceipt` (padrão falso) manda o recibo por e-mail depois de gravar. Comprovante já decidido: 409
+        `PROOF_NOT_PENDING`, sem segundo pagamento. Fora do alcance ou de outra organização: 404. Grava `payment_proof.confirmed` e `payment.registered`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofConfirmInput' } } }
+      responses:
+        '200':
+          description: Comprovante confirmado e o pagamento criado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofConfirmed' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /payment-proofs/{id}/refuse:
+    post:
+      summary: Recusa o comprovante com motivo (RN-COB-13). Coordenador e Administrador.
+      description: |
+        `reason` obrigatório, de 3 a 200 caracteres (senão 400 e o comprovante segue pendente). O comprovante fica `REFUSED`, a cobrança volta a `OPEN` e os dias em conferência
+        (data local da unidade) somam em `block_pause_days`, adiando o bloqueio (RN-INA-02); o motivo vai por e-mail à conta que enviou. Comprovante já decidido: 409
+        `PROOF_NOT_PENDING`. Fora do alcance ou de outra organização: 404. Grava `payment_proof.refused`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofRefuseInput' } } }
+      responses:
+        '200':
+          description: Comprovante recusado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProof' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -3498,6 +3622,8 @@ components:
             - TERMS_VERSION_CONFLICT
             - TERM_PENDING
             - CHARGE_NOT_PAYABLE
+            - PROOF_NOT_PENDING
+            - PIX_KEY_MISSING
             - ANNOUNCEMENT_ALREADY_SENT
             - ANNOUNCEMENT_DAILY_LIMIT
             - STAFF_LIMIT_REACHED
@@ -3683,7 +3809,7 @@ components:
         reaccept: { type: boolean }
     NotificationType:
       type: string
-      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE, PORTAL_REQUEST]
+      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE, PORTAL_REQUEST, PAYMENT_PROOF]
     Notification:
       type: object
       required: [id, type, group, createdAt, readAt, refType, refId, params]
@@ -5613,6 +5739,64 @@ components:
         - type: object
           properties:
             items: { type: array, items: { $ref: '#/components/schemas/PortalRequest' } }
+    PixInstructions:
+      type: object
+      required: [chargeId, pixKey, amountCents, dueOn, unit]
+      properties:
+        chargeId: { type: string, format: uuid }
+        pixKey: { type: string }
+        amountCents: { type: integer, format: int64 }
+        dueOn: { type: string, format: date }
+        unit: { type: string }
+    PaymentProofSent:
+      type: object
+      required: [id, chargeId, status, sentAt]
+      properties:
+        id: { type: string, format: uuid }
+        chargeId: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING] }
+        sentAt: { type: string, format: date-time }
+    PaymentProof:
+      type: object
+      required: [id, chargeId, studentId, studentName, studentPhotoUrl, unitId, unit, reference, amountCents, dueOn, sentAt, status, contentType, imageUrl, refusalReason, decidedAt]
+      properties:
+        id: { type: string, format: uuid }
+        chargeId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        studentPhotoUrl: { type: string, nullable: true }
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        reference: { type: string }
+        amountCents: { type: integer, format: int64 }
+        dueOn: { type: string, format: date }
+        sentAt: { type: string, format: date-time }
+        status: { type: string, enum: [PENDING, CONFIRMED, REFUSED] }
+        contentType: { type: string }
+        imageUrl: { type: string, nullable: true, description: URL assinada e temporária; nula se o arquivo não está no armazenamento. }
+        refusalReason: { type: string, nullable: true }
+        decidedAt: { type: string, nullable: true, format: date-time }
+    PaymentProofList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PaymentProof' } }
+    PaymentProofConfirmInput:
+      type: object
+      properties:
+        sendReceipt: { type: boolean, default: false }
+    PaymentProofRefuseInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 200 }
+    PaymentProofConfirmed:
+      type: object
+      required: [proof, payment]
+      properties:
+        proof: { $ref: '#/components/schemas/PaymentProof' }
+        payment: { $ref: '#/components/schemas/Payment' }
     PortalRequestChoice:
       type: object
       required: [id, name]

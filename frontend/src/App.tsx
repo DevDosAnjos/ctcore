@@ -28,6 +28,7 @@ import { ChargesPage } from "@/features/charges/ChargesPage";
 import { ChargePreviewPage } from "@/features/charges/ChargePreviewPage";
 import { DailyReceiptsPage } from "@/features/charges/DailyReceiptsPage";
 import { OverduePage } from "@/features/charges/OverduePage";
+import { PaymentProofsPage } from "@/features/payment-proofs/PaymentProofsPage";
 import { AnnouncementsPage } from "@/features/announcements/AnnouncementsPage";
 import { NewAnnouncementPage } from "@/features/announcements/NewAnnouncementPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
@@ -138,6 +139,7 @@ export function App() {
             <Route path="/cobrancas/previa" element={<ChargePreviewPage />} />
             <Route path="/cobrancas/recebimentos" element={<DailyReceiptsPage />} />
             <Route path="/cobrancas/atrasados" element={<OverduePage />} />
+            <Route path="/cobrancas/conferencia" element={<PaymentProofsPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

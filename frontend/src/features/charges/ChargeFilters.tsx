@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { useStudentFilterOptions } from "@/features/students/useStudents";
 import { QUICK, SITUATIONS, TYPES, type ChargeQuick } from "./types";
 
@@ -54,6 +55,11 @@ export function ChargeFilters({ get, set, counts }: Props) {
             </button>
           );
         })}
+        {quick === "IN_REVIEW" && (
+          <Link to="/cobrancas/conferencia" className="inline-flex min-h-11 items-center text-sm underline">
+            {t("charges.quick.openReview")}
+          </Link>
+        )}
       </div>
       <DateField label={t("charges.filters.from")} value={get("from")} onChange={(v) => set("from", v)} />
       <DateField label={t("charges.filters.to")} value={get("to")} onChange={(v) => set("to", v)} />

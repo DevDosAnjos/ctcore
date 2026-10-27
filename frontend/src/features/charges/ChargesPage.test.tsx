@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
@@ -251,4 +251,13 @@ describe("botões de criação (RF-COB-07, CA10)", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
+  it("R13: o filtro Em conferência ligado mostra o link para a tela de conferência; desligado, não", async () => {
+    setup("COORDINATOR", undefined, "/cobrancas?quick=IN_REVIEW");
+    await screen.findAllByText("Ana Souza");
+    expect(screen.getByRole("link", { name: "Abrir conferência" })).toHaveAttribute("href", "/cobrancas/conferencia");
+    cleanup();
+    setup("COORDINATOR");
+    await screen.findAllByText("Ana Souza");
+    expect(screen.queryByRole("link", { name: "Abrir conferência" })).toBeNull();
+  });
 });

@@ -91,6 +91,7 @@ describe("notificationActions", () => {
     expect(notificationTarget({ type: "PAYMENT_RECEIVED", refType: "charge", refId: "x" })).toBe("/cobrancas");
     expect(notificationTarget({ type: "INVITE_PENDING", refType: "invite", refId: "x" })).toBe("/configuracoes/usuarios");
     expect(notificationTarget({ type: "PORTAL_REQUEST", refType: "portal_request", refId: "x" })).toBe("/pedidos");
+    expect(notificationTarget({ type: "PAYMENT_PROOF", refType: "payment_proof", refId: "x" })).toBe("/cobrancas/conferencia");
     expect(notificationTarget({ type: "CLOSURE_REQUEST", refType: "portal_request", refId: "x" })).toBe("/pedidos");
     const now = new Date("2026-10-24T12:00:00Z");
     expect(relativeTime("2026-10-24T11:59:40Z", now)).toEqual({ key: "now", count: 0 });

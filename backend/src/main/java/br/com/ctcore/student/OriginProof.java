@@ -8,8 +8,8 @@ import br.com.ctcore.audit.AuditEntry;
 import br.com.ctcore.audit.AuditService;
 import br.com.ctcore.identity.AccountPrincipal;
 import br.com.ctcore.isolation.OrganizationTransactions;
+import br.com.ctcore.storage.FileKind;
 import br.com.ctcore.storage.FileStorage;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,31 +42,20 @@ public class OriginProof {
         return new ApiStatusException(ErrorCode.UNPROCESSABLE, List.of(new ApiError.Field("file", message)));
     }
 
-    /** Tipo pelo conteúdo, não pelo nome: devolve {extensão, tipo} ou nulo. */
-    static String[] kind(byte[] b) {
-        if (b.length >= 3 && (b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) return new String[] {"jpg", "image/jpeg"};
-        if (b.length >= 8 && (b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') return new String[] {"png", "image/png"};
-        if (b.length >= 12 && new String(b, 0, 4, StandardCharsets.ISO_8859_1).equals("RIFF") && new String(b, 8, 4, StandardCharsets.ISO_8859_1).equals("WEBP")) {
-            return new String[] {"webp", "image/webp"};
-        }
-        if (b.length >= 5 && new String(b, 0, 5, StandardCharsets.ISO_8859_1).equals("%PDF-")) return new String[] {"pdf", "application/pdf"};
-        return null;
-    }
-
     public Stored store(AccountPrincipal who, UUID studentId, byte[] content, String ip) {
         students.requireAccess(who);
         if (content == null || content.length == 0) throw rule("obrigatório");
         if (content.length > FileStorage.MAX_BYTES) throw rule("arquivo acima de 5 MB");
-        String[] kind = kind(content);
+        FileKind kind = FileKind.of(content);
         if (kind == null) throw rule("use JPG, PNG, WebP ou PDF");
         // Sem alcance ou fora da organização: 404 antes de gravar o arquivo.
         UUID unit = transactions.execute(() -> students.detail(who, studentId).registeredUnitId());
-        String key = PREFIX + studentId + "-" + UUID.randomUUID() + "." + kind[0];
-        storage.put(key, content, kind[1]);
+        String key = PREFIX + studentId + "-" + UUID.randomUUID() + "." + kind.extension();
+        storage.put(key, content, kind.contentType());
         transactions.execute(() -> {
             // A chave não vai para a auditoria (RN-LGP): só o fato do envio.
             audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name()), "student.origin_proof_uploaded", "student",
-                    studentId.toString(), unit, null, Map.of("type", kind[1]), null, ip));
+                    studentId.toString(), unit, null, Map.of("type", kind.contentType()), null, ip));
             return null;
         });
         return new Stored(key);

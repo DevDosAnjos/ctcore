@@ -118,6 +118,7 @@ export const resetMockSession = () => {
   portalImage.clear();
   portalConfirmed.clear();
   mockPortalRequests = [];
+  mockProofsSent = [];
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -824,7 +825,7 @@ const mockProofs = new Map<string, string>();
 const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; feeExemptReason: string | null; secondDueOn: string }[] = [];
 // RN-COB-12, RN-MAT-05 (#71): cobranças, pagamentos e recibos em memória (o simulado paga só no balcão, uma cobrança por vez).
 // RF-COB-02 (#73): cancelar e renegociar acrescentam as situações CANCELED e RENEGOTIATED, a parcela (INSTALLMENT) e os campos do painel.
-type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
+type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "IN_REVIEW" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
 let mockCharges: MockCharge[] = [];
 let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null; by?: { id: string; name: string } }[] = [];
 // RF-COB-06 (#79): histórico de lembretes por cobrança, em memória; só o envio manual por e-mail existe no simulado.
@@ -894,7 +895,7 @@ const addDays = (day: string, n: number) => isoDay(new Date(Date.parse(`${day}T0
 // RF-COB-01 (R2, D1, D2): situação calculada na leitura; o simulado só grava aberta e paga, então as demais situações não aparecem aqui.
 const chargeSituation = (c: MockCharge, today: string) => {
   const limit = addDays(c.dueOn, c.toleranceDays);
-  if (c.status === "CANCELED" || c.status === "RENEGOTIATED") return c.status;
+  if (c.status === "CANCELED" || c.status === "RENEGOTIATED" || c.status === "IN_REVIEW") return c.status;
   if (c.status === "PAID") {
     const paidAt = mockReceipts.find((r) => r.chargeId === c.id)?.paidAt ?? `${today}T00:00:00Z`;
     return paidAt.slice(0, 10) > limit ? "PAID_LATE" : "PAID";
@@ -1174,6 +1175,37 @@ const requestFor = (id: string) => {
   const denied = requestAdminAccess();
   if (denied) return denied;
   return mockPortalRequests.find((r) => r.id === id && (activeRole() === "COORDINATOR" || r.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// Comprovantes de Pix na chave (#87), em memória. Enviar põe a cobrança em conferência; recusar a devolve a aberta; confirmar paga no meio PIX_KEY.
+type MockPaymentProof = { id: string; chargeId: string; studentId: string; unitId: string; sentAt: string; status: "PENDING" | "CONFIRMED" | "REFUSED"; contentType: string; refusalReason: string | null; decidedAt: string | null };
+let mockProofsSent: MockPaymentProof[] = [];
+const PROOF_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const chargeReference = (c: MockCharge) => {
+  const row = mockEnrollments[c.studentId]?.modalities.find((x) => x.id === c.modalityRowId);
+  return c.type === "MONTHLY" ? `${modalityCatalog.find((m) => m.id === row?.modalityId)?.name ?? ""} · ${c.referenceMonth!.slice(5, 7)}/${c.referenceMonth!.slice(0, 4)}` : c.description;
+};
+const proofView = (p: MockPaymentProof) => {
+  const c = mockCharges.find((x) => x.id === p.chargeId)!;
+  const student = mockStudents.find((s) => s.id === p.studentId)!;
+  return {
+    id: p.id, chargeId: p.chargeId, studentId: p.studentId, studentName: student.name, studentPhotoUrl: student.photoUrl, unitId: p.unitId, unit: units.find((u) => u.id === p.unitId)?.name ?? "",
+    reference: chargeReference(c), amountCents: c.amountCents, dueOn: c.dueOn, sentAt: p.sentAt, status: p.status, contentType: p.contentType, imageUrl: MOCK_LOGO, refusalReason: p.refusalReason, decidedAt: p.decidedAt,
+  };
+};
+// Portal: só Aluno e Responsável, termo em dia; cobrança de aluno fora da conta é 404.
+const portalCharge = (id: string) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  const mine = portalMine();
+  if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return mockCharges.find((x) => x.id === id && mine.some((s) => s.id === x.studentId)) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+const unitPixKey = (unitId: string) => unitDetail(unitId).settings.pixKey;
+// Gestão: Coordenador e Administrador; o Administrador só alcança a unidade dele (404 fora).
+const proofFor = (id: string) => {
+  const denied = studentAccess();
+  if (denied) return denied;
+  return mockProofsSent.find((p) => p.id === id && (activeRole() === "COORDINATOR" || p.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
 };
 // Aceite do termo no portal (#85), em memória. Pendente = aluno com matrícula (ou o adulto da conta "termo@exemplo.com") sem aceite.
 const portalAccepted = new Map<string, string>();
@@ -4389,6 +4421,98 @@ export const routes: Route[] = [
       if (found.status !== "OPEN") return error(409, "REQUEST_NOT_OPEN", "O pedido já foi decidido.");
       Object.assign(found, { status: "REFUSED", response: message, decidedAt: new Date().toISOString() });
       return HttpResponse.json(requestView(found));
+    },
+  },
+  {
+    // RF-COB-05 (#87): chave Pix da unidade para pagar; só cobrança aberta (409) de unidade com chave (422).
+    method: "get",
+    path: "/portal/charges/{id}/pix-instructions",
+    resolver: ({ params }) => {
+      const c = portalCharge(params.id as string);
+      if (c instanceof Response) return c;
+      if (c.status !== "OPEN") return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
+      const pixKey = unitPixKey(c.unitId);
+      if (!pixKey) return error(422, "PIX_KEY_MISSING", "A unidade não tem chave Pix.");
+      return HttpResponse.json({ chargeId: c.id, pixKey, amountCents: c.amountCents, dueOn: c.dueOn, unit: units.find((u) => u.id === c.unitId)?.name ?? "" });
+    },
+  },
+  {
+    // RN-COB-13: comprovante JPG, PNG, WebP ou PDF até 5 MB (campo `file`); a cobrança passa a "Em conferência" e a gestão é avisada.
+    method: "post",
+    path: "/portal/charges/{id}/proof",
+    resolver: async ({ request, params }) => {
+      const c = portalCharge(params.id as string);
+      if (c instanceof Response) return c;
+      // Multipart lido como texto (o parser do Node não aceita o File do jsdom nos testes): cabeçalho da parte, linha em branco, conteúdo.
+      const part = /Content-Type:\s*(\S+)\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(await request.text());
+      if (!part || part[2].length === 0) return rule("file", "envie o comprovante");
+      if (part[2].length > 5 * 1024 * 1024) return rule("file", "até 5 MB");
+      if (!PROOF_TYPES.includes(part[1])) return rule("file", "use JPG, PNG, WebP ou PDF");
+      if (c.status !== "OPEN") return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
+      if (!unitPixKey(c.unitId)) return error(422, "PIX_KEY_MISSING", "A unidade não tem chave Pix.");
+      const proof: MockPaymentProof = { id: crypto.randomUUID(), chargeId: c.id, studentId: c.studentId, unitId: c.unitId, sentAt: new Date().toISOString(), status: "PENDING", contentType: part[1], refusalReason: null, decidedAt: null };
+      mockProofsSent.push(proof);
+      c.status = "IN_REVIEW";
+      mockNotifications.unshift({ id: crypto.randomUUID(), type: "PAYMENT_PROOF", createdAt: proof.sentAt, readAt: null, refType: "payment_proof", refId: proof.id, params: { studentName: mockStudents.find((s) => s.id === c.studentId)?.name ?? "", amountCents: c.amountCents } });
+      return HttpResponse.json({ id: proof.id, chargeId: c.id, status: "PENDING", sentAt: proof.sentAt }, { status: 201 });
+    },
+  },
+  {
+    // RF-COB-05: pendentes, do mais antigo ao mais novo; o Administrador só vê a unidade dele.
+    method: "get",
+    path: "/payment-proofs",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const all = mockProofsSent
+        .filter((x) => x.status === "PENDING" && (activeRole() === "COORDINATOR" || x.unitId === ADMIN_UNIT) && (!p.get("unitId") || x.unitId === p.get("unitId")))
+        .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+      return HttpResponse.json({ items: all.slice((page - 1) * size, page * size).map(proofView), page, size, total: all.length });
+    },
+  },
+  {
+    method: "get",
+    path: "/payment-proofs/{id}",
+    resolver: ({ params }) => {
+      const found = proofFor(params.id as string);
+      return found instanceof Response ? found : HttpResponse.json(proofView(found));
+    },
+  },
+  {
+    // RN-COB-13: confirmar paga a cobrança (PIX_KEY, origem PORTAL, data do envio) com recibo; repetir é 409.
+    method: "post",
+    path: "/payment-proofs/{id}/confirm",
+    resolver: async ({ request, params }) => {
+      const found = proofFor(params.id as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { sendReceipt?: boolean }) ?? {};
+      if (found.status !== "PENDING") return error(409, "PROOF_NOT_PENDING", "O comprovante já foi decidido.");
+      const charge = mockCharges.find((c) => c.id === found.chargeId)!;
+      const number = mockReceipts.filter((r) => r.unitId === charge.unitId).length + 1;
+      const code = crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase();
+      charge.status = "PAID";
+      mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt: found.sentAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "", method: "PIX_KEY", observation: null, by: { id: session.account.id, name: session.account.name } });
+      Object.assign(found, { status: "CONFIRMED", decidedAt: new Date().toISOString() });
+      const payment = { id: crypto.randomUUID(), chargeId: charge.id, amountCents: charge.amountCents, method: "PIX_KEY", paidAt: found.sentAt, registeredBy: session.account.id, observation: null, receipt: { number, code }, receiptEmail: body.sendReceipt ? "SENT" : "NOT_REQUESTED" };
+      return HttpResponse.json({ proof: proofView(found), payment });
+    },
+  },
+  {
+    // Recusar exige motivo de 3 a 200 caracteres; a cobrança volta a aberta e o comprovante sai da fila.
+    method: "post",
+    path: "/payment-proofs/{id}/refuse",
+    resolver: async ({ request, params }) => {
+      const found = proofFor(params.id as string);
+      if (found instanceof Response) return found;
+      const reason = (((await request.json().catch(() => ({}))) as { reason?: string }) ?? {}).reason?.trim() ?? "";
+      if (reason.length < 3 || reason.length > 200) return studentBad("reason", "de 3 a 200 caracteres");
+      if (found.status !== "PENDING") return error(409, "PROOF_NOT_PENDING", "O comprovante já foi decidido.");
+      mockCharges.find((c) => c.id === found.chargeId)!.status = "OPEN";
+      Object.assign(found, { status: "REFUSED", refusalReason: reason, decidedAt: new Date().toISOString() });
+      return HttpResponse.json(proofView(found));
     },
   },
   {

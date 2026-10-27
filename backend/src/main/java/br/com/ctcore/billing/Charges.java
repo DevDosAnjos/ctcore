@@ -61,6 +61,9 @@ public class Charges {
     private static final Map<String, String> SORTS = Map.of("dueOn", "c.due_on", "amount", "c.amount_cents", "student", "s.name_key");
     public static final Set<String> SORT_FIELDS = SORTS.keySet();
 
+    /** RN-INA-02, D5: data de bloqueio = vencimento + prazo da organização (alias {@code os}) + dias que a cobrança passou em conferência. Aliases {@code c} e {@code os}. */
+    public static final String BLOCK_DATE = "(c.due_on + os.deactivation_days + c.block_pause_days)";
+
     /** A data de hoje no fuso da unidade de alias {@code unit}; o parâmetro {@code :now} é o instante atual. */
     public static String today(String unit) {
         return "(cast(:now as timestamptz) at time zone " + unit + ".timezone)::date";

@@ -81,7 +81,7 @@ public class ReminderJob {
         // R3: o aviso de bloqueio é fixo; não depende de reminder_days nem de reminders_enabled.
         list.addAll(jdbc.sql("select c.id, u.timezone " + BASE
                 + "and c.type in ('MONTHLY', 'INSTALLMENT', 'READJUSTMENT_DIFF') and us.payment_account_reference is not null "
-                + "and c.due_on + os.deactivation_days - " + BLOCK_WARNING_DAYS + " = " + Charges.today("u") + " order by c.id").param("org", org).param("now", now)
+                + "and " + Charges.BLOCK_DATE + " - " + BLOCK_WARNING_DAYS + " = " + Charges.today("u") + " order by c.id").param("org", org).param("now", now)
                 .query((rs, n) -> new Candidate(rs.getObject(1, UUID.class), "BLOCK_WARNING", null, rs.getString(2))).list());
         return list;
     }

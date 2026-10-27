@@ -77,6 +77,6 @@ public final class BillingFixtures {
 
     /** Apaga o que os testes criaram (as tabelas não têm DELETE para o papel de execução; aqui é o administrador). */
     public static void clean(JdbcTemplate db) {
-        for (String table : new String[] {"charge_reminder", "sms_log", "receipt", "payment", "receipt_counter", "charge"}) db.update("delete from " + table);
+        for (String table : new String[] {"charge_reminder", "sms_log", "receipt", "payment_proof", "payment", "receipt_counter", "charge"}) db.update("delete from " + table);
     }
 }

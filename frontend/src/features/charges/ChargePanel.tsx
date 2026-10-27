@@ -64,6 +64,15 @@ function Details({ d, studentLink, onChanged }: { d: ChargeDetail; studentLink: 
         </dl>
       </div>
 
+      {charge.status === "IN_REVIEW" && (
+        <p className="flex flex-col items-start text-sm">
+          {t("charges.panel.disabled.inReview")}
+          <Link to="/cobrancas/conferencia" className="inline-flex min-h-11 items-center underline">
+            {t("charges.quick.openReview")}
+          </Link>
+        </p>
+      )}
+
       <Block title={t("charges.panel.composition")}>
         <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
           <dt className="text-muted-foreground">{t("charges.panel.plan")}</dt>

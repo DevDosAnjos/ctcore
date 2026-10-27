@@ -2033,6 +2033,7 @@
       "DUE_TODAY": "Vence hoje",
       "IN_REVIEW": "Em conferência",
       "PAID_MONTH": "Pagas no mês",
+      "openReview": "Abrir conferência",
       "withCount": "{{label}} ({{count}})"
     },
     "filters": {
@@ -2115,6 +2116,7 @@
       "sendReminder": "Enviar lembrete",
       "refund": "Estornar",
       "disabled": {
+        "inReview": "Há um comprovante de Pix aguardando conferência.",
         "registerPayment": "Só cobranças em aberto recebem pagamento.",
         "sendReminder": "Só cobranças em aberto recebem lembrete.",
         "refund": "Disponível quando o estorno for entregue."
@@ -2662,6 +2664,7 @@
       "INVITE_PENDING": { "text": "O convite de {{personName}} segue sem aceite há 7 dias.", "action": "Ver usuários" },
       "CLOSURE_REQUEST": { "text": "Há um pedido de encerramento aguardando decisão.", "action": "Ver pedidos" },
       "PORTAL_REQUEST": { "text": "Há um pedido novo do portal aguardando resposta.", "action": "Ver pedidos" },
+      "PAYMENT_PROOF": { "text": "{{studentName}} enviou um comprovante de {{amount}} para conferir.", "action": "Conferir comprovantes" },
       "MP_DISCONNECTED": { "text": "A conexão de pagamentos da academia caiu.", "action": "Abrir configurações" },
       "SUBSCRIPTION_OVERDUE": { "text": "A assinatura do CTCore está em atraso.", "action": "Abrir configurações" }
     }
@@ -2699,6 +2702,62 @@
     "errors": {
       "conflict": "O termo mudou. Leia a nova versão e aceite de novo.",
       "generic": "Não conseguimos registrar o aceite. Tente de novo."
+    }
+  },
+  "paymentProofs": {
+    "title": "Comprovantes em conferência",
+    "intro": "Comprovantes de Pix na chave enviados pelos alunos. Confirme para registrar o pagamento ou recuse com o motivo.",
+    "back": "Voltar às cobranças",
+    "emptyTitle": "Nenhum comprovante em conferência",
+    "emptyText": "Quando um aluno enviar um comprovante de Pix, ele aparece aqui.",
+    "columns": { "proof": "Comprovante", "student": "Aluno", "unit": "Unidade", "reference": "Referência", "amount": "Valor", "dueOn": "Vencimento", "sentAt": "Enviado em", "actions": "Ações" },
+    "cardLine": "{{unit}} · {{reference}}",
+    "cardDates": "{{amount}} · vence em {{dueOn}} · enviado em {{sentAt}}",
+    "image": { "alt": "Comprovante de {{student}}", "zoom": "Ampliar comprovante de {{student}}", "unavailable": "Imagem indisponível", "openFile": "Abrir arquivo", "viewTitle": "Comprovante de {{student}}", "pdf": "Arquivo PDF" },
+    "actions": { "confirm": "Confirmar", "confirmFor": "Confirmar comprovante de {{student}}", "refuse": "Recusar", "refuseFor": "Recusar comprovante de {{student}}" },
+    "confirm": {
+      "title": "Confirmar comprovante",
+      "effect": "A cobrança passa a Paga, com recibo, no meio Pix na chave e na data do envio do comprovante.",
+      "who": "{{student}} · {{reference}} · {{amount}}",
+      "sendReceipt": "Enviar o recibo por e-mail",
+      "submit": "Confirmar pagamento",
+      "done": "Pagamento registrado. Recibo {{number}}."
+    },
+    "refuse": {
+      "title": "Recusar comprovante",
+      "effect": "A cobrança volta a aberta, o prazo de bloqueio segue de onde parou e o aluno recebe o motivo por e-mail.",
+      "reason": "Motivo da recusa (3 a 200 caracteres)",
+      "submit": "Recusar comprovante"
+    },
+    "errors": {
+      "400": "Confira os dados e tente de novo.",
+      "404": "Este comprovante não existe mais ou não está ao seu alcance.",
+      "409": "Este comprovante já foi decidido. Atualize a lista.",
+      "generic": "Não foi possível concluir. Nada foi alterado; tente de novo."
+    }
+  },
+  "pixProof": {
+    "title": "Pix na chave com comprovante",
+    "effect": "Faça o Pix para a chave abaixo, depois anexe o comprovante. A academia confere e confirma o pagamento.",
+    "key": "Chave Pix",
+    "copy": "Copiar",
+    "copied": "Chave copiada.",
+    "copyFailed": "Não foi possível copiar. Selecione a chave e copie.",
+    "amount": "Valor",
+    "unit": "Unidade",
+    "file": "Comprovante (JPG, PNG, WebP ou PDF, até 5 MB)",
+    "submit": "Enviar comprovante",
+    "done": "Comprovante enviado. A cobrança ficou em conferência.",
+    "noKeyTitle": "Esta unidade não tem chave Pix cadastrada",
+    "noKeyText": "Fale com a academia para pagar de outra forma.",
+    "notPayableTitle": "Esta cobrança não está aberta",
+    "notPayableText": "Ela já está em conferência ou foi paga.",
+    "errors": {
+      "403": "Você não tem permissão para pagar esta cobrança.",
+      "404": "Cobrança não encontrada.",
+      "409": "Esta cobrança não está mais aberta. Atualize a tela.",
+      "422": "A unidade não tem chave Pix cadastrada.",
+      "generic": "Não foi possível enviar. Nada foi alterado; tente de novo."
     }
   },
   "portalOwn": {

@@ -129,6 +129,12 @@ public class PortalTerms {
         if (who == null || (who.role() != Role.GUARDIAN && who.role() != Role.STUDENT)) throw new AccessDeniedException("Portal session required");
     }
 
+    /** RN-COB-13: quem paga é quem aceita o termo (adulto com conta ou responsável financeiro do menor). Dentro da transação: 404 se não ligado, 403 se sem esse direito. */
+    public void requirePayer(AccountPrincipal who, UUID studentId) {
+        requirePortal(who);
+        acceptable(who, studentId, false);
+    }
+
     boolean canAccept(Linked c) {
         return c.minor(LocalDate.ofInstant(clock.instant(), ZoneId.of(c.zone()))) ? c.financial() : c.self();
     }
