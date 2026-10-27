@@ -129,6 +129,8 @@ export const resetMockSession = () => {
   portalAccepted.clear();
   portalImage.clear();
   portalConfirmed.clear();
+  noticeRead.clear();
+  noticeDismissed.clear();
   financeReview.clear();
   mockPortalRequests = [];
   mockProofsSent = [];
@@ -1287,14 +1289,77 @@ const portalHome = (studentId: string | null) => {
           { modality: jiu, levelName: "Azul", color: "#1E40AF", secondaryColor: null, degree: 2, achievedOn: dayShift(-3), isNew: true },
           { modality: judo, levelName: "Amarela", color: "#FACC15", secondaryColor: null, degree: 0, achievedOn: null, isNew: false },
         ];
-  const announcements = {
-    unreadCount: 2,
-    items: [
-      { id: "00000000-0000-0000-0000-0000000007e1", title: "Mudança de horário no sábado", sentAt: `${dayShift(-1)}T12:00:00Z`, pinned: true, unread: true, authorName: null },
-      { id: "00000000-0000-0000-0000-0000000007e2", title: "Exame de faixa em dezembro", sentAt: `${dayShift(-2)}T12:00:00Z`, pinned: false, unread: true, authorName: null },
-    ],
-  };
+  const announcements = noticeSummary(selected);
   return HttpResponse.json({ ...base, lessons, announcements, belts });
+};
+// Avisos do portal (#93), em memória. `reach` são os alunos que o aviso alcança; "lido" é por aluno e "limpo" (Marcar todos como lidos) por conta, sem virar leitura.
+// Sem `modality`, o aviso alcança o aluno por qualquer modalidade dele. O sino (`/portal/shell`), o Início e a lista saem do mesmo estado.
+const NOTICE_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='120'><rect width='320' height='120' fill='%23dbeafe'/></svg>";
+const portalNotices = [
+  { id: "00000000-0000-0000-0000-0000000007e1", title: "Mudança de horário no sábado", body: "A aula de sábado será às 10h.\nTexto fictício <b>sem HTML</b>.", type: "SCHEDULE_CHANGE", daysAgo: 1, pinned: true, kind: "UNIT", names: ["Unidade Centro"], modality: null as string | null, reach: [STUDENT_ADULT, STUDENT_MINOR, CHILD_TWO], image: NOTICE_IMAGE as string | null },
+  { id: "00000000-0000-0000-0000-0000000007e2", title: "Exame de faixa em dezembro", body: "O exame de faixa de Jiu-Jitsu será em dezembro (texto fictício).", type: "GENERAL", daysAgo: 2, pinned: false, kind: "MODALITY", names: ["Jiu-Jitsu"], modality: "Jiu-Jitsu", reach: [STUDENT_ADULT, STUDENT_MINOR], image: null },
+  { id: "00000000-0000-0000-0000-0000000007e3", title: "Recesso de fim de ano", body: "A academia fecha de 24 a 31 de dezembro (texto fictício).", type: "GENERAL", daysAgo: 3, pinned: false, kind: "ORGANIZATION", names: [] as string[], modality: null, reach: [STUDENT_ADULT, STUDENT_MINOR, CHILD_TWO], image: null },
+  { id: "00000000-0000-0000-0000-0000000007e4", title: "Judô Infantil sem aula na quarta", body: "Sem aula na quarta (texto fictício).", type: "CANCELED_CLASS", daysAgo: 4, pinned: false, kind: "CLASS", names: ["Judô Infantil"], modality: "Judô", reach: [CHILD_TWO], image: null },
+];
+const noticeRead = new Set<string>();
+const noticeDismissed = new Set<string>();
+const NOTICE_AUTHOR = "Coordenação Fictícia";
+const studentModalities = (studentId: string) => (studentId === CHILD_TWO ? ["Judô"] : ["Jiu-Jitsu", "Judô"]);
+const noticeUnread = (studentId: string, id: string) => !noticeRead.has(`${studentId}:${id}`) && !noticeDismissed.has(id);
+const noticesFor = (studentId: string, modality: string | null = null) =>
+  portalNotices
+    .filter((n) => n.reach.includes(studentId) && (modality === null || (n.modality ?? modality) === modality))
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.daysAgo - b.daysAgo || a.id.localeCompare(b.id));
+const noticeItem = (n: (typeof portalNotices)[number], studentId: string) => ({
+  id: n.id, title: n.title, type: n.type, sentAt: `${dayShift(-n.daysAgo)}T12:00:00Z`, pinned: n.pinned, unread: noticeUnread(studentId, n.id),
+  destination: { kind: n.kind, names: n.names }, author: NOTICE_AUTHOR,
+});
+const unreadIds = (studentId: string) => noticesFor(studentId).filter((n) => noticeUnread(studentId, n.id)).map((n) => n.id);
+const bellCount = () => new Set(homeCards().flatMap((c) => unreadIds(c.id))).size;
+const noticeSummary = (studentId: string) => ({
+  unreadCount: unreadIds(studentId).length,
+  items: noticesFor(studentId)
+    .filter((n) => n.pinned || noticeUnread(studentId, n.id))
+    .slice(0, 5)
+    .map((n) => ({ id: n.id, title: n.title, sentAt: `${dayShift(-n.daysAgo)}T12:00:00Z`, pinned: n.pinned, unread: noticeUnread(studentId, n.id), authorName: NOTICE_AUTHOR })),
+});
+const portalNoticeGate = () => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return null;
+};
+const portalAnnouncements = (url: URL) => {
+  const q = url.searchParams;
+  const cards = homeCards();
+  const selected = q.get("studentId") ?? cards[0].id;
+  if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const filter = q.get("filter") ?? "ALL";
+  const mine = studentModalities(selected).map(homeRef);
+  const modalityId = filter === "MODALITY" ? q.get("modalityId") : null;
+  if (!["ALL", "UNREAD", "MODALITY"].includes(filter) || (filter === "MODALITY" && !mine.some((m) => m.id === modalityId))) return error(400, "VALIDATION_ERROR", "Dados inválidos.");
+  const size = Math.min(Math.max(Number(q.get("size") ?? 20) || 20, 1), 50);
+  const page = Math.max(Number(q.get("page") ?? 1) || 1, 1);
+  const head = { students: cards.map((c) => ({ id: c.id, name: c.name, self: c.self })), studentId: selected, filter };
+  if (current.account.email === REDUCED_ACCOUNT) return HttpResponse.json({ ...head, reduced: true, modalityId: null, modalities: [], unreadCount: 0, items: [], page, size, total: 0 });
+  const all = noticesFor(selected, mine.find((m) => m.id === modalityId)?.name ?? null).filter((n) => filter !== "UNREAD" || noticeUnread(selected, n.id));
+  return HttpResponse.json({
+    ...head, reduced: false, modalityId, modalities: mine, unreadCount: unreadIds(selected).length, items: all.slice((page - 1) * size, page * size).map((n) => noticeItem(n, selected)), page, size, total: all.length,
+  });
+};
+const portalOpenNotice = (id: string, studentId: string | null) => {
+  const cards = homeCards();
+  const selected = studentId ?? cards[0].id;
+  const found = noticesFor(selected).find((n) => n.id === id);
+  if (!cards.some((c) => c.id === selected) || !found || current.account.email === REDUCED_ACCOUNT) return error(404, "NOT_FOUND", "Não encontrado.");
+  noticeRead.add(`${selected}:${id}`);
+  return HttpResponse.json({ ...noticeItem(found, selected), body: found.body, imageUrl: found.image });
+};
+const portalReadAll = () => {
+  if (current.account.email === REDUCED_ACCOUNT) return HttpResponse.json({ dismissed: 0 });
+  const pending = new Set(homeCards().flatMap((c) => unreadIds(c.id)));
+  pending.forEach((id) => noticeDismissed.add(id));
+  return HttpResponse.json({ dismissed: pending.size });
 };
 // Financeiro do portal (#92): as abertas saem das mesmas cobranças do Início (mais um "Kimono" longe do segundo filho); o histórico é fixo.
 // Cobrança que não está em `mockCharges` vai para "Em conferência" por este conjunto.
@@ -4395,7 +4460,7 @@ export const routes: Route[] = [
       if (denied) return denied;
       if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
       const reduced = current.account.email === REDUCED_ACCOUNT;
-      return HttpResponse.json({ organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl }, reduced, unreadAnnouncements: reduced ? 0 : 3 });
+      return HttpResponse.json({ organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl }, reduced, unreadAnnouncements: reduced ? 0 : bellCount() });
     },
   },
   {
@@ -4494,6 +4559,24 @@ export const routes: Route[] = [
         modalities,
       });
     },
+  },
+  {
+    // RF-POR-06 (#93): avisos do aluno. Mesmas contas do Início; "reduzido@exemplo.com" é 200 vazio com `reduced`; gestão 403, `studentId` fora da conta 404, `filter` ou `modalityId` inválidos 400.
+    method: "get",
+    path: "/portal/announcements",
+    resolver: ({ request }) => portalNoticeGate() ?? portalAnnouncements(new URL(request.url)),
+  },
+  {
+    // Abrir grava a leitura do aluno escolhido; aviso que ele não alcança, 404.
+    method: "post",
+    path: "/portal/announcements/{id}/open",
+    resolver: ({ request, params }) => portalNoticeGate() ?? portalOpenNotice(String(params.id), new URL(request.url).searchParams.get("studentId")),
+  },
+  {
+    // Marcar todos como lidos: marca de "limpo" da conta, sem leitura; repetir responde 0.
+    method: "post",
+    path: "/portal/announcements/read-all",
+    resolver: () => portalNoticeGate() ?? portalReadAll(),
   },
   {
     // RF-POR-04 (#91): agenda da semana. Mesmas contas do Início; "reduzido@exemplo.com" é 200 vazio com `reduced`; gestão 403, `studentId` fora da conta 404, `week` ou `scope` inválidos 400.

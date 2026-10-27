@@ -3153,12 +3153,76 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /portal/announcements:
+    get:
+      summary: Avisos do aluno (RF-POR-06, RN-POR-01, RN-POR-02). Responsável e Aluno.
+      description: |
+        Comunicados enviados (nunca o agendado) que alcançam o aluno escolhido por uma modalidade ativa, com o mesmo alcance do Início e do sino. Fixados no topo
+        (`pinned_until` ainda valendo no fuso da unidade do aviso), depois do mais recente ao mais antigo. `filter` `ALL` (padrão), `UNREAD` ou `MODALITY` (com
+        `modalityId` de modalidade ativa do aluno); `filter` desconhecido ou `modalityId` que o aluno não pratica: 400. `page` a partir de 1 e `size` padrão 20,
+        limitado a 50. `unread` é verdadeiro sem leitura do aluno e sem "limpo" da conta; `unreadCount` não depende do filtro. Com o portal reduzido, 200 com `reduced`
+        e lista vazia. `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`.
+        Sem contato do professor, presença, frequência, progresso nem dado financeiro. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: filter, in: query, required: false, schema: { type: string, enum: [ALL, UNREAD, MODALITY], default: ALL } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Página de avisos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalAnnouncements' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/announcements/{id}/open:
+    post:
+      summary: Abrir um aviso e gravar a leitura (RF-POR-06, RN-COM-08). Responsável e Aluno.
+      description: |
+        Devolve o aviso completo (`body` como texto puro e `imageUrl` assinada e temporária, ou nulo) e grava a leitura do aluno escolhido (no menor, a leitura do
+        responsável conta uma vez); repetir não duplica nem muda a abertura. Aviso que não alcança o aluno, agendado, de outra organização ou com o portal
+        reduzido: 404, sem distinguir. Audita `portal_announcement.opened` na primeira abertura, sem título nem texto. Gestão e Professor: 403. Com termo pendente:
+        403 `TERM_PENDING`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Aviso completo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalAnnouncementDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/announcements/read-all:
+    post:
+      summary: Marcar todos os avisos como lidos (RF-POR-06, RN-COM-08). Responsável e Aluno.
+      description: |
+        Limpa, para a conta, todos os avisos hoje não lidos de qualquer aluno ligado a ela; grava só uma marca de "limpo", nunca uma leitura (a gestão continua
+        vendo zero leitores). Aviso enviado depois volta a contar. Responde com quantos foram limpos; repetir responde 0. Audita `portal_announcement.read_all`
+        só se limpou algo. Com o portal reduzido, 0 sem gravar. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Quantos avisos foram limpos.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dismissed]
+                properties:
+                  dismissed: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /portal/shell:
     get:
       summary: Moldura do portal (RF-POR-01, RN-POR-08). Responsável e Aluno.
       description: |
         Marca da organização do vínculo (`logoUrl` é a URL temporária assinada, nulo sem logo), `reduced` (a conta tem aluno matriculado e nenhum com modalidade
-        ativa) e `unreadAnnouncements` (comunicados enviados e ainda não lidos por algum aluno ligado à conta; 0 no portal reduzido). Considera só os alunos
+        ativa) e `unreadAnnouncements` (comunicados enviados e ainda não lidos por algum aluno ligado à conta e não limpos por "Marcar todos como lidos"; 0 no portal reduzido). Considera só os alunos
         da conta da sessão. Gestão e Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Não altera dado.
       security: [{ sessionCookie: [] }]
       responses:
@@ -6047,6 +6111,54 @@ components:
               date: { type: string, format: date }
               reason: { type: string }
               unit: { $ref: '#/components/schemas/PortalHomeRef' }
+    PortalAnnouncementItem:
+      type: object
+      required: [id, title, type, sentAt, pinned, unread, destination, author]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        type: { type: string, enum: [CANCELED_CLASS, TEACHER_CHANGE, SCHEDULE_CHANGE, NO_CLASS_DAY, GENERAL] }
+        sentAt: { type: string, format: date-time }
+        pinned: { type: boolean }
+        unread: { type: boolean }
+        destination:
+          type: object
+          required: [kind, names]
+          properties:
+            kind: { type: string, enum: [ORGANIZATION, UNIT, MODALITY, CLASS, CLASSES] }
+            names: { type: array, items: { type: string }, description: 'Unidade, modalidade, turma ou turmas; vazio para a organização.' }
+        author: { type: string, description: Nome da conta que criou o comunicado. }
+    PortalAnnouncementDetail:
+      allOf:
+        - $ref: '#/components/schemas/PortalAnnouncementItem'
+        - type: object
+          required: [body, imageUrl]
+          properties:
+            body: { type: string, description: Texto puro com quebras de linha; nunca HTML. }
+            imageUrl: { type: string, nullable: true, description: URL assinada e temporária da imagem. }
+    PortalAnnouncements:
+      type: object
+      required: [reduced, students, studentId, filter, modalityId, modalities, unreadCount, items, page, size, total]
+      properties:
+        reduced: { type: boolean }
+        students:
+          type: array
+          items:
+            type: object
+            required: [id, name, self]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              self: { type: boolean }
+        studentId: { type: string, format: uuid }
+        filter: { type: string, enum: [ALL, UNREAD, MODALITY] }
+        modalityId: { type: string, format: uuid, nullable: true }
+        modalities: { type: array, items: { $ref: '#/components/schemas/PortalHomeRef' } }
+        unreadCount: { type: integer, minimum: 0, description: 'Não lidos do aluno, independente do filtro.' }
+        items: { type: array, items: { $ref: '#/components/schemas/PortalAnnouncementItem' } }
+        page: { type: integer, minimum: 1 }
+        size: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
     PortalShell:
       type: object
       required: [organization, reduced, unreadAnnouncements]

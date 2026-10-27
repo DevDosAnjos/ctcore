@@ -3,8 +3,8 @@ import { Link } from "react-router";
 import { EmptyState } from "@/components/states";
 import { PortalLayout } from "./PortalLayout";
 
-/** D4: página provisória das abas ainda sem conteúdo (#92 a #94); cada item troca só o miolo. */
-export function PortalSectionPage({ tab }: { tab: "notices" | "info" }) {
+/** D4: página provisória das abas ainda sem conteúdo (#94); cada item troca só o miolo. */
+export function PortalSectionPage({ tab }: { tab: "info" }) {
   const { t } = useTranslation();
   return (
     <PortalLayout>

@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/states";
 import { formatDate } from "@/lib/format";
 import { PortalTag } from "./PortalTag";
 import type { PortalHomeData } from "./usePortalHome";
 
-// RF-POR-02, RN-COM-08: avisos não lidos e fixados; ler e marcar como lido é da aba Avisos (#93).
+// RF-POR-02, RN-COM-08: avisos não lidos e fixados; ler e marcar como lido é da aba Avisos (#93), para onde o link leva.
 export function PortalNoticesCard({ data }: { data: PortalHomeData["announcements"] }) {
   const { t } = useTranslation();
   return (
@@ -30,6 +31,9 @@ export function PortalNoticesCard({ data }: { data: PortalHomeData["announcement
           ))}
         </ul>
       )}
+      <Link to="/portal/avisos" className="mt-2 inline-flex min-h-11 items-center underline">
+        {t("portalHome.notices.viewAll")}
+      </Link>
     </Card>
   );
 }

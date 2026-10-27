@@ -52,6 +52,7 @@ describe("PortalHomePage (RF-POR-02)", () => {
     expect(screen.getByText("Nova")).toBeInTheDocument();
     expect(screen.getByText("Fixado")).toBeInTheDocument();
     expect(screen.getByText("1 aviso não lido")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver todos os avisos" })).toHaveAttribute("href", "/portal/avisos");
   });
 
   it("CA8: o link Ver carteirinha leva ao aluno escolhido", async () => {

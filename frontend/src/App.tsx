@@ -46,6 +46,7 @@ import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
 import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
 import { PortalRequestsPage as PortalOwnRequestsPage } from "@/features/portal/PortalRequestsPage";
 import { PortalAgendaPage } from "@/features/portal/PortalAgendaPage";
+import { PortalAnnouncementsPage } from "@/features/portal/PortalAnnouncementsPage";
 import { PortalCardPage } from "@/features/portal/PortalCardPage";
 import { PortalFinancePage } from "@/features/portal/PortalFinancePage";
 import { PortalHomePage } from "@/features/portal/PortalHomePage";
@@ -113,7 +114,7 @@ export function App() {
             <Route path="/portal/carteirinha" element={<PortalCardPage />} />
             <Route element={<RequireFullPortal />}>
               <Route path="/portal/agenda" element={<PortalAgendaPage />} />
-              <Route path="/portal/avisos" element={<PortalSectionPage tab="notices" />} />
+              <Route path="/portal/avisos" element={<PortalAnnouncementsPage />} />
             </Route>
             <Route path="/portal/financeiro" element={<PortalFinancePage />} />
             <Route path="/portal/minhas-informacoes" element={<PortalSectionPage tab="info" />} />
