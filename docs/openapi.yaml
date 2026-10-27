@@ -3003,6 +3003,25 @@ paths:
                 items: { $ref: '#/components/schemas/PortalStudentCard' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/home:
+    get:
+      summary: Início do portal (RF-POR-02, RN-POR-04, RN-POR-05, RN-POR-09). Responsável e Aluno.
+      description: |
+        Quatro seções do aluno escolhido (`studentId`, padrão o primeiro cartão): cobranças que pedem ação (vencidas, que vencem em até 3 dias e em conferência;
+        vencidas primeiro) com `nextDueOn` quando não há nenhuma, as próximas 3 aulas, os avisos não lidos ou fixados (até 5) e a faixa atual por modalidade. O
+        responsável recebe ainda um cartão por aluno com o em aberto e `familyOpenCents`, a soma só do que a conta paga. Com o portal reduzido (RN-INA-08) só
+        vem a cobrança. Sem presença, frequência nem progresso de graduação. `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e
+        Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Início.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalHome' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /portal/shell:
     get:
       summary: Moldura do portal (RF-POR-01, RN-POR-08). Responsável e Aluno.
@@ -5641,6 +5660,93 @@ components:
         name: { type: string }
         photoUrl: { type: string, nullable: true }
         self: { type: boolean, description: Cartão do próprio aluno ("Você"). }
+    PortalHomeRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    PortalHomeStudent:
+      type: object
+      required: [id, name, photoUrl, self, openCents]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        self: { type: boolean }
+        openCents: { type: integer, format: int64, minimum: 0, description: 'Cobranças abertas e em conferência que a conta paga; 0 se não é a pagadora.' }
+    PortalHomeCharge:
+      type: object
+      required: [id, studentId, description, referenceMonth, dueOn, amountCents, situation, canPay, modality, unit]
+      properties:
+        id: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        description: { type: string, nullable: true }
+        referenceMonth: { type: string, format: date, nullable: true }
+        dueOn: { type: string, format: date }
+        amountCents: { type: integer, format: int64, minimum: 0 }
+        situation: { type: string, enum: [OVERDUE, DUE_TODAY, DUE_SOON, IN_REVIEW] }
+        canPay: { type: boolean, description: 'Aberta e a conta é quem paga; falso em conferência.' }
+        modality: { allOf: [{ $ref: '#/components/schemas/PortalHomeRef' }], nullable: true }
+        unit: { $ref: '#/components/schemas/PortalHomeRef' }
+    PortalHomeLesson:
+      type: object
+      required: [id, date, startsAt, endsAt, title, status, cancelReason, changed, adhoc, modality, unit]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        title: { type: string }
+        status: { type: string, enum: [SCHEDULED, CANCELLED] }
+        cancelReason: { type: string, nullable: true }
+        changed: { type: boolean, description: Com professor substituto ou alterada à mão. }
+        adhoc: { type: boolean }
+        modality: { $ref: '#/components/schemas/PortalHomeRef' }
+        unit: { $ref: '#/components/schemas/PortalHomeRef' }
+    PortalHomeNotice:
+      type: object
+      required: [id, title, sentAt, pinned, unread, authorName]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        sentAt: { type: string, format: date-time }
+        pinned: { type: boolean }
+        unread: { type: boolean }
+        authorName: { type: string, nullable: true }
+    PortalHomeBelt:
+      type: object
+      required: [modality, levelName, color, secondaryColor, degree, achievedOn, isNew]
+      properties:
+        modality: { $ref: '#/components/schemas/PortalHomeRef' }
+        levelName: { type: string }
+        color: { type: string }
+        secondaryColor: { type: string, nullable: true }
+        degree: { type: integer, minimum: 0 }
+        achievedOn: { type: string, format: date, nullable: true }
+        isNew: { type: boolean, description: 'Registro que não é de origem, criado há 14 dias ou menos.' }
+    PortalHome:
+      type: object
+      required: [reduced, students, familyOpenCents, selectedStudentId, charges, lessons, announcements, belts]
+      properties:
+        reduced: { type: boolean }
+        students: { type: array, items: { $ref: '#/components/schemas/PortalHomeStudent' } }
+        familyOpenCents: { type: integer, format: int64, minimum: 0 }
+        selectedStudentId: { type: string, format: uuid, nullable: true }
+        charges:
+          type: object
+          required: [items, nextDueOn]
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PortalHomeCharge' } }
+            nextDueOn: { type: string, format: date, nullable: true }
+        lessons: { type: array, maxItems: 3, items: { $ref: '#/components/schemas/PortalHomeLesson' } }
+        announcements:
+          type: object
+          required: [unreadCount, items]
+          properties:
+            unreadCount: { type: integer, minimum: 0 }
+            items: { type: array, maxItems: 5, items: { $ref: '#/components/schemas/PortalHomeNotice' } }
+        belts: { type: array, items: { $ref: '#/components/schemas/PortalHomeBelt' } }
     PortalShell:
       type: object
       required: [organization, reduced, unreadAnnouncements]

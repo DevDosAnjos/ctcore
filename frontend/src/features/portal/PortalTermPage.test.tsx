@@ -11,6 +11,9 @@ import { setDevicePrefersDark } from "@/test/device";
 import { ThemeProvider } from "@/theme/ThemeProvider";
 import type { PortalTermPending } from "./usePortalTerm";
 
+// O Início do portal (#89) lê /portal/home; estes testes só olham a moldura e o termo.
+const emptyHome = { reduced: false, students: [], familyOpenCents: 0, selectedStudentId: null, charges: { items: [], nextDueOn: null }, lessons: [], announcements: { unreadCount: 0, items: [] }, belts: [] };
+
 const session = (role: string): SessionView => ({
   account: { id: "a", email: "x@x.com", name: "X" },
   links: [{ id: "l1", organizationId: "o", organizationName: "Alfa", role, unitIds: [] }],
@@ -35,6 +38,7 @@ function setup(over: { role?: string; initial?: PortalTermPending[]; get?: () =>
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(over.role ?? "STUDENT"))),
     http.get("/api/v1/portal/term", over.get ?? (() => HttpResponse.json(list))),
     http.get("/api/v1/portal/modality-confirmations", () => HttpResponse.json([])),
+    http.get("/api/v1/portal/home", () => HttpResponse.json(emptyHome)),
     http.post("/api/v1/portal/students/:id/term-acceptance", async ({ request, params }) => {
       const failure = over.post?.();
       if (failure) return failure;

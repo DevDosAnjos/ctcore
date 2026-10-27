@@ -25,17 +25,20 @@ public class PortalShell {
     private static final String ACTIVE = "exists (select 1 from student s join enrollment_modality em on em.organization_id = s.organization_id and em.student_id = s.id "
             + "and em.status = 'ACTIVE' where " + LINKED + ")";
 
-    // Comunicados enviados que alcançam um aluno ligado e ativo que ainda não o leu (um aviso conta uma vez, mesmo com dois filhos).
-    private static final String UNREAD = "select count(*) from announcement a where a.organization_id = :org and a.sent_at is not null and exists ("
-            + "select 1 from student s join enrollment_modality em on em.organization_id = s.organization_id and em.student_id = s.id and em.status = 'ACTIVE' "
-            + "where " + LINKED + " and (a.target_kind = 'ORGANIZATION' "
+    /** Alcance do comunicado (alias {@code a}) sobre uma modalidade ativa (alias {@code em}): organização, unidade, modalidade, turma ou turmas. Reusada pelo Início. */
+    static final String REACH = "(a.target_kind = 'ORGANIZATION' "
             + "or (a.target_kind = 'UNIT' and em.unit_id = a.unit_id) "
             + "or (a.target_kind = 'MODALITY' and em.modality_id = a.modality_id and (a.unit_id is null or em.unit_id = a.unit_id)) "
             + "or (a.target_kind = 'CLASS' and (em.primary_class_id = a.class_id or exists (select 1 from enrollment_modality_class x "
             + "where x.organization_id = em.organization_id and x.modality_row_id = em.id and x.class_id = a.class_id))) "
             + "or (a.target_kind = 'CLASSES' and exists (select 1 from announcement_class ac where ac.organization_id = a.organization_id "
             + "and ac.announcement_id = a.id and (ac.class_id = em.primary_class_id or exists (select 1 from enrollment_modality_class x "
-            + "where x.organization_id = em.organization_id and x.modality_row_id = em.id and x.class_id = ac.class_id))))) "
+            + "where x.organization_id = em.organization_id and x.modality_row_id = em.id and x.class_id = ac.class_id)))))";
+
+    // Comunicados enviados que alcançam um aluno ligado e ativo que ainda não o leu (um aviso conta uma vez, mesmo com dois filhos).
+    private static final String UNREAD = "select count(*) from announcement a where a.organization_id = :org and a.sent_at is not null and exists ("
+            + "select 1 from student s join enrollment_modality em on em.organization_id = s.organization_id and em.student_id = s.id and em.status = 'ACTIVE' "
+            + "where " + LINKED + " and " + REACH + " "
             + "and not exists (select 1 from announcement_read r where r.organization_id = a.organization_id and r.announcement_id = a.id and r.student_id = s.id))";
 
     private final JdbcClient jdbc;

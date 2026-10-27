@@ -2842,5 +2842,62 @@
     "text": "{{student}} começou em {{modality}} ({{unit}}). Plano {{plan}}, {{value}} por mês. A confirmação não altera a matrícula nem a cobrança.",
     "confirm": "Confirmar {{modality}}",
     "error": "Não conseguimos confirmar. Nada foi alterado; tente de novo."
+  },
+  "portalHome": {
+    "family": {
+      "label": "Alunos da família",
+      "you": "Você",
+      "open": "Em aberto: {{value}}",
+      "total": "Total da família em aberto: {{value}}"
+    },
+    "filter": {
+      "label": "Filtrar por modalidade e unidade",
+      "all": "Todas",
+      "option": "{{modality}} · {{unit}}"
+    },
+    "charges": {
+      "title": "Cobrança",
+      "upToDate": "Tudo em dia",
+      "nextDue": "Próximo vencimento em {{date}}.",
+      "generic": "Cobrança",
+      "dueOn": "Vence em {{date}}",
+      "pay": "Pagar",
+      "payItem": "Pagar {{what}}",
+      "situation": {
+        "OVERDUE": "Vencida",
+        "DUE_TODAY": "Vence hoje",
+        "DUE_SOON": "Vencendo",
+        "IN_REVIEW": "Em conferência"
+      }
+    },
+    "lessons": {
+      "title": "Próximas aulas",
+      "emptyTitle": "Nenhuma aula por enquanto",
+      "emptyText": "Quando houver aulas nos próximos dias, elas aparecem aqui.",
+      "when": "{{date}} · {{start}} às {{end}}",
+      "cancelled": "Cancelada",
+      "changed": "Alterada",
+      "adhoc": "Avulsa",
+      "reason": "Motivo: {{reason}}"
+    },
+    "notices": {
+      "title": "Avisos",
+      "emptyTitle": "Nenhum aviso novo",
+      "emptyText": "Avisos não lidos e fixados da academia aparecem aqui.",
+      "unreadCount_one": "{{count}} aviso não lido",
+      "unreadCount_other": "{{count}} avisos não lidos",
+      "pinned": "Fixado",
+      "unread": "Não lido",
+      "sentAt": "Enviado em {{date}}"
+    },
+    "belts": {
+      "title": "Faixa",
+      "emptyTitle": "Nenhuma faixa registrada",
+      "emptyText": "A faixa aparece aqui quando a academia registrar a sua graduação.",
+      "line": "{{level}}, grau {{degree}}",
+      "since": "desde {{date}}",
+      "new": "Nova",
+      "swatch": "Cor da faixa {{level}}"
+    }
   }
 }
