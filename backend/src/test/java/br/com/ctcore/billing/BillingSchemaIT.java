@@ -49,7 +49,7 @@ class BillingSchemaIT extends OrganizationBase {
     void checks() {
         var t = tenant();
         UUID student = BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Maria Souza");
-        String insert = "insert into charge (id, organization_id, unit_id, student_id, type, due_on, amount_cents, status) values (?, ?, ?, ?, ?, date '2026-11-10', ?, ?)";
+        String insert = "insert into charge (id, organization_id, unit_id, student_id, type, due_on, amount_cents, status) values (?, ?, ?, ?, ?, date '" + BillingFixtures.FAR_DUE + "', ?, ?)";
         assertThatThrownBy(() -> adminJdbc().update(insert, UUID.randomUUID(), t.orgId(), t.unitId(), student, "OTHER", 1, "OPEN")).hasMessageContaining("charge_type_check");
         assertThatThrownBy(() -> adminJdbc().update(insert, UUID.randomUUID(), t.orgId(), t.unitId(), student, "ONE_OFF", 1, "OVERDUE")).hasMessageContaining("charge_status_check");
         assertThatThrownBy(() -> adminJdbc().update(insert, UUID.randomUUID(), t.orgId(), t.unitId(), student, "ONE_OFF", -1, "OPEN")).hasMessageContaining("charge_amount_cents_check");

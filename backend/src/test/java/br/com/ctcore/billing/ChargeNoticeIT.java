@@ -33,7 +33,7 @@ class ChargeNoticeIT extends OrganizationBase {
     }
 
     private ChargeNoticeJob job() {
-        return new ChargeNoticeJob(transactions, jdbc, email, Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"), ZoneOffset.UTC));
+        return new ChargeNoticeJob(transactions, jdbc, email, Clock.fixed(Instant.parse("2100-01-05T12:00:00Z"), ZoneOffset.UTC));
     }
 
     private UUID charge(Tenant t, UUID student, String due, String status) {
@@ -57,7 +57,7 @@ class ChargeNoticeIT extends OrganizationBase {
     void adultOnce() {
         var t = tenant();
         UUID s = adult(t, "notice-adulto@example.com");
-        UUID c = charge(t, s, "2026-10-10", "OPEN");
+        UUID c = charge(t, s, "2100-01-10", "OPEN");
         Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         ListAppender<ILoggingEvent> logs = new ListAppender<>();
         logs.start();
@@ -80,10 +80,10 @@ class ChargeNoticeIT extends OrganizationBase {
     @DisplayName("CA2: o texto traz valor e vencimento")
     void text() {
         var t = tenant();
-        charge(t, adult(t, "notice-texto@example.com"), "2026-10-10", "OPEN");
-        UUID monthly = charge(t, adult(t, "notice-texto2@example.com"), "2026-10-10", "OPEN");
-        adminJdbc().update("update charge set description = null, reference_month = date '2026-10-01' where id = ?", monthly);
-        UUID bare = charge(t, adult(t, "notice-texto3@example.com"), "2026-10-10", "OPEN");
+        charge(t, adult(t, "notice-texto@example.com"), "2100-01-10", "OPEN");
+        UUID monthly = charge(t, adult(t, "notice-texto2@example.com"), "2100-01-10", "OPEN");
+        adminJdbc().update("update charge set description = null, reference_month = date '2100-01-01' where id = ?", monthly);
+        UUID bare = charge(t, adult(t, "notice-texto3@example.com"), "2100-01-10", "OPEN");
         adminJdbc().update("update charge set description = null, reference_month = null where id = ?", bare);
         job().runOnce();
         // Sem descrição e sem mês de referência o aviso usa a descrição "Cobrança" (ramo que antes só o agendador cobria, por acaso, #352).
@@ -102,7 +102,7 @@ class ChargeNoticeIT extends OrganizationBase {
         UUID g = BillingFixtures.guardian(adminJdbc(), t.orgId(), minor, true);
         // Um único comando liga o responsável e leva o vencimento para a janela: o agendador (#390) nunca vê a cobrança devida sem responsável.
         UUID c = BillingFixtures.oneOff(adminJdbc(), t.orgId(), t.unitId(), minor, 15000, "OPEN");
-        adminJdbc().update("update charge set payer_guardian_id = ?, due_on = date '2026-10-08' where id = ?", g, c);
+        adminJdbc().update("update charge set payer_guardian_id = ?, due_on = date '2100-01-08' where id = ?", g, c);
         job().runOnce();
         assertThat(sent("notice-menor%")).isEmpty();
         assertThat(adminJdbc().queryForList("select template from email_message where to_email like 'gen-%' and organization_id = ?", String.class, t.orgId()))
@@ -113,10 +113,10 @@ class ChargeNoticeIT extends OrganizationBase {
     @DisplayName("CA4: vencendo em 30 dias nada é enviado; quando faltam 10 dias, é avisada")
     void advance() {
         var t = tenant();
-        UUID c = charge(t, adult(t, "notice-adiantada@example.com"), "2026-11-04", "OPEN");
+        UUID c = charge(t, adult(t, "notice-adiantada@example.com"), "2100-02-04", "OPEN");
         job().runOnce();
         assertThat(sent("notice-adiantada%")).isEmpty();
-        adminJdbc().update("update charge set due_on = '2026-10-15' where id = ?", c);
+        adminJdbc().update("update charge set due_on = '2100-01-15' where id = ?", c);
         job().runOnce();
         assertThat(sent("notice-adiantada%")).hasSize(1);
     }
@@ -126,9 +126,9 @@ class ChargeNoticeIT extends OrganizationBase {
     void notOpen() {
         var t = tenant();
         UUID s = adult(t, "notice-fechada@example.com");
-        charge(t, s, "2026-10-10", "CANCELED");
-        charge(t, s, "2026-10-10", "PAID");
-        UUID old = charge(t, s, "2026-10-10", "OPEN");
+        charge(t, s, "2100-01-10", "CANCELED");
+        charge(t, s, "2100-01-10", "PAID");
+        UUID old = charge(t, s, "2100-01-10", "OPEN");
         adminJdbc().update("update charge set notified_at = now() where id = ?", old);
         job().runOnce();
         assertThat(sent("notice-fechada%")).isEmpty();
@@ -138,9 +138,9 @@ class ChargeNoticeIT extends OrganizationBase {
     @DisplayName("CA6: a diferença de reajuste usa READJUSTMENT_DIFF; sem endereço marca como avisada sem mensagem")
     void diff() {
         var t = tenant();
-        UUID c = charge(t, adult(t, "notice-diff@example.com"), "2026-10-12", "OPEN");
+        UUID c = charge(t, adult(t, "notice-diff@example.com"), "2100-01-12", "OPEN");
         adminJdbc().update("update charge set type = 'READJUSTMENT_DIFF', description = 'Diferença de reajuste' where id = ?", c);
-        UUID none = charge(t, BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Sem Email"), "2026-10-12", "OPEN");
+        UUID none = charge(t, BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Sem Email"), "2100-01-12", "OPEN");
         job().runOnce();
         assertThat(sent("notice-diff%")).singleElement().satisfies(r -> assertThat(r.get("template")).isEqualTo("READJUSTMENT_DIFF"));
         assertThat(adminJdbc().queryForObject("select notified_at is not null from charge where id = ?", Boolean.class, none)).isTrue();
@@ -150,8 +150,8 @@ class ChargeNoticeIT extends OrganizationBase {
     @DisplayName("Erro em uma cobrança vai ao log sem endereço, desfaz o notified_at dela e não impede as outras")
     void errorIsolated() {
         var t = tenant();
-        UUID bad = charge(t, adult(t, "notice-erro@example.com"), "2026-10-09", "OPEN");
-        UUID good = charge(t, adult(t, "notice-boa@example.com"), "2026-10-10", "OPEN");
+        UUID bad = charge(t, adult(t, "notice-erro@example.com"), "2100-01-09", "OPEN");
+        UUID good = charge(t, adult(t, "notice-boa@example.com"), "2100-01-10", "OPEN");
         EmailService failing = org.mockito.Mockito.mock(EmailService.class);
         org.mockito.Mockito.when(failing.send(org.mockito.ArgumentMatchers.any(UUID.class), org.mockito.ArgumentMatchers.eq("notice-erro@example.com"),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenThrow(new IllegalStateException("fora do ar notice-erro@example.com"));
@@ -160,7 +160,7 @@ class ChargeNoticeIT extends OrganizationBase {
         logs.start();
         root.addAppender(logs);
         try {
-            new ChargeNoticeJob(transactions, jdbc, failing, Clock.fixed(Instant.parse("2026-10-05T12:00:00Z"), ZoneOffset.UTC)).runOnce();
+            new ChargeNoticeJob(transactions, jdbc, failing, Clock.fixed(Instant.parse("2100-01-05T12:00:00Z"), ZoneOffset.UTC)).runOnce();
         } finally {
             root.detachAppender(logs);
         }
