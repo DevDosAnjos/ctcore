@@ -126,7 +126,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 388 | Teste e2e "gestão recusa e confirma comprovantes (light)" estoura 30 s na suíte inteira | issue #388 | Sprint 10 | — | agente | feito |
 | 390 | ChargeNoticeIT.minor instável: o agendador envia o aviso ao aluno menor antes de o teste ligar o responsável | issue #390 | Sprint 10 | — | agente | feito |
 | 402 | Teste ChargeNoticeIT e BillingFixtures dependem da data de hoje: remover o vencimento fixo de 2026-11-10 | issue #402 | Sprint 10 | — | agente | feito |
-| 403 | Teste UnitSettingsPage CA17 instável no test:cov: medir e estabilizar | issue #403 | Sprint 10 | — | agente | a fazer |
+| 403 | Teste UnitSettingsPage CA17 instável no test:cov: medir e estabilizar | issue #403 | Sprint 10 | — | agente | feito |
 | 404 | Ajustar a especificação e o marco com as decisões da Sprint 10 (R10-3, D1, D2) | issue #404 | Sprint 10 | — | agente | a fazer |
 | 405 | Agenda do portal mostra o nome do professor (D2) | issue #405 | Sprint 10 | 404 | agente | a fazer |
 | 96 | Porta de pagamento com o simulador: baixa, webhook e conciliação | issue #96 | Sprint 11 | — | agente | a fazer |
