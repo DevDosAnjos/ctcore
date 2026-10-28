@@ -100,8 +100,9 @@ class ChargeNoticeIT extends OrganizationBase {
         UUID minor = BillingFixtures.student(adminJdbc(), t.orgId(), t.unitId(), "Pedro Souza", "2018-01-01");
         adminJdbc().update("update student set email = 'notice-menor@example.com' where id = ?", minor);
         UUID g = BillingFixtures.guardian(adminJdbc(), t.orgId(), minor, true);
-        UUID c = charge(t, minor, "2026-10-08", "OPEN");
-        adminJdbc().update("update charge set payer_guardian_id = ? where id = ?", g, c);
+        // Um único comando liga o responsável e leva o vencimento para a janela: o agendador (#390) nunca vê a cobrança devida sem responsável.
+        UUID c = BillingFixtures.oneOff(adminJdbc(), t.orgId(), t.unitId(), minor, 15000, "OPEN");
+        adminJdbc().update("update charge set payer_guardian_id = ?, due_on = date '2026-10-08' where id = ?", g, c);
         job().runOnce();
         assertThat(sent("notice-menor%")).isEmpty();
         assertThat(adminJdbc().queryForList("select template from email_message where to_email like 'gen-%' and organization_id = ?", String.class, t.orgId()))
