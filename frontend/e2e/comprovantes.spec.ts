@@ -44,7 +44,9 @@ async function call(page: Page, method: string, path: string, body?: unknown, ex
 
 async function chooseLink(page: Page, name: RegExp) {
   const modal = page.getByRole("dialog", { name: "Escolher organização e área" });
-  if (!(await modal.waitFor({ timeout: 3000 }).then(() => true, () => false))) await page.getByRole("button", { name: "Trocar organização ou área" }).click();
+  const swap = page.getByRole("button", { name: "Trocar organização ou área" });
+  await modal.or(swap).first().waitFor(); // o estado que vier primeiro, sem esperar 3 s pelo diálogo que não vem
+  if (!(await modal.isVisible())) await swap.click();
   await modal.getByRole("button", { name }).click();
   await expect(modal).toBeHidden();
 }
