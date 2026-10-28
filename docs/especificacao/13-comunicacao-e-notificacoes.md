@@ -26,7 +26,7 @@ Avisar alunos e equipe do que importa, pelos canais certos, sem o aluno responde
 - **RN-COM-05.** Título, texto com negrito, listas e links (até 2.000 caracteres) e uma imagem opcional. Pode ficar fixado no topo do portal até uma data.
 - **RN-COM-06.** Comunicado pode ser agendado. Agendado pode ser editado ou cancelado até sair. Enviado não é editado nem apagado. Hoje só existe cancelar, que apaga o agendado; a edição do agendado vem no item #375 (Sprint 13).
 - **RN-COM-07.** Limite de 20 comunicados por dia por unidade, no dia local da unidade, contando os agendados para o dia. O comunicado para a organização inteira tem limite próprio de 20 por dia na organização, sem consumir o das unidades. Cancelar um agendado libera a vaga.
-- **RN-COM-08.** O aluno não responde. A gestão vê só quantos leram, contados por aluno: no menor, conta a leitura do responsável, e vários responsáveis contam uma vez. Abrir o aviso marca como lido; "Marcar todos como lidos" limpa a lista, mas não conta como leitura.
+- **RN-COM-08.** O aluno não responde. A gestão vê só quantos leram, contados por aluno: no menor, conta a leitura do responsável, e vários responsáveis contam uma vez. Abrir o aviso marca como lido; "Marcar todos como lidos" registra uma dispensa por conta e aviso (tira destaque, sino e não lidos de todos os alunos da conta), mas não conta como leitura; aviso novo volta a contar.
 - **RN-COM-09.** Antes de enviar, a tela mostra para quantas pessoas e por quais canais o aviso vai. "Pessoas" são destinatários distintos: o adulto e, no menor, cada responsável, contados uma vez; o e-mail é contado à parte.
 
 ### E-mails ao aluno e responsável

@@ -31,17 +31,17 @@ Transformar uma pessoa em aluno: modalidades, turma, plano, vencimento, termo e 
 
 ### Termo de matrícula
 
-- **RN-MAT-11.** O termo é aceito no portal, pelo aluno adulto ou pelo responsável financeiro do menor, uma vez por aluno. Até o aceite, a gestão vê o selo "Termo pendente" e o portal exige o aceite antes de qualquer outra tela.
-- **RN-MAT-12.** O aceite guarda conta, versão, data, hora e IP. O uso de imagem é uma caixa separada e opcional, que pode ser revogada no portal.
-- **RN-MAT-13.** Cada modalidade nova pede no portal uma confirmação curta com plano e valor.
-- **RN-MAT-14.** Nova versão do termo: o Coordenador escolhe se vale só para novos alunos ou se todos aceitam de novo no próximo acesso.
+- **RN-MAT-11.** O termo é aceito no portal, pelo aluno adulto ou pelo responsável financeiro do menor, uma vez por aluno. Até o aceite, a gestão vê o selo "Termo pendente" e o portal exige o aceite antes de qualquer outra tela. O termo só está pendente para aluno que tem matrícula.
+- **RN-MAT-12.** O aceite guarda conta, versão, data, hora e IP. O uso de imagem é uma caixa separada e opcional, que pode ser revogada no portal, e nunca bloqueia o acesso ao portal.
+- **RN-MAT-13.** Cada modalidade nova pede no portal uma confirmação curta com plano e valor. "Modalidade nova" é a modalidade ativa criada depois do primeiro aceite do aluno e ainda sem confirmação; cobre nova modalidade e reabertura, e não cobre troca de unidade, de turma nem de plano. A confirmação mostra o valor atual do plano, grava o plano e o valor mostrados, não bloqueia o portal nem tem prazo, e quem confirma é quem aceita o termo.
+- **RN-MAT-14.** Nova versão do termo: o Coordenador escolhe se vale só para novos alunos ou se todos aceitam de novo no próximo acesso. O reaceite vale quando a última versão aceita pelo aluno é menor que a maior versão publicada com reaceite. Nova versão do uso de imagem com reaceite zera a concessão anterior, porque o consentimento é por texto. As boas-vindas saem na conclusão da matrícula: ao adulto com convite enviado e a cada responsável do menor que tenha e-mail; endereço com problema é pulado.
 
 ### Mudanças e saída
 
 - **RN-MAT-15.** Troca de turma vale na hora. Troca de plano vale a partir da próxima cobrança gerada.
-- **RN-MAT-16.** Pedidos pelo portal (troca de turma, nova modalidade, troca de plano) nunca são aprovados sozinhos. Ficam no "Precisa de atenção" e expiram em 30 dias sem resposta, com aviso ao aluno. Aprovar abre o fluxo correspondente na gestão já preenchido.
+- **RN-MAT-16.** Pedidos pelo portal (troca de turma, nova modalidade, troca de plano) nunca são aprovados sozinhos. Ficam no "Precisa de atenção" e expiram em 30 dias sem resposta, com aviso ao aluno. Só pede quem aceita o termo (adulto com conta ou responsável financeiro do menor); o responsável não financeiro só lê. Nova modalidade pede só unidade e modalidade. A gestão trata os pedidos com a permissão de gerir alunos, no alcance de unidade; o Professor não os vê. Há um pedido aberto por modalidade e tipo e, com encerramento aberto, a modalidade não aceita troca de turma nem de plano. Aprovar marca o pedido como Aprovado na hora e abre o fluxo correspondente na gestão já preenchido, sem alterar a matrícula; se a gestão desistir do fluxo, o pedido continua Aprovado. Os prazos contam pela data local da unidade da modalidade (30 dias para expirar, 8 para encerrar).
 - **RN-MAT-17.** Encerrar uma modalidade pela gestão exige motivo da lista (mudança de cidade, financeiro, horário, lesão, insatisfação, outro) com observação opcional. Para de gerar cobrança. As já geradas continuam devidas, e o Administrador decide manter ou cancelar cada uma, com motivo. Encerrar a modalidade encerra o benefício ativo dela. A janela lista as cobranças em aberto e o Administrador (ou o Coordenador) decide, por cobrança, mantê-la ou cancelá-la com motivo; a que não for listada fica mantida.
-- **RN-MAT-18.** "Solicitar encerramento" pelo portal, com motivo: a modalidade fica "Encerramento solicitado" e a gestão tem 7 dias para conversar e encerrar. Sem ação, o sistema encerra com a data do pedido. Nenhuma cobrança vence depois do pedido; as anteriores continuam devidas.
+- **RN-MAT-18.** "Solicitar encerramento" pelo portal, com motivo: a modalidade fica "Encerramento solicitado" e a gestão tem 7 dias para conversar e encerrar. O pedido de encerramento não tem "Aprovar": a gestão encerra pelo fluxo normal (o pedido vira Encerrado) ou recusa com mensagem ao aluno (a modalidade volta a Ativa). Sem ação, o sistema encerra quando a data local é pelo menos 8 dias depois do pedido, com a data do pedido como fim. Ao encerrar, pela gestão ou pelo sistema, as cobranças em aberto com vencimento depois da data do pedido são canceladas; as anteriores seguem a RN-MAT-17 (na via automática, continuam devidas).
 - **RN-MAT-19.** Retorno de ex-aluno: reabre a mesma matrícula, achada por CPF ou e-mail, com histórico e graduação. Primeiro mês cheio; se a unidade cobra taxa de matrícula, ela é cobrada de novo, com isenção possível. Débito antigo aparece para o Administrador decidir. Se os dados foram anonimizados, é cadastro novo.
 - **RN-MAT-20.** Transferência de modalidade entre unidades segue RN-ORG-12.
 
@@ -57,4 +57,4 @@ Transformar uma pessoa em aluno: modalidades, turma, plano, vencimento, termo e 
 
 - Concluir uma matrícula cria a cobrança do primeiro mês cheio e a taxa, se houver, numa transação só.
 - O portal não mostra nenhuma tela antes do aceite do termo.
-- Um pedido do portal nunca altera a matrícula sem ação da gestão.
+- Um pedido de troca de turma, de plano ou de nova modalidade nunca altera a matrícula sem ação da gestão; o de encerramento segue a RN-MAT-18.
