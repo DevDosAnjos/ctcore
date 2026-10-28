@@ -14,7 +14,7 @@ export function PortalLessonItem({ lesson: l }: { lesson: ScheduleLesson }) {
       : t(`agenda.cancelReasons.${l.cancelReasonCode}`);
   const parts = [
     l.originalDate || l.originalStartsAt ? t("portalAgenda.wasOn", { date: formatDate(l.originalDate ?? l.date), time: l.originalStartsAt ?? l.startsAt }) : null,
-    l.substitute ? t("portalAgenda.substitute") : null,
+    l.substitute ? t("portalAgenda.substituteName", { name: l.teacherName }) : null,
   ].filter(Boolean);
   const summary = parts.length ? parts.join(" · ") : t("portalAgenda.changedGeneric");
   return (
@@ -27,6 +27,7 @@ export function PortalLessonItem({ lesson: l }: { lesson: ScheduleLesson }) {
       </div>
       <p className={`break-words font-medium ${cancelled ? "line-through" : ""}`}>{l.title}</p>
       <p className="text-muted-foreground">{t("portalAgenda.when", { start: l.startsAt, end: l.endsAt })}</p>
+      <p className="break-words text-muted-foreground">{t("portalAgenda.teacher", { name: l.teacherName })}</p>
       <p className="break-words text-muted-foreground">
         {l.modality.name} · {l.unit.name}
       </p>

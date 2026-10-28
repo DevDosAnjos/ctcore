@@ -18,7 +18,8 @@ describe("Agenda do portal x OpenAPI (RF-POR-04, #91)", () => {
     const op = openapi.paths["/portal/schedule"].get;
     expect(Object.keys(op.responses)).toEqual(expect.arrayContaining(["200", "400", "401", "403", "404"]));
     expect(op.parameters.map((p: { name: string }) => p.name)).toEqual(["studentId", "week", "scope"]);
-    expect(JSON.stringify(openapi.components.schemas.PortalSchedule)).not.toMatch(/teacherId|teacherName|attendance|frequency|progress|waiting|amount/i);
+    expect(JSON.stringify(openapi.components.schemas.PortalSchedule)).not.toMatch(/teacherId|attendance|frequency|progress|waiting|amount/i);
+    expect(openapi.components.schemas.PortalSchedule.properties.lessons.items.properties.teacherName.type).toBe("string");
   });
 
   it("sem sessão 401; gestão 403; termo pendente 403 TERM_PENDING", async () => {

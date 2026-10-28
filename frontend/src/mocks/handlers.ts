@@ -4724,7 +4724,7 @@ export const routes: Route[] = [
         const date = addDays(monday, day);
         return {
           id: `00000000-0000-0000-0000-0000000007f${id}`, date, startsAt, endsAt, title, kind, status: "SCHEDULED", cancelReasonCode: null, cancelReason: null, changed: false,
-          originalDate: null, originalStartsAt: null, substitute: false, past: new Date(`${date}T${endsAt}:00`).getTime() <= Date.now(), noticeId: null, modality, unit: homeUnit(unit), ...over,
+          originalDate: null, originalStartsAt: null, substitute: false, past: new Date(`${date}T${endsAt}:00`).getTime() <= Date.now(), noticeId: null, modality, unit: homeUnit(unit), teacherName: "Prof. Carlos Teste", ...over,
         };
       };
       const lessons =
@@ -4733,7 +4733,7 @@ export const routes: Route[] = [
           : [
               lesson("2", 1, "19:00", "20:00", "Jiu-Jitsu Adulto", "MAIN", jiu, CENTRO, { changed: true, originalDate: addDays(monday, 0), originalStartsAt: "18:00", noticeId: "00000000-0000-0000-0000-0000000007e1" }),
               lesson("3", 3, "19:00", "20:00", "Judô Adulto", "OTHER", judo, NORTE, { status: "CANCELLED", cancelReasonCode: "HOLIDAY", noticeId: "00000000-0000-0000-0000-0000000007e2" }),
-              lesson("4", 5, "10:00", "11:00", "Seminário de guarda", "ADHOC", jiu, CENTRO),
+              lesson("4", 5, "10:00", "11:00", "Seminário de guarda", "ADHOC", jiu, CENTRO, { substitute: true, changed: true, teacherName: "Prof. Marta Teste" }),
             ];
       const noClassDays = selected === CHILD_TWO ? [] : [{ date: addDays(monday, 2), reason: "Reforma do tatame", unit: homeUnit(CENTRO) }];
       return HttpResponse.json({ ...head, lessons: scope === "MAIN" ? lessons.filter((l) => l.kind === "MAIN") : lessons, noClassDays });

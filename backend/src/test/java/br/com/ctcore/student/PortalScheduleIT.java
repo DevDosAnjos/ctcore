@@ -156,7 +156,33 @@ class PortalScheduleIT extends PortalTermBase {
         assertThat(byId(schedule(t, acc, Role.STUDENT, "?week=" + WEEK).get("lessons"), moved).get("noticeId").isNull()).isTrue();
 
         String all = get(portal(t, acc, Role.STUDENT), "/schedule?week=" + WEEK).getContentAsString().toLowerCase();
-        assertThat(all).doesNotContain("teacher", "professor", "attendance", "frequency", "presen", "progress", "waiting", "charge", "amount");
+        assertThat(all).doesNotContain("attendance", "frequency", "presen", "progress", "waiting", "charge", "amount");
+    }
+
+    @Test
+    @DisplayName("CA1 a CA3 (#405): teacherName é o professor da aula (o substituto, quando há) e nada mais do professor sai; aula de turma sem matrícula não aparece")
+    void teacherNameOnly() throws Exception {
+        Tenant t = tenant();
+        UUID acc = account("aluno@portal.example");
+        UUID s = student(t, "Aluno Um", "1990-01-01", acc);
+        var e = enroll(t, s, "ACTIVE", 0);
+        UUID sub = UUID.randomUUID();
+        adminJdbc().update("update teacher set name = 'Mestre Titular Teste', photo = 'foto-secreta.png', email = 'titular@prof.example', phone = '11999990001', bio = 'bio-secreta' where id = ?", e.teacher());
+        adminJdbc().update("insert into teacher (id, organization_id, name, name_key, photo, email, phone) values (?, ?, 'Mestre Substituto Teste', 'mestre substituto teste', 'foto-sub.png', 'sub@prof.example', '11999990002')",
+                sub, t.orgId());
+        UUID titular = lesson(t, e.klass(), e.teacher(), "2026-11-03", "19:00", "20:00");
+        UUID subLesson = lesson(t, e.klass(), sub, "2026-11-05", "19:00", "20:00");
+        adminJdbc().update("update lesson set substitute = true where id = ?", subLesson);
+        var oe = enroll(t, student(t, "Aluno Dois", "1990-01-01", account("outro@portal.example")), "ACTIVE", 0);
+        UUID notMine = lesson(t, oe.klass(), oe.teacher(), "2026-11-04", "19:00", "20:00");
+
+        JsonNode list = schedule(t, acc, Role.STUDENT, "?week=" + WEEK).get("lessons");
+        assertThat(byId(list, titular).get("teacherName").asText()).isEqualTo("Mestre Titular Teste");
+        JsonNode b = byId(list, subLesson);
+        assertThat(b.get("teacherName").asText()).isEqualTo("Mestre Substituto Teste");
+        assertThat(b.get("substitute").asBoolean()).isTrue();
+        assertThat(list.toString()).doesNotContain(e.teacher().toString(), sub.toString(), "foto", "prof.example", "1199999", "bio-secreta", "photo", "email", "phone", "graduation");
+        assertThat(list.toString()).doesNotContain(notMine.toString());
     }
 
     @Test
