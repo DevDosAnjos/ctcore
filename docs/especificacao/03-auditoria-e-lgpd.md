@@ -17,7 +17,7 @@ Saber quem fez o quê, quando e onde, e cumprir a LGPD: a organização é a con
 ### Auditoria
 
 - **RN-AUD-01.** A auditoria é uma tabela só de inclusão no PostgreSQL. Nada é editado nem apagado, nem pela equipe da plataforma.
-- **RN-AUD-02.** Entram na auditoria: toda criação, alteração e exclusão de dado de negócio; todo pagamento, estorno, cancelamento, renegociação; mudanças de vínculo e de permissão; exportações e importações; aceites; acessos e ações do suporte da plataforma; mudanças de situação da assinatura; ações vindas do portal e dos formulários públicos.
+- **RN-AUD-02.** Entram na auditoria: toda criação, alteração e exclusão de dado de negócio; todo pagamento, estorno, cancelamento, renegociação; mudanças de vínculo e de permissão; exportações e importações; aceites; acessos e ações do suporte da plataforma; mudanças de situação da assinatura; ações vindas do portal e dos formulários públicos, com origem portal (a dispensa de avisos, o aceite, o pedido e a troca de e-mail pelo portal). As ações de LGPD do portal ("Baixar meus dados", "Excluir minha conta") são ligadas na Sprint 13.
 - **RN-AUD-03.** Senha, tokens e dados de cartão nunca entram na auditoria.
 - **RN-AUD-04.** Guardada por 5 anos enquanto a organização for cliente. Depois do cancelamento, segue o prazo de exclusão dos dados.
 - **RN-AUD-05.** O Coordenador vê a auditoria da organização inteira; o Administrador, só a das suas unidades; o Professor não vê.
