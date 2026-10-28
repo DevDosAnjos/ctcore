@@ -36,6 +36,7 @@ const lesson = (over: Partial<ScheduleLesson>): ScheduleLesson => ({
   noticeId: null,
   modality: jiu,
   unit: centro,
+  teacherName: "Prof. Carlos Teste",
   ...over,
 });
 const schedule = (over: Partial<PortalScheduleData> = {}): PortalScheduleData => ({
@@ -52,7 +53,7 @@ const schedule = (over: Partial<PortalScheduleData> = {}): PortalScheduleData =>
     lesson({ id: "b", changed: true, originalDate: "2026-10-26", originalStartsAt: "18:00", noticeId: "n1" }),
     lesson({ id: "c", date: "2026-10-29", status: "CANCELLED", cancelReasonCode: "HOLIDAY", title: "Judô Adulto" }),
     lesson({ id: "d", date: "2026-10-30", status: "CANCELLED", cancelReasonCode: "OTHER", cancelReason: "Reforma <b>do</b> tatame", title: "Judô Noite" }),
-    lesson({ id: "e", date: "2026-10-31", kind: "ADHOC", title: "Seminário", substitute: true, changed: true }),
+    lesson({ id: "e", date: "2026-10-31", kind: "ADHOC", title: "Seminário", substitute: true, changed: true, teacherName: "Prof. Marta Teste" }),
   ],
   noClassDays: [{ date: "2026-10-28", reason: "Feriado municipal", unit: centro }],
   ...over,
@@ -101,6 +102,7 @@ describe("PortalAgendaPage (RF-POR-04)", () => {
     const panel = await screen.findByRole("tabpanel");
     expect(screen.getByRole("tab", { name: /Ter/, selected: true })).toBeInTheDocument();
     expect(within(panel).getByText("Alterada")).toBeInTheDocument();
+    expect(within(panel).getByText("Professor: Prof. Carlos Teste")).toBeInTheDocument();
     expect(within(panel).getByText("Era em 26/10/2026 às 18:00")).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Ver aviso sobre Jiu-Jitsu Adulto" })).toHaveAttribute("href", "/portal/avisos?aviso=n1");
     expect(within(panel).queryByText("Já aconteceu")).not.toBeInTheDocument();
@@ -123,7 +125,7 @@ describe("PortalAgendaPage (RF-POR-04)", () => {
 
     await user.click(screen.getByRole("tab", { name: /Sáb/ }));
     expect(within(screen.getByRole("tabpanel")).getByText("Avulsa")).toBeInTheDocument();
-    expect(within(screen.getByRole("tabpanel")).getByText("Professor substituto")).toBeInTheDocument();
+    expect(within(screen.getByRole("tabpanel")).getByText("Professor substituto: Prof. Marta Teste")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/presen|frequ|progress|espera|R\$/i);
   });
 

@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * RF-POR-04, RN-POR-01, RN-POR-02, RN-POR-04, RN-POR-05, RN-POR-06, RN-POR-08, RN-POR-09, RN-AGE-03, RN-AGE-04, RN-AGE-05: aba Agenda do portal. As aulas de uma
- * semana (segunda a domingo) do aluno escolhido, com o alcance do Início, e os dias sem aula que valem para ele. Só leitura; sem professor, presença,
+ * semana (segunda a domingo) do aluno escolhido, com o alcance do Início, e os dias sem aula que valem para ele. Só leitura; do professor, só o nome; sem presença,
  * frequência, progresso, lista de espera nem cobrança.
  */
 @Service
@@ -31,7 +31,7 @@ public class PortalSchedule {
 
     public record Lesson(UUID id, LocalDate date, String startsAt, String endsAt, String title, String kind, String status, String cancelReasonCode,
             String cancelReason, boolean changed, LocalDate originalDate, String originalStartsAt, boolean substitute, boolean past, UUID noticeId,
-            PortalHome.Ref modality, PortalHome.Ref unit) {}
+            PortalHome.Ref modality, PortalHome.Ref unit, String teacherName) {}
 
     public record NoClassDay(LocalDate date, String reason, PortalHome.Ref unit) {}
 
@@ -90,8 +90,9 @@ public class PortalSchedule {
     private List<Lesson> lessons(UUID org, UUID student, LocalDate start, LocalDate end, OffsetDateTime now) {
         return jdbc.sql("select l.id, l.lesson_date, to_char(l.starts_at, 'HH24:MI'), to_char(l.ends_at, 'HH24:MI'), coalesce(tc.name, l.title), " + KIND
                 + ", l.cancelled, l.cancel_reason_code, l.cancel_reason, (l.substitute or l.manually_edited), l.original_date, to_char(l.original_starts_at, 'HH24:MI'), l.substitute, "
-                + "(l.lesson_date + l.ends_at) <= (cast(:now as timestamptz) at time zone u.timezone), " + NOTICE + ", md.id, md.name, u.id, u.name "
+                + "(l.lesson_date + l.ends_at) <= (cast(:now as timestamptz) at time zone u.timezone), " + NOTICE + ", md.id, md.name, u.id, u.name, t.name "
                 + "from lesson l join unit u on u.organization_id = l.organization_id and u.id = l.unit_id "
+                + "join teacher t on t.organization_id = l.organization_id and t.id = l.teacher_id "
                 + "left join training_class tc on tc.organization_id = l.organization_id and tc.id = l.class_id "
                 + "join modality md on md.id = coalesce(tc.modality_id, l.modality_id) "
                 + "where l.organization_id = :org and l.lesson_date between :start and :end and exists ("
@@ -104,7 +105,7 @@ public class PortalSchedule {
                     return new Lesson(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6),
                             cancelled ? "CANCELLED" : "SCHEDULED", cancelled ? rs.getString(8) : null, cancelled ? rs.getString(9) : null, rs.getBoolean(10),
                             rs.getObject(11, LocalDate.class), rs.getString(12), rs.getBoolean(13), rs.getBoolean(14), rs.getObject(15, UUID.class),
-                            new PortalHome.Ref(rs.getObject(16, UUID.class), rs.getString(17)), new PortalHome.Ref(rs.getObject(18, UUID.class), rs.getString(19)));
+                            new PortalHome.Ref(rs.getObject(16, UUID.class), rs.getString(17)), new PortalHome.Ref(rs.getObject(18, UUID.class), rs.getString(19)), rs.getString(20));
                 }).list();
     }
 

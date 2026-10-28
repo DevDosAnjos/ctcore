@@ -1,6 +1,6 @@
 import { useResource } from "@/features/students/useStudentRecord";
 
-// Espelham PortalSchedule do OpenAPI (docs/openapi.yaml). Sem professor, presença, frequência, progresso, lista de espera nem cobrança (RN-POR-06, RN-POR-09).
+// Espelham PortalSchedule do OpenAPI (docs/openapi.yaml). Do professor, só o nome; sem presença, frequência, progresso, lista de espera nem cobrança (RN-POR-06, RN-POR-09).
 export type ScheduleScope = "ALL" | "MAIN";
 export type CancelCode = "TEACHER_UNAVAILABLE" | "HOLIDAY" | "ACADEMY_EVENT" | "OTHER";
 export interface ScheduleLesson {
@@ -21,6 +21,7 @@ export interface ScheduleLesson {
   noticeId: string | null;
   modality: { id: string; name: string };
   unit: { id: string; name: string };
+  teacherName: string;
 }
 export interface ScheduleNoClassDay {
   date: string;

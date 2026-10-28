@@ -3239,8 +3239,8 @@ paths:
         hoje no fuso da unidade de cadastro. Aula cancelada traz `cancelReasonCode` e `cancelReason`; aula alterada traz `changed`, `originalDate`,
         `originalStartsAt` e `substitute`; `noticeId` é o comunicado enviado mais recente do tipo adequado que alcança a turma e o aluno. `past` vale pelo relógio do
         fuso da unidade da aula. `noClassDays` traz um item por dia da semana sem aula que vale para o aluno. Com o portal reduzido, 200 com `reduced` e listas vazias.
-        `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Sem professor,
-        presença, frequência, progresso, lista de espera nem cobrança. Não altera dado.
+        `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Do professor, só o nome
+        (`teacherName`, o substituto quando há); sem presença, frequência, progresso, lista de espera nem cobrança. Não altera dado.
       security: [{ sessionCookie: [] }]
       parameters:
         - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
@@ -6336,7 +6336,7 @@ components:
           type: array
           items:
             type: object
-            required: [id, date, startsAt, endsAt, title, kind, status, cancelReasonCode, cancelReason, changed, originalDate, originalStartsAt, substitute, past, noticeId, modality, unit]
+            required: [id, date, startsAt, endsAt, title, kind, status, cancelReasonCode, cancelReason, changed, originalDate, originalStartsAt, substitute, past, noticeId, modality, unit, teacherName]
             properties:
               id: { type: string, format: uuid }
               date: { type: string, format: date }
@@ -6355,6 +6355,7 @@ components:
               noticeId: { type: string, format: uuid, nullable: true }
               modality: { $ref: '#/components/schemas/PortalHomeRef' }
               unit: { $ref: '#/components/schemas/PortalHomeRef' }
+              teacherName: { type: string, description: 'Nome do professor que dá a aula (o substituto, quando há); nada mais do professor.' }
         noClassDays:
           type: array
           items:
