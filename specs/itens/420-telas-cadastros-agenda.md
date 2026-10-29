@@ -146,3 +146,20 @@ Verificado: Rodada 1 OK (estado 707c0347e6619d59d63b763507203ecd01afcba1): lint,
 Decisões que o revisor precisa saber: lista de modalidades e faixas segue como lista de linhas, e as tabelas seguem em `DataTable` (D4); `SummaryBox` e `QuickFilters` não entraram; sem caso visual para painel, editar, cancelar e corrigir aula, porque o id da aula é gerado pelo MSW.
 
 Limitações: a comparação de pixels no container (`test:visual:docker`) fica com o CI; estados vazio, erro e sem permissão não ganharam caso visual próprio além dos testes de tela existentes.
+
+Verificações do PR (PR #430, run 40897152310, SHA 0080426): `visual` falhou (`CORRIGIR_CODIGO`) e o `ci-gate` ficou vermelho por causa dele. Oito casos fora de pixel, com razão ~0,01: `beneficios` e `moldura-professor` em 390 e 1440, claro e escuro. As referências desses casos não mudam nesta branch e o `dev` passou no #419 (run 40886511728). Suspeita: a mudança em componente compartilhado ou a renderização local diferente da do container do CI. Próximo passo, na construção: reproduzir com `npm run test:visual:docker` e corrigir a causa; não atualizar as referências sem mudança visual pedida.
+
+### Correção da entrega
+- `visual` do PR #430 (8 casos `beneficios` e `moldura-professor`, 390 e 1440, claro e escuro) — causa: `Filter` de `features/classes/ClassFilters.tsx` passou a usar `Select` do sistema e é compartilhado com `BenefitFilters` e `AgendaFilters`; o desenho mudou de verdade e as referências desses casos não tinham sido regeradas (a rodada anterior só rodou os casos do item). Reproduzido no container (8 falhas, ~2327 px) — arquivos: 8 PNGs em `frontend/visual/referencias` (`beneficios-*`, `moldura-professor-*`) — prova: `npm run test:visual:docker -- --update-snapshots -g "beneficios|moldura-professor"` → 8 passaram; `npm run test:visual:docker` (suíte inteira) → 264 passaram. Nenhum código mudou; regressão de código inalterada (nada além das referências foi tocado). Imagem do Playwright já existia; nada novo ficou no Docker.
+
+### Rodada 2 — OK — 2026-10-29, estado 6cee6073d1c0850a707b56933da53765d2452160
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA9, CA11, CA12 | PASSOU (mantido da rodada 1) | desde a rodada 1 só mudaram 8 PNGs de `visual/referencias` e este arquivo; nenhum código |
+| CA10 | PASSOU | `npm run test:visual:docker` (suíte inteira, container): 264 passaram; os 8 casos `beneficios` e `moldura-professor` isolados: 8 passaram |
+
+Comandos: `npm run test:visual:docker -- -g "beneficios|moldura-professor"` → 8 passaram; `npm run test:visual:docker` → 264 passaram (11,2 min).
+Instáveis: nenhum.
+Achados do PR #430 (visual): corrigido. As 8 referências regeradas batem com o desenho atual de `Filter` (compartilhado por classes, benefícios e agenda); mudança justificada por mudança visual do item.
+- sugestão, especificação — o número de PNGs em "Construção" (36 novos, 24 atualizados) segue desatualizado (rodada 1); agora são 8 atualizados a mais.
