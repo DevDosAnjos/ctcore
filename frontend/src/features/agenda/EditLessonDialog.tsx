@@ -8,8 +8,10 @@ import { ApiError } from "@/lib/api";
 import type { LessonDetail } from "./useLesson";
 import { lessonName } from "./LessonCard";
 import { editLesson, useUnitTeachers } from "./useLessonActions";
+import { Select } from "@/components/ui/field";
+import { Banner } from "@/components/ui/banner";
 
-const select = "min-h-11 w-full rounded-md border bg-background px-2 disabled:opacity-60";
+const select = "min-h-11";
 
 // RF-AGE-03: editar data, horário e professor; esta aula ou esta e as seguintes. O servidor reconfere tudo (RN-AGE-04, RN-AGE-08).
 export function EditLessonDialog({ lesson, onClose, onSaved }: { lesson: LessonDetail | null; onClose: () => void; onSaved: () => void }) {
@@ -84,13 +86,13 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
             <label htmlFor="lesson-teacher" className="block text-sm font-medium">
               {t("agenda.edit.teacher")}
             </label>
-            <select id="lesson-teacher" className={select} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+            <Select id="lesson-teacher" className={select} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
               {teachers.map((x) => (
                 <option key={x.id} value={x.id}>
                   {x.name}
                 </option>
               ))}
-            </select>
+            </Select>
             <Err text={errors.teacherId} />
             <p className="text-sm text-muted-foreground">{t("agenda.edit.teacherHelp")}</p>
           </div>
@@ -107,9 +109,9 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
               ))}
               <Err text={errors.scope} />
               {scope === "FOLLOWING" && lesson.followingEdited > 0 && (
-                <p role="status" className="text-sm">
+                <Banner tone="ok">
                   {t("agenda.edit.followingEdited", { count: lesson.followingEdited })}
-                </p>
+                </Banner>
               )}
             </fieldset>
           )}
@@ -130,8 +132,8 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
 
 function Err({ text }: { text?: string }) {
   return text ? (
-    <p role="alert" className="text-sm text-destructive">
+    <Banner tone="danger">
       {text}
-    </p>
+    </Banner>
   ) : null;
 }

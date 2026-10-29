@@ -4,6 +4,7 @@ import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import type { AgeRange, AgeRangeInput } from "./useAgeRanges";
+import { Input } from "@/components/ui/field";
 
 const MIN_NAME = 2;
 const MAX_NAME = 40;
@@ -11,7 +12,7 @@ const MAX_AGE = 120;
 
 type Field = "name" | "minAge" | "maxAge";
 
-const inputClass = "min-h-11 w-full rounded-md border bg-background px-2";
+const inputClass = "min-h-11";
 
 function FieldInput({ id, label, value, error, numeric, onChange }: { id: Field; label: string; value: string; error?: string; numeric?: boolean; onChange: (v: string) => void }) {
   return (
@@ -19,7 +20,7 @@ function FieldInput({ id, label, value, error, numeric, onChange }: { id: Field;
       <label htmlFor={`age-range-${id}`} className="block text-sm font-medium">
         {label}
       </label>
-      <input
+      <Input
         id={`age-range-${id}`}
         className={inputClass}
         value={value}
@@ -30,7 +31,7 @@ function FieldInput({ id, label, value, error, numeric, onChange }: { id: Field;
         onChange={(e) => onChange(e.target.value)}
       />
       {error && (
-        <p id={`age-range-${id}-error`} role="alert" className="mt-1 text-sm text-destructive">
+        <p id={`age-range-${id}-error`} role="alert" className="mt-1 text-sm text-danger-foreground">
           {error}
         </p>
       )}

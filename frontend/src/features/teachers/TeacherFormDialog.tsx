@@ -21,6 +21,8 @@ import {
   type TeacherInput,
   type TeacherOptions,
 } from "./useTeachers";
+import { Select, Input } from "@/components/ui/field";
+import { Banner } from "@/components/ui/banner";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const BIO_MAX = 300;
@@ -189,7 +191,7 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
             <div className="flex min-w-0 flex-col gap-1">
               <span className="text-sm font-medium">{t("teachers.form.photo")}</span>
               <p className="text-sm text-muted-foreground">{photo ? t("teachers.form.photoChosen") : t("teachers.form.photoHint")}</p>
-              <input
+              <Input
                 ref={fileInput}
                 type="file"
                 hidden
@@ -219,9 +221,9 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
                 )}
               </div>
               {photoNotice && (
-                <p role="alert" className="text-sm text-destructive">
+                <Banner tone="danger">
                   {photoNotice}
-                </p>
+                </Banner>
               )}
             </div>
           </div>
@@ -229,14 +231,14 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
           <Text label={t("teachers.form.email")} type="email" value={email} onChange={setEmail} error={errors.email} autoComplete="off" />
           <div>
             <PhoneField label={t("teachers.form.phone")} initial={phone} onChange={setPhone} autoComplete="off" />
-            {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+            {errors.phone && <p className="text-sm text-danger-foreground">{errors.phone}</p>}
           </div>
           <div>
             <label htmlFor="teacher-bio" className="block text-sm font-medium">
               {t("teachers.form.bio")}
             </label>
             <CharCounter id="teacher-bio" rows={3} value={bio} max={BIO_MAX} onChange={setBio} aria-invalid={errors.bio ? true : undefined} />
-            {errors.bio && <p className="text-sm text-destructive">{errors.bio}</p>}
+            {errors.bio && <p className="text-sm text-danger-foreground">{errors.bio}</p>}
           </div>
           <UnitChecks units={units} value={unitIds} onChange={setUnitIds} error={errors.units} />
           <fieldset aria-describedby={errors.modalities ? "teacher-modalities-erro" : undefined}>
@@ -255,8 +257,8 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
                     <div className="ml-6 flex flex-wrap gap-2">
                       <label className="flex flex-col text-sm">
                         {t("teachers.form.level", { name: o.name })}
-                        <select
-                          className="min-h-11 rounded-md border bg-background px-2"
+                        <Select
+                          className="min-h-11"
                           value={sel.levelId}
                           onChange={(e) => setPicked((p) => ({ ...p, [o.id]: { levelId: e.target.value, degree: "0" } }))}
                         >
@@ -266,12 +268,12 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
                               {l.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
                       <label className="flex flex-col text-sm">
                         {t("teachers.form.degree", { name: o.name })}
-                        <select
-                          className="min-h-11 rounded-md border bg-background px-2"
+                        <Select
+                          className="min-h-11"
                           value={sel.degree}
                           disabled={!level}
                           onChange={(e) => setPicked((p) => ({ ...p, [o.id]: { ...p[o.id], degree: e.target.value } }))}
@@ -281,7 +283,7 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
                               {d}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </label>
                     </div>
                   )}
@@ -289,12 +291,12 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
               );
             })}
             {errors.modalities && (
-              <p id="teacher-modalities-erro" className="text-sm text-destructive">
+              <p id="teacher-modalities-erro" className="text-sm text-danger-foreground">
                 {errors.modalities}
               </p>
             )}
             {errors.modalities && blocking.length > 0 && (
-              <ul className="list-disc pl-5 text-sm text-destructive">
+              <ul className="list-disc pl-5 text-sm text-danger-foreground">
                 {blocking.map((name) => (
                   <li key={name}>{name}</li>
                 ))}
@@ -312,21 +314,21 @@ function Form({ options, teacher, onClose, onSaved }: { options: TeacherOptions;
               {t("teachers.form.declared")}
             </label>
             {errors.declared && (
-              <p id="teacher-declared-erro" className="text-sm text-destructive">
+              <p id="teacher-declared-erro" className="text-sm text-danger-foreground">
                 {errors.declared}
               </p>
             )}
           </fieldset>
         </fieldset>
         {errors.form && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {errors.form}
-          </p>
+          </Banner>
         )}
         {photoFailed && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {t("teachers.form.photoUploadError")}
-          </p>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           {saved && photoFailed ? (

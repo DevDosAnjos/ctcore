@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 import type { TFunction } from "i18next";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { usePermissions } from "@/features/permissions/usePermissions";
@@ -57,11 +58,11 @@ const columns = (t: TFunction): Column<TrainingClass>[] => [
       ) : (
         <span className="flex flex-col">
           {t("classes.students", { count: r.activeStudents, capacity: r.capacity })}
-          {r.overCapacity && <span className="font-medium text-destructive">{t("classes.over", { count: r.activeStudents, capacity: r.capacity })}</span>}
+          {r.overCapacity && <span className="font-medium text-danger-foreground">{t("classes.over", { count: r.activeStudents, capacity: r.capacity })}</span>}
         </span>
       ),
   },
-  { key: "status", label: t("classes.columns.status"), render: (r) => t(`classes.statuses.${r.status}`) },
+  { key: "status", label: t("classes.columns.status"), render: (r) => <StatusBadge status={r.status} label={t(`classes.statuses.${r.status}`)} /> },
 ];
 
 function Content() {

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { AgeRangeDialog } from "./AgeRangeDialog";
@@ -39,11 +40,7 @@ function Content() {
     <div className="flex flex-col gap-4">
       <PageHeader title={t("ageRanges.title")} />
       <p className="text-muted-foreground">{t("ageRanges.intro")}</p>
-      {message && (
-        <p role={message.kind === "alert" ? "alert" : "status"} className={message.kind === "alert" ? "text-sm text-destructive" : "text-sm"}>
-          {message.text}
-        </p>
-      )}
+      {message && <Banner tone={message.kind === "alert" ? "danger" : "ok"}>{message.text}</Banner>}
       {api.items.length === 0 ? (
         <EmptyState title={t("ageRanges.emptyTitle")} text={t("ageRanges.emptyText")} action={create || undefined} />
       ) : (

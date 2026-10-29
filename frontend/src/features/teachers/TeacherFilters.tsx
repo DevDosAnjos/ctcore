@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useTeacherFilterOptions } from "./useTeachers";
+import { Select } from "@/components/ui/field";
 
 type Props = { get: (k: string) => string; set: (k: string, v: string) => void };
 
@@ -7,14 +8,14 @@ function Filter({ label, value, onChange, all, options }: { label: string; value
   return (
     <label className="flex min-w-0 flex-col gap-1 text-sm">
       {label}
-      <select className="min-h-11 rounded-md border bg-background px-2" value={value} onChange={(e) => onChange(e.target.value)}>
+      <Select className="min-h-11" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">{all}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

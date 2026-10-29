@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { Badge } from "@/components/ui/badge";
 import type { AgendaLesson } from "./useAgenda";
 
 // D2: a tabela de modalidades não tem cor; ela vem de uma paleta fixa, escolhida pelo id. A cor nunca é a única indicação: a modalidade também vai em texto.
@@ -31,11 +32,11 @@ export function LessonCard({ lesson }: { lesson: AgendaLesson }) {
           <span aria-hidden="true" className="inline-block size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
           {lesson.modality.name}
         </span>
-        {!lesson.class && <span className="w-fit rounded border px-1.5 text-xs font-medium">{t("agenda.adhoc")}</span>}
-        {lesson.substitute && <span className="w-fit rounded bg-secondary px-1.5 text-xs font-medium text-secondary-foreground">{t("agenda.substitute")}</span>}
+        {!lesson.class && <Badge tone="neutral" className="w-fit">{t("agenda.adhoc")}</Badge>}
+        {lesson.substitute && <Badge tone="info" className="w-fit">{t("agenda.substitute")}</Badge>}
         {cancelled && (
           <span className="flex flex-col text-xs">
-            <span className="font-medium text-destructive">{t("agenda.cancelled")}</span>
+            <Badge tone="danger" className="w-fit">{t("agenda.cancelled")}</Badge>
             {cancelReasonText(lesson, t) && <span className="text-muted-foreground">{cancelReasonText(lesson, t)}</span>}
           </span>
         )}

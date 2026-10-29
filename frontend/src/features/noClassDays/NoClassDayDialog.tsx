@@ -7,11 +7,12 @@ import { useActiveClasses } from "@/features/agenda/useLessonActions";
 import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import { createDay, updateDay, usePreview, type Choice, type NoClassDayItem, type NoticeMode, type Suggestion } from "./useNoClassDays";
+import { Banner } from "@/components/ui/banner";
 
 const MODES: NoticeMode[] = ["NONE", "NOW", "SCHEDULED"];
 const FIELDS = ["unitIds", "startsOn", "endsOn", "reason", "classIds", "notice"];
 
-// ISO do servidor (UTC) para o valor de <input type="datetime-local"> no fuso do navegador.
+// ISO do servidor (UTC) para o valor de <Input type="datetime-local"> no fuso do navegador.
 const localInput = (iso: string | null) => {
   if (!iso) return "";
   const d = new Date(iso);
@@ -167,12 +168,12 @@ export function NoClassDayDialog({
           <h3 className="text-sm font-medium">{t("noClassDays.dialog.preview")}</h3>
           {preview.status === "loading" && <p className="text-sm text-muted-foreground">{t("noClassDays.dialog.previewLoading")}</p>}
           {preview.status === "error" && (
-            <p role="alert" className="text-sm text-destructive">
+            <Banner tone="danger">
               {t("noClassDays.dialog.previewError")}{" "}
               <button type="button" className="min-h-11 underline" onClick={preview.retry}>
                 {t("noClassDays.dialog.previewRetry")}
               </button>
-            </p>
+            </Banner>
           )}
           {preview.status === "ready" && preview.data && preview.data.units.every((u) => u.lessons.length === 0) && (
             <p className="text-sm text-muted-foreground">{t("noClassDays.dialog.previewEmpty")}</p>
@@ -220,8 +221,8 @@ export function NoClassDayDialog({
 
 function Err({ text }: { text?: string }) {
   return text ? (
-    <p role="alert" className="text-sm text-destructive">
+    <Banner tone="danger">
       {text}
-    </p>
+    </Banner>
   ) : null;
 }

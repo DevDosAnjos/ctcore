@@ -4,6 +4,7 @@ import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { deleteDay, type NoClassDayItem } from "./useNoClassDays";
+import { Banner } from "@/components/ui/banner";
 
 // RF-AGE-05: desfazer um dia futuro. "Avisar as turmas" só vai para a auditoria até a Sprint 09; a unidade desfaz só o seu dia.
 export function UndoNoClassDayDialog({ item, period, onClose, onDone }: { item: NoClassDayItem; period: string; onClose: () => void; onDone: () => void }) {
@@ -34,9 +35,9 @@ export function UndoNoClassDayDialog({ item, period, onClose, onDone }: { item: 
           {t("noClassDays.undoDialog.notify")}
         </label>
         {error && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {error}
-          </p>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>

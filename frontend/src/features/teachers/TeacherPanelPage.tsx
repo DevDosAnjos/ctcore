@@ -13,6 +13,7 @@ import { GrantAccessDialog } from "./GrantAccessDialog";
 import { TeacherFormDialog } from "./TeacherFormDialog";
 import { resendTeacherInvite, useTeacher, type TeacherDetail } from "./useTeachers";
 import { PageHeader } from "@/components/ui/page-header";
+import { Banner } from "@/components/ui/banner";
 
 const initials = (name: string) =>
   name
@@ -67,9 +68,9 @@ function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () =
         </div>
       </header>
       {notice && (
-        <p role="status" className="text-sm">
+        <Banner tone="ok">
           {notice}
-        </p>
+        </Banner>
       )}
       <div className="flex flex-wrap gap-2">
         {canWrite && (

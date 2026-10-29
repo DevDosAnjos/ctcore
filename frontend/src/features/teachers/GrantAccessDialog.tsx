@@ -6,6 +6,7 @@ import { useUnitScope } from "@/features/units/UnitScopeProvider";
 import { UnitChecks } from "@/features/users/UnitChecks";
 import { ApiError } from "@/lib/api";
 import { grantAccess, type TeacherDetail } from "./useTeachers";
+import { Banner } from "@/components/ui/banner";
 
 const KNOWN = ["ALREADY_LINKED", "STAFF_LIMIT_REACHED", "FORBIDDEN", "CONFLICT"];
 type Choice = { id: string; name: string; shortName: string };
@@ -56,9 +57,9 @@ function Body({ teacher, choices, onClose, onDone }: { teacher: TeacherDetail; c
         <p className="text-sm text-muted-foreground">{t("teachers.panel.grant.explain", { email: teacher.email })}</p>
         <UnitChecks units={choices} value={unitIds} onChange={setUnitIds} error={error} />
         {form && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {form}
-          </p>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>

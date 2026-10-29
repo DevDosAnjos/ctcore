@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import { createClass, updateClass, useClassOptions, type ClassDetail, type ClassInput, type ClassOptions } from "./useClasses";
+import { Select, Input } from "@/components/ui/field";
+import { Banner } from "@/components/ui/banner";
 
 type Field = "unit" | "name" | "modality" | "ageRange" | "schedule" | "capacity" | "head" | "assistants" | "link" | "form";
 type Errors = Partial<Record<Field, string>>;
@@ -14,7 +16,7 @@ type Day = { on: boolean; from: string; to: string };
 const FIELD: Record<string, Field> = { unitId: "unit", name: "name", modalityId: "modality", ageRangeId: "ageRange", schedule: "schedule", capacity: "capacity", headTeacherId: "head", assistantIds: "assistants", groupLink: "link" };
 const F = { unit: "unit", modality: "modality", ageRange: "ageRange", schedule: "schedule", head: "head", assistants: "assistants" } as const;
 const DAYS = [1, 2, 3, 4, 5, 6, 7];
-const select = "min-h-11 w-full rounded-md border bg-background px-2 disabled:opacity-60";
+const select = "min-h-11";
 
 // RF-TUR-03: criação (sem `klass`) e edição da turma. O servidor reconfere tudo (alcance, unicidade do nome, titular ativo).
 export function ClassFormDialog({ open, klass, onClose, onSaved }: { open: boolean; klass?: ClassDetail; onClose: () => void; onSaved: (saved: ClassDetail) => void }) {
@@ -129,7 +131,7 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
   }
 
   const err = (field: Field) => errors[field] && (
-    <p id={`class-${field}-erro`} className="text-sm text-destructive">
+    <p id={`class-${field}-erro`} className="text-sm text-danger-foreground">
       {errors[field]}
     </p>
   );
@@ -157,14 +159,14 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
             <label htmlFor="class-unit" className="block text-sm font-medium">
               {t("classes.form.unit")}
             </label>
-            <select {...props(F.unit)} className={select} value={unitId} onChange={(e) => pickUnit(e.target.value)}>
+            <Select {...props(F.unit)} className={select} value={unitId} onChange={(e) => pickUnit(e.target.value)}>
             <option value="">{t("classes.form.choose")}</option>
             {options.units.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name}
               </option>
             ))}
-            </select>
+            </Select>
           </>
         )}
         {err(F.unit)}
@@ -173,28 +175,28 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
         <label htmlFor="class-modality" className="block text-sm font-medium">
           {t("classes.form.modality")}
         </label>
-        <select {...props(F.modality)} className={select} value={modalityId} onChange={(e) => pickModality(e.target.value)}>
+        <Select {...props(F.modality)} className={select} value={modalityId} onChange={(e) => pickModality(e.target.value)}>
           <option value="">{t("classes.form.choose")}</option>
           {(unit?.modalities ?? []).map((m) => (
             <option key={m.id} value={m.id}>
               {m.name}
             </option>
           ))}
-        </select>
+        </Select>
         {err(F.modality)}
       </div>
       <div>
         <label htmlFor="class-ageRange" className="block text-sm font-medium">
           {t("classes.form.ageRange")}
         </label>
-        <select {...props(F.ageRange)} className={select} value={ageRangeId} onChange={(e) => setAgeRangeId(e.target.value)}>
+        <Select {...props(F.ageRange)} className={select} value={ageRangeId} onChange={(e) => setAgeRangeId(e.target.value)}>
           <option value="">{t("classes.form.noAgeRange")}</option>
           {options.ageRanges.map((r) => (
             <option key={r.id} value={r.id}>
               {r.name}
             </option>
           ))}
-        </select>
+        </Select>
         {err(F.ageRange)}
       </div>
       <fieldset aria-describedby={errors.schedule ? "class-schedule-erro" : undefined}>
@@ -211,11 +213,11 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
                 <>
                   <label className="flex items-center gap-1 text-sm">
                     {t("classes.form.from", { day })}
-                    <input type="time" className="min-h-11 rounded-md border bg-background px-2" value={days[d].from} onChange={(e) => setDay(d, { from: e.target.value })} />
+                    <Input type="time" className="min-h-11" value={days[d].from} onChange={(e) => setDay(d, { from: e.target.value })} />
                   </label>
                   <label className="flex items-center gap-1 text-sm">
                     {t("classes.form.to", { day })}
-                    <input type="time" className="min-h-11 rounded-md border bg-background px-2" value={days[d].to} onChange={(e) => setDay(d, { to: e.target.value })} />
+                    <Input type="time" className="min-h-11" value={days[d].to} onChange={(e) => setDay(d, { to: e.target.value })} />
                   </label>
                 </>
               )}
@@ -235,14 +237,14 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
         <label htmlFor="class-head" className="block text-sm font-medium">
           {t("classes.form.head")}
         </label>
-        <select {...props(F.head)} className={select} value={headId} onChange={(e) => setHeadId(e.target.value)}>
+        <Select {...props(F.head)} className={select} value={headId} onChange={(e) => setHeadId(e.target.value)}>
           <option value="">{t("classes.form.choose")}</option>
           {teachers.map((x) => (
             <option key={x.id} value={x.id}>
               {x.name}
             </option>
           ))}
-        </select>
+        </Select>
         {err(F.head)}
         <p className="text-sm text-muted-foreground">{t("classes.form.teachersHelp")}</p>
       </div>
@@ -262,9 +264,9 @@ function Form({ options, klass, onClose, onSaved }: { options: ClassOptions; kla
       </fieldset>
       <Text label={t("classes.form.link")} value={link} onChange={setLink} error={errors.link} autoComplete="off" inputMode="url" />
       {errors.form && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {errors.form}
-        </p>
+        </Banner>
       )}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>

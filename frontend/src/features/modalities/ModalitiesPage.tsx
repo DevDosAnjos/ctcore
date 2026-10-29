@@ -8,6 +8,8 @@ import {
   ForbiddenState,
   LoadingState,
 } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
@@ -116,16 +118,7 @@ function Content() {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title={t("modalities.title")} />
-      {message && (
-        <p
-          role={message.kind === "alert" ? "alert" : "status"}
-          className={
-            message.kind === "alert" ? "text-sm text-destructive" : "text-sm"
-          }
-        >
-          {message.text}
-        </p>
-      )}
+      {message && <Banner tone={message.kind === "alert" ? "danger" : "ok"}>{message.text}</Banner>}
       {items.length === 0 ? (
         <EmptyState
           title={t("modalities.emptyTitle")}
@@ -175,7 +168,7 @@ function Content() {
                 <span className="min-w-0 break-words">{r.name}</span>
                 <span className="text-sm text-muted-foreground">
                   {formatDate(r.createdAt)} ·{" "}
-                  {t(`modalities.requests.status.${r.status}`)}
+                  <StatusBadge status={r.status} label={t(`modalities.requests.status.${r.status}`)} />
                 </span>
               </li>
             ))}

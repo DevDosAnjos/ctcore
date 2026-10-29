@@ -5,6 +5,7 @@ import { ErrorState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { deactivateTeacher, fetchDeactivationPreview, type DeactivationPreview, type TeacherDetail } from "./useTeachers";
+import { Banner } from "@/components/ui/banner";
 
 const KNOWN = ["FORBIDDEN", "CONFLICT"];
 
@@ -72,16 +73,16 @@ function Body({ teacher, onClose, onDone }: { teacher: TeacherDetail; onClose: (
             )}
             {teacher.access === "PENDING" || teacher.access === "ACTIVE" ? <p className="text-sm">{t("teachers.panel.deactivateDialog.accessEnds")}</p> : null}
             {!preview.canDeactivate && (
-              <p role="alert" className="text-sm text-destructive">
+              <Banner tone="danger">
                 {t("teachers.panel.deactivateDialog.outOfReach")}
-              </p>
+              </Banner>
             )}
           </>
         )}
         {form && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {form}
-          </p>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>
