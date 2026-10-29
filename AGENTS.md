@@ -11,13 +11,14 @@ Plataforma SaaS de gestão para academias de artes marciais. Monorepo:
 | `backend/` | Java 21, Spring Boot 3, Maven, Flyway, PostgreSQL com row-level security, API REST em `/api/v1` |
 | `frontend/` | TypeScript, React, Vite, shadcn/ui, Tailwind CSS, Radix, MSW |
 | `infra/` | docker-compose (PostgreSQL, arquivos compatíveis com S3, caixa de e-mail falsa), scripts e publicação |
-| `docs/` | especificação e OpenAPI |
+| `docs/` | especificação, OpenAPI e design (`docs/design/`: tokens, componentes e as telas do canvas) |
 
 ## Fontes
 
 - **O que fazer em cada item:** a issue no GitHub (`gh issue view <número>`). Ela traz o que entregar, as regras com o texto completo, as telas do canvas e o "Pronto quando".
 - **A regra de cada código** (RN, RF, RNF): `docs/especificacao/`. Mudou uma regra, muda primeiro a especificação.
 - **Ordem, qualidade e definição de pronto:** `docs/plano-de-sprints.md`.
+- **Visual:** `docs/design/README.md` (tokens, componentes e regras). Uma tela citada na issue como `Tela.dc.html` está em `docs/design/canvas/`; o print sai com `node scripts/canvas-shot.mjs Tela`, de dentro de `frontend/`.
 - O PDF `docs/ctcore-especificacao-1.2.pdf` é só registro da versão 1.2; não é preciso lê-lo.
 
 ## Backlog
@@ -62,6 +63,7 @@ O repositório fica público durante o desenvolvimento, para o CI rodar sem limi
 - O OpenAPI em `docs/` é a fonte única do contrato; os handlers MSW batem com ele.
 - Telas com os quatro estados (carregando, vazio, erro, sem permissão), funcionando a partir de 360 px e passando no axe nos dois temas. Celular é a mesma aplicação responsiva, não telas novas.
 - Textos de tela nos arquivos de tradução pt-BR, nunca no código.
+- Visual igual à tela do canvas citada na issue, com os tokens e componentes de `docs/design/README.md` (vale a partir da Sprint 10.5). Nada de cor, fonte ou tamanho solto fora dos componentes base.
 - Falha na regressão completa (`verify`, `test:cov`, `e2e`), mesmo em teste anterior ao item, vira issue no formato das #318 e #320 antes da rodada `OK`; item não é verificado nem mesclado com a regressão vermelha. Teste não compara a data da JVM (UTC) com a data da unidade: usa o fuso da unidade.
 - Todo código de regra citado na issue tem ao menos um teste. Cobertura mínima de 80%; 100% das regras de cobrança, pagamentos, assinatura, inativação e isolamento.
 

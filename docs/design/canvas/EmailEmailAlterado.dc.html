@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>E-mail › Aviso no e-mail antigo</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #E9E6DF; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1B1F"><div style="background: #FFFFFF; border-bottom: 1px solid #E3DFD6; padding: 14px 20px; font-size: 13px; display: flex; flex-direction: column; gap: 3px"><span><strong>ctcore</strong> &lt;conta@ctcore.com.br&gt;</span><span style="color: #6B675F">Para: Marina Teixeira &lt;marina.teixeira@email.example&gt;</span><span style="font-size: 15px; font-weight: 600; margin-top: 4px">O e-mail da sua conta foi alterado</span><span style="color: #8C877D">Novo e-mail: m***@novoemail.example</span></div><div style="width: 600px; margin: 24px auto; background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden"><div style="padding: 20px 28px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #EEEAE2"><span style="width: 32px; height: 32px; border-radius: 8px; background: #1B1B1F; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 15px">ct</span><span style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 22px; letter-spacing: 0.02em">ctcore</span></div><div style="padding: 28px; display: flex; flex-direction: column; gap: 16px; font-size: 15px; line-height: 1.6"><p style="margin: 0; font-size: 15px; line-height: 1.5;">Oi, Marina!</p><p style="margin: 0; font-size: 15px; line-height: 1.5;">O e-mail da sua conta foi trocado para <strong>m***@novoemail.example</strong> em 08/10/2026 às 21h30. A partir de agora, os avisos chegam lá.</p><div role="status" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; background: #FCF3DD; border: 1px solid #EED9A6; color: #6B4400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M12 3 5 6v5.5c0 4.4 3 8 7 9.5 4-1.5 7-5.1 7-9.5V6z"></path><path d="m9 12 2 2 4-4"></path></svg><span style="flex-grow: 1; line-height: 1.45">Não foi você? Fale com o suporte respondendo a este e-mail.</span></div></div><div style="padding: 18px 28px; border-top: 1px solid #EEEAE2; background: #FAF8F4; font-size: 12px; color: #6B675F; display: flex; flex-direction: column; gap: 4px"><span>Você recebe este e-mail porque tem uma conta no ctcore.</span><span>Dúvidas? Responda a este e-mail ou abra um chamado pela Ajuda.</span><span>ctcore · gestão para academias de artes marciais</span></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 760, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

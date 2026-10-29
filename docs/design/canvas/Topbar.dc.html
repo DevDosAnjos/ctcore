@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Barra superior</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+*{box-sizing:border-box}
+a{text-decoration:none}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="position: relative; z-index: 20; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; color: {{t.ink}}">
+<sc-if value="{{fx.show}}" hint-placeholder-val="{{ false }}"><div role="status" style="{{fx.style}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg><span style="flex-grow: 1">{{fx.texto}}</span><sc-if value="{{fx.temAcao}}" hint-placeholder-val="{{ true }}"><a href="{{fx.href}}" style="{{fx.btn}}">{{fx.acao}}</a></sc-if></div></sc-if>
+<header style="height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 24px 0 32px; border-bottom: 1px solid {{t.line}}; background: {{t.bg}}">
+<nav aria-label="Localização" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: {{t.mut}}; min-width: 0; white-space: nowrap; overflow: hidden">
+<sc-for list="{{trilha}}" as="cr" hint-placeholder-count="2"><span style="{{cr.st}}">{{cr.t}}</span><sc-if value="{{cr.sep}}" hint-placeholder-val="{{ true }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="m9 6 6 6-6 6"></path></svg></sc-if></sc-for>
+</nav>
+<div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0">
+<sc-if value="{{multi}}" hint-placeholder-val="{{ true }}"><div style="position: relative">
+<button type="button" onClick="{{abrirUni}}" aria-haspopup="listbox" aria-expanded="{{uniAberto}}" style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px 0 12px; border: 1px solid {{t.btnl}}; border-radius: 8px; background: {{t.card}}; color: {{t.ink}}; font-size: 13px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M5 20V5h9v15M14 9h5v11M8 8.5h3M8 12h3M8 15.5h3M3 20h18"></path></svg><span style="font-weight: 500">{{uniNome}}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="m6 9 6 6 6-6"></path></svg></button>
+<sc-if value="{{uniAberto}}" hint-placeholder-val="{{ false }}"><div role="listbox" aria-label="Unidade" style="position: absolute; top: 42px; left: 0; width: 260px; background: {{t.card}}; border: 1px solid {{t.line}}; border-radius: 12px; box-shadow: 0 16px 40px rgba(23, 23, 26, 0.16); padding: 6px; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{unis}}" as="un" hint-placeholder-count="3"><button type="button" role="option" onClick="{{un.pick}}" style="{{un.st}}"><span style="display: flex; flex-direction: column; gap: 1px; text-align: left"><span style="font-weight: 500">{{un.nome}}</span><span style="font-size: 12px; color: {{t.mut}}">{{un.info}}</span></span><sc-if value="{{un.on}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg></sc-if></button></sc-for>
+</div></sc-if></div></sc-if>
+<a href="Busca.dc.html" aria-label="Buscar (Ctrl+K)" style="display: flex; align-items: center; gap: 8px; height: 36px; width: 210px; padding: 0 8px 0 12px; white-space: nowrap; border: 1px solid {{t.btnl}}; border-radius: 8px; background: {{t.card}}; color: {{t.mut}}; font-size: 13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="11" cy="11" r="6.5"></circle><path d="m20 20-4.2-4.2"></path></svg><span style="flex-grow: 1">Buscar</span><span style="font-size: 11px; border: 1px solid {{t.btnl}}; border-radius: 4px; padding: 1px 5px">Ctrl K</span></a>
+<a href="Notificacoes.dc.html" aria-label="Notificações: 3 não lidas" title="Notificações" style="position: relative; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; color: {{t.ink}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20.5a2.2 2.2 0 0 0 4 0"></path></svg><span style="position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #C8462C; color: #FFFFFF; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></a>
+<button type="button" onClick="{{trocarTema}}" aria-label="{{temaLabel}}" title="{{temaLabel}}" style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: {{t.ink}}; cursor: pointer"><sc-if value="{{escuro}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"></path></svg></sc-if><sc-if value="{{claro}}" hint-placeholder-val="{{ true }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"></path></svg></sc-if></button>
+<a href="Ajuda.dc.html" aria-label="Ajuda" title="Ajuda" style="display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; color: {{t.ink}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.5M12 16.6v.01"></path></svg></a>
+<span style="width: 1px; height: 24px; background: {{t.line}}; margin: 0 4px"></span>
+<div style="position: relative">
+<button type="button" onClick="{{abrirConta}}" aria-haspopup="menu" aria-expanded="{{contaAberta}}" style="display: flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 0; cursor: pointer; color: {{t.ink}}; text-align: left">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: {{u.cor}}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">{{u.ini}}</span>
+<span style="display: flex; flex-direction: column; line-height: 1.25"><span style="font-size: 13px; font-weight: 500">{{u.nome}}</span><span style="font-size: 12px; color: {{t.mut}}">{{u.perfil}}</span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="m6 9 6 6 6-6"></path></svg></button>
+<sc-if value="{{contaAberta}}" hint-placeholder-val="{{ false }}"><div role="menu" style="position: absolute; top: 44px; right: 0; width: 240px; background: {{t.card}}; border: 1px solid {{t.line}}; border-radius: 12px; box-shadow: 0 16px 40px rgba(23, 23, 26, 0.16); padding: 6px; display: flex; flex-direction: column; gap: 2px; font-size: 14px">
+<a href="MinhaConta.dc.html" role="menuitem" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 8px; color: {{t.ink}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="8.5" r="3.8"></circle><path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path></svg>Minha conta</a>
+<a href="EscolhaOrganizacao.dc.html" role="menuitem" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 8px; color: {{t.ink}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4"></path></svg>Trocar organização ou área</a>
+<a href="FalarSuporte.dc.html" role="menuitem" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 8px; color: {{t.ink}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M9.6 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.5M12 16.6v.01"></path></svg>Falar com o suporte</a>
+<span style="height: 1px; background: {{t.line}}; margin: 4px 0"></span>
+<a href="Login.dc.html" role="menuitem" style="display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 8px; color: {{t.ink}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"></path></svg>Sair</a>
+</div></sc-if></div>
+</div>
+</header>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"trilha": {"editor": "text", "default": "Início"}, "perfil": {"editor": "enum", "options": ["coordenador", "admin", "professor"], "default": "admin"}, "unidade": {"editor": "enum", "options": ["todas", "tijuca", "barra"], "default": "tijuca"}, "faixa": {"editor": "enum", "options": ["", "atraso", "leitura", "suspensa", "mp"], "default": ""}, "tema": {"editor": "enum", "options": ["claro", "escuro"], "default": "claro"}, "$preview": {"width": 1192, "height": 420}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const perfil = this.props.perfil ?? 'admin';
+    const escuro = st.tema !== undefined ? st.tema === 'escuro' : (this.props.tema ?? 'claro') === 'escuro';
+    const t = escuro
+      ? { ink: '#ECE9E2', mut: '#A8A398', line: '#34343A', btnl: '#45454C', card: '#1D1D21', bg: '#141416', hover: '#2A2A2F' }
+      : { ink: '#1B1B1F', mut: '#6B675F', line: '#E3DFD6', btnl: '#D9D4C9', card: '#FFFFFF', bg: '#F4F2ED', hover: '#F4F2ED' };
+    const partes = String(this.props.trilha ?? 'Início').split('›').map((x) => x.trim()).filter((x) => x);
+    const trilha = partes.map((x, i) => ({ t: x, sep: i < partes.length - 1, st: i === partes.length - 1 ? 'color:' + t.ink + ';font-weight:500' : '' }));
+    const pessoas = {
+      coordenador: { nome: 'Marcos Leão', perfil: 'Coordenador', ini: 'ML', cor: '#1B1B1F' },
+      admin: { nome: 'Carla Mendes', perfil: 'Administradora', ini: 'CM', cor: '#3D5A80' },
+      professor: { nome: 'Rafael Duarte', perfil: 'Professor', ini: 'RD', cor: '#1D5E34' }
+    };
+    const u = pessoas[perfil] || pessoas.admin;
+    const lista = [];
+    if (perfil === 'coordenador') lista.push({ id: 'todas', nome: 'Todas as unidades', info: '2 unidades · 214 alunos ativos' });
+    lista.push({ id: 'tijuca', nome: 'Tijuca', info: '131 alunos ativos' });
+    lista.push({ id: 'barra', nome: 'Barra', info: '83 alunos ativos' });
+    const atual = st.uni ?? (this.props.unidade ?? 'tijuca');
+    const unis = lista.map((x) => ({
+      nome: x.nome, info: x.info, on: x.id === atual,
+      st: 'display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:8px 10px;border:0;border-radius:8px;cursor:pointer;color:' + t.ink + ';font-size:14px;background:' + (x.id === atual ? t.hover : 'transparent'),
+      pick: () => this.setState({ uni: x.id, ua: false })
+    }));
+    const achada = lista.find((x) => x.id === atual) || lista[0];
+    const fxTipos = {
+      atraso: { tone: ['#FCF3DD', '#6B4400', '#EED9A6'], texto: perfil === 'coordenador' ? 'A fatura da assinatura venceu em 03/10/2026. Pague até 10/10/2026 para continuar sem restrições.' : 'A assinatura da Academia Leão está em atraso. O Coordenador já foi avisado.', acao: perfil === 'coordenador' ? 'Pagar fatura' : '', href: 'ConfigAssinatura.dc.html' },
+      leitura: { tone: ['#FBECE8', '#7E1F12', '#F0CFC7'], texto: 'Modo somente leitura: a assinatura está em atraso há 12 dias. Você pode consultar e exportar, mas não cadastrar nem alterar. Cobranças e portal dos alunos seguem funcionando.', acao: perfil === 'coordenador' ? 'Pagar fatura' : '', href: 'ConfigAssinatura.dc.html' },
+      suspensa: { tone: ['#7E1F12', '#FFFFFF', '#7E1F12'], texto: 'Assinatura suspensa. A gestão e o portal estão fora do ar até o pagamento. Os dados ficam guardados até 06/01/2027.', acao: perfil === 'coordenador' ? 'Pagar e reativar' : '', href: 'ConfigAssinatura.dc.html' },
+      mp: { tone: ['#9C2516', '#FFFFFF', '#9C2516'], texto: 'O Mercado Pago da unidade Barra foi desconectado. Os alunos dessa unidade não conseguem pagar online até você reconectar.', acao: 'Reconectar', href: 'ConfigPagamentos.dc.html' }
+    };
+    const f = fxTipos[this.props.faixa ?? ''];
+    const fx = f ? {
+      show: true, texto: f.texto, acao: f.acao, temAcao: !!f.acao, href: f.href,
+      style: 'display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 24px 8px 32px;background:' + f.tone[0] + ';color:' + f.tone[1] + ';border-bottom:1px solid ' + f.tone[2] + ';font-size:13px;line-height:1.4',
+      btn: 'display:flex;align-items:center;height:32px;padding:0 12px;border-radius:8px;background:#FFFFFF;color:' + (f.tone[1] === '#FFFFFF' ? '#9C2516' : f.tone[1]) + ';border:1px solid ' + f.tone[2] + ';font-size:13px;font-weight:600;white-space:nowrap'
+    } : { show: false, texto: '', acao: '', temAcao: false, href: '#', style: '', btn: '' };
+    return {
+      t: t, trilha: trilha, u: u, unis: unis, uniNome: achada.nome, multi: perfil !== 'professor', fx: fx,
+      uniAberto: !!st.ua, abrirUni: () => this.setState({ ua: !st.ua, ca: false }),
+      contaAberta: !!st.ca, abrirConta: () => this.setState({ ca: !st.ca, ua: false }),
+      escuro: escuro, claro: !escuro, temaLabel: escuro ? 'Usar tema claro' : 'Usar tema escuro',
+      trocarTema: () => this.setState({ tema: escuro ? 'claro' : 'escuro' })
+    };
+  }
+}
+</script>
+</body>
+</html>

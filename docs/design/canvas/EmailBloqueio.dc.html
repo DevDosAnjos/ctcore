@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>E-mail › Aviso antes do bloqueio</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #E9E6DF; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1B1F"><div style="background: #FFFFFF; border-bottom: 1px solid #E3DFD6; padding: 14px 20px; font-size: 13px; display: flex; flex-direction: column; gap: 3px"><span><strong>Academia Leão · Tijuca</strong> &lt;avisos@ctcore.com.br&gt;</span><span style="color: #6B675F">Para: Bruno Carvalho &lt;bruno.carvalho@email.example&gt;</span><span style="font-size: 15px; font-weight: 600; margin-top: 4px">Vamos acertar a mensalidade de Muay Thai?</span><span style="color: #8C877D">Faltam 5 dias para o bloqueio da modalidade</span></div><div style="width: 600px; margin: 24px auto; background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden"><div style="background: #C8462C; padding: 18px 28px; display: flex; align-items: center; gap: 10px; color: #FFFFFF"><span style="width: 36px; height: 36px; border-radius: 8px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700">AL</span><span style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 20px; text-transform: uppercase; letter-spacing: 0.04em">Academia Leão</span></div><div style="padding: 28px; display: flex; flex-direction: column; gap: 16px; font-size: 15px; line-height: 1.6"><p style="margin: 0; font-size: 15px; line-height: 1.5;">Oi, Bruno!</p><p style="margin: 0; font-size: 15px; line-height: 1.5;">A mensalidade de <strong>Muay Thai de setembro</strong> (R$ 160,00) está em aberto desde 10/09. Se ela não for paga até <strong>10/10/2026</strong>, o Muay Thai fica bloqueado até a regularização. O Jiu-Jitsu continua normal.</p><p style="margin: 0; font-size: 15px; line-height: 1.5;">Se tiver qualquer dificuldade, responda no WhatsApp da unidade: a gente combina com você.</p><a href="#" style="display: block; text-align: center; height: 52px; line-height: 52px; border-radius: 10px; background: #C8462C; color: #FFFFFF; font-size: 16px; font-weight: 600">Pagar R$ 160,00</a><p style="margin: 0; font-size: 13px; line-height: 1.5; color: #6B675F;">Pagando, tudo continua como está.</p></div><div style="padding: 18px 28px; border-top: 1px solid #EEEAE2; background: #FAF8F4; font-size: 12px; color: #6B675F; display: flex; flex-direction: column; gap: 4px"><span>Academia Leão · Tijuca · Rua Conde de Bonfim, 600 · WhatsApp (21) 97000-1200</span><span>Você recebe este e-mail porque é aluno ou responsável na Academia Leão.</span><span>feito com ctcore</span></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 760, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

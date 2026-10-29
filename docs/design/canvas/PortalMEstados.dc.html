@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Portal › Estados: vazio, erro e carregando</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="position: relative; min-height: 100vh; background: #F4F2ED; color: #1B1B1F; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; overflow: hidden"><dc-import name="PortalMTopo" perfil="aluno" hint-size="390px,56px"></dc-import><div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 88px"><div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;"><span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B675F">Padrão do portal</span><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 32px; line-height: 1; text-transform: uppercase">Estados</h1></div><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: space-between; gap: 12px"><h3 style="margin: 0; font-size: 15px; font-weight: 600">Vazio</h3></div><div style="padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #1D5E34; flex-shrink: 0"><path d="m5 12.5 4.5 4.5L19 7.5"></path></svg><span style="font-weight: 600">Tudo em dia</span><span style="font-size: 12px; color: #6B675F">A próxima mensalidade vence em 10/11.</span></div></section><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: space-between; gap: 12px"><h3 style="margin: 0; font-size: 15px; font-weight: 600">Erro</h3></div><div style="padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #9C2516; flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg><span style="font-weight: 600">Não conseguimos carregar</span><span style="font-size: 12px; color: #6B675F">Nada foi alterado. Confira a conexão.</span><button type="button" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #1B1B1F; background: #1B1B1F; color: #FFFFFF; font-size: 13px; font-weight: 500; white-space: nowrap; text-decoration: none; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"></path><path d="M19.5 4.5v4h-4"></path></svg>Tentar de novo</button></div></section><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: space-between; gap: 12px"><h3 style="margin: 0; font-size: 15px; font-weight: 600">Carregando</h3></div><div style="padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center"><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;width: 100%"><span style="display: block; height: 12px; width: 80%; border-radius: 6px; background: #E6E2DA"></span><span style="display: block; height: 12px; width: 55%; border-radius: 6px; background: #E6E2DA"></span><span style="display: block; height: 12px; width: 70%; border-radius: 6px; background: #E6E2DA"></span></div></div></section></div><span style="font-size: 11px; color: #8C877D; text-align: center">feito com ctcore</span></div><div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 10"><dc-import name="PortalMTabs" aba="financeiro" hint-size="390px,64px"></dc-import></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

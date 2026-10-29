@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Portal › Financeiro › Pix (QR code e contador)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="position: relative; min-height: 100vh; background: #F4F2ED; color: #1B1B1F; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; overflow: hidden"><dc-import name="PortalMTopo" perfil="aluno" hint-size="390px,56px"></dc-import><div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 88px"><div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;"><span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B675F">Pagar com Pix</span><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 32px; line-height: 1; text-transform: uppercase">R$ 341,70</h1></div><span style="font-size: 13px; color: #6B675F">R$ 340,00 + taxa de R$ 1,70</span><div style="align-self: center; width: 220px; height: 220px; border: 1px solid #E3DFD6; border-radius: 12px; background: repeating-conic-gradient(#1B1B1F 0 25%, #FFFFFF 0 50%) 0 0/22px 22px"></div><div style="display: flex; align-items: center; justify-content: center; gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg><span style="font-weight: 600">Vale por 29:41</span></div><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 8px; border: 1px solid #1B1B1F; background: #1B1B1F; color: #FFFFFF; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5H4v12h4"></path></svg>Copiar código Pix</button><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #1B1B1F; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"></path><path d="M19.5 4.5v4h-4"></path></svg>Gerar novo</button><div role="status" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; background: #E9EEF7; border: 1px solid #C9D5EA; color: #23427A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 11v5.5M12 7.5v.01"></path></svg><span style="flex-grow: 1; line-height: 1.45">Esta tela confirma sozinha quando o pagamento chegar.</span></div></div><span style="font-size: 11px; color: #8C877D; text-align: center">feito com ctcore</span></div><div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 10"></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

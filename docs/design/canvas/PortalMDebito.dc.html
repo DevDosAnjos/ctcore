@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Portal › Financeiro › Débito automático</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="position: relative; min-height: 100vh; background: #F4F2ED; color: #1B1B1F; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; overflow: hidden"><dc-import name="PortalMTopo" perfil="aluno" hint-size="390px,56px"></dc-import><div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 88px"><div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;"><a href="PortalMFinanceiro.dc.html" style="display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: #6B675F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="m15 6-6 6 6 6"></path></svg>Voltar</a><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;"><span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B675F">Financeiro</span><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 32px; line-height: 1; text-transform: uppercase">Débito automático</h1></div><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><rect x="3" y="6" width="18" height="12" rx="2"></rect><path d="M3 10h18M7 15h3"></path></svg><div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;flex-grow: 1"><span style="font-weight: 600">Cartão final 7730</span><span style="font-size: 12px; color: #6B675F">Visa · validade 08/2029</span></div><span style="display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; background: #E2EFE5; color: #1D5E34; font-size: 12px; font-weight: 500; white-space: nowrap">Ligado</span></div></section><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0;"><div style="display: flex; flex-direction: column; gap: 0px"><div style="display: block; padding: 12px 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;flex-grow: 1"><span style="font-weight: 600">Jiu-Jitsu · out/2026</span><span style="font-size: 12px; color: #6B675F">será debitada em 10/10</span></div><span style="font-weight: 600">R$ 186,30</span></div></div><div style="display: block; padding: 12px 0; border-top: 1px solid #EEEAE2;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;flex-grow: 1"><span style="font-weight: 600">Muay Thai · out/2026</span><span style="font-size: 12px; color: #6B675F">será debitada em 10/10</span></div><span style="font-weight: 600">R$ 165,60</span></div></div></div></section><p style="margin: 0; font-size: 13px; line-height: 1.5; color: #6B675F;">Se o débito não passar, tentamos de novo em 3 e em 6 dias e avisamos por e-mail.</p><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid #D9D4C9; background: #FFFFFF; color: #1B1B1F; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer">Trocar cartão</button><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid #E2B3A8; background: #FFFFFF; color: #9C2516; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer">Desligar débito automático</button></div><span style="font-size: 11px; color: #8C877D; text-align: center">feito com ctcore</span></div><div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 10"><dc-import name="PortalMTabs" aba="financeiro" hint-size="390px,64px"></dc-import></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

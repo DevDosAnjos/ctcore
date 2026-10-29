@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>E-mail › Assinatura em atraso</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #E9E6DF; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1B1F"><div style="background: #FFFFFF; border-bottom: 1px solid #E3DFD6; padding: 14px 20px; font-size: 13px; display: flex; flex-direction: column; gap: 3px"><span><strong>ctcore</strong> &lt;conta@ctcore.com.br&gt;</span><span style="color: #6B675F">Para: Marcos Leão &lt;marcos@academialeao.example&gt;</span><span style="font-size: 15px; font-weight: 600; margin-top: 4px">A fatura do ctcore está em aberto</span><span style="color: #8C877D">Em 7 dias a gestão fica só para consulta</span></div><div style="width: 600px; margin: 24px auto; background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden"><div style="padding: 20px 28px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #EEEAE2"><span style="width: 32px; height: 32px; border-radius: 8px; background: #1B1B1F; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 15px">ct</span><span style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 22px; letter-spacing: 0.02em">ctcore</span></div><div style="padding: 28px; display: flex; flex-direction: column; gap: 16px; font-size: 15px; line-height: 1.6"><p style="margin: 0; font-size: 15px; line-height: 1.5;">Oi, Marcos!</p><p style="margin: 0; font-size: 15px; line-height: 1.5;">A fatura de <strong>R$ 189,00</strong>, que venceu em 15/10/2026, ainda está em aberto. Por enquanto tudo funciona normalmente.</p><div role="status" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; background: #FCF3DD; border: 1px solid #EED9A6; color: #6B4400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5v5.5M12 16.5v.01"></path></svg><span style="flex-grow: 1; line-height: 1.45">Se a fatura não for paga até <strong>22/10</strong>, a gestão fica só para consulta. O portal dos alunos continua funcionando, e os pagamentos deles continuam caindo na conta da unidade.</span></div><p style="margin: 0; font-size: 15px; line-height: 1.5;">Pagando, o acesso completo volta na hora.</p><a href="#" style="display: block; text-align: center; height: 52px; line-height: 52px; border-radius: 10px; background: #1B1B1F; color: #FFFFFF; font-size: 16px; font-weight: 600">Pagar R$ 189,00</a></div><div style="padding: 18px 28px; border-top: 1px solid #EEEAE2; background: #FAF8F4; font-size: 12px; color: #6B675F; display: flex; flex-direction: column; gap: 4px"><span>Você recebe este e-mail como Coordenador da Academia Leão.</span><span>Dúvidas? Responda a este e-mail ou abra um chamado pela Ajuda.</span><span>ctcore · gestão para academias de artes marciais</span></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 760, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

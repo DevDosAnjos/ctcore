@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Portal › Instalar o app</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="position: relative; min-height: 100vh; background: #F4F2ED; color: #1B1B1F; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; overflow: hidden"><dc-import name="PortalMTopo" perfil="aluno" hint-size="390px,56px"></dc-import><div style="display: flex; flex-direction: column; gap: 14px; padding: 18px 16px 88px"><div style="display: flex; flex-direction: column; gap: 14px; min-width: 0;"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0;"><span style="font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #6B675F">App</span><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 32px; line-height: 1; text-transform: uppercase">Instale o app</h1></div><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><span style="width: 56px; height: 56px; border-radius: 14px; background: #C8462C; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 24px">AL</span><div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="font-weight: 600">Academia Leão</span><span style="font-size: 12px; color: #6B675F">app.ctcore.com.br · sem loja de apps</span></div></div><div style="display: flex; flex-direction: column; gap: 10px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;"><span style="width: 24px; height: 24px; border-radius: 50%; background: #ECE9E2; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">1</span><span>Toque em Compartilhar (iPhone) ou no menu ⋮ (Android).</span></div><div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;"><span style="width: 24px; height: 24px; border-radius: 50%; background: #ECE9E2; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">2</span><span>Escolha "Adicionar à tela inicial".</span></div><div style="display: flex; align-items: center; justify-content: flex-start; gap: 10px;"><span style="width: 24px; height: 24px; border-radius: 50%; background: #ECE9E2; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">3</span><span>Abra pelo ícone: a carteirinha funciona até sem internet.</span></div></div><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 8px; border: 1px solid #1B1B1F; background: #1B1B1F; color: #FFFFFF; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer">Adicionar à tela inicial</button><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #1B1B1F; font-size: 14px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer">Agora não</button></section></div><span style="font-size: 11px; color: #8C877D; text-align: center">feito com ctcore</span></div><div style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 10"></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

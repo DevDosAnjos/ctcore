@@ -1,0 +1,35 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{margin:0}*{box-sizing:border-box}a{text-decoration:none;color:inherit}button,input,select,textarea{font-family:inherit}</style></head>
+<body><div id="root"></div>
+<script>
+class DCLogic { setState(x){ this.state = Object.assign({}, this.state, x); } }
+const cache = {};
+async function load(f){ if(cache[f]) return cache[f]; const t = await (await fetch('./'+f)).text();
+  const d = new DOMParser().parseFromString(t,'text/html'); const x = d.querySelector('x-dc');
+  const sc = d.querySelector('script[data-dc-script]'); const props = JSON.parse(sc.getAttribute('data-props'));
+  const C = new Function('DCLogic', sc.textContent + '\nreturn Component;')(DCLogic);
+  const helmet = x.querySelector('helmet'); if (helmet) { helmet.querySelectorAll('style').forEach(s=>document.head.appendChild(s.cloneNode(true))); helmet.remove(); }
+  return cache[f] = {x, props, C}; }
+function get(ctx,p){ return p.split('.').reduce((o,k)=>o==null?undefined:o[k], ctx); }
+function val(s,ctx){ const m = /^\{\{\s*(.*?)\s*\}\}$/.exec(s.trim()); if(!m) return s; const e=m[1]; if(e==='true') return true; if(e==='false') return false; return get(ctx,e); }
+function interp(s,ctx){ return s.replace(/\{\{\s*([\w$.]+)\s*\}\}/g,(m,p)=>{const v=get(ctx,p); return (v==null||typeof v==='function')?'':String(v);}); }
+async function render(n, ctx, out){
+  if(n.nodeType===3){ out.appendChild(document.createTextNode(interp(n.textContent,ctx))); return; }
+  if(n.nodeType!==1) return;
+  const tag = n.tagName.toLowerCase();
+  if(tag==='sc-if'){ if(val(n.getAttribute('value'),ctx)) for(const c of n.childNodes) await render(c,ctx,out); return; }
+  if(tag==='sc-for'){ const l = val(n.getAttribute('list'),ctx)||[]; const as=n.getAttribute('as'); for(const it of l){ const c2=Object.assign({},ctx,{[as]:it}); for(const c of n.childNodes) await render(c,c2,out);} return; }
+  if(tag==='dc-import'){ const name=n.getAttribute('name'); const pr={}; for(const a of n.attributes) if(!['name','hint-size'].includes(a.name)) pr[a.name]=interp(a.value,ctx);
+    await mount(name+'.dc.html', pr, out); return; }
+  const isSvg = tag==='svg' || (out.namespaceURI==='http://www.w3.org/2000/svg'); const el = isSvg ? document.createElementNS('http://www.w3.org/2000/svg', n.tagName) : document.createElement(tag);
+  for(const a of n.attributes){ if(/^on/i.test(a.name)) continue; let v=interp(a.value,ctx); if(a.name==='checked'||a.name==='disabled'){ if(v&&v!=='false') el.setAttribute(a.name,''); continue;} el.setAttribute(a.name,v); }
+  for(const c of n.childNodes) await render(c,ctx,el);
+  out.appendChild(el);
+}
+async function mount(f, pr, out){ const {x,props,C}=await load(f); const defs={}; for(const k in props) if(k[0]!=='$'&&props[k]&&'default' in props[k]) defs[k]=props[k].default;
+  for(const k in pr){ let v=pr[k]; if(v==='true') v=true; else if(v==='false') v=false; defs[k]=v; }
+  const c=new C(); c.props=defs; const vals=c.renderVals(); for(const ch of x.childNodes) await render(ch, vals, out); }
+const f = new URLSearchParams(location.search).get('f');
+mount(f, {}, document.getElementById('root')).then(()=>{ document.body.setAttribute('data-done','1'); }).catch(e=>{ document.body.innerHTML='<pre>'+e.stack+'</pre>'; document.body.setAttribute('data-done','1'); });
+</script></body></html>

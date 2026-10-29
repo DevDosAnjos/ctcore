@@ -25,3 +25,6 @@ frontend/test-results/
 
 # Logs da aplicação (D4)
 backend/logs/
+
+# Prints gerados a partir do canvas de referência
+docs/design/prints/

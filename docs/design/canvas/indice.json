@@ -1,0 +1,2914 @@
+[
+ {
+  "arquivo": "Main.dc.html",
+  "titulo": "Início › Administrador",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "InicioCoordenador.dc.html",
+  "titulo": "Início › Coordenador · Todas as unidades",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1240
+ },
+ {
+  "arquivo": "ProfessorInicio.dc.html",
+  "titulo": "Início › Professor",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1200
+ },
+ {
+  "arquivo": "MainEscuro.dc.html",
+  "titulo": "Início › Administrador › Tema escuro",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "Busca.dc.html",
+  "titulo": "Busca global (Ctrl+K)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "BuscaVazia.dc.html",
+  "titulo": "Busca global (Ctrl+K) › Estado: campo vazio",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "Notificacoes.dc.html",
+  "titulo": "Sino › Notificações",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "FaixasTopo.dc.html",
+  "titulo": "Barra superior › Faixas de aviso",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "EscolhaOrganizacao.dc.html",
+  "titulo": "Entrar › Janela: Escolher organização e área",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "EstadoSemAcesso.dc.html",
+  "titulo": "Financeiro › Estado: sem permissão (Professor)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Topbar.dc.html",
+  "titulo": "Barra superior (componente)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1192,
+  "altura": 420
+ },
+ {
+  "arquivo": "Sidebar.dc.html",
+  "titulo": "Menu lateral (componente)",
+  "pagina": "Desktop · Gestão",
+  "largura": 248,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Alunos.dc.html",
+  "titulo": "Pessoas › Alunos",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "EstadoCarregando.dc.html",
+  "titulo": "Pessoas › Alunos › Estado: carregando",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "EstadoSemResultados.dc.html",
+  "titulo": "Pessoas › Alunos › Estado: sem resultados",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ExportarAlunos.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Exportar CSV",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoDetalhes.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha: Resumo",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoMatricula.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha: Matrícula e modalidades",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoFinanceiro.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha: Financeiro",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoGraduacoes.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha: Graduações",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoResponsaveis.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha: Responsáveis",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoHistorico.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha: Histórico",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoEditar.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Editar dados pessoais",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "TrocarTurma.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Trocar turma",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "TrocarPlano.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Trocar plano",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "TransferirModalidade.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Transferir para outra unidade",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "EncerrarModalidade.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Encerrar modalidade",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoInativar.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Inativar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoReativar.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Reativar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "AlunoAnonimizar.dc.html",
+  "titulo": "Pessoas › Alunos › Janela: Anonimizar aluno",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "FichaProfessor.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha (visão do Professor)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "ResponsavelDesligar.dc.html",
+  "titulo": "Pessoas › Alunos › Ficha › Janela: Desligar responsável financeiro",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "MatriculaAluno.dc.html",
+  "titulo": "Pessoas › Alunos › Nova matrícula › Etapa 1: Aluno e responsáveis",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "MatriculaModalidades.dc.html",
+  "titulo": "Pessoas › Alunos › Nova matrícula › Etapa 2: Modalidades",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "MatriculaVencimento.dc.html",
+  "titulo": "Pessoas › Alunos › Nova matrícula › Etapa 3: Vencimento e primeira cobrança",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1080
+ },
+ {
+  "arquivo": "MatriculaResumo.dc.html",
+  "titulo": "Pessoas › Alunos › Nova matrícula › Etapa 4: Resumo",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "MatriculaConcluida.dc.html",
+  "titulo": "Pessoas › Alunos › Nova matrícula › Etapa 5: Conclusão",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PedidosPortal.dc.html",
+  "titulo": "Pessoas › Pedidos › Pedidos do portal",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PedidoRecusar.dc.html",
+  "titulo": "Pessoas › Pedidos › Janela: Recusar pedido",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "AguardandoAprovacao.dc.html",
+  "titulo": "Pessoas › Pedidos › Aguardando aprovação (autocadastro)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PedidoEncerramentoRecusar.dc.html",
+  "titulo": "Pessoas › Pedidos › Janela: Recusar pedido de encerramento",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "PedidoAprovadoFluxo.dc.html",
+  "titulo": "Pessoas › Pedidos › Aprovar troca de turma (fluxo já preenchido)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "Professores.dc.html",
+  "titulo": "Pessoas › Professores",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ProfessorPainel.dc.html",
+  "titulo": "Pessoas › Professores › Painel do professor",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ProfessorNovo.dc.html",
+  "titulo": "Pessoas › Professores › Janela: Novo professor",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "ProfessorInativar.dc.html",
+  "titulo": "Pessoas › Professores › Janela: Inativar professor",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ProfessorModalidadeRecusa.dc.html",
+  "titulo": "Pessoas › Professores › Janela: Modalidade não pode sair",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Agenda.dc.html",
+  "titulo": "Operação › Agenda",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "AgendaPainel.dc.html",
+  "titulo": "Operação › Agenda › Painel da aula",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "AulaEditar.dc.html",
+  "titulo": "Operação › Agenda › Janela: Editar aula",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "AulaCancelar.dc.html",
+  "titulo": "Operação › Agenda › Janela: Cancelar aula",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "AulaAvulsa.dc.html",
+  "titulo": "Operação › Agenda › Janela: Nova aula avulsa",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "DiasSemAula.dc.html",
+  "titulo": "Operação › Agenda › Dias sem aula",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "DiaSemAulaNovo.dc.html",
+  "titulo": "Operação › Agenda › Janela: Novo dia sem aula",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1080
+ },
+ {
+  "arquivo": "AgendaPainelProfessor.dc.html",
+  "titulo": "Operação › Agenda › Painel da aula (visão do Professor)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "AulaEditarSeguintes.dc.html",
+  "titulo": "Operação › Agenda › Janela: Editar aula (esta e as seguintes)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "AulaCorrigir.dc.html",
+  "titulo": "Operação › Agenda › Janela: Corrigir professor de aula concluída",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "AulaAvisarTurma.dc.html",
+  "titulo": "Operação › Agenda › Janela: Avisar turma (comunicado já preenchido)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "Turmas.dc.html",
+  "titulo": "Operação › Turmas",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "TurmaPainel.dc.html",
+  "titulo": "Operação › Turmas › Painel da turma",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "TurmaEditar.dc.html",
+  "titulo": "Operação › Turmas › Janela: Turma",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "TurmaTitularInativo.dc.html",
+  "titulo": "Operação › Turmas › Janela: Turma com titular inativo",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "TurmaDesativar.dc.html",
+  "titulo": "Operação › Turmas › Janela: Desativar turma",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Experimentais.dc.html",
+  "titulo": "Operação › Aulas experimentais",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "EstadoVazio.dc.html",
+  "titulo": "Operação › Aulas experimentais › Estado: vazio",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ExperimentalAgendar.dc.html",
+  "titulo": "Operação › Aulas experimentais › Janela: Agendar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "ExperimentalPainel.dc.html",
+  "titulo": "Operação › Aulas experimentais › Painel da experimental",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Graduacoes.dc.html",
+  "titulo": "Operação › Graduações",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "GraduacaoRegistrar.dc.html",
+  "titulo": "Operação › Graduações › Janela: Registrar graduação",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "GraduacaoLote.dc.html",
+  "titulo": "Operação › Graduações › Graduar vários alunos",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ExportarGraduacoes.dc.html",
+  "titulo": "Operação › Graduações › Janela: Exportar CSV",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Mensalidades.dc.html",
+  "titulo": "Financeiro › Cobranças",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "CobrancasEscuro.dc.html",
+  "titulo": "Financeiro › Cobranças › Tema escuro",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "CobrancaPainel.dc.html",
+  "titulo": "Financeiro › Cobranças › Painel da cobrança",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "SomenteLeitura.dc.html",
+  "titulo": "Financeiro › Cobranças › Estado: somente leitura",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1440
+ },
+ {
+  "arquivo": "EstadoErro.dc.html",
+  "titulo": "Financeiro › Cobranças › Estado: erro",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PagamentoRegistrar.dc.html",
+  "titulo": "Financeiro › Cobranças › Janela: Registrar pagamento",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "Renegociar.dc.html",
+  "titulo": "Financeiro › Cobranças › Janela: Renegociar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "CobrancaCancelar.dc.html",
+  "titulo": "Financeiro › Cobranças › Janela: Cancelar cobrança",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "CobrancaAvulsa.dc.html",
+  "titulo": "Financeiro › Cobranças › Janela: Nova cobrança avulsa",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "GerarProximas.dc.html",
+  "titulo": "Financeiro › Cobranças › Janela: Gerar próximas mensalidades",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "Estornar.dc.html",
+  "titulo": "Financeiro › Cobranças › Janela: Estornar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "ExportarMensalidades.dc.html",
+  "titulo": "Financeiro › Cobranças › Janela: Exportar CSV",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1320
+ },
+ {
+  "arquivo": "Fechamento.dc.html",
+  "titulo": "Financeiro › Cobranças › Prévia da geração",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1120
+ },
+ {
+  "arquivo": "Atrasados.dc.html",
+  "titulo": "Financeiro › Cobranças › Em atraso",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "EmConferencia.dc.html",
+  "titulo": "Financeiro › Cobranças › Em conferência",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "RecebimentosDia.dc.html",
+  "titulo": "Financeiro › Cobranças › Recebimentos do dia",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ComprovanteVarias.dc.html",
+  "titulo": "Financeiro › Cobranças › Em conferência › Janela: Comprovante de várias cobranças",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Financeiro.dc.html",
+  "titulo": "Financeiro › Visão geral",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "Planos.dc.html",
+  "titulo": "Financeiro › Planos e benefícios",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PlanosRegras.dc.html",
+  "titulo": "Financeiro › Planos e benefícios › Janela: Plano",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "BeneficiosLista.dc.html",
+  "titulo": "Financeiro › Planos e benefícios › Benefícios",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "BeneficioConceder.dc.html",
+  "titulo": "Financeiro › Planos e benefícios › Janela: Conceder benefício",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1080
+ },
+ {
+  "arquivo": "BeneficioEncerrar.dc.html",
+  "titulo": "Financeiro › Planos e benefícios › Janela: Encerrar benefício",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PlanoDesativar.dc.html",
+  "titulo": "Financeiro › Planos e benefícios › Janela: Desativar plano",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PlanoDesativado.dc.html",
+  "titulo": "Financeiro › Planos e benefícios › Plano desativado (reativar)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "BeneficioSubstituir.dc.html",
+  "titulo": "Financeiro › Planos e benefícios › Janela: Substituir benefício",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Comunicados.dc.html",
+  "titulo": "Comunicação › Comunicados",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ComunicadoNovo.dc.html",
+  "titulo": "Comunicação › Comunicados › Novo comunicado",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1160
+ },
+ {
+  "arquivo": "ComunicadoCancelar.dc.html",
+  "titulo": "Comunicação › Comunicados › Janela: Cancelar agendado",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ComunicadoOrganizacao.dc.html",
+  "titulo": "Comunicação › Novo comunicado para a organização inteira",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1080
+ },
+ {
+  "arquivo": "ComunicadoLimite.dc.html",
+  "titulo": "Comunicação › Comunicados › Estado: limite diário atingido",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Relatorios.dc.html",
+  "titulo": "Relatórios › Financeiro",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1260
+ },
+ {
+  "arquivo": "RelatoriosAlunos.dc.html",
+  "titulo": "Relatórios › Alunos",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1180
+ },
+ {
+  "arquivo": "RelatoriosExperimentais.dc.html",
+  "titulo": "Relatórios › Aulas experimentais",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "RelatoriosAulas.dc.html",
+  "titulo": "Relatórios › Aulas",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "RelatorioConsolidado.dc.html",
+  "titulo": "Relatórios › Consolidado do Coordenador",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "RelatorioProfessor.dc.html",
+  "titulo": "Relatórios › Resumo do professor",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ExportarRelatorios.dc.html",
+  "titulo": "Relatórios › Janela: Exportar CSV",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1260
+ },
+ {
+  "arquivo": "ConfigAcademia.dc.html",
+  "titulo": "Configurações › Organização",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "TransferirCoordenacao.dc.html",
+  "titulo": "Configurações › Organização › Janela: Transferir coordenação",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "ConfigFaixas.dc.html",
+  "titulo": "Configurações › Faixas etárias",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigOrgContraste.dc.html",
+  "titulo": "Configurações › Organização › Estado: cor sem contraste",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigUnidades.dc.html",
+  "titulo": "Configurações › Unidades",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "UnidadeNova.dc.html",
+  "titulo": "Configurações › Unidades › Nova unidade",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "UnidadeDesativar.dc.html",
+  "titulo": "Configurações › Unidades › Janela: Desativar unidade",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "UnidadeUnica.dc.html",
+  "titulo": "Configurações › Unidades › Janela: Única unidade não pode ser desativada",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigUnidade.dc.html",
+  "titulo": "Configurações › Unidade › Dados",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "ConfigPagamentos.dc.html",
+  "titulo": "Configurações › Unidade › Pagamentos",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "PagamentosDesconectado.dc.html",
+  "titulo": "Configurações › Unidade › Pagamentos › Estado: Mercado Pago desconectado",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "LembretesAuto.dc.html",
+  "titulo": "Configurações › Unidade › Lembretes",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigLinks.dc.html",
+  "titulo": "Configurações › Unidade › Links",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigPermProf.dc.html",
+  "titulo": "Configurações › Unidade › Permissões do Professor",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ModalidadesOferecidasRecusa.dc.html",
+  "titulo": "Configurações › Unidade › Modalidades oferecidas › Estado: desmarcar recusado",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "ConfigModalidades.dc.html",
+  "titulo": "Configurações › Modalidades",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ModalidadeGraduacao.dc.html",
+  "titulo": "Configurações › Modalidades › Janela: Sistema de graduação",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "ModalidadeDesativar.dc.html",
+  "titulo": "Configurações › Modalidades › Janela: Não é possível desativar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigModalidadesAdmin.dc.html",
+  "titulo": "Configurações › Modalidades (visão do Administrador)",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigUsuarios.dc.html",
+  "titulo": "Configurações › Usuários",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "UsuarioConvidar.dc.html",
+  "titulo": "Configurações › Usuários › Janela: Convidar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PermissoesTabela.dc.html",
+  "titulo": "Configurações › Usuários › Tabela de permissões",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "ConfigTermos.dc.html",
+  "titulo": "Configurações › Termos",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConfigTextos.dc.html",
+  "titulo": "Configurações › Textos",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "ConfigAssinatura.dc.html",
+  "titulo": "Configurações › Assinatura",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "AssinaturaCancelar.dc.html",
+  "titulo": "Configurações › Assinatura › Janela: Cancelar assinatura",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "Historico.dc.html",
+  "titulo": "Configurações › Auditoria",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "AuditoriaPainel.dc.html",
+  "titulo": "Configurações › Auditoria › Painel do registro",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "ImportarDados.dc.html",
+  "titulo": "Configurações › Importar e exportar",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "ImportarGraduacoes.dc.html",
+  "titulo": "Configurações › Importar e exportar › Assistente: enviar arquivo",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ImportarPagamentos.dc.html",
+  "titulo": "Configurações › Importar e exportar › Assistente: relacionar colunas",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "AlunosImportar.dc.html",
+  "titulo": "Configurações › Importar e exportar › Assistente: prévia com erros",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "ConvitesPortal.dc.html",
+  "titulo": "Configurações › Importar e exportar › Enviar convites do portal",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PacoteCompleto.dc.html",
+  "titulo": "Configurações › Importar e exportar › Janela: Gerar pacote completo",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "MinhaConta.dc.html",
+  "titulo": "Conta › Minha conta",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "DuasEtapas.dc.html",
+  "titulo": "Conta › Janela: Ativar duas etapas",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "CodigosReserva.dc.html",
+  "titulo": "Conta › Janela: Códigos de reserva",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "MinhaContaNotificacoes.dc.html",
+  "titulo": "Conta › Minha conta › Notificações",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "SuporteAcesso.dc.html",
+  "titulo": "Conta › Liberar acesso de suporte",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "FalarSuporte.dc.html",
+  "titulo": "Ajuda › Janela: Falar com o suporte",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Ajuda.dc.html",
+  "titulo": "Ajuda › Central de ajuda",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "AjudaTour.dc.html",
+  "titulo": "Ajuda › Tour no primeiro acesso",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "Novidades.dc.html",
+  "titulo": "Ajuda › Novidades",
+  "pagina": "Desktop · Gestão",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "GMInicio.dc.html",
+  "titulo": "Celular › Início (Administrador)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 960
+ },
+ {
+  "arquivo": "GMMenu.dc.html",
+  "titulo": "Celular › Menu aberto",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 1360
+ },
+ {
+  "arquivo": "GMBusca.dc.html",
+  "titulo": "Celular › Busca global (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMInicioCoord.dc.html",
+  "titulo": "Celular › Início (Coordenador, todas as unidades)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMInicioProfessor.dc.html",
+  "titulo": "Celular › Início (Professor)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 920
+ },
+ {
+  "arquivo": "GMNotificacoes.dc.html",
+  "titulo": "Celular › Sino › Notificações (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMUnidade.dc.html",
+  "titulo": "Celular › Seletor de unidade",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMConta.dc.html",
+  "titulo": "Celular › Minha conta",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAlunos.dc.html",
+  "titulo": "Celular › Pessoas › Alunos (lista em cartões)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 1020
+ },
+ {
+  "arquivo": "GMFicha.dc.html",
+  "titulo": "Celular › Pessoas › Alunos › Ficha em tela cheia",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 820
+ },
+ {
+  "arquivo": "GMAlunosFiltros.dc.html",
+  "titulo": "Celular › Pessoas › Alunos › Filtros",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMFichaMatricula.dc.html",
+  "titulo": "Celular › Ficha do aluno › Matrícula e modalidades",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMFichaFinanceiro.dc.html",
+  "titulo": "Celular › Ficha do aluno › Financeiro",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMFichaResponsaveis.dc.html",
+  "titulo": "Celular › Ficha do aluno › Responsáveis",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAlunoEditar.dc.html",
+  "titulo": "Celular › Pessoas › Alunos › Editar dados (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMEncerrar.dc.html",
+  "titulo": "Celular › Ficha do aluno › Encerrar modalidade (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAgenda.dc.html",
+  "titulo": "Celular › Operação › Agenda (lista do dia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAulaPainel.dc.html",
+  "titulo": "Celular › Operação › Agenda › Painel da aula (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAulaEditar.dc.html",
+  "titulo": "Celular › Operação › Agenda › Editar aula (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAulaCancelar.dc.html",
+  "titulo": "Celular › Operação › Agenda › Cancelar aula (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMDiasSemAula.dc.html",
+  "titulo": "Celular › Operação › Agenda › Dias sem aula",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAgendaProfessor.dc.html",
+  "titulo": "Celular › Agenda (Professor)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAulaProfessor.dc.html",
+  "titulo": "Celular › Agenda › Aula (Professor, lista simples)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMCobrancas.dc.html",
+  "titulo": "Celular › Financeiro › Cobranças (lista em cartões)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMPagamento.dc.html",
+  "titulo": "Celular › Financeiro › Cobranças › Registrar pagamento (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 920
+ },
+ {
+  "arquivo": "GMMatricula1.dc.html",
+  "titulo": "Celular › Nova matrícula › Etapa 1: Aluno e responsáveis",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMMatricula2.dc.html",
+  "titulo": "Celular › Nova matrícula › Etapa 2: Modalidades",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMMatricula4.dc.html",
+  "titulo": "Celular › Nova matrícula › Etapa 4: Resumo e primeira cobrança",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 800
+ },
+ {
+  "arquivo": "GMProfessores.dc.html",
+  "titulo": "Celular › Pessoas › Professores",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMProfessorPainel.dc.html",
+  "titulo": "Celular › Pessoas › Professores › Painel (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMPedidos.dc.html",
+  "titulo": "Celular › Pessoas › Pedidos",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMPedidoRecusar.dc.html",
+  "titulo": "Celular › Pessoas › Pedidos › Recusar encerramento",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMTurmas.dc.html",
+  "titulo": "Celular › Operação › Turmas",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMTurmaPainel.dc.html",
+  "titulo": "Celular › Operação › Turmas › Painel (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMExperimentais.dc.html",
+  "titulo": "Celular › Operação › Aulas experimentais",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMExperimental.dc.html",
+  "titulo": "Celular › Aulas experimentais › Agendar (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMGraduacoes.dc.html",
+  "titulo": "Celular › Operação › Graduações",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMGraduar.dc.html",
+  "titulo": "Celular › Graduações › Registrar (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMFinanceiro.dc.html",
+  "titulo": "Celular › Financeiro › Visão geral",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 880
+ },
+ {
+  "arquivo": "GMCobrancaPainel.dc.html",
+  "titulo": "Celular › Financeiro › Cobranças › Painel (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMRenegociar.dc.html",
+  "titulo": "Celular › Financeiro › Renegociar (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMConferencia.dc.html",
+  "titulo": "Celular › Financeiro › Em conferência",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMPlanos.dc.html",
+  "titulo": "Celular › Financeiro › Planos e benefícios",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMComunicados.dc.html",
+  "titulo": "Celular › Comunicação › Comunicados",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMNovoComunicado.dc.html",
+  "titulo": "Celular › Comunicação › Novo comunicado (tela cheia)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMRelatorios.dc.html",
+  "titulo": "Celular › Relatórios",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMConfig.dc.html",
+  "titulo": "Celular › Configurações",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMConfigUnidade.dc.html",
+  "titulo": "Celular › Configurações › Unidade",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMUsuarios.dc.html",
+  "titulo": "Celular › Configurações › Usuários",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAuditoria.dc.html",
+  "titulo": "Celular › Configurações › Auditoria",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMAssinatura.dc.html",
+  "titulo": "Celular › Configurações › Assinatura (Coordenador)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMSomenteLeitura.dc.html",
+  "titulo": "Celular › Estado: somente leitura (assinatura em atraso)",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMSemAcesso.dc.html",
+  "titulo": "Celular › Estado: área indisponível para o perfil",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "GMErro.dc.html",
+  "titulo": "Celular › Estado: erro ao carregar",
+  "pagina": "Celular · Gestão",
+  "largura": 360,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalNav.dc.html",
+  "titulo": "Portal › Barra superior (componente)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalInicio.dc.html",
+  "titulo": "Portal › Início (aluno com cobrança vencida)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1080
+ },
+ {
+  "arquivo": "PortalEmDia.dc.html",
+  "titulo": "Portal › Início (tudo em dia)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalCarteirinha.dc.html",
+  "titulo": "Portal › Carteirinha",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalConfirmarModalidade.dc.html",
+  "titulo": "Portal › Início › Janela: Confirmar nova modalidade",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalResponsavel.dc.html",
+  "titulo": "Portal › Início (responsável, cartão por filho)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1080
+ },
+ {
+  "arquivo": "PortalFamilia.dc.html",
+  "titulo": "Portal › Financeiro › Toda a família",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "PortalCarteirinhaFilhos.dc.html",
+  "titulo": "Portal › Carteirinha (responsável, um cartão por filho)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalTermo.dc.html",
+  "titulo": "Portal › Aceite do termo (antes de tudo)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalConta.dc.html",
+  "titulo": "Portal › Minha conta",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalExcluir.dc.html",
+  "titulo": "Portal › Minha conta › Janela: Excluir minha conta",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "PortalTermoFilhos.dc.html",
+  "titulo": "Portal › Aceite do termo (responsável com 2 filhos)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalTrocarEmail.dc.html",
+  "titulo": "Portal › Minha conta › Janela: Trocar e-mail",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalAgenda.dc.html",
+  "titulo": "Portal › Agenda (semana)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalFinanceiro.dc.html",
+  "titulo": "Portal › Financeiro",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalPagamento.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Pagar (total por meio)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalPix.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Pix com QR code e contador",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalBoleto.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Boleto",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalPagamentoOk.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Pagamento confirmado",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalPagamentoErro.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Cartão recusado",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalPixChave.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Pix na chave com comprovante",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalDebito.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Débito automático",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PortalComprovanteVarias.dc.html",
+  "titulo": "Portal › Financeiro › Janela: Comprovante para várias cobranças",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1040
+ },
+ {
+  "arquivo": "PortalAvisos.dc.html",
+  "titulo": "Portal › Avisos",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalAvisoAberto.dc.html",
+  "titulo": "Portal › Avisos › Aviso aberto",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalInfo.dc.html",
+  "titulo": "Portal › Minhas informações",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1140
+ },
+ {
+  "arquivo": "PortalPedidos.dc.html",
+  "titulo": "Portal › Minhas informações › Pedidos",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalEncerrar.dc.html",
+  "titulo": "Portal › Minhas informações › Janela: Solicitar encerramento",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalPedidoTurma.dc.html",
+  "titulo": "Portal › Minhas informações › Janela: Pedir troca de turma",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalPedidoModalidade.dc.html",
+  "titulo": "Portal › Minhas informações › Janela: Pedir nova modalidade",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalPedidoPlano.dc.html",
+  "titulo": "Portal › Minhas informações › Janela: Pedir troca de plano",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalPedidoBloqueado.dc.html",
+  "titulo": "Portal › Minhas informações › Janela: Pedido indisponível",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalRevogarImagem.dc.html",
+  "titulo": "Portal › Minhas informações › Janela: Revogar uso de imagem",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalReduzido.dc.html",
+  "titulo": "Portal › Portal reduzido (aluno Inativo)",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalReduzidoInfo.dc.html",
+  "titulo": "Portal › Portal reduzido › Minhas informações",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalEstados.dc.html",
+  "titulo": "Portal › Estados: carregando, vazio, erro e sem acesso",
+  "pagina": "Desktop · Portal do aluno",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalMTopo.dc.html",
+  "titulo": "Portal › Barra superior (componente)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMTabs.dc.html",
+  "titulo": "Portal › Abas inferiores (componente)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMInicio.dc.html",
+  "titulo": "Portal › Início (aluno)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 1120
+ },
+ {
+  "arquivo": "PortalMTermo.dc.html",
+  "titulo": "Portal › Aceite do termo",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 800
+ },
+ {
+  "arquivo": "PortalMConfirmarModalidade.dc.html",
+  "titulo": "Portal › Início › Confirmar nova modalidade",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMResponsavel.dc.html",
+  "titulo": "Portal › Início (responsável)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMFamilia.dc.html",
+  "titulo": "Portal › Financeiro › Toda a família",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMAgenda.dc.html",
+  "titulo": "Portal › Agenda (lista do dia)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMFinanceiro.dc.html",
+  "titulo": "Portal › Financeiro",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 920
+ },
+ {
+  "arquivo": "PortalMPagamento.dc.html",
+  "titulo": "Portal › Financeiro › Pagar (escolha do meio)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 920
+ },
+ {
+  "arquivo": "PortalMPix.dc.html",
+  "titulo": "Portal › Financeiro › Pix (QR code e contador)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMBoleto.dc.html",
+  "titulo": "Portal › Financeiro › Boleto",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMPagamentoOk.dc.html",
+  "titulo": "Portal › Financeiro › Pagamento confirmado",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMCartaoRecusado.dc.html",
+  "titulo": "Portal › Financeiro › Cartão recusado",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMPixChave.dc.html",
+  "titulo": "Portal › Financeiro › Pix na chave com comprovante",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMDebito.dc.html",
+  "titulo": "Portal › Financeiro › Débito automático",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMAvisos.dc.html",
+  "titulo": "Portal › Avisos",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMAvisoAberto.dc.html",
+  "titulo": "Portal › Avisos › Aviso aberto",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMInfo.dc.html",
+  "titulo": "Portal › Minhas informações",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 1260
+ },
+ {
+  "arquivo": "PortalMCarteirinha.dc.html",
+  "titulo": "Portal › Carteirinha › Estado: sem conexão",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMCarteirinhaOk.dc.html",
+  "titulo": "Portal › Carteirinha",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMPedidos.dc.html",
+  "titulo": "Portal › Minhas informações › Pedidos",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMPedidoTurma.dc.html",
+  "titulo": "Portal › Minhas informações › Pedir troca de turma",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMEncerrar.dc.html",
+  "titulo": "Portal › Minhas informações › Solicitar encerramento",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMEditar.dc.html",
+  "titulo": "Portal › Minhas informações › Editar contato (tela cheia)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 840
+ },
+ {
+  "arquivo": "PortalMInstalar.dc.html",
+  "titulo": "Portal › Instalar o app",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMPush.dc.html",
+  "titulo": "Portal › Pedido de permissão de push",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PortalMConta.dc.html",
+  "titulo": "Portal › Minha conta",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PortalMExcluir.dc.html",
+  "titulo": "Portal › Minha conta › Excluir minha conta",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 840
+ },
+ {
+  "arquivo": "PortalMReduzido.dc.html",
+  "titulo": "Portal › Portal reduzido (aluno Inativo)",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 860
+ },
+ {
+  "arquivo": "PortalMEstados.dc.html",
+  "titulo": "Portal › Estados: vazio, erro e carregando",
+  "pagina": "Celular · Portal do aluno",
+  "largura": 390,
+  "altura": 820
+ },
+ {
+  "arquivo": "Login.dc.html",
+  "titulo": "Entrar › Login",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "LoginDuasEtapas.dc.html",
+  "titulo": "Entrar › Verificação em duas etapas",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PrimeiroAcesso.dc.html",
+  "titulo": "Entrar › Criar senha pelo convite",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "RecuperarSenha.dc.html",
+  "titulo": "Entrar › Recuperar senha",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "NovaSenha.dc.html",
+  "titulo": "Entrar › Nova senha",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "LoginTravado.dc.html",
+  "titulo": "Entrar › Login › Estado: e-mail travado por 15 minutos",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "LoginCodigoReserva.dc.html",
+  "titulo": "Entrar › Verificação em duas etapas › Usar código de reserva",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PrimeiroAcessoConta.dc.html",
+  "titulo": "Entrar › Aceitar convite com a conta que já existe",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "ConviteVencido.dc.html",
+  "titulo": "Entrar › Estado: convite vencido ou já usado",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "LinkSenhaVencido.dc.html",
+  "titulo": "Entrar › Recuperar senha › Estado: link vencido",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "SiteInicio.dc.html",
+  "titulo": "Site › Início",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1800
+ },
+ {
+  "arquivo": "SiteFuncionalidades.dc.html",
+  "titulo": "Site › Funcionalidades",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "SitePrecos.dc.html",
+  "titulo": "Site › Preços",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1180
+ },
+ {
+  "arquivo": "SiteContato.dc.html",
+  "titulo": "Site › Contato",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "SiteTermos.dc.html",
+  "titulo": "Site › Termos de uso",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "SitePrivacidade.dc.html",
+  "titulo": "Site › Política de privacidade",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "SiteRecibo.dc.html",
+  "titulo": "Site › Conferir recibo",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "SiteAcademias.dc.html",
+  "titulo": "Site › Academias (diretório com lista e mapa)",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1500
+ },
+ {
+  "arquivo": "SiteDemo.dc.html",
+  "titulo": "Site › Demonstração (4 entradas)",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "DemoFaixa.dc.html",
+  "titulo": "Site › Demonstração › Faixa \"Demonstração com dados fictícios\"",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Cadastro.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 1: Seus dados",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "CadastroTelefone.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 2: Confirmar telefone (SMS)",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "CadastroEmail.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 3: Confirmar e-mail",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "CadastroPagamento.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 4: Aceite e primeira fatura",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1200
+ },
+ {
+  "arquivo": "Assistente.dc.html",
+  "titulo": "Cadastro › Assistente de configuração › Etapa 1: Organização",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "AssistentePagamento.dc.html",
+  "titulo": "Cadastro › Assistente de configuração › Etapa 7: Pagamento",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "LandingExperimental.dc.html",
+  "titulo": "Site › /aula/academia-leao-tijuca (pedido de aula experimental)",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1240
+ },
+ {
+  "arquivo": "AulaEnviada.dc.html",
+  "titulo": "Site › /aula › Pedido enviado",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "MatriculaPublica.dc.html",
+  "titulo": "Site › /matricula/academia-leao-tijuca (autocadastro)",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "LinkDesligado.dc.html",
+  "titulo": "Site › Link público desligado",
+  "pagina": "Site da plataforma · Desktop",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "LoginM.dc.html",
+  "titulo": "Entrar › Login",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "DuasEtapasM.dc.html",
+  "titulo": "Entrar › Verificação em duas etapas",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "LoginTravadoM.dc.html",
+  "titulo": "Entrar › Estado: e-mail travado por 15 minutos",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PrimeiroAcessoM.dc.html",
+  "titulo": "Entrar › Criar senha pelo convite",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "PrimeiroAcessoContaM.dc.html",
+  "titulo": "Entrar › Aceitar convite com a conta que já existe",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "ConviteVencidoM.dc.html",
+  "titulo": "Entrar › Estado: convite vencido",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "CodigoReservaM.dc.html",
+  "titulo": "Entrar › Verificação em duas etapas › Usar código de reserva",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "LinkSenhaVencidoM.dc.html",
+  "titulo": "Entrar › Recuperar senha › Estado: link vencido",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "RecuperarSenhaM.dc.html",
+  "titulo": "Entrar › Recuperar senha",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "NovaSenhaM.dc.html",
+  "titulo": "Entrar › Nova senha",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "EscolhaOrgM.dc.html",
+  "titulo": "Entrar › Escolha de organização e área",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SemAcessoM.dc.html",
+  "titulo": "Entrar › Área indisponível para o perfil",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMInicio.dc.html",
+  "titulo": "Site › Início",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 820
+ },
+ {
+  "arquivo": "SiteMPrecos.dc.html",
+  "titulo": "Site › Preços (celular)",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMMenu.dc.html",
+  "titulo": "Site › Menu aberto",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMFuncionalidades.dc.html",
+  "titulo": "Site › Funcionalidades",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 1140
+ },
+ {
+  "arquivo": "SiteMContato.dc.html",
+  "titulo": "Site › Contato",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 1040
+ },
+ {
+  "arquivo": "SiteMTermos.dc.html",
+  "titulo": "Site › Termos de uso",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMPrivacidade.dc.html",
+  "titulo": "Site › Política de privacidade",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMRecibo.dc.html",
+  "titulo": "Site › Conferir recibo",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 860
+ },
+ {
+  "arquivo": "SiteMAcademias.dc.html",
+  "titulo": "Site › Academias (lista no celular)",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMMapa.dc.html",
+  "titulo": "Site › Academias › Mapa",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMAula.dc.html",
+  "titulo": "Site › /aula (pedido de aula experimental no celular)",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMAulaEnviada.dc.html",
+  "titulo": "Site › /aula › Pedido enviado",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMMatricula.dc.html",
+  "titulo": "Site › /matricula (autocadastro no celular)",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMLinkDesligado.dc.html",
+  "titulo": "Site › Link público desligado (celular)",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "SiteMDemo.dc.html",
+  "titulo": "Site › Demonstração (4 entradas)",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 820
+ },
+ {
+  "arquivo": "DemoFaixaM.dc.html",
+  "titulo": "Site › Demonstração › Faixa no celular",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "CadastroM.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 1: Seus dados",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 940
+ },
+ {
+  "arquivo": "CadastroTelefoneM.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 2: Confirmar telefone",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "CadastroEmailM.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 3: Confirmar e-mail",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "CadastroPagamentoM.dc.html",
+  "titulo": "Site › Cadastro da organização › Etapa 4: Aceite e primeira fatura",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "AssistenteM.dc.html",
+  "titulo": "Cadastro › Assistente de configuração (celular)",
+  "pagina": "Site da plataforma · Celular",
+  "largura": 390,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailBase.dc.html",
+  "titulo": "E-mail › Modelo base",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 900
+ },
+ {
+  "arquivo": "EmailConvite.dc.html",
+  "titulo": "E-mail › Convite do portal",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailConviteEquipe.dc.html",
+  "titulo": "E-mail › Convite para a equipe",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailNovaSenha.dc.html",
+  "titulo": "E-mail › Link para criar nova senha",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailSenhaAlterada.dc.html",
+  "titulo": "E-mail › Senha alterada",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailNovoAcesso.dc.html",
+  "titulo": "E-mail › Novo acesso à conta",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailConfirmarEmail.dc.html",
+  "titulo": "E-mail › Confirmar o novo e-mail",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailEmailAlterado.dc.html",
+  "titulo": "E-mail › Aviso no e-mail antigo",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailCoordenacao.dc.html",
+  "titulo": "E-mail › Você é o novo Coordenador",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAcessoRemovido.dc.html",
+  "titulo": "E-mail › Acesso de responsável encerrado",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailExclusaoPedido.dc.html",
+  "titulo": "E-mail › Pedido de exclusão de dados recebido",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailCobranca.dc.html",
+  "titulo": "E-mail › Cobrança gerada",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailLembrete.dc.html",
+  "titulo": "E-mail › Lembrete de vencimento",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailBloqueio.dc.html",
+  "titulo": "E-mail › Aviso antes do bloqueio",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailPagamento.dc.html",
+  "titulo": "E-mail › Pagamento confirmado",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailLembreteAtraso.dc.html",
+  "titulo": "E-mail › Lembrete depois do vencimento",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailPagamentoRecusado.dc.html",
+  "titulo": "E-mail › Pagamento recusado",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailDebitoFalhou.dc.html",
+  "titulo": "E-mail › Débito automático não passou",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailComprovanteRecusado.dc.html",
+  "titulo": "E-mail › Comprovante de Pix recusado",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailReajuste.dc.html",
+  "titulo": "E-mail › Reajuste do plano",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailDiferencaReajuste.dc.html",
+  "titulo": "E-mail › Diferença de reajuste",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailComunicado.dc.html",
+  "titulo": "E-mail › Comunicado da academia",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "Recibo.dc.html",
+  "titulo": "Documento › Recibo em PDF",
+  "pagina": "E-mails e documentos",
+  "largura": 860,
+  "altura": 1140
+ },
+ {
+  "arquivo": "EmailBoasVindas.dc.html",
+  "titulo": "E-mail › Boas-vindas (aluno adulto)",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailTermoPendente.dc.html",
+  "titulo": "E-mail › Termo de matrícula pendente",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailPedidoResposta.dc.html",
+  "titulo": "E-mail › Resposta a um pedido do portal",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailEncerramento.dc.html",
+  "titulo": "E-mail › Modalidade encerrada",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailBloqueado.dc.html",
+  "titulo": "E-mail › Modalidade bloqueada por atraso",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailReativado.dc.html",
+  "titulo": "E-mail › Modalidade reativada",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailGraduacao.dc.html",
+  "titulo": "E-mail › Nova graduação",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailMaioridade.dc.html",
+  "titulo": "E-mail › Aluno fez 18 anos (ao responsável)",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAulaAlterada.dc.html",
+  "titulo": "E-mail › Troca de professor ou horário",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailDiaSemAula.dc.html",
+  "titulo": "E-mail › Dia sem aula",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAulasDeVolta.dc.html",
+  "titulo": "E-mail › Aulas de volta",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAutocadastroRecusado.dc.html",
+  "titulo": "E-mail › Ficha de matrícula não aprovada",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailResumoDiario.dc.html",
+  "titulo": "E-mail › Resumo diário da equipe",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAssinaturaVence.dc.html",
+  "titulo": "E-mail › Fatura da assinatura vence em 7 dias",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAssinaturaAtraso.dc.html",
+  "titulo": "E-mail › Assinatura em atraso",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAssinaturaPaga.dc.html",
+  "titulo": "E-mail › Fatura da assinatura paga",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailExportacaoPronta.dc.html",
+  "titulo": "E-mail › Exportação completa pronta",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailChamado.dc.html",
+  "titulo": "E-mail › Chamado respondido pelo suporte",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailAvisoPlataforma.dc.html",
+  "titulo": "E-mail › Aviso importante da plataforma",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailUnidadeOculta.dc.html",
+  "titulo": "E-mail › Unidade ocultada do diretório",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailCadastroCodigo.dc.html",
+  "titulo": "E-mail › Código para confirmar o e-mail (cadastro)",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailBoasVindasDia0.dc.html",
+  "titulo": "E-mail › Boas-vindas ao Coordenador · dia 0",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 860
+ },
+ {
+  "arquivo": "EmailBoasVindasDia2.dc.html",
+  "titulo": "E-mail › Boas-vindas ao Coordenador · dia 2",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "EmailBoasVindasDia5.dc.html",
+  "titulo": "E-mail › Boas-vindas ao Coordenador · dia 5",
+  "pagina": "E-mails e documentos",
+  "largura": 760,
+  "altura": 780
+ },
+ {
+  "arquivo": "PainelInicio.dc.html",
+  "titulo": "Plataforma › Início",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelOrganizacoes.dc.html",
+  "titulo": "Plataforma › Organizações",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelOrganizacao.dc.html",
+  "titulo": "Plataforma › Organizações › Detalhe e ações",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1100
+ },
+ {
+  "arquivo": "PainelModoSuporte.dc.html",
+  "titulo": "Plataforma › Modo suporte (faixa na gestão)",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelCortesia.dc.html",
+  "titulo": "Plataforma › Organizações › Janela: Cortesia ou desconto fixo",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelSuspender.dc.html",
+  "titulo": "Plataforma › Organizações › Janela: Suspender ou cancelar",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelReembolso.dc.html",
+  "titulo": "Plataforma › Organizações › Janela: Registrar reembolso",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelTransferir.dc.html",
+  "titulo": "Plataforma › Organizações › Janela: Transferir coordenação com comprovação",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelBaixaFatura.dc.html",
+  "titulo": "Plataforma › Organizações › Assinatura › Janela: Dar baixa em fatura",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelRecursos.dc.html",
+  "titulo": "Plataforma › Organizações › Recursos ligados",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1060
+ },
+ {
+  "arquivo": "PainelCatalogo.dc.html",
+  "titulo": "Plataforma › Catálogo de modalidades",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelPrecos.dc.html",
+  "titulo": "Plataforma › Preços",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelModelos.dc.html",
+  "titulo": "Plataforma › Modelos de documentos",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelAvisos.dc.html",
+  "titulo": "Plataforma › Avisos e Novidades",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelDiretorio.dc.html",
+  "titulo": "Plataforma › Diretório (denúncias)",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelChamados.dc.html",
+  "titulo": "Plataforma › Chamados",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelEquipe.dc.html",
+  "titulo": "Plataforma › Equipe",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "CaixaSaida.dc.html",
+  "titulo": "Plataforma › Caixa de saída (ambiente de teste)",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelPedidoModalidade.dc.html",
+  "titulo": "Plataforma › Catálogo › Janela: Pedido de modalidade nova",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelModeloVersao.dc.html",
+  "titulo": "Plataforma › Modelos › Janela: Publicar nova versão",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelChamado.dc.html",
+  "titulo": "Plataforma › Chamados › Chamado aberto",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelEquipeConvidar.dc.html",
+  "titulo": "Plataforma › Equipe › Janela: Convidar",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelOcultarUnidade.dc.html",
+  "titulo": "Plataforma › Diretório › Janela: Ocultar unidade",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "PainelAvisoNovo.dc.html",
+  "titulo": "Plataforma › Avisos e Novidades › Janela: Novo aviso",
+  "pagina": "Painel da plataforma",
+  "largura": 1440,
+  "altura": 1000
+ },
+ {
+  "arquivo": "Indice.dc.html",
+  "titulo": "Índice › Resumo e escolhas de design",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 2422
+ },
+ {
+  "arquivo": "IndiceGestao.dc.html",
+  "titulo": "Índice › Desktop · Gestão",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 8040
+ },
+ {
+  "arquivo": "IndiceGestaoCelular.dc.html",
+  "titulo": "Índice › Celular · Gestão",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 2790
+ },
+ {
+  "arquivo": "IndicePortal.dc.html",
+  "titulo": "Índice › Desktop · Portal do aluno",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 1980
+ },
+ {
+  "arquivo": "IndicePortalCelular.dc.html",
+  "titulo": "Índice › Celular · Portal do aluno",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 1755
+ },
+ {
+  "arquivo": "IndiceSite.dc.html",
+  "titulo": "Índice › Site da plataforma · Desktop",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 1815
+ },
+ {
+  "arquivo": "IndiceSiteCelular.dc.html",
+  "titulo": "Índice › Site da plataforma · Celular",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 1950
+ },
+ {
+  "arquivo": "IndicePlataforma.dc.html",
+  "titulo": "Índice › Painel da plataforma",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 1440
+ },
+ {
+  "arquivo": "IndiceEmails.dc.html",
+  "titulo": "Índice › E-mails e documentos",
+  "pagina": "Índice",
+  "largura": 1440,
+  "altura": 2475
+ }
+]

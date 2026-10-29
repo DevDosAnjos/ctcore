@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Site › Preços (celular)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F2ED; color: #1B1B1F; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.5"><header style="height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid #E3DFD6"><span style="display: inline-flex; align-items: center; gap: 8px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: 0.01em; color: #1B1B1F"><span style="width: 24px; height: 24px; border-radius: 7px; background: #C8462C; display: inline-flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 11px">ct</span>ctcore</span><span style="flex-grow: 1"></span><a href="LoginM.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: #1B1B1F; font-size: 13px; font-weight: 500; white-space: nowrap; text-decoration: none;">Entrar</a><button type="button" aria-label="Menu" title="Menu" style="display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid #D9D4C9; background: #FFFFFF; color: #1B1B1F; text-decoration: none; flex-shrink: 0; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></button></header><div style="padding: 24px 16px 32px; display: flex; flex-direction: column; gap: 18px"><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 44px; line-height: 0.98; text-transform: uppercase; letter-spacing: 0.01em">Preços</h1><p style="margin: 0; font-size: 15px; line-height: 1.5; color: #4A4740;">Pelo maior número de alunos ativos do mês.</p><div style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden; min-width: 0"><table style="width: 100%; border-collapse: collapse; font-size: 14px"><thead style="background: #FAF8F4"><tr><th scope="col" style="text-align: left; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #6B675F; white-space: nowrap;">Alunos ativos</th><th scope="col" style="text-align: right; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #6B675F; white-space: nowrap;">Mensal</th></tr></thead><tbody><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">Até 50</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">R$ 120,00</td></tr><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">51 a 100</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">R$ 160,00</td></tr><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">101 a 150</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">R$ 200,00</td></tr><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">151 a 200</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">R$ 240,00</td></tr><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">Acima</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">+ R$ 40,00 / 50</td></tr></tbody></table></div><a href="Cadastro.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 8px; border: 1px solid #C8462C; background: #C8462C; color: #FFFFFF; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%;">Criar minha academia</a></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Site › Cadastro da organização › Etapa 3: Confirmar e-mail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F2ED; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1B1F; padding: 28px 20px; display: flex; flex-direction: column; gap: 18px"><span style="display: inline-flex; align-items: center; gap: 8px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.01em; color: #1B1B1F"><span style="width: 26px; height: 26px; border-radius: 7px; background: #C8462C; display: inline-flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 12px">ct</span>ctcore</span><div style="display: flex; align-items: center; justify-content: flex-start; gap: 6px;"><span style="flex: 1; height: 4px; border-radius: 999px; background: #1B1B1F"></span><span style="flex: 1; height: 4px; border-radius: 999px; background: #1B1B1F"></span><span style="flex: 1; height: 4px; border-radius: 999px; background: #1B1B1F"></span><span style="flex: 1; height: 4px; border-radius: 999px; background: #E3DFD6"></span></div><span style="font-size: 12px; color: #6B675F">Etapa 3 de 4</span><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 36px; line-height: 1; text-transform: uppercase">Confirme o e-mail</h1></div><div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;"><p style="margin: 0; font-size: 15px; line-height: 1.5; color: #6B675F;">Enviamos um código para marcos@academialeao.example.</p><div style="display: flex; gap: 8px; justify-content: space-between"><span style="width: 44px; height: 52px; border: 1px solid #D9D4C9; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600">4</span><span style="width: 44px; height: 52px; border: 1px solid #D9D4C9; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600">8</span><span style="width: 44px; height: 52px; border: 1px solid #D9D4C9; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600">2</span><span style="width: 44px; height: 52px; border: 1px solid #D9D4C9; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600">9</span><span style="width: 44px; height: 52px; border: 1px solid #D9D4C9; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600">1</span><span style="width: 44px; height: 52px; border: 1px solid #D9D4C9; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 600">3</span></div><span style="font-size: 12px; color: #6B675F">Não chegou? Confira o spam ou reenvie.</span></div><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 8px; border: 1px solid #1B1B1F; background: #1B1B1F; color: #FFFFFF; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer">Confirmar</button><span style="font-size: 12px; color: #6B675F">Precisa de ajuda? suporte@ctcore.com.br · WhatsApp (21) 4000-1234</span></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

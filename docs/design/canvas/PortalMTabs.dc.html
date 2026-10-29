@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Portal › Abas inferiores (celular)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<nav aria-label="Portal" style="height: 64px; display: flex; background: #FFFFFF; border-top: 1px solid #E3DFD6; font-family: 'IBM Plex Sans', system-ui, sans-serif"><a href="PortalMInicio.dc.html" style="{{st.inicio}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M4 11 12 4l8 7v9h-5.5v-5.5h-5V20H4z"></path></svg><span>Início</span></a><a href="PortalMAgenda.dc.html" style="{{st.agenda}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M5 5h14v15H5zM5 10h14M9 3v4M15 3v4"></path></svg><span>Agenda</span></a><a href="PortalMFinanceiro.dc.html" style="{{st.financeiro}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><rect x="3" y="7" width="18" height="10" rx="1.5"></rect><circle cx="12" cy="12" r="2.4"></circle></svg><span>Financeiro</span></a><a href="PortalMAvisos.dc.html" style="{{st.avisos}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20.5a2.2 2.2 0 0 0 4 0"></path></svg><span>Avisos</span></a><a href="PortalMInfo.dc.html" style="{{st.info}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><circle cx="12" cy="8.5" r="3.8"></circle><path d="M4.5 20a7.5 7.5 0 0 1 15 0"></path></svg><span>Eu</span></a></nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"aba": {"editor": "enum", "options": ["inicio", "agenda", "financeiro", "avisos", "info"], "default": "inicio"}, "$preview": {"width": 390, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.aba ?? 'inicio';
+    const st = {};
+    ["inicio", "agenda", "financeiro", "avisos", "info"].forEach((k) => { st[k] = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;text-decoration:none;color:' + (k === a ? '#1B1B1F;font-weight:600' : '#6B675F;font-weight:500'); });
+    return { st: st };
+  }
+}
+</script>
+</body>
+</html>

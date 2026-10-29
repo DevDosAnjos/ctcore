@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatórios › Resumo do professor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="position: relative; display: flex; min-height: 100vh; background: #F4F2ED; color: #1B1B1F; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; overflow: hidden"><dc-import name="Sidebar" active="relatorios" perfil="professor" hint-size="248px,100vh"></dc-import><main style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column"><dc-import name="Topbar" trilha="Relatórios" perfil="professor" unidade="tijuca" faixa="" tema="claro" hint-size="1192px,64px"></dc-import><div style="display: flex; flex-grow: 1; min-height: 0"><div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; padding: 28px 32px 32px"><div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><div style="display: flex; align-items: center; gap: 10px"><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 38px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase">Meu resumo</h1></div><p style="margin: 0; font-size: 14px; color: #6B675F">Rafael Duarte · sem valores</p></div><div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"></div></div><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"><button type="button" onClick="{{pick.per_0}}" style="{{sty.per_0}}">Este mês</button><button type="button" onClick="{{pick.per_1}}" style="{{sty.per_1}}">Mês passado</button><button type="button" onClick="{{pick.per_2}}" style="{{sty.per_2}}">Últimos 3 meses</button><button type="button" onClick="{{pick.per_3}}" style="{{sty.per_3}}">Últimos 6 meses</button><button type="button" onClick="{{pick.per_4}}" style="{{sty.per_4}}">Últimos 12 meses</button><button type="button" onClick="{{pick.per_5}}" style="{{sty.per_5}}">Ano atual</button><button type="button" onClick="{{pick.per_6}}" style="{{sty.per_6}}">Intervalo</button></div></div><div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; min-width: 0"><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0;"><span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6B675F">Aulas dadas</span><span style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 34px; font-weight: 600; line-height: 1; white-space: nowrap">214</span><span style="font-size: 13px; color: #6B675F">últimos 6 meses</span></section><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0;"><span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6B675F">Cobertas como substituto</span><span style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 34px; font-weight: 600; line-height: 1; white-space: nowrap">9</span></section><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 8px; min-width: 0;"><span style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6B675F">Canceladas</span><span style="font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 34px; font-weight: 600; line-height: 1; white-space: nowrap">4</span><span style="font-size: 13px; color: #6B675F">2 feriados, 2 indisponível</span></section></div><section style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: space-between; gap: 12px"><h3 style="margin: 0; font-size: 15px; font-weight: 600">Aulas por turma</h3></div><div style="background: #FFFFFF; border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden; min-width: 0"><table style="width: 100%; border-collapse: collapse; font-size: 14px"><thead style="background: #FAF8F4"><tr><th scope="col" style="text-align: left; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #6B675F; white-space: nowrap;">Turma</th><th scope="col" style="text-align: right; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #6B675F; white-space: nowrap;">Dadas</th><th scope="col" style="text-align: right; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #6B675F; white-space: nowrap;">Canceladas</th></tr></thead><tbody><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">Jiu-Jitsu Adulto · Noite</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">148</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">3</td></tr><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">No-Gi Adulto</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">57</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">1</td></tr><tr style=""><td style="padding: 10px 14px; text-align: left; vertical-align: middle; border-top: 1px solid #EEEAE2;">Substituições (outras turmas)</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">9</td><td style="padding: 10px 14px; text-align: right; vertical-align: middle; border-top: 1px solid #EEEAE2; white-space: nowrap; font-variant-numeric: tabular-nums;">—</td></tr></tbody></table></div></section></div></div></main></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1440, "height": 1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {"per": [3, [0, 1, 2, 3, 4, 5, 6], "display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid #1B1B1F; background: #1B1B1F; color: #FFFFFF; white-space: nowrap; cursor: pointer", "display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid #D9D4C9; background: #FFFFFF; color: #1B1B1F; white-space: nowrap; cursor: pointer"]};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

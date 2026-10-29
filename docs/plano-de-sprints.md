@@ -39,6 +39,7 @@ Nenhuma sprint usa algo que uma sprint posterior constrói. Quando uma tela prec
 | Sprint 08 · Cobranças | Gerar, acompanhar e receber no balcão tudo o que os alunos devem, com recibo, e fechar o fluxo de matrícula com a primeira cobrança. | 7 |
 | Sprint 09 · Comunicação, lembretes e notificações | Avisar alunos e equipe do que importa: comunicados, e-mails automáticos, lembretes de cobrança e notificações da gestão. | 7 |
 | Sprint 10 · Portal do aluno | Dar ao aluno e ao responsável, no celular, o termo, as cobranças, as aulas, os avisos, a faixa e a carteirinha, e os pedidos à academia. | 11 |
+| Sprint 10.5 · Identidade visual | Deixar o sistema com o visual do canvas de Design: tokens, fontes e tema escuro, componentes base, moldura da gestão e do portal, teste visual e as telas das Sprints 00 a 10 refeitas no padrão. Só aparência: nenhuma regra muda. | 10 |
 | Sprint 11 · Pagamentos online | Receber online pelo portal, com baixa automática, conciliação, estorno e o comportamento certo quando o provedor cai, tudo contra o simulador de pagamento. O Mercado Pago real entra na Sprint 23. | 9 |
 | Sprint 12 · Inativação, reativação e graduações | Tirar da operação quem não paga e devolver na hora quando paga, e registrar as graduações com aviso ao aluno. | 7 |
 | Sprint 13 · Inícios, busca, auditoria e LGPD | Fazer cada perfil começar o dia pelo que pede ação, com busca global e as telas de auditoria e LGPD. | 15 |
@@ -121,3 +122,4 @@ Cada fluxo entra na suíte na sprint que o completa e roda em todo PR dali em di
 - 13/10/2026 · Tudo o que depende do dono fica no fim do plano: hospedagem, publicação automática, backup e alertas foram da Sprint 00 para a Sprint 22 (#192, #193). As issues #5 e #11 ficaram só com a parte que o agente faz sozinho.
 - 13/10/2026 · `dev` é o branch de trabalho e padrão; `main` só recebe `dev` por PR com o método "Merge", no fim de cada sprint, depois da revisão do dono.
 - 23/10/2026 · O repositório fica público durante o desenvolvimento, para o CI rodar sem limite de minutos, e volta a ser privado antes da Sprint 22, antes de qualquer chave real ou dado de cliente. Regras e trava no `AGENTS.md`, seção "Repositório público: segredos e dados reais".
+- 29/10/2026 · Sprint 10.5 · Identidade visual, entre a 10 e a 11 (#414 a #423): o sistema passa a seguir o canvas de Design. A referência entrou em `docs/design/` (tokens, componentes, regras e as telas do canvas, com nomes e domínios fictícios); daí em diante toda tela segue o canvas citado na issue (regra no `AGENTS.md`).

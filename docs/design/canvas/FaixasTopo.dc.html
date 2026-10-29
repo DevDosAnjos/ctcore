@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Barra superior › Faixas de aviso</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F2ED; color: #1B1B1F; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; padding: 40px 48px; display: flex; flex-direction: column; gap: 28px"><div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap"><div style="display: flex; flex-direction: column; gap: 4px; min-width: 0"><div style="display: flex; align-items: center; gap: 10px"><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 38px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase">Faixas no topo da gestão</h1></div><p style="margin: 0; font-size: 14px; color: #6B675F">Aparecem acima da barra superior, em todas as telas, até o problema ser resolvido. Não dá para fechar.</p></div><div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap"></div></div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><span style="font-weight: 600">Assinatura em atraso</span><span style="font-size: 13px; color: #6B675F">Do vencimento até 7 dias · Coordenador vê "Pagar fatura"; Administrador só o aviso</span></div><div style="border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden; width: 1192px; background: #F4F2ED"><dc-import name="Topbar" trilha="Início" perfil="coordenador" unidade="tijuca" faixa="atraso" tema="claro" hint-size="1192px,112px"></dc-import></div></div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><span style="font-weight: 600">Somente leitura</span><span style="font-size: 13px; color: #6B675F">De 8 a 30 dias de atraso · botões de criar e alterar ficam desabilitados</span></div><div style="border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden; width: 1192px; background: #F4F2ED"><dc-import name="Topbar" trilha="Início" perfil="coordenador" unidade="tijuca" faixa="leitura" tema="claro" hint-size="1192px,112px"></dc-import></div></div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><span style="font-weight: 600">Suspensa</span><span style="font-size: 13px; color: #6B675F">Após 30 dias · só a tela Assinatura e a exportação funcionam</span></div><div style="border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden; width: 1192px; background: #F4F2ED"><dc-import name="Topbar" trilha="Início" perfil="coordenador" unidade="tijuca" faixa="suspensa" tema="claro" hint-size="1192px,112px"></dc-import></div></div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><span style="font-weight: 600">Mercado Pago desconectado</span><span style="font-size: 13px; color: #6B675F">Por unidade · vermelha, com "Reconectar"; ninguém é bloqueado nessa unidade enquanto durar</span></div><div style="border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden; width: 1192px; background: #F4F2ED"><dc-import name="Topbar" trilha="Início" perfil="coordenador" unidade="tijuca" faixa="mp" tema="claro" hint-size="1192px,112px"></dc-import></div></div><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px;"><span style="font-weight: 600">Como o Administrador vê o atraso</span><span style="font-size: 13px; color: #6B675F">Sem botão; o Coordenador já foi avisado</span></div><div style="border: 1px solid #E3DFD6; border-radius: 12px; overflow: hidden; width: 1192px; background: #F4F2ED"><dc-import name="Topbar" trilha="Início" perfil="admin" unidade="tijuca" faixa="atraso" tema="claro" hint-size="1192px,112px"></dc-import></div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 1440, "height": 1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>

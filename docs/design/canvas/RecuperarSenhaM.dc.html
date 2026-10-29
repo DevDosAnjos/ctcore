@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Entrar › Recuperar senha</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F4F2ED}
+*{box-sizing:border-box}
+a{color:#1B1B1F;text-decoration:none}a:hover{color:#B23C24}
+button,input,select,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #F4F2ED; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #1B1B1F; padding: 28px 20px; display: flex; flex-direction: column; gap: 18px"><span style="display: inline-flex; align-items: center; gap: 8px; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.01em; color: #1B1B1F"><span style="width: 26px; height: 26px; border-radius: 7px; background: #C8462C; display: inline-flex; align-items: center; justify-content: center; color: #FFFFFF; font-size: 12px">ct</span>ctcore</span><div style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><h1 style="margin: 0; font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 36px; line-height: 1; text-transform: uppercase">Esqueci minha senha</h1><p style="margin: 0; font-size: 14px; line-height: 1.5; color: #6B675F;">Enviamos um link para criar uma nova senha.</p></div><label style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><span style="font-size: 12px; font-weight: 500; color: #6B675F">E-mail</span><input type="email" value="marina.teixeira@email.example" style="height: 40px; border: 1px solid #D9D4C9; border-radius: 8px; padding: 0 12px; background: #FFFFFF; font-size: 14px; color: #1B1B1F; width: 100%"></label><button type="button" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border-radius: 8px; border: 1px solid #1B1B1F; background: #1B1B1F; color: #FFFFFF; font-size: 15px; font-weight: 500; white-space: nowrap; text-decoration: none; width: 100%; cursor: pointer">Enviar link</button><div role="status" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 10px; background: #E9EEF7; border: 1px solid #C9D5EA; color: #23427A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><rect x="3.5" y="5.5" width="17" height="13" rx="1.5"></rect><path d="m4 7 8 6 8-6"></path></svg><span style="flex-grow: 1; line-height: 1.45">Se este e-mail tiver conta, você vai receber o link em alguns minutos. Confira também a caixa de spam.</span></div><a href="LoginM.dc.html" style="font-size: 14px; text-decoration: underline">Voltar para o login</a><span style="font-size: 12px; color: #6B675F">Precisa de ajuda? suporte@ctcore.com.br · WhatsApp (21) 4000-1234</span></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview": {"width": 390, "height": 780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const st = this.state || {};
+    const G = {};
+    const on = {}, pick = {}, sty = {};
+    Object.keys(G).forEach((g) => {
+      const cur = st[g] !== undefined ? st[g] : G[g][0];
+      G[g][1].forEach((o) => {
+        const k = g + '_' + o;
+        on[k] = cur === o;
+        sty[k] = cur === o ? G[g][2] : G[g][3];
+        pick[k] = () => this.setState({ [g]: o });
+      });
+    });
+    return { on: on, pick: pick, sty: sty };
+  }
+}
+</script>
+</body>
+</html>
