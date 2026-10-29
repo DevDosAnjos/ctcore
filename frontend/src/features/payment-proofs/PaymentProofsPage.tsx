@@ -12,6 +12,7 @@ import { ConfirmProofDialog, RefuseProofDialog } from "./ProofDialogs";
 import { ProofImage } from "./ProofImage";
 import type { PaymentProof } from "./types";
 import { fetchPaymentProofs } from "./usePaymentProofs";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Decision = { proof: PaymentProof; mode: "confirm" | "refuse" };
 
@@ -48,7 +49,7 @@ function Content() {
   const [version, setVersion] = useState(0);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("paymentProofs.title")}</h1>
+      <PageHeader title={t("paymentProofs.title")} />
       <p className="text-muted-foreground">{t("paymentProofs.intro")}</p>
       <div>
         <Button asChild variant="outline" className="min-h-11">

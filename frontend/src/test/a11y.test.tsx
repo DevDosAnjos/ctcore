@@ -85,7 +85,7 @@ describe("componentes (CA21, CA22)", () => {
   it("RNF-20: botão só de ícone é quadrado de 44 px; links do menu e paginação também", () => {
     expect(buttonVariants({ size: "icon" }).split(" ")).toEqual(expect.arrayContaining(["after:min-h-11", "after:min-w-11"]));
     const dir = join(process.cwd(), "src/components");
-    for (const f of ["layout/AppLayout.tsx", "query/Pagination.tsx"]) {
+    for (const f of ["layout/Sidebar.tsx", "query/Pagination.tsx"]) {
       expect(readFileSync(join(dir, f), "utf8"), f).toMatch(/min-h-11/);
     }
   });

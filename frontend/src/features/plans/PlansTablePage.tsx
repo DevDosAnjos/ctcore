@@ -12,6 +12,7 @@ import { DeactivatePlanDialog } from "./DeactivatePlanDialog";
 import { PlanFilters } from "./PlanFilters";
 import { PlanFormDialog } from "./PlanFormDialog";
 import { activatePlan, fetchPlans, type PlanRow } from "./usePlans";
+import { PageHeader } from "@/components/ui/page-header";
 
 const A = { edit: "edit", deactivate: "deactivate", activate: "activate" } as const;
 type Actions = { onEdit: (p: PlanRow) => void; onDeactivate: (p: PlanRow) => void; onActivate: (p: PlanRow) => void };
@@ -86,14 +87,14 @@ function Content() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("plans.table.title")}</h1>
-        {canManage && (
+      <PageHeader
+        title={t("plans.table.title")}
+        actions={canManage && (
           <Button className="min-h-11" onClick={() => setEditing("new")}>
             {t("plans.newButton")}
           </Button>
         )}
-      </div>
+      />
       <p className="text-muted-foreground">{t("plans.table.intro")}</p>
       {error && (
         <p role="alert" className="text-sm text-destructive">

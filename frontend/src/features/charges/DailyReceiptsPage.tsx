@@ -9,6 +9,7 @@ import { formatCurrency, formatTime } from "@/lib/format";
 import { todayIso } from "./ChangeDueDialog";
 import type { DailyReceipts } from "./types";
 import { useDailyReceipts } from "./useDailyReceipts";
+import { PageHeader } from "@/components/ui/page-header";
 
 const field = "min-h-11 rounded-md border bg-background px-2 font-normal";
 const cell = "px-3 py-2 text-left align-top";
@@ -107,7 +108,7 @@ function Content() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("charges.daily.title")}</h1>
+      <PageHeader title={t("charges.daily.title")} />
       <p className="text-muted-foreground">{t("charges.daily.intro")}</p>
       <div className="flex flex-wrap items-end gap-3">
         {all && (

@@ -15,6 +15,7 @@ import { useEditConflict } from "@/lib/useEditConflict";
 import { Text } from "./Text";
 import { UnitModalitiesSection } from "./UnitModalitiesSection";
 import { ALL, useUnitScope } from "./UnitScopeProvider";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   FEE_KEYS,
   TEACHER_KEYS,
@@ -422,7 +423,7 @@ function Content() {
   if (scope.selected === null) return <EmptyState title={t("unitSettings.emptyTitle")} text={t("unitSettings.emptyText")} />;
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("unitSettings.title")}</h1>
+      <PageHeader title={t("unitSettings.title")} />
       {/* RN-ORG-08: em "Todas as unidades" nada é alterado; a unidade vem do seletor do topo (RF-ORG-05). */}
       {scope.selected === ALL ? <p role="status">{t("unitScope.chooseToEdit")}</p> : <Detail id={scope.selected} />}
     </div>

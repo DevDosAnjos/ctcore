@@ -12,6 +12,7 @@ import { DeactivateTeacherDialog } from "./DeactivateTeacherDialog";
 import { GrantAccessDialog } from "./GrantAccessDialog";
 import { TeacherFormDialog } from "./TeacherFormDialog";
 import { resendTeacherInvite, useTeacher, type TeacherDetail } from "./useTeachers";
+import { PageHeader } from "@/components/ui/page-header";
 
 const initials = (name: string) =>
   name
@@ -62,8 +63,7 @@ function Panel({ teacher, onRefresh }: { teacher: TeacherDetail; onRefresh: () =
           </span>
         )}
         <div className="min-w-0">
-          <h1 className="break-words text-2xl font-semibold">{teacher.name}</h1>
-          <p className="text-muted-foreground">{t(`teachers.statuses.${teacher.status}`)}</p>
+          <PageHeader title={teacher.name} subtitle={t(`teachers.statuses.${teacher.status}`)} />
         </div>
       </header>
       {notice && (

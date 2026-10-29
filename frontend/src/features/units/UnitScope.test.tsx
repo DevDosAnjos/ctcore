@@ -90,13 +90,13 @@ describe("seletor de unidade (RF-ORG-05)", () => {
     let fail = true;
     const failing = setup("COORDINATOR", () => (fail ? HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 }) : two(true)()));
     expect(await screen.findByText("Não foi possível carregar as unidades.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Início", hidden: true })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Início", hidden: true })[0]).toBeInTheDocument();
     fail = false;
     await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
     expect(await switcher()).toBeInTheDocument();
     failing.unmount();
     setup("COORDINATOR", () => HttpResponse.json({ code: "FORBIDDEN" }, { status: 403 }));
-    await screen.findByRole("link", { name: "Início", hidden: true });
+    await screen.findAllByRole("link", { name: "Início", hidden: true });
     expect(screen.queryByRole("combobox", { name: "Unidade ativa" })).not.toBeInTheDocument();
   });
 

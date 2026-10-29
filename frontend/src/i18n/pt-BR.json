@@ -1813,7 +1813,32 @@
     "menu": "Menu",
     "openMenu": "Abrir menu",
     "closeMenu": "Fechar menu",
-    "main": "Menu principal"
+    "main": "Menu principal",
+    "breadcrumb": "Você está em",
+    "skip": "Ir para o conteúdo",
+    "soon": "Em breve",
+    "help": "Ajuda",
+    "news": "Novidades",
+    "search": "Buscar",
+    "searchKey": "Ctrl K",
+    "collapse": "Recolher menu",
+    "expand": "Expandir menu",
+    "madeWith": "feito com ctcore",
+    "area": "Gestão · {{role}}",
+    "back": "Voltar ao Início",
+    "tabs": {
+      "label": "Abas principais",
+      "home": "Início",
+      "students": "Alunos",
+      "agenda": "Agenda",
+      "collections": "Cobranças",
+      "announcements": "Avisos"
+    },
+    "roles": {
+      "ADMINISTRATOR": "Administrador",
+      "COORDINATOR": "Coordenação",
+      "TEACHER": "Professor"
+    }
   },
   "counter": {
     "nearLimit": "Faltam poucos caracteres para o limite.",

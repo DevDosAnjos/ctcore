@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   EmptyState,
   ErrorState,
@@ -114,7 +115,7 @@ function Content() {
   const canManage = items.some((m) => m.canManage);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("modalities.title")}</h1>
+      <PageHeader title={t("modalities.title")} />
       {message && (
         <p
           role={message.kind === "alert" ? "alert" : "status"}

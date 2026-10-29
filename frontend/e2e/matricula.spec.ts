@@ -107,7 +107,7 @@ test("@critical Coordenador conclui a nova matrícula em cinco etapas", async ({
   await expect(page.getByRole("status").filter({ hasText: "Carregando unidades..." })).toHaveCount(0);
   await noOverflow();
   await page.getByLabel("CPF do aluno").fill("52998224725");
-  await page.getByRole("button", { name: "Buscar" }).click();
+  await page.getByRole("button", { name: "Buscar", exact: true }).click();
   await expect(page.getByText("Matrícula nova")).toBeVisible();
   await page.getByRole("button", { name: "É este aluno, continuar" }).click();
 

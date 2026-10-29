@@ -11,6 +11,7 @@ import { ApproveRequestDialog, RefuseRequestDialog } from "./RefuseRequestDialog
 import { requestSummary } from "./RequestSummary";
 import { REQUEST_KINDS, REQUEST_STATUSES, type PortalRequest } from "./types";
 import { fetchPortalRequests, useReachableUnits } from "./usePortalRequests";
+import { PageHeader } from "@/components/ui/page-header";
 
 // D4: Aprovar marca o pedido e leva ao fluxo da gestão já preenchido; a matrícula só muda quando a gestão conclui o fluxo.
 export function flowOf(r: PortalRequest): string {
@@ -111,7 +112,7 @@ function Content() {
   );
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("portalRequests.title")}</h1>
+      <PageHeader title={t("portalRequests.title")} />
       <p className="text-muted-foreground">{t("portalRequests.intro")}</p>
       <QueryPage
         search={false}

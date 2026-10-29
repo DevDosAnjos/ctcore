@@ -58,12 +58,13 @@ import { PortalTermPage } from "@/features/portal/PortalTermPage";
 import { RequirePortalTerm } from "@/features/portal/RequirePortalTerm";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
+import { PageHeader } from "@/components/ui/page-header";
 
 function Welcome() {
   const { t } = useTranslation();
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t("app.welcomeTitle")}</h1>
+      <PageHeader title={t("app.welcomeTitle")} />
       <p className="mt-2 text-muted-foreground">{t("app.welcomeText")}</p>
     </>
   );

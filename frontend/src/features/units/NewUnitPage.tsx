@@ -11,6 +11,7 @@ import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
 import { Text } from "./Text";
 import { createUnit, type NewUnit, type NewUnitResult } from "./useUnits";
+import { PageHeader } from "@/components/ui/page-header";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -170,7 +171,7 @@ function Content({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   return (
     <div className="flex max-w-xl flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("units.new.title")}</h1>
+      <PageHeader title={t("units.new.title")} />
       <Link to="/configuracoes/unidades" className="text-sm underline">
         {t("units.new.back")}
       </Link>

@@ -8,6 +8,7 @@ import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { DeactivateUnitDialog } from "./DeactivateUnitDialog";
 import { ShortNameDialog } from "./ShortNameDialog";
 import { MAX_UNITS, useUnits, type UnitSummary } from "./useUnits";
+import { PageHeader } from "@/components/ui/page-header";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -71,7 +72,7 @@ function Content() {
   if (!api.units) return <ErrorState onRetry={api.retry} />;
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("units.title")}</h1>
+      <PageHeader title={t("units.title")} />
       {notice && (
         <p role="status" className="text-sm">
           {t("units.deactivate.done")}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { AgeRangeDialog } from "./AgeRangeDialog";
 import { useAgeRanges, type AgeRange } from "./useAgeRanges";
+import { PageHeader } from "@/components/ui/page-header";
 
 // Aberta com `target`: undefined = fechada, null = nova faixa, faixa = edição. `n` renova a janela a cada abertura.
 type Editing = { n: number; target: AgeRange | null };
@@ -36,7 +37,7 @@ function Content() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("ageRanges.title")}</h1>
+      <PageHeader title={t("ageRanges.title")} />
       <p className="text-muted-foreground">{t("ageRanges.intro")}</p>
       {message && (
         <p role={message.kind === "alert" ? "alert" : "status"} className={message.kind === "alert" ? "text-sm text-destructive" : "text-sm"}>

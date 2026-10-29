@@ -10,6 +10,7 @@ import { AnnouncementFilters } from "./AnnouncementFilters";
 import { CancelAnnouncementDialog } from "./CancelAnnouncementDialog";
 import type { AnnouncementItem } from "./types";
 import { fetchAnnouncements } from "./useAnnouncements";
+import { PageHeader } from "@/components/ui/page-header";
 
 function useCells() {
   const { t } = useTranslation();
@@ -84,10 +85,10 @@ function Content() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{t("announcements.title")}</h1>
-        {newButton}
-      </div>
+      <PageHeader
+        title={t("announcements.title")}
+        actions={newButton}
+      />
       {sent && (
         <p role="status" className="flex flex-wrap items-center gap-3 rounded-md border p-3">
           {t(sent.status === "SENT" ? "announcements.sentNotice" : "announcements.scheduledNotice")}

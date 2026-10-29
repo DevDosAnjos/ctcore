@@ -15,6 +15,7 @@ import { AdvanceChargesDialog } from "./AdvanceChargesDialog";
 import { ChargePanel } from "./ChargePanel";
 import { OneOffChargeDialog } from "./OneOffChargeDialog";
 import { fetchCharges } from "./useCharges";
+import { PageHeader } from "@/components/ui/page-header";
 
 const FILTER_KEYS = ["quick", "from", "to", "status", "type", "unitId", "modalityId", "classId"];
 
@@ -40,7 +41,7 @@ function Content() {
   ];
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("charges.title")}</h1>
+      <PageHeader title={t("charges.title")} />
       <p className="text-muted-foreground">{t("charges.intro")}</p>
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline" className="min-h-11">

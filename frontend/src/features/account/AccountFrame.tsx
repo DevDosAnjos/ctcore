@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { Avatar } from "@/components/ui/avatar";
 import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
@@ -10,11 +11,27 @@ import { ThemeToggle } from "@/theme/ThemeToggle";
 const MANAGEMENT = ["COORDINATOR", "ADMINISTRATOR", "TEACHER"];
 
 /** Atalho "Minha conta" para os cabeçalhos de gestão e de portal (D1: uma só tela para os dois). */
-export function AccountLink() {
+export function AccountLink({ roleLabel }: { roleLabel?: string }) {
   const { t } = useTranslation();
+  const { state } = useSession();
+  const account = state.status === "ready" ? state.session.account : undefined;
+  // Avatar e nome só na barra da gestão (que passa o perfil); o portal mantém o link de texto.
+  const name = roleLabel ? account?.name || account?.email : undefined;
   return (
-    <Link to="/conta" className="inline-flex min-h-11 items-center rounded-md px-3 text-sm underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-      {t("account.link")}
+    <Link
+      to="/conta"
+      className="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className={name ? "sr-only" : "underline"}>{t("account.link")}</span>
+      {name && (
+        <>
+          <Avatar name={name} decorative />
+          <span className="hidden min-w-0 text-left leading-tight lg:block">
+            <span className="block max-w-40 truncate font-medium">{name}</span>
+            {roleLabel && <span className="block text-xs text-muted-foreground">{roleLabel}</span>}
+          </span>
+        </>
+      )}
     </Link>
   );
 }

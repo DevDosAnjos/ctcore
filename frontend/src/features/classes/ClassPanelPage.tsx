@@ -9,6 +9,7 @@ import { usePermissions } from "@/features/permissions/usePermissions";
 import { ClassFormDialog } from "./ClassFormDialog";
 import { DeactivateClassDialog } from "./DeactivateClassDialog";
 import { useClass, type ClassDetail } from "./useClasses";
+import { PageHeader } from "@/components/ui/page-header";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -45,10 +46,7 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
       <Link to="/turmas" className="inline-flex min-h-11 items-center self-start text-sm underline">
         {t("classes.panel.back")}
       </Link>
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="min-w-0 break-words text-2xl font-semibold">{klass.name}</h1>
-        <span className="rounded-full border px-2 py-0.5 text-sm">{t(`classes.statuses.${klass.status}`)}</span>
-      </header>
+      <PageHeader title={klass.name} actions={<span className="rounded-full border px-2 py-0.5 text-sm">{t(`classes.statuses.${klass.status}`)}</span>} />
       {notice && (
         <p role="status" className="text-sm">
           {notice}

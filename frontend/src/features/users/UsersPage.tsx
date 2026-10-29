@@ -9,6 +9,7 @@ import { DeactivateUserDialog } from "./DeactivateUserDialog";
 import { EditUnitsDialog } from "./EditUnitsDialog";
 import { InviteUserDialog } from "./InviteUserDialog";
 import { resendInvite, useUsers, type StaffUser } from "./useUsers";
+import { PageHeader } from "@/components/ui/page-header";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -81,7 +82,7 @@ function Content() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("users.title")}</h1>
+      <PageHeader title={t("users.title")} />
       {notice && (
         <p role="status" className="text-sm">
           {notice}

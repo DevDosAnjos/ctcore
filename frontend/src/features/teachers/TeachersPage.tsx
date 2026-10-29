@@ -10,6 +10,7 @@ import { usePermissions } from "@/features/permissions/usePermissions";
 import { TeacherFilters } from "./TeacherFilters";
 import { TeacherFormDialog } from "./TeacherFormDialog";
 import { fetchTeachers, type Teacher } from "./useTeachers";
+import { PageHeader } from "@/components/ui/page-header";
 
 const initials = (name: string) =>
   name
@@ -67,14 +68,14 @@ function Content() {
   const canWrite = !!permissions && permissions.TEACHERS !== "NONE";
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("teachers.title")}</h1>
-        {canWrite && (
+      <PageHeader
+        title={t("teachers.title")}
+        actions={canWrite && (
           <Button className="min-h-11" onClick={() => setCreating(true)}>
             {t("teachers.form.newButton")}
           </Button>
         )}
-      </div>
+      />
       <p className="text-muted-foreground">{t("teachers.intro")}</p>
       <QueryPage
         columns={columns(t)}

@@ -11,6 +11,7 @@ import { DaysToBlock, LastReminder, OverdueCard, Select, Student, Whatsapp, useO
 import { SendReminderDialog } from "./SendReminderDialog";
 import type { OverdueCharge } from "./types";
 import { fetchOverdue } from "./useOverdue";
+import { PageHeader } from "@/components/ui/page-header";
 
 const MAX_SEND = 100;
 
@@ -63,7 +64,7 @@ function Content() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("charges.overdue.title")}</h1>
+      <PageHeader title={t("charges.overdue.title")} />
       <p className="text-muted-foreground">{t("charges.overdue.intro")}</p>
       <div className="flex flex-wrap items-center gap-3">
         <Button asChild variant="outline" className="min-h-11">

@@ -70,6 +70,17 @@ const accounts: Record<string, ReturnType<typeof withTwoFactor>> = {
     links: [{ id: "00000000-0000-0000-0000-000000000016", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "GUARDIAN", unitIds: [] }],
     activeLinkId: "00000000-0000-0000-0000-000000000016",
   },
+  // Gestão por perfil (#417, teste visual da moldura): Administrador e Professor com vínculo ativo.
+  "admin@exemplo.com": {
+    ...withTwoFactor("admin@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000017", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "ADMINISTRATOR", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000017",
+  },
+  "prof@exemplo.com": {
+    ...withTwoFactor("prof@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000018", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "TEACHER", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000018",
+  },
 };
 const VALID_CODES = ["123456", "RESERVA001"];
 const backupCodes = () => ({ backupCodes: Array.from({ length: 10 }, (_, i) => `RESERVA${String(i + 1).padStart(3, "0")}`) });

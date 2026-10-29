@@ -7,6 +7,7 @@ import { formatMoney } from "@/components/fields/masks";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ALL, useUnitScope } from "@/features/units/UnitScopeProvider";
 import { usePlanSummary } from "./usePlans";
+import { PageHeader } from "@/components/ui/page-header";
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -75,7 +76,7 @@ function Content() {
   }
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("plans.title")}</h1>
+      <PageHeader title={t("plans.title")} />
       <p className="text-muted-foreground">{t("plans.intro")}</p>
       {body}
     </div>

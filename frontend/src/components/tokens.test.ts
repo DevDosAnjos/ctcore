@@ -13,7 +13,7 @@ function fontes(dir: string): string[] {
 }
 
 describe("tokens (CA22)", () => {
-  const files = [...fontes(join(__dirname, "ui")), ...ALTERADOS.map((f) => join(__dirname, f))];
+  const files = [...fontes(join(__dirname, "ui")), ...fontes(join(__dirname, "layout")), ...ALTERADOS.map((f) => join(__dirname, f))];
   it("há arquivos para varrer", () => expect(files.length).toBeGreaterThan(8));
   it.each(files)("%s não usa cor fixa", (f) => {
     expect(readFileSync(f, "utf8").match(FIXAS)).toBeNull();

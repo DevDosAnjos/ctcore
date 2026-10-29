@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { LockKeyhole } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { buttonVariants } from "@/components/ui/button";
@@ -10,12 +11,15 @@ export function AreaUnavailablePage() {
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => title.current?.focus(), []);
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-4 py-6">
-      <h1 ref={title} tabIndex={-1} className="text-2xl font-semibold outline-none">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-4 py-6 text-center">
+      <span aria-hidden="true" className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <LockKeyhole className="size-8" />
+      </span>
+      <h1 ref={title} tabIndex={-1} className="text-[28px] font-semibold uppercase leading-tight outline-none sm:text-[38px]">
         {t("areaUnavailable.title")}
       </h1>
       <p className="text-muted-foreground">{t("areaUnavailable.text")}</p>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         <Link to="/" className={buttonVariants({ size: "sm" })}>
           {t("areaUnavailable.home")}
         </Link>

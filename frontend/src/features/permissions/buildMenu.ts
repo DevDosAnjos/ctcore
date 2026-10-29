@@ -14,7 +14,7 @@ export function buildMenu(
       label: t(`menu.groups.${g.id}`),
       items: g.items
         .filter((i) => i.available && permissions[i.permission] !== "NONE")
-        .map((i) => ({ id: i.id, label: t(`menu.items.${i.id}`), href: i.href })),
+        .map((i) => ({ id: i.id, label: t(`menu.items.${i.id}`), href: i.href, icon: i.icon })),
     }))
     .filter((g) => g.items.length > 0);
 }
