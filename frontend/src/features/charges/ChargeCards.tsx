@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { StatusBadge as Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { ChargeRow, ChargeSituation } from "./types";
 
@@ -10,22 +11,9 @@ const initials = (name: string) =>
     .map((w) => w[0].toUpperCase())
     .join("");
 
-// Cor e texto juntos (nunca só cor): atraso em destaque, pagas cheias, o resto neutro.
-const TONE: Record<ChargeSituation, string> = {
-  PENDING: "border",
-  DUE_TODAY: "border bg-secondary text-secondary-foreground",
-  OVERDUE: "border border-destructive text-destructive",
-  IN_REVIEW: "border bg-secondary text-secondary-foreground",
-  PAID: "border bg-primary text-primary-foreground",
-  PAID_LATE: "border bg-primary text-primary-foreground",
-  CANCELED: "border border-dashed text-muted-foreground",
-  RENEGOTIATED: "border border-dashed text-muted-foreground",
-  REFUNDED: "border border-dashed text-muted-foreground",
-};
-
 export function StatusBadge({ status }: { status: ChargeSituation }) {
   const { t } = useTranslation();
-  return <span className={`inline-flex rounded-md px-2 py-0.5 text-sm ${TONE[status]}`}>{t(`charges.status.${status}`)}</span>;
+  return <Badge status={status} label={t(`charges.status.${status}`)} />;
 }
 
 export function StudentCell({ row }: { row: Pick<ChargeRow, "student"> }) {

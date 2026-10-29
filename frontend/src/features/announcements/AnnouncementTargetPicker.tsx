@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
+import { Select } from "@/components/ui/field";
 import type { AnnouncementDraft, AnnouncementTargets } from "./types";
 
-// Valor do <select>: CLASS:<turma>, MODALITY:<modalidade>:<unidade>, UNIT:<unidade> ou ORGANIZATION.
+// Valor do campo de destino: CLASS:<turma>, MODALITY:<modalidade>:<unidade>, UNIT:<unidade> ou ORGANIZATION.
 export function draftTarget(value: string): Pick<AnnouncementDraft, "targetKind" | "classId" | "modalityId" | "unitId"> | null {
   const [kind, a, b] = value.split(":");
   if (kind === "CLASS" && a) return { targetKind: "CLASS", classId: a };
@@ -27,7 +28,7 @@ export function AnnouncementTargetPicker({ targets, value, onChange }: { targets
       <label htmlFor="ann-target" className="block text-sm font-medium">
         {t("announcements.new.target")}
       </label>
-      <select id="ann-target" className="min-h-11 w-full rounded-md border bg-background px-2" value={value} onChange={(e) => onChange(e.target.value)}>
+      <Select id="ann-target" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">{t("announcements.new.targetPlaceholder")}</option>
         {targets.organization && <option value="ORGANIZATION">{t("announcements.new.organization")}</option>}
         {targets.units.length > 0 && (
@@ -57,7 +58,7 @@ export function AnnouncementTargetPicker({ targets, value, onChange }: { targets
             ))}
           </optgroup>
         )}
-      </select>
+      </Select>
     </div>
   );
 }

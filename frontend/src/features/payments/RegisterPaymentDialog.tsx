@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatMoney } from "@/components/fields/masks";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Input, Select, Textarea } from "@/components/ui/field";
 import { ApiError } from "@/lib/api";
 import { PAYMENT_METHODS, receiptStaffPdfUrl, registerPayment, type PaymentMethod, type PaymentReceipt } from "./usePayment";
 
 const MAX_OBSERVATION = 200;
-const input = "min-h-11 w-full rounded-md border bg-background px-2";
 const localDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // RF-COB-04: pagamento no balcão (meio, data, observação, recibo por e-mail). O valor é só leitura: o da cobrança.
@@ -79,36 +80,34 @@ export function RegisterPaymentDialog({ chargeId, label, amountCents, onClose, o
             <label htmlFor="payment-amount" className="block text-sm font-medium">
               {t(`${k}amount`)}
             </label>
-            <input id="payment-amount" className={input} value={formatMoney(amountCents)} readOnly />
+            <Input id="payment-amount" value={formatMoney(amountCents)} readOnly />
           </div>
           <div>
             <label htmlFor="payment-method" className="block text-sm font-medium">
               {t(`${k}method`)}
             </label>
-            <select id="payment-method" className={input} value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
+            <Select id="payment-method" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
               {PAYMENT_METHODS.map((m) => (
                 <option key={m} value={m}>
                   {t(`payments.method.${m}`)}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
             <label htmlFor="payment-day" className="block text-sm font-medium">
               {t(`${k}day`)}
             </label>
-            <input id="payment-day" type="date" className={input} value={day} max={today} onChange={(e) => setDay(e.target.value)} />
+            <Input id="payment-day" type="date" value={day} max={today} onChange={(e) => setDay(e.target.value)} />
           </div>
           <div>
             <label htmlFor="payment-observation" className="block text-sm font-medium">
               {t(`${k}observation`)}
             </label>
-            <textarea
+            <Textarea
               id="payment-observation"
-              className="min-h-20 w-full rounded-md border bg-background px-2 py-1"
               value={observation}
-              maxLength={MAX_OBSERVATION}
-              onChange={(e) => setObservation(e.target.value)}
+              onChange={(e) => setObservation(e.target.value.slice(0, MAX_OBSERVATION))}
               aria-describedby="payment-observation-count"
             />
             <p id="payment-observation-count" className="text-sm text-muted-foreground">
@@ -120,9 +119,7 @@ export function RegisterPaymentDialog({ chargeId, label, amountCents, onClose, o
             {t(`${k}sendReceipt`)}
           </label>
           {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
+            <Banner tone="danger">{error}</Banner>
           )}
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" className="min-h-11" onClick={onClose}>

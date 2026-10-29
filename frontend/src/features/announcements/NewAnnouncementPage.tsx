@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { CharCounter } from "@/components/CharCounter";
+import { CHAR_COUNTER_FIELD, CharCounter } from "@/components/CharCounter";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/field";
 import { br, todayIso } from "@/features/agenda/agendaDates";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
@@ -15,7 +16,6 @@ import { createAnnouncement, fetchTargets, fetchTemplates, previewAnnouncement, 
 import { PageHeader } from "@/components/ui/page-header";
 
 const FIELD_ORDER = ["type", "title", "body", "file", "channels", "pinnedUntil", "sendAt"];
-const inputClass = "min-h-11 w-full rounded-md border bg-background px-2";
 
 // Só http e https viram link (como o painel da turma).
 function safeLink(link: string | null | undefined) {
@@ -41,7 +41,7 @@ function Field({ id, label, error, help, children }: { id: string; label: string
         </p>
       )}
       {error && (
-        <p id={`${id}-erro`} className="text-sm text-destructive">
+        <p id={`${id}-erro`} className="text-sm text-danger-foreground">
           {error}
         </p>
       )}
@@ -201,16 +201,16 @@ function Form({ targets, templates }: { targets: AnnouncementTargets; templates:
       <AnnouncementTargetPicker targets={targets} value={target} onChange={setTarget} />
 
       <Field id="ann-type" label={t("announcements.new.type")} error={errors.type}>
-        <select id="ann-type" className={inputClass} value={type} aria-invalid={errors.type ? true : undefined} aria-describedby={describe("ann-type", "type")} onChange={(e) => chooseType(e.target.value as AnnouncementType)}>
+        <Select id="ann-type" value={type} aria-invalid={errors.type ? true : undefined} aria-describedby={describe("ann-type", "type")} onChange={(e) => chooseType(e.target.value as AnnouncementType)}>
           {ANNOUNCEMENT_TYPES.map((v) => (
             <option key={v} value={v}>
               {t(`announcements.types.${v}`)}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       {pendingType && (
-        <div role="alert" className="flex flex-col gap-2 rounded-md border p-3">
+        <div role="alert" className="flex flex-col gap-2 rounded-card border bg-card p-4">
           <p>{t("announcements.new.typeChange", { type: t(`announcements.types.${pendingType}`) })}</p>
           <div className="flex flex-wrap gap-2">
             <Button type="button" className="min-h-11" onClick={() => applyType(pendingType)}>
@@ -224,10 +224,10 @@ function Form({ targets, templates }: { targets: AnnouncementTargets; templates:
       )}
 
       <Field id="ann-title" label={t("announcements.new.titleField")} error={errors.title}>
-        <input id="ann-title" className={inputClass} value={title} maxLength={120} aria-invalid={errors.title ? true : undefined} aria-describedby={describe("ann-title", "title")} onChange={(e) => setTitle(e.target.value)} />
+        <Input id="ann-title" value={title} maxLength={120} aria-invalid={errors.title ? true : undefined} aria-describedby={describe("ann-title", "title")} onChange={(e) => setTitle(e.target.value)} />
       </Field>
       <Field id="ann-body" label={t("announcements.new.bodyField")} error={errors.body} help={t("announcements.new.bodyHelp")}>
-        <CharCounter id="ann-body" rows={6} max={2000} value={body} onChange={setBody} aria-invalid={errors.body ? true : undefined} aria-describedby={describe("ann-body", "body", true)} />
+        <CharCounter id="ann-body" rows={6} max={2000} className={CHAR_COUNTER_FIELD} value={body} onChange={setBody} aria-invalid={errors.body ? true : undefined} aria-describedby={describe("ann-body", "body", true)} />
       </Field>
 
       <Field id="ann-file" label={t("announcements.new.image")} error={errors.file}>
@@ -257,14 +257,14 @@ function Form({ targets, templates }: { targets: AnnouncementTargets; templates:
           </label>
         )}
         {errors.channels && (
-          <p id="ann-channels-erro" className="text-sm text-destructive">
+          <p id="ann-channels-erro" className="text-sm text-danger-foreground">
             {errors.channels}
           </p>
         )}
       </fieldset>
 
       <Field id="ann-pinnedUntil" label={t("announcements.new.pinnedUntil")} error={errors.pinnedUntil} help={t("announcements.new.pinnedHelp")}>
-        <input id="ann-pinnedUntil" type="date" min={todayIso()} className={inputClass} value={pinnedUntil} aria-invalid={errors.pinnedUntil ? true : undefined} aria-describedby={describe("ann-pinnedUntil", "pinnedUntil", true)} onChange={(e) => setPinnedUntil(e.target.value)} />
+        <Input id="ann-pinnedUntil" type="date" min={todayIso()} value={pinnedUntil} aria-invalid={errors.pinnedUntil ? true : undefined} aria-describedby={describe("ann-pinnedUntil", "pinnedUntil", true)} onChange={(e) => setPinnedUntil(e.target.value)} />
       </Field>
 
       <fieldset className="flex flex-col gap-1">
@@ -277,14 +277,14 @@ function Form({ targets, templates }: { targets: AnnouncementTargets; templates:
         </label>
         {mode === "SCHEDULED" && (
           <Field id="ann-sendAt" label={t("announcements.new.sendAt")} error={errors.sendAt}>
-            <input id="ann-sendAt" type="datetime-local" className={inputClass} value={sendAt} aria-invalid={errors.sendAt ? true : undefined} aria-describedby={describe("ann-sendAt", "sendAt")} onChange={(e) => setSendAt(e.target.value)} />
+            <Input id="ann-sendAt" type="datetime-local" value={sendAt} aria-invalid={errors.sendAt ? true : undefined} aria-describedby={describe("ann-sendAt", "sendAt")} onChange={(e) => setSendAt(e.target.value)} />
           </Field>
         )}
       </fieldset>
 
       <AnnouncementPreviewPanel state={preview} />
       {topError && (
-        <p ref={topRef} tabIndex={-1} role="alert" className="text-sm text-destructive">
+        <p ref={topRef} tabIndex={-1} role="alert" className="text-sm text-danger-foreground">
           {topError}
         </p>
       )}

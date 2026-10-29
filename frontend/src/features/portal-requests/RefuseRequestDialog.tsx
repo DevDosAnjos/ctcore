@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Textarea } from "@/components/ui/field";
 import { ModalityDialog } from "@/features/students/ModalityPickers";
 import { approveRequest, refuseRequest } from "./usePortalRequests";
 import { requestSummary } from "./RequestSummary";
@@ -36,9 +37,8 @@ function DecideDialog({ request, onClose, onDone, mode }: Props & { mode: "appro
             <label htmlFor={id} className="block text-sm font-medium">
               {t(`${k}message`)}
             </label>
-            <textarea
+            <Textarea
               id={id}
-              className="w-full rounded-md border bg-background p-2"
               rows={3}
               maxLength={500}
               value={message}
@@ -47,7 +47,7 @@ function DecideDialog({ request, onClose, onDone, mode }: Props & { mode: "appro
               aria-describedby={errors.message ? `${id}-erro` : undefined}
             />
             {errors.message && (
-              <p id={`${id}-erro`} className="text-sm text-destructive">
+              <p id={`${id}-erro`} className="text-sm text-danger-foreground">
                 {errors.message}
               </p>
             )}

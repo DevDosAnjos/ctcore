@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { SidePanel } from "@/components/SidePanel";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { notificationTarget, relativeTime } from "./notificationActions";
 import { useNotificationPanel, type AppNotification } from "./useNotifications";
@@ -110,7 +111,7 @@ export function NotificationPanel({
               <span className="font-medium">{t("notifications.receiveAll.label")}</span>
               <span className="text-muted-foreground">{t("notifications.receiveAll.hint")}</span>
             </span>
-            <input type="checkbox" role="switch" className="size-5" checked={panel.prefs.receiveAll} onChange={(e) => toggle(e.target.checked)} />
+            <Switch checked={panel.prefs.receiveAll} onCheckedChange={toggle} label={t("notifications.receiveAll.label")} />
           </label>
         )}
         {panel.status === "ready" && items.length > 0 && (

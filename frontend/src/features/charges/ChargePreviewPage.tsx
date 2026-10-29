@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/field";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { usePermissions } from "@/features/permissions/usePermissions";
 import { ALL, useUnitScope } from "@/features/units/UnitScopeProvider";
@@ -11,7 +12,6 @@ import { ChargePreviewRows } from "./ChargePreviewRows";
 import { PERIODS, useChargePreview } from "./useChargePreview";
 import { PageHeader } from "@/components/ui/page-header";
 
-const select = "min-h-11 rounded-md border bg-background px-2 font-normal";
 
 function Content() {
   const { t } = useTranslation();
@@ -35,17 +35,17 @@ function Content() {
     body = (
       <>
         <dl className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md border p-3">
+          <div className="rounded-card border bg-card p-4">
             <dt className="text-sm text-muted-foreground">{t("charges.preview.total")}</dt>
             <dd className="text-xl font-semibold">{formatCurrency(data.totalCents)}</dd>
           </div>
-          <div className="rounded-md border p-3">
+          <div className="rounded-card border bg-card p-4">
             <dt className="text-sm text-muted-foreground">{t("charges.preview.count")}</dt>
             <dd className="text-xl font-semibold">{data.count}</dd>
           </div>
-          <div className="rounded-md border p-3">
+          <div className="rounded-card border bg-card p-4">
             <dt className="text-sm text-muted-foreground">{t("charges.preview.diff")}</dt>
-            <dd className={`text-xl font-semibold ${diff < 0 ? "text-destructive" : ""}`}>
+            <dd className={`text-xl font-semibold ${diff < 0 ? "text-danger-foreground" : ""}`}>
               {diff === 0 ? formatCurrency(0) : `${diff > 0 ? "+" : "−"} ${formatCurrency(Math.abs(diff))}`}
             </dd>
           </div>
@@ -62,25 +62,25 @@ function Content() {
         {all && (
           <label className="flex flex-col gap-1 text-sm font-medium">
             {t("charges.preview.unit")}
-            <select className={select} value={picked} onChange={(e) => setPicked(e.target.value)}>
+            <Select className="w-auto" value={picked} onChange={(e) => setPicked(e.target.value)}>
               <option value="">{t("charges.preview.chooseUnit")}</option>
               {scope.units.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.preview.period")}
-          <select className={select} value={days} onChange={(e) => setDays(Number(e.target.value))}>
+          <Select className="w-auto" value={days} onChange={(e) => setDays(Number(e.target.value))}>
             {PERIODS.map((d) => (
               <option key={d} value={d}>
                 {t("charges.preview.periodOption", { count: d })}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <Button asChild variant="outline" className="min-h-11">
           <Link to="/cobrancas">{t("charges.preview.back")}</Link>

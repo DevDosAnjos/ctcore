@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { CharCounter } from "@/components/CharCounter";
+import { CHAR_COUNTER_FIELD, CharCounter } from "@/components/CharCounter";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
 import { FieldError, NO_FAILURE, failureOf, type Failure } from "./CancelChargeDialog";
@@ -41,13 +42,11 @@ export function CancelNextDialog({ line, onClose, onDone }: { line: PreviewLine;
         <p>{t("charges.preview.cancel.summary", { student: line.student, modality: line.modality, amount: formatCurrency(line.amountCents) })}</p>
         <p className="text-sm text-muted-foreground">{t("charges.preview.cancel.effect")}</p>
         {err.form && (
-          <p role="alert" className="text-sm text-destructive">
-            {err.form}
-          </p>
+          <Banner tone="danger">{err.form}</Banner>
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.actions.reason")}
-          <CharCounter value={reason} max={200} onChange={setReason} aria-required="true" aria-invalid={err.fields.reason ? true : undefined} className="w-full rounded-md border bg-background p-2 font-normal" />
+          <CharCounter value={reason} max={200} onChange={setReason} aria-required="true" aria-invalid={err.fields.reason ? true : undefined} className={CHAR_COUNTER_FIELD} />
         </label>
         <FieldError message={err.fields.reason} />
         <div className="flex flex-wrap justify-end gap-2">

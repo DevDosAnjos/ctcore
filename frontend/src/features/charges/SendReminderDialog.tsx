@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { failureOf, NO_FAILURE, type Failure } from "./CancelChargeDialog";
 import type { ReminderResult } from "./types";
@@ -53,9 +54,7 @@ export function SendReminderDialog({ targets, onClose, onDone }: { targets: Remi
           </>
         )}
         {err.form && (
-          <p role="alert" className="text-sm text-destructive">
-            {err.form}
-          </p>
+          <Banner tone="danger">{err.form}</Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" className="min-h-11" onClick={close} disabled={busy}>

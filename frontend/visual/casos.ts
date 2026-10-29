@@ -108,6 +108,11 @@ export const casos: Caso[] = [
   { nome: "planos-lista", rota: "/planos/lista", perfil: ana, canvas: "PlanosRegras" },
   { nome: "plano-novo", rota: "/planos/lista", perfil: ana, canvas: "PlanosRegras", passos: [{ clicar: "Novo plano" }] },
   { nome: "beneficio-conceder", rota: "/beneficios", perfil: ana, canvas: "BeneficioConceder", passos: [{ clicar: "Conceder benefício" }] },
+  // Cobranças, comunicação, notificações e pedidos (#422). Janelas abrem pelos passos.
+  // Sem caso: recusar pedido e recusar comprovante (o MSW não tem pedido nem comprovante em aberto), recibo público (o MSW começa sem recibo, o código nasce no pagamento), painel da cobrança, registrar pagamento, cancelar, alterar vencimento e renegociar (id gerado ou fluxo longo), lembrete (seleção em lote) e imagem do comprovante; GM* são as mesmas telas a 390 px (D1).
+  { nome: "cobranca-avulsa", rota: "/cobrancas", perfil: ana, canvas: "CobrancaAvulsa", passos: [{ clicar: "Nova cobrança avulsa" }] },
+  { nome: "cobranca-antecipar", rota: "/cobrancas", perfil: ana, canvas: "GerarProximas", passos: [{ clicar: "Gerar próximas mensalidades" }] },
+  { nome: "notificacoes", rota: "/alunos", perfil: ana, canvas: "Notificacoes", passos: [{ clicar: "Notificações" }] },
 ];
 
 export const larguras = [

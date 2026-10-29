@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/field";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ALL, useUnitScope } from "@/features/units/UnitScopeProvider";
 import { formatCurrency, formatTime } from "@/lib/format";
@@ -11,7 +12,6 @@ import type { DailyReceipts } from "./types";
 import { useDailyReceipts } from "./useDailyReceipts";
 import { PageHeader } from "@/components/ui/page-header";
 
-const field = "min-h-11 rounded-md border bg-background px-2 font-normal";
 const cell = "px-3 py-2 text-left align-top";
 
 function Table({ title, head, children }: { title: string; head: string[]; children: ReactNode }) {
@@ -44,11 +44,11 @@ function Summary({ data }: { data: DailyReceipts }) {
   return (
     <>
       <dl className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-md border p-3">
+        <div className="rounded-card border bg-card p-4">
           <dt className="text-sm text-muted-foreground">{t("charges.daily.total")}</dt>
           <dd className="text-xl font-semibold">{formatCurrency(data.totalCents)}</dd>
         </div>
-        <div className="rounded-md border p-3">
+        <div className="rounded-card border bg-card p-4">
           <dt className="text-sm text-muted-foreground">{t("charges.daily.count")}</dt>
           <dd className="text-xl font-semibold">{data.count}</dd>
         </div>
@@ -114,19 +114,19 @@ function Content() {
         {all && (
           <label className="flex flex-col gap-1 text-sm font-medium">
             {t("charges.daily.unit")}
-            <select className={field} value={picked} onChange={(e) => setPicked(e.target.value)}>
+            <Select className="w-auto" value={picked} onChange={(e) => setPicked(e.target.value)}>
               <option value="">{t("charges.daily.chooseUnit")}</option>
               {scope.units.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.daily.date")}
-          <input type="date" className={field} max={todayIso()} value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input type="date" className="w-auto" max={todayIso()} value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
         <Button asChild variant="outline" className="min-h-11">
           <Link to="/cobrancas">{t("charges.daily.back")}</Link>
