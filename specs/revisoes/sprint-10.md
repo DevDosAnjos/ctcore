@@ -228,7 +228,7 @@ Ordem sugerida: A1, A2, A4, A3 antes do PR `dev`→`main`; A5 em qualquer moment
 
 #### Resumo e veredito
 
-Desde a rodada 1 (`aad58ec`) entraram quatro PRs de squash na `dev`, todos com `Closes #N`, base `dev`, 1 commit e `ci-gate` `SUCCESS`: #406 (#402, A2), #408 (#403, A1), #409 (#404, A3 e D1/D2) e #410 (#405, D2). As quatro issues estão no marco e fechadas, com "feito" no `specs/backlog.md`, e cada arquivo de item tem Rodada 1 `OK` e Entrega. Nenhum achado BLOQUEIA resta. O clone limpo de `c5a4b09` passou em tudo, e o `test:cov` passou 2 de 2 (na rodada 1 reprovou 2 de 4). Sobra um AJUSTAR que pode seguir na Sprint 11 (#407). Resultado: `APROVAR`, isto é, pode abrir o PR `dev`→`main` com "Merge"; não é liberação da Sprint 11.
+Desde a rodada 1 (`aad58ec`) entraram quatro PRs de squash na `dev`, todos com `Closes #N`, base `dev`, 1 commit e `ci-gate` `SUCCESS`: #406 (#402, A2), #408 (#403, A1), #409 (#404, A3 e D1/D2) e #410 (#405, D2). As quatro issues estão no marco e fechadas, com "feito" no `specs/backlog.md`, e cada arquivo de item tem Rodada 1 `OK` e Entrega. Nenhum achado BLOQUEIA resta. O clone limpo de `c5a4b09` passou em tudo, e o `test:cov` passou 2 de 2 (na rodada 1 reprovou 2 de 4). Sobra uma sugestão, sem ajuste na Sprint 10, que segue na Sprint 11 pela #407. Resultado: `APROVAR`, isto é, pode abrir o PR `dev`→`main` com "Merge"; não é liberação da Sprint 11.
 
 Pré-condições: `dev` limpa e igual a `origin/dev` (`c5a4b09`); `main` em `0d8e16b`; nenhum PR aberto contra `dev`; o remoto só tem `main` e `dev`; os branches `item/*` locais são de itens já mergeados; `gh auth` válido; Docker 29.8.1 ativo; Java 21.0.12 (build), Node 24.21.0.
 
@@ -236,7 +236,7 @@ Pré-condições: `dev` limpa e igual a `origin/dev` (`c5a4b09`); `main` em `0d8
 
 | Achado | Status agora | Evidência |
 |---|---|---|
-| R10-1 `test:cov` instável (UnitSettingsPage CA17) | PASSOU, com ressalva (vira R10-9, AJUSTAR) | #408 trocou `user.type`/`user.clear` por `fireEvent.change` e `userEvent.setup({ delay: null })`; clone limpo: `npm run test:cov` 2 de 2 verdes (160 arquivos, 1405 testes, linhas 96,68%, 294 s). Ressalva abaixo |
+| R10-1 `test:cov` instável (UnitSettingsPage CA17) | PASSOU, com ressalva (vira R10-9, SUGESTÃO) | #408 trocou `user.type`/`user.clear` por `fireEvent.change` e `userEvent.setup({ delay: null })`; clone limpo: `npm run test:cov` 2 de 2 verdes (160 arquivos, 1405 testes, linhas 96,68%, 294 s). Ressalva abaixo |
 | R10-2 data fixa em `BillingFixtures`/`ChargeNoticeIT` | PASSOU | #406: `FAR_DUE = 2100-01-10`, relógio do job em `2100-01-05`; `grep 2026` nos arquivos tocados vazio (item #402); o agendador real nunca vê esse vencimento, então o teste não depende mais da data da JVM. `verify` do clone: 860 ITs verdes em 2026-10-28; não adiantei o relógio da máquina |
 | R10-3 especificação sem as decisões | PASSOU | #409: diff de `docs/especificacao` em `03`, `05`, `09`, `10`, `12`, `13`, `14` com RN-MAT-11 a 18, RN-COB-13/14/16, RN-INA-08, RN-COM-08, RN-AUD-02, RN-POR-03/05/06a/08, RF-POR-01 a 07; `docs/openapi.yaml` ganha `teacherName`. Item #404 CA1 a CA9 PASSOU na verificação |
 | D1 (encerramento no 8º dia) | PASSOU | a descrição do marco 11 diz agora "Um pedido de troca de turma, de plano ou de nova modalidade nunca altera a matrícula sem ação da gestão; o de encerramento segue a RN-MAT-18" (`gh api .../milestones/11`) |
@@ -281,11 +281,11 @@ Comparação com a rodada 1: back-end com um teste a mais e cerca de 1 min mais 
 
 #### Achados novos
 
-- **R10-9 · AJUSTAR · teste / front** — local: `specs/itens/403-unit-settings-ca17-instavel.md` (desvio do dono, 28/10/2026) e issue #407 (Sprint 11, aberta)
+- **R10-9 · SUGESTÃO · teste / front** — local: `specs/itens/403-unit-settings-ca17-instavel.md` (desvio do dono, 28/10/2026) e issue #407 (Sprint 11, aberta)
   - esperado: `test:cov` estável sem depender de folga de CPU (CA4 da #403: 10 de 10).
   - observado: o CA17 caiu de 6,6-7,4 s para 0,8-3,4 s isolado, mas o dono trocou o CA4 por "CA17 20 de 20 isolado" e "suíte com `--maxWorkers=2` verde"; com o paralelismo padrão a #403 mediu 8, 10 e 5 timeouts de 20 s em outros arquivos numa máquina saturada. A causa geral foi para a #407. Nesta rodada, com a máquina livre, 2 de 2 verdes.
   - efeito: o `test:cov` do PR `dev`→`main` (que roda tudo) pode reprovar ao acaso em máquina mais lenta; o `ci-gate` dos quatro PRs desta rodada passou.
-  - proposta: A6, sem bloquear o PR. Se o PR `dev`→`main` reprovar só por timeout de 20 s, reexecutar o job e registrar na #407.
+  - proposta: sem ajuste na Sprint 10; segue pela #407 (Sprint 11). Se o PR `dev`→`main` reprovar só por timeout de 20 s, reexecutar o job e registrar na #407.
 
 - **R10-10 · SUGESTÃO · teste** — a RN-POR-06a, nova, não aparece no nome de nenhum teste; o `PortalScheduleIT.teacherNameOnly` cobre o comportamento. Acrescentar o código ao `@DisplayName` quando a Sprint 11 tocar o arquivo.
 
@@ -294,14 +294,18 @@ R10-5, R10-6 e R10-7 (sugestões da rodada 1) seguem como estavam; R10-4 está e
 #### Ajustes propostos
 
 - **A1, A2, A3 e A4: concluídos** (#408, #406, #409 e decisão do dono aplicada em #409 e #410).
-- **A5** (limpar branches, R10-8): depois do PR, do dono; `git fetch --prune` e apagar os `item/*` já mergeados.
-- **A6** (R10-9): depois do PR, na Sprint 11, pela #407, que já existe com "Pronto quando" de 10 execuções seguidas. Acréscimo sugerido: registrar se o `ci-gate` do PR `dev`→`main` reprovou por timeout.
+- **A5** (limpar branches, R10-8): feita pelo agente a pedido do dono, depois do PR de registro; remoto já limpo, branches locais integradas apagadas.
+- **A6** (R10-9, sugestão): sem ajuste na Sprint 10; na Sprint 11, pela #407, que já existe com "Pronto quando" de 10 execuções seguidas. Acréscimo sugerido: registrar se o `ci-gate` do PR `dev`→`main` reprovou por timeout.
 
 Antes do PR `dev`→`main`: nada. Depois: A5 e A6.
 
 #### Decisões do dono
 
-Nenhuma nova. A D1 e a D2 da rodada 1 foram respondidas conforme a opção recomendada e aplicadas. O desvio do CA4 da #403 (causa geral para a #407) já está registrado como decisão do dono de 28/10/2026.
+Decisões do dono de 28/10/2026, todas já aplicadas:
+
+- **D1:** opção recomendada. O bullet vale para troca de turma, nova modalidade e troca de plano; o encerramento segue a RN-MAT-18. Descrição do marco 11 corrigida (#409).
+- **D2:** opção recomendada. O nome do professor aparece em todas as telas do portal; e-mail, telefone e WhatsApp nunca saem. Agenda ajustada (#410, RN-POR-06a).
+- **Desvio do CA4 da #403:** o CA4 "`test:cov` 10 de 10" foi trocado por "CA17 20 de 20 isolado" e "suíte com `--maxWorkers=2` verde"; a causa geral do `test:cov` instável em máquina saturada foi para a #407 (Sprint 11).
 
 #### Ações do dono
 
@@ -312,6 +316,14 @@ Nenhuma nova. A D1 e a D2 da rodada 1 foram respondidas conforme a opção recom
 #### O que só um navegador ou uma pessoa prova
 
 Igual à rodada 1: comparação com o canvas (nenhum item pôde acessar os canvas), contraste real e foco por teclado, zoom, cache `localStorage` da carteirinha sem rede. Proxy: 81 testes `e2e` com axe nos dois temas e `scrollWidth <= innerWidth` a 360 px (2 execuções verdes). Teste a propor, sem criar: ponta a ponta do aluno enviando o comprovante contra o back-end real com Pix configurado.
+
+#### Itens para as próximas sprints (sem issue nova)
+
+- **#407 (Sprint 11):** causa geral do `test:cov` instável em máquina lenta (R10-9); registrar se o `ci-gate` do PR `dev`→`main` reprovar por timeout de 20 s.
+- **R10-5:** ponta a ponta do aluno contra o back-end real, quando houver Pix configurado.
+- **R10-6:** cobertura de ramos do front em 87,14%; acompanhar.
+- **R10-7:** comparação com o canvas, que nenhum item conseguiu acessar.
+- **R10-10:** acrescentar a RN-POR-06a ao `@DisplayName` de `PortalScheduleIT.teacherNameOnly` quando a Sprint 11 tocar o arquivo.
 
 #### Riscos para a sprint seguinte
 
