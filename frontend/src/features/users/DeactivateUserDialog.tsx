@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/SessionProvider";
 import { useUnitScope } from "@/features/units/UnitScopeProvider";
@@ -44,7 +45,7 @@ function Body({ user, onClose, onDone }: { user: StaffUser; onClose: () => void;
       <div className="flex flex-col gap-3">
         <p>{t("users.deactivate.summary")}</p>
         {affected.length > 0 && (
-          <div role="alert" className="rounded-md border border-destructive p-2 text-sm">
+          <Banner tone="warn">
             <p className="font-medium">{t("users.lastAdmin.explain")}</p>
             <ul className="list-disc pl-5">
               {affected.map((id) => (
@@ -52,15 +53,13 @@ function Body({ user, onClose, onDone }: { user: StaffUser; onClose: () => void;
               ))}
             </ul>
             <p className="mt-1">{t(coordinator ? "users.lastAdmin.coordinatorHelp" : "users.lastAdmin.adminHelp")}</p>
-          </div>
+          </Banner>
         )}
         {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
+          <Banner tone="danger">{error}</Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>
+          <Button type="button" variant="secondary" className="min-h-11" onClick={onClose} disabled={busy}>
             {t("common.cancel")}
           </Button>
           {affected.length > 0 && coordinator && (

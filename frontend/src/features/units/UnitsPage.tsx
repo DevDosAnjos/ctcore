@@ -1,65 +1,16 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { Card } from "@/components/Card";
+import { DataTable, type Column } from "@/components/query/DataTable";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/badge";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { DeactivateUnitDialog } from "./DeactivateUnitDialog";
 import { ShortNameDialog } from "./ShortNameDialog";
 import { MAX_UNITS, useUnits, type UnitSummary } from "./useUnits";
 import { PageHeader } from "@/components/ui/page-header";
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="break-words">{children}</dd>
-    </div>
-  );
-}
-
-// Cartão em 360 px; em telas largas os campos viram colunas lado a lado.
-function UnitRow({ unit, onAdjust, onDeactivate }: { unit: UnitSummary; onAdjust: (u: UnitSummary) => void; onDeactivate: (u: UnitSummary) => void }) {
-  const { t } = useTranslation();
-  return (
-    <li>
-      <Card heading="h2" title={unit.name}>
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <Field label={t("units.city")}>{unit.city ?? t("units.noCity")}</Field>
-          <Field label={t("units.activeStudents")}>{unit.activeStudents}</Field>
-          <Field label={t("units.administrators")}>
-            {unit.administrators.length ? unit.administrators.map((a) => a.name).join(", ") : t("units.noAdministrators")}
-          </Field>
-          <Field label={t("units.status")}>{unit.active ? t("units.active") : t("units.inactive")}</Field>
-          <Field label={t("units.shortName")}>
-            <span>{unit.shortName}</span>
-            {!unit.shortNameAdjusted && (
-              <Button variant="outline" size="sm" className="mt-1 whitespace-normal" onClick={() => onAdjust(unit)}>
-                {t("units.adjust")}
-                <span className="sr-only"> {unit.name}</span>
-              </Button>
-            )}
-          </Field>
-        </dl>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to={`/configuracoes/unidade?unidade=${unit.id}`}>
-              {t("units.configure")}
-              <span className="sr-only"> {unit.name}</span>
-            </Link>
-          </Button>
-          {unit.active && (
-            <Button variant="outline" size="sm" onClick={() => onDeactivate(unit)}>
-              {t("units.deactivate.button")}
-              <span className="sr-only"> {unit.name}</span>
-            </Button>
-          )}
-        </div>
-      </Card>
-    </li>
-  );
-}
 
 function Content() {
   const { t } = useTranslation();
@@ -70,14 +21,59 @@ function Content() {
   if (api.status === "loading") return <LoadingState />;
   if (api.status === "forbidden") return <ForbiddenState />;
   if (!api.units) return <ErrorState onRetry={api.retry} />;
+
+  const sr = (u: UnitSummary) => <span className="sr-only"> {u.name}</span>;
+  const columns: Column<UnitSummary>[] = [
+    { key: "name", label: t("units.title"), render: (u) => <span className="font-medium">{u.name}</span> },
+    { key: "city", label: t("units.city"), render: (u) => u.city ?? t("units.noCity") },
+    { key: "students", label: t("units.activeStudents"), numeric: true, render: (u) => u.activeStudents },
+    {
+      key: "admins",
+      label: t("units.administrators"),
+      render: (u) => (u.administrators.length ? u.administrators.map((a) => a.name).join(", ") : t("units.noAdministrators")),
+    },
+    { key: "status", label: t("units.status"), render: (u) => <StatusBadge status={u.active ? "ACTIVE" : "INACTIVE"} label={u.active ? t("units.active") : t("units.inactive")} /> },
+    {
+      key: "short",
+      label: t("units.shortName"),
+      render: (u) => (
+        <div>
+          <span>{u.shortName}</span>
+          {!u.shortNameAdjusted && (
+            <Button variant="secondary" size="sm" className="mt-1 block whitespace-normal" onClick={() => setAdjusting(u)}>
+              {t("units.adjust")}
+              {sr(u)}
+            </Button>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "actions",
+      label: t("units.actions"),
+      render: (u) => (
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="secondary" size="sm">
+            <Link to={`/configuracoes/unidade?unidade=${u.id}`}>
+              {t("units.configure")}
+              {sr(u)}
+            </Link>
+          </Button>
+          {u.active && (
+            <Button variant="secondary" size="sm" onClick={() => setDeactivating(u)}>
+              {t("units.deactivate.button")}
+              {sr(u)}
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title={t("units.title")} />
-      {notice && (
-        <p role="status" className="text-sm">
-          {t("units.deactivate.done")}
-        </p>
-      )}
+      {notice && <Banner tone="ok">{t("units.deactivate.done")}</Banner>}
       {api.units.length >= MAX_UNITS ? (
         <div>
           <Button disabled aria-describedby="units-limit">
@@ -95,11 +91,7 @@ function Content() {
       {api.units.length === 0 ? (
         <EmptyState title={t("units.emptyTitle")} text={t("units.emptyText")} />
       ) : (
-        <ul className="flex flex-col gap-4">
-          {api.units.map((u) => (
-            <UnitRow key={u.id} unit={u} onAdjust={setAdjusting} onDeactivate={setDeactivating} />
-          ))}
-        </ul>
+        <DataTable columns={columns} rows={api.units} rowKey={(u) => u.id} order="" onOrder={() => undefined} />
       )}
       <DeactivateUnitDialog
         unit={deactivating}
@@ -114,7 +106,7 @@ function Content() {
   );
 }
 
-// RF-ORG-02: só o Coordenador (a rota já nega os demais; a barreira de dados é o servidor).
+// RF-ACE-06: só o Coordenador (a rota já nega os demais; a barreira de dados é o servidor).
 export function UnitsPage() {
   return (
     <ManagementLayout activeId="units">

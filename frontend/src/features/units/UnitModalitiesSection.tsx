@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { ApiError } from "@/lib/api";
+import { Banner } from "@/components/ui/banner";
 import { Card } from "@/components/Card";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { useUnitModalities } from "./useUnitModalities";
@@ -33,7 +34,7 @@ export function UnitModalitiesSection({ unitId }: { unitId: string }) {
     return (
       <>
         {failed && (
-          <div role="alert" className="mb-2 text-sm text-destructive">
+          <Banner tone="danger" className="mb-2">
             <p>{t(failed.classes.length > 0 ? "unitModalities.inUse" : "unitModalities.changeError", { name: failed.name })}</p>
             {failed.classes.length > 0 && (
               <ul className="list-disc pl-5">
@@ -42,7 +43,7 @@ export function UnitModalitiesSection({ unitId }: { unitId: string }) {
                 ))}
               </ul>
             )}
-          </div>
+          </Banner>
         )}
         <ul className="flex flex-col divide-y">
           {items.map((m) => (

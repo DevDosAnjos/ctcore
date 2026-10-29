@@ -2,16 +2,15 @@ import { useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { ErrorState } from "@/components/states";
+import { AuthShell } from "@/components/layout/AuthShell";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { ApiError, api } from "@/lib/api";
-import { ThemeToggle } from "@/theme/ThemeToggle";
 import { safeNext } from "./safeNext";
 import { useSession, type SessionView } from "./SessionProvider";
-import { SupportContact, platformContact } from "./SupportContact";
 import { Turnstile } from "./Turnstile";
 import { TwoFactorStep } from "./TwoFactorStep";
-
-const input = "min-h-11 w-full rounded-md border bg-background px-2";
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -71,93 +70,53 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
-        <span className="text-lg font-semibold">{t("app.name")}</span>
-        <ThemeToggle />
-      </header>
-      <main className="mx-auto w-full max-w-md space-y-6 px-4 py-6">
-        <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground">
-          <h1 className="text-2xl font-semibold">{t("auth.title")}</h1>
-          {ticket ? (
-            <TwoFactorStep
-              ticket={ticket}
-              onDone={setSession}
-              onBack={() => setTicket(null)}
-              onExpired={() => {
-                setTicket(null);
-                setNotice(t("twoFactor.login.expired"));
-              }}
-            />
-          ) : failed ? (
-            <ErrorState onRetry={() => void submit()} />
-          ) : (
-            <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
-              {notice && (
-                <p role="alert" className="text-sm text-destructive">
-                  {notice}
-                </p>
-              )}
-              <div>
-                <label htmlFor="login-email" className="block text-sm font-medium">
-                  {t("auth.email")}
-                </label>
-                <input
-                  id="login-email"
-                  type="email"
-                  autoComplete="username"
-                  className={input}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  aria-invalid={!!errors.email || undefined}
-                  aria-describedby={errors.email ? "login-email-erro" : undefined}
+    <AuthShell title={t(ticket ? "twoFactor.login.title" : "auth.title")}>
+      {ticket ? (
+        <TwoFactorStep
+          ticket={ticket}
+          onDone={setSession}
+          onBack={() => setTicket(null)}
+          onExpired={() => {
+            setTicket(null);
+            setNotice(t("twoFactor.login.expired"));
+          }}
+        />
+      ) : failed ? (
+        <ErrorState onRetry={() => void submit()} />
+      ) : (
+        <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
+          {notice && <Banner tone="danger">{notice}</Banner>}
+          <Field label={t("auth.email")} error={errors.email}>
+            {(c) => <Input {...c} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />}
+          </Field>
+          <Field label={t("auth.password")} error={errors.password}>
+            {(c) => (
+              <div className="flex gap-2">
+                <Input
+                  {...c}
+                  ref={passwordRef}
+                  type={show ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
-                {errors.email && (
-                  <p id="login-email-erro" className="text-sm text-destructive">
-                    {errors.email}
-                  </p>
-                )}
+                <Button type="button" variant="secondary" onClick={() => setShow((s) => !s)}>
+                  {show ? t("auth.hide") : t("auth.show")}
+                </Button>
               </div>
-              <div>
-                <label htmlFor="login-password" className="block text-sm font-medium">
-                  {t("auth.password")}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="login-password"
-                    ref={passwordRef}
-                    type={show ? "text" : "password"}
-                    autoComplete="current-password"
-                    className={input}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    aria-invalid={!!errors.password || undefined}
-                    aria-describedby={errors.password ? "login-password-erro" : undefined}
-                  />
-                  <Button type="button" variant="outline" onClick={() => setShow((s) => !s)}>
-                    {show ? t("auth.hide") : t("auth.show")}
-                  </Button>
-                </div>
-                {errors.password && (
-                  <p id="login-password-erro" className="text-sm text-destructive">
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-              <Turnstile onToken={setToken} resetKey={resetKey} />
-              <Button type="submit" className="w-full" disabled={sending}>
-                {sending ? t("auth.sending") : t("auth.submit")}
-              </Button>
-              <p className="text-sm">
-                <Link className="underline" to="/esqueci-senha">
-                  {t("auth.forgot")}
-                </Link>
-              </p>
-            </form>
-          )}
-        </div>
-        <SupportContact contact={platformContact()} />
-      </main>
-    </div>
+            )}
+          </Field>
+          <Turnstile onToken={setToken} resetKey={resetKey} />
+          <Button type="submit" size="lg" className="w-full" disabled={sending}>
+            {sending ? t("auth.sending") : t("auth.submit")}
+          </Button>
+          <p className="text-sm">
+            <Link className="underline" to="/esqueci-senha">
+              {t("auth.forgot")}
+            </Link>
+          </p>
+        </form>
+      )}
+    </AuthShell>
   );
 }

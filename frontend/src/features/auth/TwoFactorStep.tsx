@@ -55,7 +55,6 @@ export function TwoFactorStep({
   if (failed) return <ErrorState onRetry={() => void submit()} />;
   return (
     <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
-      <h2 className="text-lg font-semibold">{t("twoFactor.login.title")}</h2>
       <p className="text-sm text-muted-foreground">{t(backup ? "twoFactor.login.introBackup" : "twoFactor.login.intro")}</p>
       <CodeField
         id="login-code"
@@ -67,13 +66,13 @@ export function TwoFactorStep({
         onChange={setCode}
         error={error}
       />
-      <Button type="submit" className="w-full" disabled={sending}>
+      <Button type="submit" size="lg" className="w-full" disabled={sending}>
         {sending ? t("twoFactor.login.sending") : t("twoFactor.login.submit")}
       </Button>
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => {
             setBackup((b) => !b);
             setCode("");

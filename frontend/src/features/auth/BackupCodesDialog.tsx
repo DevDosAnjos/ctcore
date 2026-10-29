@@ -2,11 +2,11 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { ErrorState, ForbiddenState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { ApiError, api } from "@/lib/api";
 import { CodeField } from "./CodeField";
-
-const input = "min-h-11 w-full rounded-md border bg-background px-2";
 
 /** Os 10 códigos, com copiar, baixar e a confirmação de que foram guardados (RN-ACE-18). */
 export function BackupCodesPanel({ codes, onDone }: { codes: string[]; onDone: () => void }) {
@@ -37,23 +37,21 @@ export function BackupCodesPanel({ codes, onDone }: { codes: string[]; onDone: (
       <p className="text-sm">{t("twoFactor.codes.warning")}</p>
       <ul aria-label={t("twoFactor.codes.list")} className="grid grid-cols-2 gap-2 font-mono">
         {codes.map((c) => (
-          <li key={c} className="rounded-md border px-2 py-1 text-center">
+          <li key={c} className="rounded-md bg-surface-soft px-2 py-1 text-center">
             {c}
           </li>
         ))}
       </ul>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => void copy()}>
+        <Button type="button" variant="secondary" onClick={() => void copy()}>
           {t("twoFactor.codes.copy")}
         </Button>
-        <Button type="button" variant="outline" onClick={download}>
+        <Button type="button" variant="secondary" onClick={download}>
           {t("twoFactor.codes.download")}
         </Button>
       </div>
       {copied && (
-        <p role="status" className="text-sm text-muted-foreground">
-          {t("twoFactor.codes.copied")}
-        </p>
+        <Banner tone="ok">{t("twoFactor.codes.copied")}</Banner>
       )}
       <label className="flex min-h-11 items-center gap-2 text-sm">
         <input type="checkbox" className="size-5" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
@@ -120,30 +118,11 @@ export function BackupCodesDialog({ open, codes: initial, onClose }: { open: boo
         <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
           <p className="text-sm">{t("twoFactor.codes.regenIntro")}</p>
           {errors.form && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.form}
-            </p>
+            <Banner tone="danger">{errors.form}</Banner>
           )}
-          <div>
-            <label htmlFor="codes-password" className="block text-sm font-medium">
-              {t("twoFactor.codes.password")}
-            </label>
-            <input
-              id="codes-password"
-              type="password"
-              autoComplete="current-password"
-              className={input}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={!!errors.password || undefined}
-              aria-describedby={errors.password ? "codes-password-erro" : undefined}
-            />
-            {errors.password && (
-              <p id="codes-password-erro" role="alert" className="text-sm text-destructive">
-                {errors.password}
-              </p>
-            )}
-          </div>
+          <Field label={t("twoFactor.codes.password")} error={errors.password} alertError>
+            {(c) => <Input {...c} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
+          </Field>
           <CodeField id="codes-code" kind="any" label={t("twoFactor.codes.code")} value={code} onChange={setCode} error={errors.code} />
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={sending}>

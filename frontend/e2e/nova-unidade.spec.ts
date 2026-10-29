@@ -26,7 +26,7 @@ test("@critical nova unidade: Coordenador cria com convite, Administrador sem ac
   await page.getByLabel("E-mail do Administrador").fill("nova@exemplo.com");
   await page.getByRole("button", { name: "Concluir" }).click();
   await expect(page.getByRole("heading", { name: "Unidades", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Academia Tijuca" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Academia Tijuca", exact: true })).toBeVisible();
 
   await page.evaluate('fetch("/api/v1/auth/logout", { method: "POST" })');
   await page.goto("/entrar");

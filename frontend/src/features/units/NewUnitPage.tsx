@@ -6,6 +6,7 @@ import { isValidPhone, onlyDigits } from "@/components/fields/masks";
 import { PhoneField } from "@/components/fields/fields";
 import { ForbiddenState, LoadingState } from "@/components/states";
 import { Stepper } from "@/components/Stepper";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
@@ -133,7 +134,7 @@ function Wizard({ onDone, onForbidden }: { onDone: (r: NewUnitResult) => void; o
               autoComplete="off"
               error={inviteIncomplete ? t("units.new.inviteIncomplete") : inviteMailBad ? t("units.new.emailInvalid") : undefined}
             />
-            <p role="status" className="text-sm">
+            <p role="status" className="text-sm text-muted-foreground">
               {hasName && hasMail && !inviteMailBad ? t("units.new.inviteSummary", { name: f.adminName.trim(), email: f.adminEmail.trim() }) : t("units.new.noInvite")}
             </p>
           </fieldset>
@@ -146,9 +147,9 @@ function Wizard({ onDone, onForbidden }: { onDone: (r: NewUnitResult) => void; o
     <div className="flex flex-col gap-3">
       {busy && <LoadingState />}
       {failure && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {failure} {t("units.new.retry")}
-        </p>
+        </Banner>
       )}
       <Stepper steps={steps} onFinish={() => void finish()} />
     </div>

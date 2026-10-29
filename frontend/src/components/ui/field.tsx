@@ -11,21 +11,28 @@ export type ControlProps = {
 
 /** Liga rótulo, dica e erro ao controle; o controle recebe as props prontas. */
 export function Field({
+  id: fixedId,
   label,
   required,
   hint,
   error,
+  alertError,
   className,
   children,
 }: {
+  /** Id fixo do controle, quando um teste ou link depende dele. */
+  id?: string;
   label: string;
   required?: boolean;
   hint?: string;
   error?: string;
+  /** Anuncia o erro na hora (role alert). */
+  alertError?: boolean;
   className?: string;
   children: (control: ControlProps) => React.ReactNode;
 }) {
-  const id = React.useId();
+  const generated = React.useId();
+  const id = fixedId ?? generated;
   const describedBy = [hint && `${id}-dica`, error && `${id}-erro`].filter(Boolean).join(" ");
   return (
     <div className={cn("flex flex-col gap-1", className)}>
@@ -45,7 +52,7 @@ export function Field({
         </p>
       )}
       {error && (
-        <p id={`${id}-erro`} className="text-xs text-danger-foreground">
+        <p id={`${id}-erro`} role={alertError ? "alert" : undefined} className="text-xs text-danger-foreground">
           {error}
         </p>
       )}

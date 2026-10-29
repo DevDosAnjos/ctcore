@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 import { ErrorState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ApiError, api } from "@/lib/api";
 import { AccountFrame } from "./AccountFrame";
@@ -15,12 +17,17 @@ export function ConfirmEmailPage() {
   const { code = "" } = useParams();
   const { refresh } = useSession();
   const reload = useReloadSession();
-  const [phase, setPhase] = useState<"ask" | "sending" | "done" | "invalid" | "failed">("ask");
+  const [phase, setPhase] = useState<
+    "ask" | "sending" | "done" | "invalid" | "failed"
+  >("ask");
 
   async function confirm() {
     setPhase("sending");
     try {
-      await api<void>(`/auth/email-change/${encodeURIComponent(code)}/confirm`, { method: "POST" });
+      await api<void>(
+        `/auth/email-change/${encodeURIComponent(code)}/confirm`,
+        { method: "POST" },
+      );
       await reload().catch(() => undefined);
       setPhase("done");
     } catch (err) {
@@ -32,19 +39,24 @@ export function ConfirmEmailPage() {
 
   return (
     <AccountFrame>
-      <div className="mx-auto max-w-md space-y-4 rounded-lg border bg-card p-4 text-card-foreground">
-        <h1 className="text-2xl font-semibold">{t("account.confirm.title")}</h1>
+      <div className="mx-auto max-w-md space-y-4">
+        <PageHeader title={t("account.confirm.title")} />
         {phase === "failed" ? (
           <ErrorState onRetry={() => void confirm()} />
         ) : phase === "invalid" ? (
-          <p role="alert">{t("account.confirm.invalid")}</p>
+          <Banner tone="warn">{t("account.confirm.invalid")}</Banner>
         ) : phase === "done" ? (
-          <p role="status">{t("account.confirm.done")}</p>
+          <Banner tone="ok">{t("account.confirm.done")}</Banner>
         ) : (
           <>
             <p>{t("account.confirm.text")}</p>
-            <Button disabled={phase === "sending"} onClick={() => void confirm()}>
-              {phase === "sending" ? t("account.confirm.sending") : t("account.confirm.submit")}
+            <Button
+              disabled={phase === "sending"}
+              onClick={() => void confirm()}
+            >
+              {phase === "sending"
+                ? t("account.confirm.sending")
+                : t("account.confirm.submit")}
             </Button>
           </>
         )}

@@ -81,6 +81,7 @@ Cada peça do canvas tem um componente em `frontend/src/components`. Tela nova u
 | Os quatro estados | `components/states` | carregando com esqueleto, vazio, erro com "Tentar de novo", sem acesso |
 | Menu lateral, barra de cima, cabeçalho da página | `AppLayout`, `PageHeader` | menu lateral e barra de cima são partes do `AppLayout`; celular: barra de cima e abas embaixo |
 | Barra e abas do portal | `PortalLayout` | cor principal da organização no topo |
+| Moldura das telas de acesso | `AuthShell` | painel escuro da marca a partir de 768 px e formulário de 420 px; no celular só o formulário |
 
 ## Regras
 

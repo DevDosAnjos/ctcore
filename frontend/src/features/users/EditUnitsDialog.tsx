@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { useUnitScope, type ReachableUnit } from "@/features/units/UnitScopeProvider";
 import { ApiError } from "@/lib/api";
@@ -52,17 +53,17 @@ function Body({ user, choices, onClose, onDone }: { user: StaffUser; choices: Re
       >
         <UnitChecks units={choices} value={unitIds} onChange={setUnitIds} error={error} />
         {last.length > 0 && (
-          <div role="alert" className="rounded-md border border-destructive p-2 text-sm">
+          <Banner tone="warn">
             <p className="font-medium">{t("users.lastAdmin.explain")}</p>
             <ul className="list-disc pl-5">
               {last.map((n) => (
                 <li key={n}>{n}</li>
               ))}
             </ul>
-          </div>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>
+          <Button type="button" variant="secondary" className="min-h-11" onClick={onClose} disabled={busy}>
             {t("common.cancel")}
           </Button>
           <Button type="submit" className="min-h-11" disabled={busy}>

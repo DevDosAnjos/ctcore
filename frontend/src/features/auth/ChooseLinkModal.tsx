@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import { useSession, type SessionView } from "./SessionProvider";
@@ -69,14 +70,15 @@ export function ChooseLinkModal({
         {links.map((l) => (
           <li key={l.id}>
             <Button
-              variant="outline"
+              variant="secondary"
               className="h-auto min-h-14 w-full flex-col items-start gap-0 whitespace-normal py-2 text-left"
               disabled={!!pending}
               aria-current={l.id === activeLinkId ? "true" : undefined}
               onClick={() => void choose(l)}
             >
-              <span className="text-lg font-semibold uppercase leading-tight">{l.organizationName}</span>
-              {" "}
+              <span className="text-lg font-semibold uppercase leading-tight">
+                {l.organizationName}
+              </span>{" "}
               <span className="font-normal">
                 {t("chooseLink.areaOption", {
                   area: t(
@@ -98,23 +100,25 @@ export function ChooseLinkModal({
         </p>
       )}
       {error && (
-        <div role="alert" className="mt-3 flex flex-col gap-2 text-sm">
-          <p>
-            {t(
-              error === "gone"
-                ? "chooseLink.errorGone"
-                : "chooseLink.errorFailed",
+        <Banner tone="danger" className="mt-3">
+          <div className="flex flex-col gap-2">
+            <p>
+              {t(
+                error === "gone"
+                  ? "chooseLink.errorGone"
+                  : "chooseLink.errorFailed",
+              )}
+            </p>
+            {error === "failed" && retryLink && (
+              <Button
+                className="min-h-11 self-start"
+                onClick={() => void choose(retryLink)}
+              >
+                {t("chooseLink.retry")}
+              </Button>
             )}
-          </p>
-          {error === "failed" && retryLink && (
-            <Button
-              className="min-h-11 self-start"
-              onClick={() => void choose(retryLink)}
-            >
-              {t("chooseLink.retry")}
-            </Button>
-          )}
-        </div>
+          </div>
+        </Banner>
       )}
     </Modal>
   );

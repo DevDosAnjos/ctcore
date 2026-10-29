@@ -278,6 +278,8 @@
   },
   "users": {
     "title": "Usuários da gestão",
+    "actions": "Ações",
+    "filters": { "all": "Todos", "ACTIVE": "Ativos", "PENDING": "Convite enviado" },
     "email": "E-mail",
     "role": "Perfil",
     "units": "Unidades",
@@ -1582,6 +1584,7 @@
   },
   "units": {
     "title": "Unidades",
+    "actions": "Ações",
     "city": "Cidade",
     "noCity": "Não informada",
     "activeStudents": "Alunos ativos",
@@ -1808,6 +1811,10 @@
       "exportFull": "Exportação completa",
       "support": "Acesso de suporte"
     }
+  },
+  "authShell": {
+    "tagline": "Sua academia, em ordem.",
+    "text": "Alunos, turmas e cobranças num só lugar."
   },
   "layout": {
     "menu": "Menu",

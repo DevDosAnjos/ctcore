@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { PageHeader } from "@/components/ui/page-header";
 import { AccountFrame } from "./AccountFrame";
 import { ChangeEmailForm } from "./ChangeEmailForm";
 import { ChangePasswordForm } from "./ChangePasswordForm";
@@ -13,7 +14,7 @@ export function AccountPage() {
   return (
     <AccountFrame>
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-2xl font-semibold">{t("account.title")}</h1>
+        <PageHeader title={t("account.title")} />
         <ChangePasswordForm onChanged={sessions.reload} />
         <ChangeEmailForm />
         <TwoFactorSection />

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { LOGO_SIZE } from "./logoFile";
 
@@ -91,9 +92,7 @@ export function LogoCropDialog({
       <div className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">{labels?.hint ?? t("organization.crop.hint")}</p>
         {failed && (
-          <p role="alert" className="text-destructive">
-            {image ? (labels?.error ?? t("organization.logoError")) : t("organization.crop.loadError")}
-          </p>
+          <Banner tone="danger">{image ? (labels?.error ?? t("organization.logoError")) : t("organization.crop.loadError")}</Banner>
         )}
         <canvas
           ref={canvas}
@@ -114,7 +113,7 @@ export function LogoCropDialog({
         {slider(t("organization.crop.horizontal"), px, setPx, 0, 100, 1)}
         {slider(t("organization.crop.vertical"), py, setPy, 0, 100, 1)}
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="secondary" onClick={onCancel}>
             {t("common.cancel")}
           </Button>
           <Button disabled={!image || busy} onClick={confirm}>

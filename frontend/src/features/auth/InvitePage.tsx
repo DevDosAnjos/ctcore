@@ -2,14 +2,15 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router";
 import { ErrorState, LoadingState } from "@/components/states";
+import { AuthShell } from "@/components/layout/AuthShell";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { ApiError, api } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { ThemeToggle } from "@/theme/ThemeToggle";
 import { PasswordFields } from "./PasswordFields";
 import { isStrongPassword } from "./PasswordRules";
 import { useSession, type SessionView } from "./SessionProvider";
-import { SupportContact, platformContact } from "./SupportContact";
 
 interface InviteInfo {
   email: string;
@@ -20,7 +21,6 @@ interface InviteInfo {
 
 type Load = { status: "loading" } | { status: "error" } | { status: "invalid"; reason: string } | { status: "ready"; info: InviteInfo };
 
-const input = "min-h-11 w-full rounded-md border bg-background px-2";
 const REASONS = ["EXPIRED", "USED", "CANCELED"];
 
 function reasonOf(err: ApiError) {
@@ -93,100 +93,70 @@ export function InvitePage() {
     }
   }
 
-  function body() {
-    if (load.status === "loading") return <LoadingState />;
-    if (load.status === "error") {
-      return (
+  if (load.status === "loading") {
+    return (
+      <AuthShell title={t("invite.title")}>
+        <LoadingState />
+      </AuthShell>
+    );
+  }
+  if (load.status === "error") {
+    return (
+      <AuthShell title={t("invite.title")}>
         <ErrorState
           onRetry={() => {
             setLoad({ status: "loading" });
             setAttempt((n) => n + 1);
           }}
         />
-      );
-    }
-    if (load.status === "invalid") {
-      return (
-        <section className="space-y-2">
-          <h1 className="text-2xl font-semibold">{t("invite.invalid.title")}</h1>
-          <p role="alert">{t(`invite.invalid.${load.reason}`)}</p>
-          <p>{t("invite.help")}</p>
-        </section>
-      );
-    }
-    if (failed) return <ErrorState onRetry={() => void submit()} />;
-    const { info } = load;
-    return (
-      <>
-        <h1 className="text-2xl font-semibold">{t(existing ? "invite.titleExisting" : "invite.title")}</h1>
-        <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
-          {info.name && (
-            <div>
-              <label htmlFor="invite-name" className="block text-sm font-medium">
-                {t("invite.name")}
-              </label>
-              <input id="invite-name" readOnly className={input} value={info.name} />
-            </div>
-          )}
-          <div>
-            <label htmlFor="invite-email" className="block text-sm font-medium">
-              {t("invite.email")}
-            </label>
-            <input id="invite-email" type="email" readOnly autoComplete="username" className={input} value={info.email} />
-          </div>
-          <p className="text-sm text-muted-foreground">{t("invite.validUntil", { date: formatDateTime(info.expiresAt) })}</p>
-          {notice && (
-            <p role="alert" className="text-sm text-destructive">
-              {notice}
-            </p>
-          )}
-          {existing ? (
-            <>
-              <p className="text-sm">{t("invite.existingNotice")}</p>
-              <div>
-                <label htmlFor="invite-current" className="block text-sm font-medium">
-                  {t("invite.currentPassword")}
-                </label>
-                <input
-                  id="invite-current"
-                  ref={currentRef}
-                  type="password"
-                  autoComplete="current-password"
-                  className={input}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </>
-          ) : (
-            <PasswordFields
-              password={password}
-              confirm={confirm}
-              onPassword={setPassword}
-              onConfirm={setConfirm}
-              error={fieldError}
-              inputRef={passwordRef}
-              idPrefix="invite"
-            />
-          )}
-          <Button type="submit" className="w-full" disabled={sending || !valid}>
-            {sending ? t("invite.sending") : t(existing ? "invite.submitExisting" : "invite.submit")}
-          </Button>
-        </form>
-      </>
+      </AuthShell>
     );
   }
-
+  if (load.status === "invalid") {
+    return (
+      <AuthShell title={t("invite.invalid.title")} focusTitle>
+        <Banner tone="warn">{t(`invite.invalid.${load.reason}`)}</Banner>
+        <p className="text-sm text-muted-foreground">{t("invite.help")}</p>
+      </AuthShell>
+    );
+  }
+  if (failed) {
+    return (
+      <AuthShell title={t(existing ? "invite.titleExisting" : "invite.title")}>
+        <ErrorState onRetry={() => void submit()} />
+      </AuthShell>
+    );
+  }
+  const { info } = load;
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
-        <span className="text-lg font-semibold">{t("app.name")}</span>
-        <ThemeToggle />
-      </header>
-      <main className="mx-auto w-full max-w-md space-y-6 px-4 py-6">
-        <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground">{body()}</div>
-        <SupportContact contact={platformContact()} />
-      </main>
-    </div>
+    <AuthShell title={t(existing ? "invite.titleExisting" : "invite.title")}>
+      <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
+        {info.name && <Field label={t("invite.name")}>{(c) => <Input {...c} readOnly value={info.name ?? ""} />}</Field>}
+        <Field label={t("invite.email")}>{(c) => <Input {...c} type="email" readOnly autoComplete="username" value={info.email} />}</Field>
+        <p className="text-sm text-muted-foreground">{t("invite.validUntil", { date: formatDateTime(info.expiresAt) })}</p>
+        {notice && <Banner tone="danger">{notice}</Banner>}
+        {existing ? (
+          <>
+            <p className="text-sm">{t("invite.existingNotice")}</p>
+            <Field label={t("invite.currentPassword")}>
+              {(c) => <Input {...c} ref={currentRef} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
+            </Field>
+          </>
+        ) : (
+          <PasswordFields
+            password={password}
+            confirm={confirm}
+            onPassword={setPassword}
+            onConfirm={setConfirm}
+            error={fieldError}
+            inputRef={passwordRef}
+            idPrefix="invite"
+          />
+        )}
+        <Button type="submit" size="lg" className="w-full" disabled={sending || !valid}>
+          {sending ? t("invite.sending") : t(existing ? "invite.submitExisting" : "invite.submit")}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

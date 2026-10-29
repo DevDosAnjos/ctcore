@@ -6,7 +6,9 @@ import { EditConflictDialog, type Difference } from "@/components/EditConflictDi
 import { LastChange } from "@/components/LastChange";
 import { formatCpfCnpj, isValidCpfOrCnpj, onlyDigits } from "@/components/fields/masks";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
@@ -22,15 +24,9 @@ import { PageHeader } from "@/components/ui/page-header";
 type Notice = { kind: "ok" | "error"; text: string };
 type Api = ReturnType<typeof useOrganization>;
 
-const inputClass = "min-h-11 w-full rounded-md border bg-background px-2 disabled:opacity-60";
-
 function NoticeText({ notice }: { notice?: Notice }) {
   if (!notice) return null;
-  return (
-    <p role={notice.kind === "ok" ? "status" : "alert"} className={notice.kind === "ok" ? "text-sm" : "text-sm text-destructive"}>
-      {notice.text}
-    </p>
-  );
+  return <Banner tone={notice.kind === "ok" ? "ok" : "danger"}>{notice.text}</Banner>;
 }
 
 function DataCard({ view, api, canEdit }: { view: OrganizationView; api: Api; canEdit: boolean }) {
@@ -107,52 +103,23 @@ function DataCard({ view, api, canEdit }: { view: OrganizationView; api: Api; ca
           if (!blocked) void submit();
         }}
       >
-        <div>
-          <label htmlFor="org-name" className="block text-sm font-medium">
-            {t("organization.name")}
-          </label>
-          <input
-            id="org-name"
-            className={inputClass}
-            value={name}
-            disabled={!canEdit}
-            maxLength={120}
-            aria-invalid={nameShown ? true : undefined}
-            aria-describedby={nameShown ? "org-name-erro" : undefined}
-            onChange={(e) => setName(e.target.value)}
-          />
-          {nameShown && (
-            <p id="org-name-erro" role="alert" className="text-sm text-destructive">
-              {nameShown}
-            </p>
-          )}
-        </div>
+        <Field label={t("organization.name")} error={nameShown}>
+          {(c) => <Input {...c} value={name} disabled={!canEdit} maxLength={120} onChange={(e) => setName(e.target.value)} />}
+        </Field>
         <ColorField value={color} onChange={setColor} disabled={!canEdit} error={errors.color} />
-        <div>
-          <label htmlFor="org-holder" className="block text-sm font-medium">
-            {t("organization.holder")}
-          </label>
-          <input
-            id="org-holder"
-            className={inputClass}
-            inputMode="numeric"
-            autoComplete="off"
-            value={holder}
-            disabled={!canEdit}
-            aria-invalid={holderShown ? true : undefined}
-            aria-describedby="org-holder-ajuda"
-            onChange={(e) => setHolder(formatCpfCnpj(e.target.value))}
-            onBlur={() => setHolderTouched(true)}
-          />
-          <p id="org-holder-ajuda" className="text-sm text-muted-foreground">
-            {holder === "" ? t("organization.holderEmpty") : undefined}
-          </p>
-          {holderShown && (
-            <p role="alert" className="text-sm text-destructive">
-              {holderShown}
-            </p>
+        <Field label={t("organization.holder")} hint={holder === "" ? t("organization.holderEmpty") : undefined} error={holderShown}>
+          {(c) => (
+            <Input
+              {...c}
+              inputMode="numeric"
+              autoComplete="off"
+              value={holder}
+              disabled={!canEdit}
+              onChange={(e) => setHolder(formatCpfCnpj(e.target.value))}
+              onBlur={() => setHolderTouched(true)}
+            />
           )}
-        </div>
+        </Field>
         <NoticeText notice={notice} />
         {canEdit && (
           <div>
@@ -220,11 +187,11 @@ function LogoCard({ view, api, canEdit }: { view: OrganizationView; api: Api; ca
                 e.target.value = "";
               }}
             />
-            <Button variant="outline" onClick={() => input.current?.click()}>
+            <Button variant="secondary" onClick={() => input.current?.click()}>
               {view.logoUrl ? t("organization.logoReplace") : t("organization.logoUpload")}
             </Button>
             {view.logoUrl && (
-              <Button variant="outline" onClick={() => setRemoving(true)}>
+              <Button variant="secondary" onClick={() => setRemoving(true)}>
                 {t("organization.logoRemove")}
               </Button>
             )}
@@ -269,7 +236,7 @@ function TransferCard({ onDone }: { onDone: () => void }) {
     <Card heading="h2" title={t("organization.transfer.title")}>
       <div className="flex flex-col items-start gap-3">
         <p className="text-sm text-muted-foreground">{t("organization.transfer.summary")}</p>
-        <Button variant="outline" onClick={() => setOpen(true)}>
+        <Button variant="secondary" onClick={() => setOpen(true)}>
           {t("organization.transfer.open")}
         </Button>
       </div>
@@ -288,7 +255,7 @@ function Content({ canEdit }: { canEdit: boolean }) {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title={t("organization.title")} />
-      {!canEdit && <p className="text-muted-foreground">{t("organization.readOnly")}</p>}
+      {!canEdit && <Banner tone="info">{t("organization.readOnly")}</Banner>}
       <LastChange value={api.view.lastChange} />
       <DataCard view={api.view} api={api} canEdit={canEdit} />
       <LogoCard view={api.view} api={api} canEdit={canEdit} />

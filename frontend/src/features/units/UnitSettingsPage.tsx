@@ -7,7 +7,9 @@ import { LastChange } from "@/components/LastChange";
 import { MoneyField, PhoneField } from "@/components/fields/fields";
 import { formatCep, formatCpfCnpj, isValidCnpj, isValidPhone, onlyDigits } from "@/components/fields/masks";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
@@ -129,7 +131,7 @@ function toBody(d: Draft, base: Draft): UnitUpdate {
 function Check({ label, checked, onChange, help, disabled }: { label: string; checked: boolean; onChange: (v: boolean) => void; help?: string; disabled?: boolean }) {
   return (
     <label className="flex min-h-11 items-start gap-2 py-1">
-      <input type="checkbox" className="mt-1 size-5" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <Checkbox className="mt-1" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       <span>
         <span className="block text-sm font-medium">{label}</span>
         {help && <span className="block text-sm text-muted-foreground">{help}</span>}
@@ -139,7 +141,7 @@ function Check({ label, checked, onChange, help, disabled }: { label: string; ch
 }
 
 function Err({ text }: { text?: string }) {
-  return text ? <p className="text-sm text-destructive">{text}</p> : null;
+  return text ? <p className="text-xs text-danger-foreground">{text}</p> : null;
 }
 
 function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useUnitDetail> }) {
@@ -304,7 +306,7 @@ function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useU
             <div className="mt-1 grid grid-cols-4 gap-1 sm:grid-cols-7">
               {Array.from({ length: 28 }, (_, i) => i + 1).map((day) => (
                 <label key={day} className="flex min-h-11 items-center gap-2 rounded-md border px-2">
-                  <input type="checkbox" className="size-5" checked={d.dueDays.includes(day)} onChange={() => toggleDay(day)} />
+                  <Checkbox checked={d.dueDays.includes(day)} onChange={() => toggleDay(day)} />
                   <span>{day}</span>
                 </label>
               ))}
@@ -334,7 +336,7 @@ function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useU
             ))}
           </div>
           <Text label={t("unitSettings.pixKey")} value={d.pixKey} onChange={set("pixKey")} autoComplete="off" help={t("unitSettings.pixKeyHelp")} error={errors["settings.pixKey"]} />
-          <div className="flex items-start gap-2 rounded-md border p-3">
+          <div className="flex items-start gap-2 rounded-md bg-surface-soft p-3">
             {connected ? <CircleCheck aria-hidden className="mt-0.5 size-5 shrink-0" /> : <CircleAlert aria-hidden className="mt-0.5 size-5 shrink-0" />}
             <div>
               <p className="text-sm font-medium">{connected ? t("unitSettings.mercadoPagoConnected") : t("unitSettings.mercadoPagoNotConnected")}</p>
@@ -373,11 +375,7 @@ function Form({ detail, api }: { detail: UnitDetail; api: ReturnType<typeof useU
         </div>
       </Card>
 
-      {notice && (
-        <p role={notice.ok ? "status" : "alert"} className={notice.ok ? "text-sm" : "text-sm text-destructive"}>
-          {notice.text}
-        </p>
-      )}
+      {notice && <Banner tone={notice.ok ? "ok" : "danger"}>{notice.text}</Banner>}
       <div>
         <Button ref={saveButton} type="submit" disabled={blocked || !dirty || busy}>
           {busy ? t("unitSettings.saving") : t("unitSettings.save")}
@@ -425,7 +423,7 @@ function Content() {
     <div className="flex flex-col gap-4">
       <PageHeader title={t("unitSettings.title")} />
       {/* RN-ORG-08: em "Todas as unidades" nada é alterado; a unidade vem do seletor do topo (RF-ORG-05). */}
-      {scope.selected === ALL ? <p role="status">{t("unitScope.chooseToEdit")}</p> : <Detail id={scope.selected} />}
+      {scope.selected === ALL ? <Banner tone="info">{t("unitScope.chooseToEdit")}</Banner> : <Detail id={scope.selected} />}
     </div>
   );
 }
