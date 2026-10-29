@@ -4,6 +4,8 @@ import { Link, useNavigate } from "react-router";
 import type { TFunction } from "i18next";
 import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
+import { Avatar } from "@/components/ui/avatar";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { usePermissions } from "@/features/permissions/usePermissions";
@@ -12,22 +14,8 @@ import { TeacherFormDialog } from "./TeacherFormDialog";
 import { fetchTeachers, type Teacher } from "./useTeachers";
 import { PageHeader } from "@/components/ui/page-header";
 
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join("");
-
-function Avatar({ teacher }: { teacher: Teacher }) {
-  return teacher.photoUrl ? (
-    <img src={teacher.photoUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" />
-  ) : (
-    <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">
-      {initials(teacher.name)}
-    </span>
-  );
+function TeacherAvatar({ teacher }: { teacher: Teacher }) {
+  return teacher.photoUrl ? <img src={teacher.photoUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" /> : <Avatar name={teacher.name} decorative className="size-10" />;
 }
 
 const columns = (t: TFunction): Column<Teacher>[] => [
@@ -37,7 +25,7 @@ const columns = (t: TFunction): Column<Teacher>[] => [
     sortable: true,
     render: (r) => (
       <span className="flex items-center gap-2">
-        <Avatar teacher={r} />
+        <TeacherAvatar teacher={r} />
         <Link to={`/professores/${r.id}`} className="inline-flex min-h-11 min-w-0 items-center break-words font-medium underline">
           {r.name}
         </Link>
@@ -57,7 +45,7 @@ const columns = (t: TFunction): Column<Teacher>[] => [
   },
   { key: "units", label: t("teachers.columns.units"), render: (r) => r.units.map((u) => u.name).join(", ") },
   { key: "classes", label: t("teachers.columns.classes"), render: (r) => r.classCount },
-  { key: "status", label: t("teachers.columns.status"), render: (r) => t(`teachers.statuses.${r.status}`) },
+  { key: "status", label: t("teachers.columns.status"), render: (r) => <StatusBadge status={r.status} label={t(`teachers.statuses.${r.status}`)} /> },
 ];
 
 function Content() {

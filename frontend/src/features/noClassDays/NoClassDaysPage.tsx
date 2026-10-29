@@ -11,6 +11,7 @@ import { NoClassDayDialog } from "./NoClassDayDialog";
 import { UndoNoClassDayDialog } from "./UndoNoClassDayDialog";
 import { useNoClassDays, type NoClassDayItem, type Suggestion } from "./useNoClassDays";
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/field";
 
 type Dialog = { kind: "new"; suggestion?: Suggestion } | { kind: "edit"; item: NoClassDayItem } | { kind: "undo"; item: NoClassDayItem };
 
@@ -49,13 +50,13 @@ function Content() {
       {options && options.units.length > 1 && (
         <label className="flex max-w-xs flex-col gap-1 text-sm">
           {t("noClassDays.unit")}
-          <select className="min-h-11 rounded-md border bg-background px-2" value={unitId || options.unit?.id || ""} onChange={(e) => setUnitId(e.target.value)}>
+          <Select className="min-h-11" value={unitId || options.unit?.id || ""} onChange={(e) => setUnitId(e.target.value)}>
             {options.units.map((u) => (
               <option key={u.id} value={u.id}>
                 {u.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {status === "loading" && <LoadingState />}

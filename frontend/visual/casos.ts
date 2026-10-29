@@ -91,6 +91,18 @@ export const casos: Caso[] = [
   { nome: "configuracoes-unidade-desativar", rota: "/configuracoes/unidades", perfil: ana, canvas: "UnidadeDesativar", passos: [{ clicar: "Desativar" }] },
   { nome: "configuracoes-unidade-professor", rota: "/configuracoes/unidade", perfil: ana, canvas: "ConfigPermProf", fullPage: true },
   { nome: "configuracoes-usuario-convidar", rota: "/configuracoes/usuarios", perfil: ana, canvas: "UsuarioConvidar", passos: [{ clicar: "Convidar" }] },
+  // Modalidades, faixas, professores, turmas, agenda e dias sem aula (#420). Janelas abrem pelos passos.
+  // Sem caso: painel da aula, editar, cancelar e corrigir aula (o id da aula é gerado pelo MSW, sem rota fixa); GM* são as mesmas telas a 390 px (D1).
+  { nome: "configuracoes-modalidades-administrador", rota: "/configuracoes/modalidades", perfil: admin, canvas: "ConfigModalidadesAdmin" },
+  { nome: "configuracoes-modalidades-graduacao", rota: "/configuracoes/modalidades", perfil: ana, canvas: "ModalidadeGraduacao", passos: [{ clicar: "Ativar" }, { clicar: "Graduação" }] },
+  { nome: "configuracoes-modalidades-pedido", rota: "/configuracoes/modalidades", perfil: ana, canvas: "ModalidadesOferecidasRecusa", passos: [{ clicar: "Não achei minha modalidade" }] },
+  { nome: "configuracoes-faixa-nova", rota: "/configuracoes/faixas-etarias", perfil: ana, canvas: "ConfigFaixas", passos: [{ clicar: "Nova faixa" }] },
+  { nome: "professor-novo", rota: "/professores", perfil: ana, canvas: "ProfessorNovo", passos: [{ clicar: "Novo professor" }] },
+  { nome: "professor-painel", rota: "/professores/00000000-0000-0000-0000-000000000502", perfil: ana, canvas: "ProfessorPainel" },
+  { nome: "turma-nova", rota: "/turmas", perfil: ana, canvas: "TurmaEditar", passos: [{ clicar: "Nova turma" }] },
+  { nome: "turma-painel", rota: "/turmas/00000000-0000-0000-0000-000000000601", perfil: ana, canvas: "TurmaPainel" },
+  { nome: "agenda-aula-avulsa", rota: "/agenda", perfil: ana, canvas: "AulaAvulsa", passos: [{ clicar: "Nova aula avulsa" }] },
+  { nome: "dia-sem-aula-novo", rota: "/dias-sem-aula", perfil: ana, canvas: "DiaSemAulaNovo", passos: [{ clicar: "Novo dia sem aula" }] },
 ];
 
 export const larguras = [

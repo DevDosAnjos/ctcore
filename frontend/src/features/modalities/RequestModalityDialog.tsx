@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
+import { Input, Textarea } from "@/components/ui/field";
 
 const MIN_NAME = 2;
 const MAX_NAME = 60;
@@ -94,9 +95,9 @@ export function RequestModalityDialog({
           <label htmlFor="modality-name" className="block text-sm font-medium">
             {t("modalities.dialog.name")}
           </label>
-          <input
+          <Input
             id="modality-name"
-            className="min-h-11 w-full rounded-md border bg-background px-2"
+            className="min-h-11"
             value={name}
             autoComplete="off"
             aria-invalid={nameError ? true : undefined}
@@ -110,7 +111,7 @@ export function RequestModalityDialog({
             <p
               id="modality-name-error"
               role="alert"
-              className="mt-1 text-sm text-destructive"
+              className="mt-1 text-sm text-danger-foreground"
             >
               {nameError}
             </p>
@@ -120,9 +121,9 @@ export function RequestModalityDialog({
           <label htmlFor="modality-note" className="block text-sm font-medium">
             {t("modalities.dialog.note")}
           </label>
-          <textarea
+          <Textarea
             id="modality-note"
-            className="min-h-20 w-full rounded-md border bg-background px-2 py-1"
+            className="min-h-20"
             value={note}
             aria-invalid={noteError ? true : undefined}
             aria-describedby={noteError ? "modality-note-error" : undefined}
@@ -132,7 +133,7 @@ export function RequestModalityDialog({
             <p
               id="modality-note-error"
               role="alert"
-              className="mt-1 text-sm text-destructive"
+              className="mt-1 text-sm text-danger-foreground"
             >
               {noteError}
             </p>

@@ -9,12 +9,17 @@ import {
   type Graduation,
   type GraduationUpdate,
 } from "./useGraduation";
+import { Input } from "@/components/ui/field";
+import { Banner } from "@/components/ui/banner";
+
+// Cor inicial de um nível novo: o token neutro do tema; o valor final é a cor que a pessoa escolhe.
+const neutralColor = () => getComputedStyle(document.documentElement).getPropertyValue("--subtle").trim();
 
 const MAX_LEVELS = 30;
 const MAX_NAME = 40;
 const LEVELS_ERROR = "graduation-levels-error";
 const LEVELS = "levels";
-const input = "min-h-11 w-full rounded-md border bg-background px-2";
+const input = "min-h-11";
 
 // Linha da tela: números ficam em texto até salvar.
 type Row = {
@@ -158,7 +163,7 @@ function Editor({
 
   const err = (field: string, id: string) =>
     errors[field] ? (
-      <p id={id} role="alert" className="mt-1 text-sm text-destructive">
+      <p id={id} role="alert" className="mt-1 text-sm text-danger-foreground">
         {errors[field]}
       </p>
     ) : null;
@@ -214,7 +219,7 @@ function Editor({
                 >
                   {t("modalities.graduation.levelName", { n })}
                 </label>
-                <input
+                <Input
                   id={`level-name-${r.key}`}
                   className={input}
                   value={r.name}
@@ -238,7 +243,7 @@ function Editor({
                   <input
                     id={`level-color-${r.key}`}
                     type="color"
-                    className="min-h-11 w-full rounded-md border bg-background"
+                    className="h-11 w-full cursor-pointer rounded-md border border-input bg-card"
                     value={r.color}
                     onChange={(e) => patch(i, { color: e.target.value })}
                   />
@@ -250,7 +255,7 @@ function Editor({
                   >
                     {t("modalities.graduation.maxDegree", { n })}
                   </label>
-                  <input
+                  <Input
                     id={`level-degree-${r.key}`}
                     type="number"
                     min={0}
@@ -268,7 +273,7 @@ function Editor({
                   >
                     {t("modalities.graduation.minAge", { n })}
                   </label>
-                  <input
+                  <Input
                     id={`level-min-${r.key}`}
                     type="number"
                     min={0}
@@ -286,7 +291,7 @@ function Editor({
                   >
                     {t("modalities.graduation.maxAge", { n })}
                   </label>
-                  <input
+                  <Input
                     id={`level-max-${r.key}`}
                     type="number"
                     min={0}
@@ -352,7 +357,7 @@ function Editor({
             {
               key: crypto.randomUUID(),
               name: "",
-              color: "#808080",
+              color: neutralColor(),
               secondaryColor: "",
               maxDegree: "4",
               minAge: "",
@@ -365,9 +370,9 @@ function Editor({
         {t("modalities.graduation.add")}
       </Button>
       {errors.form && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {errors.form}
-        </p>
+        </Banner>
       )}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>

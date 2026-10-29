@@ -7,13 +7,15 @@ import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import { todayIso } from "./agendaDates";
 import { createLesson, useActiveClasses } from "./useLessonActions";
+import { Select } from "@/components/ui/field";
+import { Banner } from "@/components/ui/banner";
 
 interface Choice {
   id: string;
   name: string;
 }
 
-const select = "min-h-11 w-full rounded-md border bg-background px-2 disabled:opacity-60";
+const select = "min-h-11";
 
 // RF-AGE-04: aula avulsa (sem turma). Modalidades e professores vêm da Agenda; o servidor reconfere tudo (RN-PRO-06, RN-AGE-07, RN-AGE-12).
 export function NewLessonDialog({ unit, modalities, teachers, onClose, onSaved }: { unit: Choice; modalities: Choice[]; teachers: Choice[]; onClose: () => void; onSaved: () => void }) {
@@ -120,14 +122,14 @@ function Pick({ id, label, value, onChange, options, error }: { id: string; labe
       <label htmlFor={id} className="block text-sm font-medium">
         {label}
       </label>
-      <select id={id} className={select} value={value} onChange={(e) => onChange(e.target.value)}>
+      <Select id={id} className={select} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">{t("agenda.new.choose")}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
           </option>
         ))}
-      </select>
+      </Select>
       <Err text={error} />
     </div>
   );
@@ -135,8 +137,8 @@ function Pick({ id, label, value, onChange, options, error }: { id: string; labe
 
 function Err({ text }: { text?: string }) {
   return text ? (
-    <p role="alert" className="text-sm text-destructive">
+    <Banner tone="danger">
       {text}
-    </p>
+    </Banner>
   ) : null;
 }

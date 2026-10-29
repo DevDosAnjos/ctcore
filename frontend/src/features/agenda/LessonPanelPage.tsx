@@ -18,6 +18,8 @@ import { CancelLessonDialog } from "./CancelLessonDialog";
 import { EditLessonDialog } from "./EditLessonDialog";
 import { cancelReasonText, lessonName, modalityHue } from "./LessonCard";
 import { useLesson, type LessonDetail } from "./useLesson";
+import { Banner } from "@/components/ui/banner";
+import { Badge, StatusBadge } from "@/components/ui/badge";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -75,26 +77,20 @@ function Panel({
         actions={
           <>
         {!lesson.class && (
-          <span className="rounded border px-1.5 text-sm font-medium">
-            {t("agenda.adhoc")}
-          </span>
+          <Badge tone="neutral">{t("agenda.adhoc")}</Badge>
         )}
-        <span className="rounded-full border px-2 py-0.5 text-sm">
-          {t(`agenda.panel.statuses.${lesson.status}`)}
-        </span>
+        <StatusBadge status={lesson.status} label={t(`agenda.panel.statuses.${lesson.status}`)} />
         {lesson.substitute && (
-          <span className="rounded bg-secondary px-1.5 text-sm font-medium text-secondary-foreground">
-            {t("agenda.substitute")}
-          </span>
+          <Badge tone="info">{t("agenda.substitute")}</Badge>
         )}
           </>
         }
       />
       {cancelled && cancelReasonText(lesson, t) && (
-        <p role="status" className="text-sm">
+        <Banner tone="ok">
           <span className="font-medium">{t("agenda.panel.reason")}</span>{" "}
           {cancelReasonText(lesson, t)}
-        </p>
+        </Banner>
       )}
       <div className="flex flex-wrap gap-2">
         {canNotify ? (

@@ -4,6 +4,7 @@ import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { deactivateClass, type ClassDetail } from "./useClasses";
+import { Banner } from "@/components/ui/banner";
 
 // RN-TUR-03: com aluno que tem a turma como principal, mostra a recusa com a contagem e não oferece confirmar; o servidor reconfere.
 export function DeactivateClassDialog({ klass, onClose, onDone }: { klass: ClassDetail | null; onClose: () => void; onDone: () => void }) {
@@ -37,16 +38,16 @@ function Body({ klass, onClose, onDone }: { klass: ClassDetail; onClose: () => v
     <Modal open onOpenChange={(o) => !o && !busy && onClose()} title={t("classes.panel.deactivateDialog.title", { name: klass.name })}>
       <div className="flex flex-col gap-3" aria-busy={busy}>
         {blocked > 0 ? (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {t("classes.panel.deactivateDialog.blocked", { count: blocked })}
-          </p>
+          </Banner>
         ) : (
           <p className="text-sm">{t("classes.panel.deactivateDialog.explain")}</p>
         )}
         {error && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {error}
-          </p>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>

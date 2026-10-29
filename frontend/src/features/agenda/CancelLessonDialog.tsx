@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api";
 import type { LessonDetail } from "./useLesson";
 import { lessonName } from "./LessonCard";
 import { cancelLesson, type CancelCode } from "./useLessonActions";
+import { Banner } from "@/components/ui/banner";
 
 const CODES: CancelCode[] = ["TEACHER_UNAVAILABLE", "HOLIDAY", "ACADEMY_EVENT", "OTHER"];
 
@@ -125,8 +126,8 @@ function Body({ lesson, onClose, onSaved }: { lesson: LessonDetail; onClose: () 
 
 function Err({ text }: { text?: string }) {
   return text ? (
-    <p role="alert" className="text-sm text-destructive">
+    <Banner tone="danger">
       {text}
-    </p>
+    </Banner>
   ) : null;
 }

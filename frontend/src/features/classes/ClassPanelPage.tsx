@@ -10,6 +10,8 @@ import { ClassFormDialog } from "./ClassFormDialog";
 import { DeactivateClassDialog } from "./DeactivateClassDialog";
 import { useClass, type ClassDetail } from "./useClasses";
 import { PageHeader } from "@/components/ui/page-header";
+import { Banner } from "@/components/ui/banner";
+import { StatusBadge } from "@/components/ui/badge";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -46,11 +48,11 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
       <Link to="/turmas" className="inline-flex min-h-11 items-center self-start text-sm underline">
         {t("classes.panel.back")}
       </Link>
-      <PageHeader title={klass.name} actions={<span className="rounded-full border px-2 py-0.5 text-sm">{t(`classes.statuses.${klass.status}`)}</span>} />
+      <PageHeader title={klass.name} actions={<StatusBadge status={klass.status} label={t(`classes.statuses.${klass.status}`)} />} />
       {notice && (
-        <p role="status" className="text-sm">
+        <Banner tone="ok">
           {notice}
-        </p>
+        </Banner>
       )}
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" className="min-h-11" disabled={!canManage || klass.status !== "ACTIVE"} onClick={() => setEditing(true)}>
@@ -115,7 +117,7 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
             : t("classes.panel.studentsCap", { count: klass.activeStudents, capacity: klass.capacity })}
         </p>
         {klass.overCapacity && klass.capacity !== null && (
-          <p className="font-medium text-destructive">{t("classes.over", { count: klass.activeStudents, capacity: klass.capacity })}</p>
+          <p className="font-medium text-danger-foreground">{t("classes.over", { count: klass.activeStudents, capacity: klass.capacity })}</p>
         )}
       </Card>
       <Card heading="h2" title={t("classes.panel.nextClass")}>
