@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
@@ -40,7 +41,7 @@ export function PortalInfoPage() {
   const list = data ?? last;
   return (
     <PortalLayout>
-      <h1 className="mb-4 text-2xl font-semibold">{t("portalInfo.title")}</h1>
+      <PageHeader title={t("portalInfo.title")} className="mb-4" />
       <Link to="/portal/carteirinha" className="mb-4 inline-flex min-h-11 items-center underline">
         {t("portalInfo.cardLink")}
       </Link>

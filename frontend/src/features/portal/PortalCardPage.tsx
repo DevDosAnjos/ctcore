@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -18,7 +19,7 @@ export function PortalCardPage() {
   const list = data ?? last;
   return (
     <PortalLayout>
-      <h1 className="mb-4 text-2xl font-semibold">{t("portalCard.title")}</h1>
+      <PageHeader title={t("portalCard.title")} className="mb-4" />
       {list && list.students.length > 1 && (
         <label className="mb-4 flex flex-col gap-1">
           <span className="text-sm font-medium">{t("portalCard.selector")}</span>

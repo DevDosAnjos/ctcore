@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -52,7 +53,7 @@ export function PortalAgendaPage() {
 
   return (
     <PortalLayout>
-      <h1 className="mb-4 text-2xl font-semibold">{t("portalAgenda.title")}</h1>
+      <PageHeader title={t("portalAgenda.title")} className="mb-4" />
       {shown && (
         <div className="mb-4 flex flex-col gap-3">
           {shown.students.length > 1 && (

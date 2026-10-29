@@ -2798,12 +2798,27 @@
   "portalShell": {
     "logoAlt": "Logo da organização",
     "nav": "Portal",
+    "navBottom": "Portal, abas",
     "tabs": {
       "home": "Início",
       "schedule": "Agenda",
       "finance": "Financeiro",
       "notices": "Avisos",
       "info": "Minhas informações"
+    },
+    "tabsShort": {
+      "home": "Início",
+      "schedule": "Agenda",
+      "finance": "Financeiro",
+      "notices": "Avisos",
+      "info": "Eu"
+    },
+    "unread": "{{count}} não lidos",
+    "skip": "Ir para o conteúdo",
+    "footer": {
+      "label": "Rodapé do portal",
+      "whatsapp": "WhatsApp {{number}}",
+      "madeWith": "feito com ctcore"
     },
     "bell": {
       "label": "Avisos",

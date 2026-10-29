@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -30,7 +31,7 @@ export function PortalHomePage() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold">{t("app.welcomeTitle")}</h1>
+      <PageHeader title={t("app.welcomeTitle")} />
       <Link
         to={`/portal/carteirinha${(selected ?? strip?.selectedStudentId) ? `?aluno=${selected ?? strip?.selectedStudentId}` : ""}`}
         className="mt-2 inline-flex min-h-11 items-center underline"
