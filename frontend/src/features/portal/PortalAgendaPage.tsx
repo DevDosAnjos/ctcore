@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/field";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -59,13 +60,13 @@ export function PortalAgendaPage() {
           {shown.students.length > 1 && (
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium">{t("portalAgenda.student")}</span>
-              <select className="min-h-11 rounded-md border bg-background px-2" value={student ?? shown.studentId} onChange={(e) => change({ aluno: e.target.value })}>
+              <Select value={student ?? shown.studentId} onChange={(e) => change({ aluno: e.target.value })}>
                 {shown.students.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.self ? t("portalAgenda.you") : s.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
           <div role="group" aria-label={t("portalAgenda.scopeLabel")} className="flex flex-wrap gap-2">
@@ -74,7 +75,7 @@ export function PortalAgendaPage() {
                 key={s}
                 type="button"
                 aria-pressed={scope === s}
-                className={`min-h-11 rounded-md border px-3 ${scope === s ? "bg-primary text-primary-foreground" : "bg-background"}`}
+                className={`min-h-11 rounded-md border px-3 ${scope === s ? "bg-primary text-primary-foreground" : "bg-card"}`}
                 onClick={() => change({ escopo: s === "MAIN" ? "MAIN" : null })}
               >
                 {t(s === "MAIN" ? "portalAgenda.scopeMain" : "portalAgenda.scopeAll")}

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Select } from "@/components/ui/field";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/states";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -18,13 +19,13 @@ export function PortalChargeHistory({ items, year, years, onYear }: Props) {
       actions={
         <label className="flex items-center gap-2">
           <span className="text-sm font-medium">{t("portalFinance.history.year")}</span>
-          <select className="min-h-11 rounded-md border bg-background px-2" value={year} onChange={(e) => onYear(Number(e.target.value))}>
+          <Select value={year} onChange={(e) => onYear(Number(e.target.value))}>
             {options.map((y) => (
               <option key={y} value={y}>
                 {y}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       }
     >

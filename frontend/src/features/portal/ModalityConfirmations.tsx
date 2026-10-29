@@ -69,7 +69,7 @@ export function ModalityConfirmations() {
         ))}
       </ul>
       {failed && (
-        <p role="alert" className="mt-2 text-sm text-destructive">
+        <p role="alert" className="mt-2 text-sm text-danger-foreground">
           {t("portalConfirm.error")}
         </p>
       )}

@@ -99,7 +99,7 @@ export function PortalPersonalData({ studentId, personal, onChanged }: { student
               )}
             </div>
             {notice && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-sm text-danger-foreground">
                 {notice}
               </p>
             )}

@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/field";
 import { useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -72,14 +73,14 @@ function Sections({ data, filter, onFilter, reload }: { data: PortalHomeData; fi
       {many && (
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium">{t("portalHome.filter.label")}</span>
-          <select className="min-h-11 rounded-md border bg-background px-2" value={active} onChange={(e) => onFilter(e.target.value)}>
+          <Select value={active} onChange={(e) => onFilter(e.target.value)}>
             <option value={ALL}>{t("portalHome.filter.all")}</option>
             {[...combos].map(([k, text]) => (
               <option key={k} value={k}>
                 {text}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       <PortalChargeCard

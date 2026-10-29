@@ -39,7 +39,7 @@ function TermBlock({ item, onAccept }: { item: PortalTermPending; onAccept: (ima
         <span>{t("portalTerm.imageUse")}</span>
       </label>
       {message && (
-        <p role="alert" className="mt-2 text-sm text-destructive">
+        <p role="alert" className="mt-2 text-sm text-danger-foreground">
           {message}
         </p>
       )}
