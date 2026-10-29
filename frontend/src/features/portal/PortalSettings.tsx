@@ -37,7 +37,7 @@ export function PortalPreferences({ initial }: { initial: boolean }) {
         <span>{t("portalInfo.preferences.emailAnnouncements")}</span>
       </label>
       {failed && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-danger-foreground">
           {t("portalInfo.preferences.failed")}
         </p>
       )}
@@ -82,7 +82,7 @@ export function PortalTermsAccepted({ studentId, terms, onChanged }: { studentId
         </div>
       </dl>
       {failed && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-danger-foreground">
           {t(`${k}failed`)}
         </p>
       )}

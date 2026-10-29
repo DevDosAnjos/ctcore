@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Textarea } from "@/components/ui/field";
 import { ModalityDialog, PickSelect } from "@/features/students/ModalityPickers";
 import type { PortalRequestKind } from "@/features/portal-requests/types";
 import { createRequest, type ModalityOption, type OfferOption } from "./usePortalRequests";
@@ -51,8 +52,8 @@ export function PortalRequestDialog({ studentId, kind, modality, offers, onClose
             <label htmlFor={noteId} className="block text-sm font-medium">
               {t("portalOwn.dialog.note")}
             </label>
-            <textarea id={noteId} className="w-full rounded-md border bg-background p-2" rows={3} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
-            {errors.note && <p className="text-sm text-destructive">{errors.note}</p>}
+            <Textarea id={noteId} maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
+            {errors.note && <p className="text-sm text-danger-foreground">{errors.note}</p>}
           </div>
         </>
       )}

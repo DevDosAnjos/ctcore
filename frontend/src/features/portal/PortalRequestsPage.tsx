@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/field";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
@@ -86,13 +87,13 @@ export function PortalRequestsPage() {
         {students.data.length > 1 && (
           <label className="flex flex-col gap-1 text-sm">
             {t("portalOwn.student")}
-            <select className="min-h-11 rounded-md border bg-background px-2" value={id} onChange={(e) => setPicked(e.target.value)}>
+            <Select value={id} onChange={(e) => setPicked(e.target.value)}>
               {students.data.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <Student key={id} studentId={id} />

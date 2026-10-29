@@ -21,7 +21,7 @@ export function PortalAgendaDayList({ data, day, onDay }: { data: PortalSchedule
             id={`agenda-tab-${d}`}
             aria-selected={d === day}
             aria-controls="agenda-panel"
-            className={`flex min-h-11 flex-col items-center justify-center rounded-md border px-0.5 text-xs ${d === day ? "bg-primary text-primary-foreground" : "bg-background"}`}
+            className={`flex min-h-11 flex-col items-center justify-center rounded-md border px-0.5 text-xs ${d === day ? "bg-primary text-primary-foreground" : "bg-card"}`}
             onClick={() => onDay(d)}
           >
             <span>{t(`agenda.weekdays.${weekday(d)}`)}</span>

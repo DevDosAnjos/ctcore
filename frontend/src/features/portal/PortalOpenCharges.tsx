@@ -74,7 +74,7 @@ export function PortalOpenCharges({ items, showStudent, onChanged }: Props) {
                 {t("portalFinance.open.selected", { count: chosen.length, value: formatCurrency(chosen.reduce((n, c) => n + c.amountCents, 0)) })}
               </p>
               {mixed && (
-                <p role="alert" className="text-sm text-destructive">
+                <p role="alert" className="text-sm text-danger-foreground">
                   {t("portalFinance.open.mixedUnits")}
                 </p>
               )}

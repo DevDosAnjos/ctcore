@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/field";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -10,7 +11,7 @@ import { markAllPortalAnnouncementsRead, usePortalAnnouncements, type Announceme
 
 const SLUG = { ALL: "todos", UNREAD: "nao-lidos", MODALITY: "modalidade" } as const;
 const FILTERS: AnnouncementFilter[] = ["ALL", "UNREAD", "MODALITY"];
-const button = (on: boolean) => `min-h-11 rounded-md border px-3 ${on ? "bg-primary text-primary-foreground" : "bg-background"}`;
+const button = (on: boolean) => `min-h-11 rounded-md border px-3 ${on ? "bg-primary text-primary-foreground" : "bg-card"}`;
 
 // RF-POR-06: avisos do aluno em `?aluno=`, `?filtro=`, `?modalidade=`, `?pagina=` e `?aviso=` (aberto). Abrir grava a leitura; "Marcar todos" só limpa a lista e o sino.
 export function PortalAnnouncementsPage() {
@@ -63,8 +64,7 @@ export function PortalAnnouncementsPage() {
           {shown.students.length > 1 && (
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium">{t("portalAnnouncements.student")}</span>
-              <select
-                className="min-h-11 rounded-md border bg-background px-2"
+              <Select
                 value={student ?? shown.studentId}
                 onChange={(e) => change({ aluno: e.target.value, pagina: null, modalidade: null, filtro: filter === "MODALITY" ? null : slug })}
               >
@@ -73,7 +73,7 @@ export function PortalAnnouncementsPage() {
                     {s.self ? t("portalAnnouncements.you") : s.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
           <div role="group" aria-label={t("portalAnnouncements.filterLabel")} className="flex flex-wrap gap-2">
@@ -92,13 +92,13 @@ export function PortalAnnouncementsPage() {
           {filter === "MODALITY" && (
             <label className="flex flex-col gap-1">
               <span className="text-sm font-medium">{t("portalAnnouncements.modality")}</span>
-              <select className="min-h-11 rounded-md border bg-background px-2" value={modality ?? shown.modalities[0]?.id ?? ""} onChange={(e) => change({ modalidade: e.target.value, pagina: null })}>
+              <Select value={modality ?? shown.modalities[0]?.id ?? ""} onChange={(e) => change({ modalidade: e.target.value, pagina: null })}>
                 {shown.modalities.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
           <div className="flex flex-wrap items-center gap-3">
@@ -106,7 +106,7 @@ export function PortalAnnouncementsPage() {
               {t("portalAnnouncements.markAll")}
             </button>
             {message && (
-              <p role={message.ok ? "status" : "alert"} className={`text-sm ${message.ok ? "" : "text-destructive"}`}>
+              <p role={message.ok ? "status" : "alert"} className={`text-sm ${message.ok ? "" : "text-danger-foreground"}`}>
                 {message.text}
               </p>
             )}

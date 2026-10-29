@@ -64,7 +64,7 @@ function Form({ data, chargeIds, onClose, onSent }: { data: PixInstructions } & 
     <form onSubmit={submit} noValidate className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">{t("pixProof.effect")}</p>
       {formError && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-danger-foreground">
           {formError}
         </p>
       )}
@@ -108,7 +108,7 @@ function Form({ data, chargeIds, onClose, onSent }: { data: PixInstructions } & 
           onChange={(e) => setFile(e.target.files?.[0])}
         />
         {fieldError && (
-          <p id={`${fileId}-erro`} className="text-sm text-destructive">
+          <p id={`${fileId}-erro`} className="text-sm text-danger-foreground">
             {fieldError}
           </p>
         )}

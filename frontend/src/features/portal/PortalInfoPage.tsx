@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/field";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
@@ -48,13 +49,13 @@ export function PortalInfoPage() {
       {list && list.students.length > 1 && (
         <label className="mb-4 flex flex-col gap-1">
           <span className="text-sm font-medium">{t("portalInfo.selector")}</span>
-          <select className="min-h-11 rounded-md border bg-background px-2" value={student ?? list.selectedStudentId} onChange={(e) => setParams({ aluno: e.target.value }, { replace: true })}>
+          <Select value={student ?? list.selectedStudentId} onChange={(e) => setParams({ aluno: e.target.value }, { replace: true })}>
             {list.students.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.self ? t("portalInfo.you") : s.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {status === "loading" ? (

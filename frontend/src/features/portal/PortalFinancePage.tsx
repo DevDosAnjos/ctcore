@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/ui/page-header";
+import { Select } from "@/components/ui/field";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -42,14 +43,14 @@ export function PortalFinancePage() {
         <div className="mb-4 flex flex-col gap-2">
           <label className="flex flex-col gap-1">
             <span className="text-sm font-medium">{t("portalFinance.student")}</span>
-            <select className="min-h-11 rounded-md border bg-background px-2" value={family ? FAMILY : (student ?? shown.selectedStudentId ?? "")} onChange={(e) => choose(e.target.value)}>
+            <Select value={family ? FAMILY : (student ?? shown.selectedStudentId ?? "")} onChange={(e) => choose(e.target.value)}>
               {shown.students.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.self ? t("portalFinance.you") : s.name}
                 </option>
               ))}
               <option value={FAMILY}>{t("portalFinance.family")}</option>
-            </select>
+            </Select>
           </label>
           {family && <p className="font-medium">{t("portalFinance.familyTotal", { value: formatCurrency(shown.familyOpenCents) })}</p>}
         </div>

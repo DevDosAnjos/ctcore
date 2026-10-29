@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Select } from "@/components/ui/field";
 import { useTranslation } from "react-i18next";
 import { PhoneField } from "@/components/fields/fields";
 import { formatCep, isValidPhone, onlyDigits } from "@/components/fields/masks";
@@ -83,14 +84,14 @@ export function PortalContactDialog({ studentId, personal, onClose, onSaved }: {
         }}
       >
         {errors.form && (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-danger-foreground">
             {errors.form}
           </p>
         )}
         <div>
           <PhoneField label={t(`${k}phone`)} initial={phone} onChange={setPhone} autoComplete="tel" />
           {errors.phone && (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-danger-foreground">
               {errors.phone}
             </p>
           )}
@@ -105,15 +106,15 @@ export function PortalContactDialog({ studentId, personal, onClose, onSaved }: {
           <label htmlFor="pc-state" className="block text-sm font-medium">
             {t(`${k}state`)}
           </label>
-          <select id="pc-state" className="min-h-11 w-full rounded-md border bg-background px-2" value={state} aria-invalid={!!errors.state || undefined} onChange={(ev) => setState(ev.target.value)}>
+          <Select id="pc-state" value={state} aria-invalid={!!errors.state || undefined} onChange={(ev) => setState(ev.target.value)}>
             <option value="">{t(`${k}stateChoose`)}</option>
             {STATES.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
-          </select>
-          {errors.state && <p className="text-sm text-destructive">{errors.state}</p>}
+          </Select>
+          {errors.state && <p className="text-sm text-danger-foreground">{errors.state}</p>}
         </div>
         <fieldset className="flex flex-col gap-3">
           <legend className="text-sm font-semibold">{t(`${k}emergency`)}</legend>
@@ -122,7 +123,7 @@ export function PortalContactDialog({ studentId, personal, onClose, onSaved }: {
           <div>
             <PhoneField label={t(`${k}emergencyPhone`)} initial={emergencyPhone} onChange={setEmergencyPhone} />
             {errors.emergencyPhone && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-sm text-danger-foreground">
                 {errors.emergencyPhone}
               </p>
             )}

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 // Cor e texto juntos (nunca só cor), como o selo de situação da cobrança.
 const TONE = {
-  alert: "border border-destructive text-destructive",
+  alert: "border border-danger-foreground bg-danger text-danger-foreground",
   strong: "border bg-primary text-primary-foreground",
   neutral: "border bg-secondary text-secondary-foreground",
 } as const;
