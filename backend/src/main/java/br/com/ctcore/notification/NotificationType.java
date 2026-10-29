@@ -16,7 +16,9 @@ public enum NotificationType {
     /** RF-MAT-04: pedido do portal (troca de turma, nova modalidade, troca de plano ou encerramento); o texto de tela é do front. */
     PORTAL_REQUEST(Audience.UNIT_ADMINS, false),
     /** RF-COB-05: comprovante de Pix para conferir; não é urgente (RN-NOT-02), sem e-mail na hora. */
-    PAYMENT_PROOF(Audience.UNIT_ADMINS, false);
+    PAYMENT_PROOF(Audience.UNIT_ADMINS, false),
+    /** RN-PAG-13: tentativa de pagamento online recusada pelo provedor; a cobrança segue em aberto. O texto de tela é do front. */
+    PAYMENT_REFUSED(Audience.UNIT_ADMINS, false);
 
     public enum Audience { UNIT_ADMINS, COORDINATORS }
 

@@ -55,6 +55,8 @@ class IntegrationWiringTest {
             assertThat(c.getBean(MapLocator.class).isEnabled()).isFalse();
             assertThat(c.getBean(UsageMetrics.class).isEnabled()).isFalse();
 
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> c.getBean(PaymentGateway.class).consult("x"));
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> c.getBean(PaymentGateway.class).createCharge("k", 1, PaymentMethod.PIX));
             assertThat(c.getBean(EmailSender.class).send("a@b.c", "s", "b")).isEqualTo(SendResult.NOT_SENT);
             assertThat(c.getBean(SmsSender.class).send("1", "t")).isEqualTo(SendResult.NOT_SENT);
             assertThat(c.getBean(PushSender.class).send("1", "t", "b")).isEqualTo(SendResult.NOT_SENT);

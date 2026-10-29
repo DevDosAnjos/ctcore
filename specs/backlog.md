@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 10 (Portal do aluno). O dono confirmou em 26/10/2026 que revisou a Sprint 09 (Comunicação) e liberou a Sprint 10. Só o dono libera a seguinte.
+Sprint liberada: Sprint 11. O dono confirmou em 28/10/2026 que revisou a Sprint 10 (Portal do aluno) e liberou a Sprint 11. Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 

@@ -38,13 +38,15 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/**").permitAll()
+                        // RN-PAG-10: aviso do provedor, sem sessão; qualquer método chega ao controller, que só aceita POST (405 nos outros).
+                        .requestMatchers("/api/v1/webhooks/payments").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/login/two-factor", "/api/v1/auth/password-reset",
                                 "/api/v1/auth/password-reset/*", "/api/v1/auth/invitations/*/accept").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitations/*", "/api/v1/public/receipts/*", "/api/v1/public/receipts/*/pdf").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 // D7: toda resposta garante o cookie XSRF-TOKEN; o SPA o lê e devolve em X-XSRF-TOKEN.
-                .csrf(c -> c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                .csrf(c -> c.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()).ignoringRequestMatchers("/api/v1/webhooks/payments")
                         .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
                 .headers(h -> h.httpStrictTransportSecurity(s -> s.maxAgeInSeconds(31536000).includeSubDomains(true)));
         if (requireHttps) {

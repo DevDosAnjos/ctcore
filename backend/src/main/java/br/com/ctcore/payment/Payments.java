@@ -86,22 +86,31 @@ public class Payments {
         if (!from.equals(charge[3])) throw new ApiStatusException(ErrorCode.CHARGE_NOT_PAYABLE);
         long amount = (Long) charge[2];
         if (expectedCents != null && expectedCents != amount) throw new ApiStatusException(ErrorCode.UNPROCESSABLE);
+        return recordConfirmed(who.organizationId(), chargeId, unit, (UUID) charge[1], amount, method, origin, paidAt, observation, who.accountId(), null,
+                new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name()), send, ip);
+    }
 
+    /**
+     * Gravação do pagamento sem pessoa: pagamento, recibo de número sequencial da unidade, cobrança PAID e auditoria. A cobrança já está travada e conferida
+     * por quem chama (balcão, comprovante ou confirmação online). {@code by} e {@code externalId} são nulos quando não há pessoa nem id do provedor.
+     */
+    Done recordConfirmed(UUID org, UUID chargeId, UUID unit, UUID student, long amount, String method, String origin, OffsetDateTime paidAt, String observation,
+            UUID by, String externalId, AuditActor actor, boolean send, String ip) {
         UUID paymentId = UUID.randomUUID();
-        jdbc.sql("insert into payment (id, organization_id, charge_id, student_id, unit_id, amount_cents, method, origin, paid_at, registered_by_account_id, observation) "
-                + "values (:id, :org, :charge, :student, :unit, :amount, :method, :origin, :paidAt, :by, :obs)")
-                .param("id", paymentId).param("org", who.organizationId()).param("charge", chargeId).param("student", charge[1]).param("unit", unit)
-                .param("amount", amount).param("method", method).param("origin", origin).param("paidAt", paidAt).param("by", who.accountId()).param("obs", observation).update();
+        jdbc.sql("insert into payment (id, organization_id, charge_id, student_id, unit_id, amount_cents, method, origin, paid_at, registered_by_account_id, observation, external_id) "
+                + "values (:id, :org, :charge, :student, :unit, :amount, :method, :origin, :paidAt, :by, :obs, :ext)")
+                .param("id", paymentId).param("org", org).param("charge", chargeId).param("student", student).param("unit", unit)
+                .param("amount", amount).param("method", method).param("origin", origin).param("paidAt", paidAt).param("by", by).param("obs", observation).param("ext", externalId).update();
         // A linha do contador trava até o fim da transação: números consecutivos, sem repetir e sem lacuna se algo falhar depois.
         int number = jdbc.sql("insert into receipt_counter (unit_id, organization_id, last_number) values (:unit, :org, 1) "
                 + "on conflict (unit_id) do update set last_number = receipt_counter.last_number + 1 returning last_number")
-                .param("unit", unit).param("org", who.organizationId()).query(Integer.class).single();
+                .param("unit", unit).param("org", org).query(Integer.class).single();
         String code = ReceiptCodes.next();
         jdbc.sql("insert into receipt (id, organization_id, payment_id, unit_id, number, code) values (:id, :org, :payment, :unit, :number, :code)")
-                .param("id", UUID.randomUUID()).param("org", who.organizationId()).param("payment", paymentId).param("unit", unit)
+                .param("id", UUID.randomUUID()).param("org", org).param("payment", paymentId).param("unit", unit)
                 .param("number", number).param("code", code).update();
         jdbc.sql("update charge set status = 'PAID' where id = :id").param("id", chargeId).update();
-        audit.record(new AuditEntry(new AuditActor(AuditActor.Type.ACCOUNT, who.accountId(), who.role().name()), "payment.registered", "payment",
+        audit.record(new AuditEntry(actor, "payment.registered", "payment",
                 paymentId.toString(), unit, Map.of(), Map.of("chargeId", chargeId.toString(), "amountCents", amount, "method", method, "receiptNumber", number, "receiptRequested", send),
                 null, ip));
         // O endereço vem do cadastro (nunca do cliente); o envio só sai depois do commit (D7).
@@ -109,8 +118,8 @@ public class Payments {
                 + "left join guardian g on g.id = c.payer_guardian_id left join account ga on ga.id = g.account_id where c.id = :id")
                 .param("id", chargeId).query(String.class).optional().orElse(null);
         String reference = !send ? null : jdbc.sql("select reference from public_receipt(:code)").param("code", code).query(String.class).single();
-        return new Done(new Registered(paymentId, chargeId, amount, method, paidAt, who.accountId(), observation, new Receipt(number, code), "NOT_REQUESTED"), to, reference, unit,
-                jdbc.sql("select name from student where id = :id").param("id", charge[1]).query(String.class).single());
+        return new Done(new Registered(paymentId, chargeId, amount, method, paidAt, by, observation, new Receipt(number, code), "NOT_REQUESTED"), to, reference, unit,
+                jdbc.sql("select name from student where id = :id").param("id", student).query(String.class).single());
     }
 
     /** Depois do commit: notificação (nunca desfaz o pagamento) e, se pedido, o e-mail do recibo. */

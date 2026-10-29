@@ -2,6 +2,7 @@ package br.com.ctcore.integration.simulated;
 
 import br.com.ctcore.integration.PaymentCharge;
 import br.com.ctcore.integration.PaymentGateway;
+import br.com.ctcore.integration.PaymentMethod;
 import br.com.ctcore.integration.PaymentStatus;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,8 +16,9 @@ public class SimulatedPaymentGateway implements PaymentGateway {
     private final Map<String, String> idByKey = new HashMap<>();
 
     @Override
-    public synchronized PaymentCharge createCharge(String idempotencyKey, long amountCents) {
+    public synchronized PaymentCharge createCharge(String idempotencyKey, long amountCents, PaymentMethod method) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) throw new IllegalArgumentException("idempotencyKey is required");
+        if (method == null) throw new IllegalArgumentException("method is required");
         if (amountCents <= 0) throw new IllegalArgumentException("amountCents must be positive");
         String existing = idByKey.get(idempotencyKey);
         if (existing != null) {
@@ -38,6 +40,9 @@ public class SimulatedPaymentGateway implements PaymentGateway {
 
     @Override
     public synchronized PaymentCharge resendNotice(String id) { return get(id); }
+
+    @Override
+    public synchronized PaymentCharge consult(String id) { return get(id); }
 
     private synchronized PaymentCharge move(String id, PaymentStatus from, PaymentStatus to) {
         PaymentCharge c = get(id);

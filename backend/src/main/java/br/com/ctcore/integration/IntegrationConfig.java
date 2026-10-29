@@ -32,7 +32,8 @@ public class IntegrationConfig {
         return new PaymentGateway() {
             private PaymentCharge off() { throw new IllegalStateException("payment connection is off"); }
             @Override public boolean isEnabled() { return false; }
-            @Override public PaymentCharge createCharge(String k, long a) { return off(); }
+            @Override public PaymentCharge createCharge(String k, long a, PaymentMethod m) { return off(); }
+            @Override public PaymentCharge consult(String id) { return off(); }
             @Override public PaymentCharge approve(String id) { return off(); }
             @Override public PaymentCharge refuse(String id) { return off(); }
             @Override public PaymentCharge expire(String id) { return off(); }

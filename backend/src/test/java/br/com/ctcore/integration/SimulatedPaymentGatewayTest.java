@@ -15,14 +15,14 @@ class SimulatedPaymentGatewayTest {
 
     @Test
     void createIsIdempotentByKey() {
-        PaymentCharge a = gw.createCharge("k1", 12345);
-        PaymentCharge b = gw.createCharge("k1", 12345);
+        PaymentCharge a = gw.createCharge("k1", 12345, PaymentMethod.PIX);
+        PaymentCharge b = gw.createCharge("k1", 12345, PaymentMethod.PIX);
         assertThat(b.id()).isEqualTo(a.id());
         assertThat(a.amountCents()).isEqualTo(12345);
         assertThat(a.status()).isEqualTo(PaymentStatus.PENDING);
-        assertThat(gw.createCharge("k2", 12345).id()).isNotEqualTo(a.id());
-        assertThatThrownBy(() -> gw.createCharge("k1", 999)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> gw.createCharge("k3", 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(gw.createCharge("k2", 12345, PaymentMethod.PIX).id()).isNotEqualTo(a.id());
+        assertThatThrownBy(() -> gw.createCharge("k1", 999, PaymentMethod.PIX)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> gw.createCharge("k3", 0, PaymentMethod.PIX)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -66,14 +66,24 @@ class SimulatedPaymentGatewayTest {
 
     @Test
     void resendReturnsTheSameEventWithoutChangingState() {
-        PaymentCharge c = gw.createCharge("k", 500);
+        PaymentCharge c = gw.createCharge("k", 500, PaymentMethod.PIX);
         assertThat(gw.resendNotice(c.id())).isEqualTo(c);
         PaymentCharge ok = gw.approve(c.id());
         assertThat(gw.resendNotice(c.id())).isEqualTo(ok);
         assertThat(gw.resendNotice(c.id())).isEqualTo(ok);
     }
 
+    @Test
+    void consultReturnsTheCurrentStateAndMethodIsRequired() {
+        PaymentCharge c = gw.createCharge("kc", 700, PaymentMethod.BOLETO);
+        assertThat(gw.consult(c.id())).isEqualTo(c);
+        PaymentCharge ok = gw.approve(c.id());
+        assertThat(gw.consult(c.id())).isEqualTo(ok);
+        assertThatThrownBy(() -> gw.consult("nope")).isInstanceOf(NoSuchElementException.class);
+        assertThatThrownBy(() -> gw.createCharge("kn", 700, null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private String pending() {
-        return gw.createCharge(java.util.UUID.randomUUID().toString(), 100).id();
+        return gw.createCharge(java.util.UUID.randomUUID().toString(), 100, PaymentMethod.PIX).id();
     }
 }

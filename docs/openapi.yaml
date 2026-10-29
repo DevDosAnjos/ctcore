@@ -1339,6 +1339,24 @@ paths:
           description: O recibo.
           content: { application/json: { schema: { $ref: '#/components/schemas/PublicReceipt' } } }
         '404': { $ref: '#/components/responses/NotFound' }
+  /webhooks/payments:
+    post:
+      summary: Aviso (webhook) do provedor de pagamento (RN-PAG-10, RN-PAG-11). Rota pública, sem sessão e sem CSRF; só POST.
+      description: |
+        O corpo só aponta a tentativa: o servidor consulta o provedor e decide pela resposta dele, nunca pelo corpo. Responde `200 {}` para aviso aplicado, repetido, sem
+        efeito ou de identificador desconhecido (a resposta não revela se a tentativa existe nem de qual organização). Falha ao processar: 500, o aviso fica como `FAILED`,
+        abre alerta e a conciliação recupera. A verificação de assinatura é do adaptador real (Sprint 23). Nenhum dado do corpo é devolvido nem registrado além do `id`.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PaymentNoticeRequest' } } }
+      responses:
+        '200':
+          description: Aviso tratado.
+          content: { application/json: { schema: { type: object } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '405': { description: "Método diferente de POST (METHOD_NOT_ALLOWED).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '500': { $ref: '#/components/responses/InternalError' }
   /age-ranges:
     get:
       summary: Faixas etárias da organização do vínculo ativo (RF-MOD-04, RN-MOD-07). Coordenador e Administrador.
@@ -3750,6 +3768,12 @@ components:
       required: [password]
       properties:
         password: { type: string, format: password, description: Senha nova (conta nova) ou a senha que a pessoa já tem (conta existente). }
+    PaymentNoticeRequest:
+      type: object
+      required: [id]
+      description: Só o campo `id` é lido; qualquer outro campo é ignorado.
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100, description: Identificador da cobrança no provedor. }
     PasswordResetRequest:
       type: object
       required: [email]
@@ -3978,6 +4002,8 @@ components:
             - REAUTH_REQUIRED
             - EMAIL_CHANGE_INVALID
             - SESSION_CURRENT
+            - PAYMENT_ACCOUNT_NOT_CONNECTED
+            - PAYMENT_UNAVAILABLE
             - INTERNAL_ERROR
         message: { type: string }
         changed: { type: boolean }
@@ -4138,7 +4164,7 @@ components:
         reaccept: { type: boolean }
     NotificationType:
       type: string
-      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE, PORTAL_REQUEST, PAYMENT_PROOF]
+      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE, PORTAL_REQUEST, PAYMENT_PROOF, PAYMENT_REFUSED]
     Notification:
       type: object
       required: [id, type, group, createdAt, readAt, refType, refId, params]

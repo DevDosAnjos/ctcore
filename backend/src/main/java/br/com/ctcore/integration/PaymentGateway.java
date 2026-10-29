@@ -8,7 +8,10 @@ public interface PaymentGateway {
     default boolean isEnabled() { return true; }
 
     /** Idempotente: mesma chave devolve a mesma cobrança; mesma chave com outro valor lança IllegalArgumentException. */
-    PaymentCharge createCharge(String idempotencyKey, long amountCents);
+    PaymentCharge createCharge(String idempotencyKey, long amountCents, PaymentMethod method);
+
+    /** Estado atual no provedor, sem alterá-lo (confirmação do aviso e conciliação, RN-PAG-10). */
+    PaymentCharge consult(String id);
 
     PaymentCharge approve(String id);
     PaymentCharge refuse(String id);
