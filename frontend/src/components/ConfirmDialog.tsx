@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Field, Input, Textarea } from "@/components/ui/field";
+import { SummaryBox } from "@/components/ui/summary-box";
 import { Modal } from "./Modal";
 
 // Confirmação (RNF-26): resumo, motivo (nenhum, opcional ou obrigatório) e texto digitado opcional (D4).
@@ -10,6 +12,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   summary,
+  summaryItems,
   reason = "none",
   typedText,
   confirmLabel,
@@ -19,6 +22,7 @@ export function ConfirmDialog({
   onOpenChange: (open: boolean) => void;
   title: string;
   summary: string;
+  summaryItems?: string[];
   reason?: "none" | "optional" | "required";
   typedText?: string;
   confirmLabel?: string;
@@ -62,43 +66,39 @@ export function ConfirmDialog({
   }
 
   return (
-    <Modal open={open} onOpenChange={handleOpenChange} title={title}>
+    <Modal
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={title}
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => handleOpenChange(false)}>
+            {t("common.cancel")}
+          </Button>
+          <Button disabled={!reasonOk || !typedOk || busy} onClick={confirm}>
+            {confirmLabel ?? t("common.confirm")}
+          </Button>
+        </>
+      }
+    >
       <div className="flex flex-col gap-3">
         <p>{summary}</p>
+        {summaryItems && <SummaryBox items={summaryItems} />}
         {reason !== "none" && (
-          <label className="flex flex-col gap-1">
-            {t("confirm.reasonLabel")}
-            <textarea
-              className="rounded-md border bg-background p-2"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              aria-required={reason === "required"}
-            />
-          </label>
+          <Field label={t("confirm.reasonLabel")}>
+            {(c) => <Textarea {...c} aria-required={reason === "required" || undefined} value={motivo} onChange={(e) => setMotivo(e.target.value)} />}
+          </Field>
         )}
         {typedText !== undefined && (
-          <label className="flex flex-col gap-1">
-            {t("confirm.typeLabel", { text: typedText })}
-            <input
-              className="min-h-11 rounded-md border bg-background px-3"
-              value={digitado}
-              onChange={(e) => setDigitado(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
+          <Field label={t("confirm.typeLabel", { text: typedText })}>
+            {(c) => <Input {...c} value={digitado} onChange={(e) => setDigitado(e.target.value)} autoComplete="off" />}
+          </Field>
         )}
         <p role="status" className="text-sm text-muted-foreground">
           {missing}
         </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" className="min-h-11" onClick={() => handleOpenChange(false)}>
-            {t("common.cancel")}
-          </Button>
-          <Button className="min-h-11" disabled={!reasonOk || !typedOk || busy} onClick={confirm}>
-            {confirmLabel ?? t("common.confirm")}
-          </Button>
-        </div>
       </div>
     </Modal>
+
   );
 }

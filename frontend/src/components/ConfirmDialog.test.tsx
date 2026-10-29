@@ -93,4 +93,9 @@ describe("ConfirmDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Confirmar" }));
     expect(onOpenChange).not.toHaveBeenCalled();
   });
+
+  it("CA16: mostra o SummaryBox com itens", () => {
+    setup({ summaryItems: ["Cancela a cobrança", "Avisa o aluno"] });
+    expect(screen.getAllByRole("listitem").map((l) => l.textContent)).toEqual(["Cancela a cobrança", "Avisa o aluno"]);
+  });
 });

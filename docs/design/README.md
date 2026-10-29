@@ -79,7 +79,7 @@ Cada peça do canvas tem um componente em `frontend/src/components`. Tela nova u
 | Pessoa com avatar | `Person`, `Avatar` | iniciais com cor estável pelo nome |
 | Etapas do assistente | `Stepper` | |
 | Os quatro estados | `components/states` | carregando com esqueleto, vazio, erro com "Tentar de novo", sem acesso |
-| Menu lateral, barra de cima, cabeçalho da página | `AppLayout` (`Sidebar`, `Topbar`, `PageHeader`) | celular: barra de cima e abas embaixo |
+| Menu lateral, barra de cima, cabeçalho da página | `AppLayout`, `PageHeader` | menu lateral e barra de cima são partes do `AppLayout`; celular: barra de cima e abas embaixo |
 | Barra e abas do portal | `PortalLayout` | cor principal da organização no topo |
 
 ## Regras

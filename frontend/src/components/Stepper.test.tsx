@@ -40,4 +40,16 @@ describe("Stepper", () => {
     await userEvent.click(screen.getByRole("button", { name: "Concluir" }));
     expect(onFinish).toHaveBeenCalledTimes(1);
   });
+
+  it("CA20: etapas numeradas com a atual em aria-current=step", async () => {
+    render(<Demo />);
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveAttribute("aria-current", "step");
+    expect(items[1]).not.toHaveAttribute("aria-current");
+    expect(items[1]).toHaveTextContent("2");
+    await userEvent.type(screen.getByLabelText("Nome"), "Ana");
+    await userEvent.click(screen.getByRole("button", { name: "Avançar" }));
+    expect(screen.getAllByRole("listitem")[1]).toHaveAttribute("aria-current", "step");
+  });
 });

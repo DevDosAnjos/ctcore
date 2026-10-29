@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Route, Routes } from "react-router";
 import { LoginPage } from "@/features/auth/LoginPage";
@@ -94,10 +95,16 @@ function Home() {
   );
 }
 
+// Vitrine de desenvolvimento: sob import.meta.env.DEV o Vite elimina a rota e o módulo do build.
+const Vitrine = import.meta.env.DEV ? lazy(() => import("@/dev/Vitrine")) : null;
+
 // Precisa estar dentro de um roteador e do SessionProvider (main.tsx).
 export function App() {
   return (
     <Routes>
+      {Vitrine && (
+        <Route path="/dev/vitrine" element={<Suspense fallback={null}><Vitrine /></Suspense>} />
+      )}
       <Route path="/entrar" element={<LoginPage />} />
       <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
       <Route path="/redefinir-senha/:code" element={<ResetPasswordPage />} />

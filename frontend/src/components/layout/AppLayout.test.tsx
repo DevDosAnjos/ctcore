@@ -45,7 +45,7 @@ describe("AppLayout", () => {
   it("CA21: botões só de ícone têm nome e alvo de 44 px; sem largura fixa em px", () => {
     setup();
     const botao = screen.getByRole("button", { name: "Abrir menu" });
-    expect(botao).toHaveClass("min-h-11", "min-w-11");
+    expect(botao).toHaveClass("after:min-h-11", "after:min-w-11");
     expect(document.body.innerHTML).not.toMatch(/\bw-\[\d+px\]/);
   });
 });

@@ -2533,6 +2533,13 @@
     "finish": "Concluir",
     "close": "Fechar"
   },
+  "ui": {
+    "loading": "Carregando",
+    "counter": "{{used}}/{{max}}",
+    "selectRow": "Selecionar linha",
+    "selectAll": "Selecionar todas as linhas",
+    "stepsLabel": "Etapas"
+  },
   "query": {
     "search": "Buscar",
     "clear": "Limpar filtros",

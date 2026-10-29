@@ -14,7 +14,7 @@ export default tseslint.config(
   {
     // R5/CA8: nenhum texto de tela no código; só nas traduções.
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/**/*.test.{ts,tsx}", "src/test/**"],
+    ignores: ["src/**/*.test.{ts,tsx}", "src/test/**", "src/dev/**"],
     plugins: { i18next },
     rules: {
       "i18next/no-literal-string": [
