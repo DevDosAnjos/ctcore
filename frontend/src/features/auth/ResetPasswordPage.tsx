@@ -2,13 +2,13 @@ import { useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router";
 import { ErrorState } from "@/components/states";
+import { AuthShell } from "@/components/layout/AuthShell";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { ApiError, api } from "@/lib/api";
-import { ThemeToggle } from "@/theme/ThemeToggle";
 import { PasswordFields } from "./PasswordFields";
 import { isStrongPassword } from "./PasswordRules";
 import { useSession, type SessionView } from "./SessionProvider";
-import { SupportContact, platformContact } from "./SupportContact";
 
 // RF-ACE-03: o código vive só no caminho da URL; a senha só no estado do formulário (R11).
 export function ResetPasswordPage() {
@@ -50,52 +50,41 @@ export function ResetPasswordPage() {
     }
   }
 
-  function body() {
-    if (invalid) {
-      return (
-        <section className="space-y-2">
-          <h1 className="text-2xl font-semibold">{t("reset.invalid.title")}</h1>
-          <p role="alert">{t("reset.invalid.text")}</p>
-          <p>
-            <Link className="underline" to="/esqueci-senha">
-              {t("reset.invalid.ask")}
-            </Link>
-          </p>
-        </section>
-      );
-    }
-    if (failed) return <ErrorState onRetry={() => void submit()} />;
+  if (invalid) {
     return (
-      <>
-        <h1 className="text-2xl font-semibold">{t("reset.title")}</h1>
-        <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
-          <PasswordFields
-            password={password}
-            confirm={confirm}
-            onPassword={setPassword}
-            onConfirm={setConfirm}
-            error={fieldError}
-            inputRef={passwordRef}
-            idPrefix="reset"
-          />
-          <Button type="submit" className="w-full" disabled={sending || !valid}>
-            {sending ? t("reset.sending") : t("reset.submit")}
-          </Button>
-        </form>
-      </>
+      <AuthShell title={t("reset.invalid.title")} focusTitle>
+        <Banner tone="warn">{t("reset.invalid.text")}</Banner>
+        <p>
+          <Link className="underline" to="/esqueci-senha">
+            {t("reset.invalid.ask")}
+          </Link>
+        </p>
+      </AuthShell>
     );
   }
-
+  if (failed) {
+    return (
+      <AuthShell title={t("reset.title")}>
+        <ErrorState onRetry={() => void submit()} />
+      </AuthShell>
+    );
+  }
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
-        <span className="text-lg font-semibold">{t("app.name")}</span>
-        <ThemeToggle />
-      </header>
-      <main className="mx-auto w-full max-w-md space-y-6 px-4 py-6">
-        <div className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground">{body()}</div>
-        <SupportContact contact={platformContact()} />
-      </main>
-    </div>
+    <AuthShell title={t("reset.title")}>
+      <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
+        <PasswordFields
+          password={password}
+          confirm={confirm}
+          onPassword={setPassword}
+          onConfirm={setConfirm}
+          error={fieldError}
+          inputRef={passwordRef}
+          idPrefix="reset"
+        />
+        <Button type="submit" size="lg" className="w-full" disabled={sending || !valid}>
+          {sending ? t("reset.sending") : t("reset.submit")}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

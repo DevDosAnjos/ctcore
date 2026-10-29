@@ -86,7 +86,7 @@ function setup(role = "COORDINATOR", read: () => Response | Promise<Response> = 
 }
 
 const ready = () => screen.findByRole("heading", { name: "Usuários da gestão", level: 1 });
-const card = (name: string) => screen.getByRole("heading", { name }).closest("section")!;
+const card = (name: string) => screen.getAllByRole("row").find((r) => r.querySelector("td p")?.textContent === name)!;
 
 beforeEach(() => {
   lastAdmin = false;
@@ -94,6 +94,16 @@ beforeEach(() => {
 });
 
 describe("UsersPage", () => {
+  it("CA8: os filtros rápidos mostram a contagem e filtram a tabela por situação", async () => {
+    const u = userEvent.setup();
+    setup();
+    await ready();
+    await u.click(screen.getByRole("button", { name: "Convite enviado, 1" }));
+    expect(screen.getAllByRole("row")).toHaveLength(2);
+    expect(card("Carla")).toBeDefined();
+    expect(screen.queryByText("Bruno")).toBeNull();
+  });
+
   it("CA19: lista perfil, unidades, último acesso e situação; ações só com canManage; pendente tem Reenviar convite", async () => {
     setup();
     await ready();
@@ -143,7 +153,8 @@ describe("UsersPage", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(calls).toEqual([{ method: "POST", path: "invite", body: { email: "fabio@alfa.test", name: "Fabio", unitIds: ["u2"] } }]);
     expect(screen.getByRole("status")).toHaveTextContent("Convite enviado.");
-    expect(within(await screen.findByRole("heading", { name: "Fabio" }).then((h) => h.closest("section")!)).getByText("Convite enviado")).toBeInTheDocument();
+    await screen.findByText("fabio@alfa.test");
+    expect(within(card("Fabio")).getByText("Convite enviado")).toBeInTheDocument();
   });
 
   it("CA20: e-mail já ligado (409) mostra a mensagem e mantém a janela", async () => {
@@ -209,7 +220,7 @@ describe("UsersPage", () => {
     expect(calls.map((c) => c.path)).toEqual(["deactivate", "appointment", "deactivate"]);
     expect(calls[1].body).toEqual({ unitIds: ["u1"] });
     expect(screen.getByRole("status")).toHaveTextContent("Usuário desativado.");
-    await waitFor(() => expect(screen.queryByRole("heading", { name: "Bruno" })).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Bruno")).toBeNull());
   });
 
   it("CA21: o Administrador vê só a explicação, sem Nomear a mim mesmo", async () => {

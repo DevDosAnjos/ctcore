@@ -2,7 +2,9 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { ErrorState, ForbiddenState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { ApiError, api } from "@/lib/api";
 import { CodeField } from "./CodeField";
 import { useSession } from "./SessionProvider";
@@ -86,30 +88,11 @@ export function ReauthDialog({
         <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
           <p className="text-sm">{t(withCode ? "reauth.introCode" : "reauth.introPassword")}</p>
           {errors.form && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors.form}
-            </p>
+            <Banner tone="danger">{errors.form}</Banner>
           )}
-          <div>
-            <label htmlFor="reauth-password" className="block text-sm font-medium">
-              {t("reauth.password")}
-            </label>
-            <input
-              id="reauth-password"
-              type="password"
-              autoComplete="current-password"
-              className="min-h-11 w-full rounded-md border bg-background px-2"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              aria-invalid={!!errors.password || undefined}
-              aria-describedby={errors.password ? "reauth-password-erro" : undefined}
-            />
-            {errors.password && (
-              <p id="reauth-password-erro" role="alert" className="text-sm text-destructive">
-                {errors.password}
-              </p>
-            )}
-          </div>
+          <Field label={t("reauth.password")} error={errors.password} alertError>
+            {(c) => <Input {...c} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
+          </Field>
           {withCode && <CodeField id="reauth-code" kind="any" label={t("reauth.code")} value={code} onChange={setCode} error={errors.code} />}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={sending}>

@@ -17,14 +17,14 @@ test("@critical Coordenador convida um Administrador e desativa outro", async ({
   await invite.getByLabel("E-mail").fill("fabio@exemplo.com");
   await invite.getByRole("checkbox", { name: "Unidade Centro" }).check();
   await invite.getByRole("button", { name: "Enviar convite" }).click();
-  const fabio = page.getByRole("heading", { name: "Fabio" }).locator("xpath=ancestor::section");
+  const fabio = page.getByRole("row").filter({ hasText: "fabio@exemplo.com" });
   await expect(fabio.getByText("Convite enviado")).toBeVisible();
 
-  await page.getByRole("heading", { name: "Bruno" }).locator("xpath=ancestor::section").getByRole("button", { name: /Desativar/ }).click();
+  await page.getByRole("row").filter({ hasText: "Bruno" }).getByRole("button", { name: /Desativar/ }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Desativar" }).click();
   await expect(dialog.getByText("Estas unidades ficariam sem Administrador ativo:")).toBeVisible();
   await dialog.getByRole("button", { name: "Nomear a mim mesmo" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Usuário desativado." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Bruno" })).toHaveCount(0);
+  await expect(page.getByRole("row").filter({ hasText: "Bruno" })).toHaveCount(0);
 });

@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { ReauthDialog } from "@/features/auth/ReauthDialog";
 import { ApiError, api } from "@/lib/api";
 import type { UnitSummary } from "./useUnits";
@@ -103,40 +105,31 @@ export function DeactivateUnitDialog({ unit, onClose, onDone }: { unit: UnitSumm
           >
             <p>{t("units.deactivate.summary")}</p>
             {check.canDeactivate ? null : (
-              <div role="alert" className="rounded-md border border-destructive p-2 text-sm">
+              <Banner tone="danger">
                 <p className="font-medium">{t("units.deactivate.blocked")}</p>
                 <ul className="list-disc pl-5">
                   {check.activeStudents > 0 && <li>{t("units.deactivate.students", { count: check.activeStudents })}</li>}
                   {check.activeClasses > 0 && <li>{t("units.deactivate.classes", { count: check.activeClasses })}</li>}
                   {check.lastActiveUnit && <li>{t("units.deactivate.lastUnit")}</li>}
                 </ul>
-              </div>
+              </Banner>
             )}
-            <div>
-              <label htmlFor="deactivate-name" className="block text-sm font-medium">
-                {t("units.deactivate.typeLabel", { name: unit?.name ?? "" })}
-              </label>
-              <input
-                id="deactivate-name"
-                autoComplete="off"
-                className="min-h-11 w-full rounded-md border bg-background px-2"
-                value={name}
-                disabled={!check.canDeactivate}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? "deactivate-name-erro" : undefined}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError(undefined);
-                }}
-              />
-              {error && (
-                <p id="deactivate-name-erro" role="alert" className="mt-1 text-sm text-destructive">
-                  {error}
-                </p>
+            <Field label={t("units.deactivate.typeLabel", { name: unit?.name ?? "" })} error={error} alertError>
+              {(c) => (
+                <Input
+                  {...c}
+                  autoComplete="off"
+                  value={name}
+                  disabled={!check.canDeactivate}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setError(undefined);
+                  }}
+                />
               )}
-            </div>
+            </Field>
             <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="outline" className="min-h-11" onClick={close} disabled={phase === "sending"}>
+              <Button type="button" variant="secondary" className="min-h-11" onClick={close} disabled={phase === "sending"}>
                 {t("common.cancel")}
               </Button>
               <Button type="submit" className="min-h-11" disabled={!ready || phase === "sending"}>

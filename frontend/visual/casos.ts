@@ -1,6 +1,8 @@
 // Casos do teste visual (#416). Cada issue de tela da Sprint 10.5 acrescenta os seus.
 // `perfil`: e-mail do login do MSW (senha segredo123); ausente = sem login.
 // `canvas`: nome da tela em docs/design/canvas (sem .dc.html); `canvasEscuro`: versão escura, quando existe.
+// D4 (#419): passos antes do print, para chegar a janelas e estados. `preencher`: [rótulo exato, valor]; `clicar`: início do nome do botão.
+export type Passo = { preencher: [string, string] } | { clicar: string };
 export type Caso = {
   nome: string;
   rota: string;
@@ -8,6 +10,7 @@ export type Caso = {
   canvas?: string;
   canvasEscuro?: string;
   fullPage?: boolean;
+  passos?: Passo[];
 };
 
 const ana = "ana@exemplo.com"; // Coordenador, todas as áreas
@@ -19,7 +22,7 @@ const reduzido = "reduzido@exemplo.com"; // Aluno sem modalidade ativa, portal r
 
 export const casos: Caso[] = [
   { nome: "vitrine", rota: "/dev/vitrine", fullPage: true },
-  { nome: "entrar", rota: "/entrar" },
+  { nome: "entrar", rota: "/entrar", canvas: "Login" },
   { nome: "inicio", rota: "/", perfil: ana, canvas: "Main", canvasEscuro: "MainEscuro" },
   // Moldura da gestão (#417): menu, barra de cima, abas e menu de celular por perfil
   { nome: "moldura-coordenacao", rota: "/alunos", perfil: ana, canvas: "Sidebar" },
@@ -56,6 +59,38 @@ export const casos: Caso[] = [
   { nome: "configuracoes-termos", rota: "/configuracoes/termos", perfil: ana, canvas: "ConfigTermos" },
   { nome: "configuracoes-textos", rota: "/configuracoes/textos", perfil: ana, canvas: "ConfigTextos" },
   { nome: "conta", rota: "/conta", perfil: ana, canvas: "MinhaConta" },
+  // Acesso, conta, organização, unidades e usuários (#419). Estados e janelas abrem pelos passos.
+  // Fora: EscolhaOrganizacao/EscolhaOrgM (o login simulado já entra com o vínculo ativo) e UnidadeUnica (o MSW tem mais de uma unidade).
+  { nome: "login-travado", rota: "/entrar", canvas: "LoginTravado", passos: [{ preencher: ["E-mail", ana] }, { preencher: ["Senha", "limite"] }, { clicar: "Entrar" }] },
+  { nome: "login-duas-etapas", rota: "/entrar", canvas: "LoginDuasEtapas", passos: [{ preencher: ["E-mail", "duas@exemplo.com"] }, { preencher: ["Senha", "segredo123"] }, { clicar: "Entrar" }] },
+  {
+    nome: "login-codigo-reserva",
+    rota: "/entrar",
+    canvas: "LoginCodigoReserva",
+    passos: [{ preencher: ["E-mail", "duas@exemplo.com"] }, { preencher: ["Senha", "segredo123"] }, { clicar: "Entrar" }, { clicar: "Usar um código de reserva" }],
+  },
+  { nome: "esqueci-senha", rota: "/esqueci-senha", canvas: "RecuperarSenha" },
+  { nome: "esqueci-senha-enviado", rota: "/esqueci-senha", canvas: "RecuperarSenha", passos: [{ preencher: ["E-mail", ana] }, { clicar: "Enviar link" }] },
+  { nome: "redefinir-senha", rota: "/redefinir-senha/valido", canvas: "NovaSenha" },
+  {
+    nome: "redefinir-senha-vencida",
+    rota: "/redefinir-senha/vencido",
+    canvas: "LinkSenhaVencido",
+    passos: [{ preencher: ["Senha", "Senhaforte1"] }, { preencher: ["Confirmar senha", "Senhaforte1"] }, { clicar: "Criar senha e entrar" }],
+  },
+  { nome: "convite", rota: "/convite/valido", canvas: "PrimeiroAcesso" },
+  { nome: "convite-conta-existente", rota: "/convite/existente", canvas: "PrimeiroAcessoConta" },
+  { nome: "convite-vencido", rota: "/convite/vencido", canvas: "ConviteVencido" },
+  { nome: "sem-acesso", rota: "/configuracoes/usuarios", perfil: prof, canvas: "EstadoSemAcesso" },
+  { nome: "conta-aluno", rota: "/conta", perfil: aluno, canvas: "PortalTrocarEmail" },
+  { nome: "conta-duas-etapas", rota: "/conta", perfil: ana, canvas: "DuasEtapas", passos: [{ clicar: "Ativar duas etapas" }] },
+  { nome: "conta-codigos-reserva", rota: "/conta", perfil: "duas@exemplo.com", canvas: "CodigosReserva", passos: [{ clicar: "Gerar códigos de reserva novos" }] },
+  { nome: "configuracoes-organizacao-contraste", rota: "/configuracoes/organizacao", perfil: ana, canvas: "ConfigOrgContraste", passos: [{ preencher: ["Cor principal (#RRGGBB)", "#F5E663"] }] },
+  { nome: "configuracoes-transferir-coordenacao", rota: "/configuracoes/organizacao", perfil: ana, canvas: "TransferirCoordenacao", passos: [{ clicar: "Transferir coordenação" }] },
+  { nome: "configuracoes-unidade-nova", rota: "/configuracoes/unidades/nova", perfil: ana, canvas: "UnidadeNova" },
+  { nome: "configuracoes-unidade-desativar", rota: "/configuracoes/unidades", perfil: ana, canvas: "UnidadeDesativar", passos: [{ clicar: "Desativar" }] },
+  { nome: "configuracoes-unidade-professor", rota: "/configuracoes/unidade", perfil: ana, canvas: "ConfigPermProf", fullPage: true },
+  { nome: "configuracoes-usuario-convidar", rota: "/configuracoes/usuarios", perfil: ana, canvas: "UsuarioConvidar", passos: [{ clicar: "Convidar" }] },
 ];
 
 export const larguras = [

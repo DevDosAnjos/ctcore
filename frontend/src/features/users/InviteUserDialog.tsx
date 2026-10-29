@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/features/units/Text";
 import { useUnitScope } from "@/features/units/UnitScopeProvider";
@@ -66,12 +67,10 @@ export function InviteUserDialog({ open, onClose, onDone }: { open: boolean; onC
         <Text label={t("users.invite.email")} type="email" value={email} onChange={setEmail} error={errors.email} autoComplete="off" />
         <UnitChecks units={units} value={unitIds} onChange={setUnitIds} error={errors.units} />
         {errors.form && (
-          <p role="alert" className="text-sm text-destructive">
-            {errors.form}
-          </p>
+          <Banner tone="danger">{errors.form}</Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" className="min-h-11" onClick={close} disabled={busy}>
+          <Button type="button" variant="secondary" className="min-h-11" onClick={close} disabled={busy}>
             {t("common.cancel")}
           </Button>
           <Button type="submit" className="min-h-11" disabled={busy}>

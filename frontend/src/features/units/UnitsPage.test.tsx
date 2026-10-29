@@ -67,13 +67,14 @@ describe("UnitsPage", () => {
   it("CA1 / CA2: lista cidade, alunos ativos, Administradores, situação e nome curto; só a unidade não ajustada tem o botão", async () => {
     setup("COORDINATOR");
     await ready();
-    const centro = screen.getByRole("heading", { name: "Unidade Centro" }).closest("section")!;
+    const rowOf = (name: string) => screen.getAllByRole("row").find((r) => r.querySelector("td")?.textContent === name)!;
+    const centro = rowOf("Unidade Centro");
     expect(within(centro).getByText("Rio de Janeiro")).toBeInTheDocument();
     expect(within(centro).getByText("Bruno, Carla")).toBeInTheDocument();
     expect(within(centro).getByText("Ativa")).toBeInTheDocument();
     expect(within(centro).getByText("alfa-centro")).toBeInTheDocument();
     expect(within(centro).getByRole("button", { name: /Ajustar nome curto/ })).toBeInTheDocument();
-    const norte = screen.getByRole("heading", { name: "Unidade Norte" }).closest("section")!;
+    const norte = rowOf("Unidade Norte");
     expect(within(norte).getByText("Não informada")).toBeInTheDocument();
     expect(within(norte).getByText("Nenhum Administrador")).toBeInTheDocument();
     expect(within(norte).getByText("Desativada")).toBeInTheDocument();

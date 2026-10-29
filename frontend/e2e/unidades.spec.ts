@@ -21,7 +21,7 @@ test("@critical configurações das unidades: Coordenador lista e ajusta, Admini
   await expect(nav.getByRole("link", { name: "Unidades" })).toBeVisible();
   await open(page, "/configuracoes/unidades"); // o link recarrega a página e a sessão simulada se perderia
   await expect(page.getByRole("heading", { name: "Unidades", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Unidade Centro" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Unidade Centro", exact: true })).toBeVisible();
   await expect(page.getByText("Desativada")).toBeVisible();
 
   await page.getByRole("button", { name: /Ajustar nome curto/ }).click();

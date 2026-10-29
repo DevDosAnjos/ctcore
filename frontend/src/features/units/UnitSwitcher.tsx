@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Select } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { ALL, useUnitScope } from "./UnitScopeProvider";
 
@@ -11,15 +12,15 @@ export function UnitSwitcher() {
     return (
       <span className="flex min-w-0 items-center gap-2">
         <span role="alert" className="min-w-0 truncate text-sm">{t("unitScope.error")}</span>
-        <Button variant="outline" size="sm" onClick={scope.retry}>{t("states.retry")}</Button>
+        <Button variant="secondary" size="sm" onClick={scope.retry}>{t("states.retry")}</Button>
       </span>
     );
   }
   if (scope.status === "forbidden" || scope.units.length < 2) return null;
   return (
-    <select
+    <Select
       aria-label={t("unitScope.label")}
-      className="min-h-11 max-w-[11rem] rounded-md border bg-background px-2 text-sm"
+      className="max-w-44"
       value={scope.selected ?? ""}
       onChange={(e) => scope.select(e.target.value)}
     >
@@ -29,7 +30,7 @@ export function UnitSwitcher() {
           {u.name}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

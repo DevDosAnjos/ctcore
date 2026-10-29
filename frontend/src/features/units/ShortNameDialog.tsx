@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { ApiError } from "@/lib/api";
 import type { UnitSummary } from "./useUnits";
 
@@ -58,31 +59,22 @@ export function ShortNameDialog({
       >
         <p>{t("units.dialog.warning")}</p>
         <p className="text-sm text-muted-foreground">{t("units.dialog.current", { value: unit?.shortName ?? "" })}</p>
-        <div>
-          <label htmlFor="unit-short-name" className="block text-sm font-medium">
-            {t("units.dialog.label")}
-          </label>
-          <input
-            id="unit-short-name"
-            className="min-h-11 w-full rounded-md border bg-background px-2"
-            value={value}
-            maxLength={80}
-            autoComplete="off"
-            aria-invalid={shown ? true : undefined}
-            aria-describedby={shown ? "unit-short-name-error" : undefined}
-            onChange={(e) => {
-              setValue(e.target.value);
-              setError(undefined);
-            }}
-          />
-          {shown && (
-            <p id="unit-short-name-error" role="alert" className="mt-1 text-sm text-destructive">
-              {shown}
-            </p>
+        <Field label={t("units.dialog.label")} error={shown} alertError>
+          {(c) => (
+            <Input
+              {...c}
+              value={value}
+              maxLength={80}
+              autoComplete="off"
+              onChange={(e) => {
+                setValue(e.target.value);
+                setError(undefined);
+              }}
+            />
           )}
-        </div>
+        </Field>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" onClick={close}>
+          <Button type="button" variant="secondary" onClick={close}>
             {t("common.cancel")}
           </Button>
           <Button type="submit" disabled={busy || value === "" || formatBad}>

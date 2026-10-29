@@ -91,7 +91,7 @@ function Body({ onClose, onEnabled }: { onClose: () => void; onEnabled: () => vo
       return (
         <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
           <p className="text-sm">{t("twoFactor.setup.intro")}</p>
-          <img src={phase.qr} width={192} height={192} alt={t("twoFactor.setup.qrAlt")} className="mx-auto rounded-md bg-white" />
+          <img src={phase.qr} width={192} height={192} alt={t("twoFactor.setup.qrAlt")} className="mx-auto rounded-md" />
           <div>
             <p className="text-sm font-medium">{t("twoFactor.setup.keyLabel")}</p>
             <p className="break-all font-mono text-sm">{phase.setup.secret}</p>

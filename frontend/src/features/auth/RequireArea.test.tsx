@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { server } from "@/mocks/server";
+import { ThemeProvider } from "@/theme/ThemeProvider";
 import { RequireArea } from "./RequireArea";
 import { RequireSession } from "./RequireSession";
 import { SessionProvider, type SessionView } from "./SessionProvider";
@@ -17,6 +18,7 @@ function Path() {
 function setup(view: SessionView | Response) {
   server.use(http.get("/api/v1/auth/session", () => (view instanceof Response ? view : HttpResponse.json(view))));
   return render(
+    <ThemeProvider>
     <MemoryRouter initialEntries={["/financeiro"]}>
       <SessionProvider>
         <Path />
@@ -28,7 +30,8 @@ function setup(view: SessionView | Response) {
           </Route>
         </Routes>
       </SessionProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
+    </ThemeProvider>,
   );
 }
 

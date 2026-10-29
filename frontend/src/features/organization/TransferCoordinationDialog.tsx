@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { ErrorState, ForbiddenState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/field";
 import { ReauthDialog } from "@/features/auth/ReauthDialog";
 import { useSession, type SessionView } from "@/features/auth/SessionProvider";
 import { ApiError, api } from "@/lib/api";
@@ -70,46 +72,15 @@ export function TransferCoordinationDialog({ open, onClose, onDone }: { open: bo
               if (ready && phase === "form") setPhase("reauth");
             }}
           >
-            <p>{t("organization.transfer.summary")}</p>
-            <div>
-              <label htmlFor="transfer-email" className="block text-sm font-medium">
-                {t("organization.transfer.email")}
-              </label>
-              <input
-                id="transfer-email"
-                type="email"
-                autoComplete="off"
-                className="min-h-11 w-full rounded-md border bg-background px-2"
-                value={email}
-                aria-invalid={errors.email ? true : undefined}
-                aria-describedby="transfer-email-ajuda"
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <p id="transfer-email-ajuda" className={errors.email ? "text-sm text-destructive" : "text-sm text-muted-foreground"} role={errors.email ? "alert" : undefined}>
-                {errors.email ?? t("organization.transfer.emailHelp")}
-              </p>
-            </div>
-            <div>
-              <label htmlFor="transfer-word" className="block text-sm font-medium">
-                {t("organization.transfer.typeLabel")}
-              </label>
-              <input
-                id="transfer-word"
-                autoComplete="off"
-                className="min-h-11 w-full rounded-md border bg-background px-2"
-                value={word}
-                aria-invalid={errors.confirmation ? true : undefined}
-                aria-describedby={errors.confirmation ? "transfer-word-erro" : undefined}
-                onChange={(e) => setWord(e.target.value)}
-              />
-              {errors.confirmation && (
-                <p id="transfer-word-erro" role="alert" className="text-sm text-destructive">
-                  {errors.confirmation}
-                </p>
-              )}
-            </div>
+            <Banner tone="warn">{t("organization.transfer.summary")}</Banner>
+            <Field label={t("organization.transfer.email")} hint={errors.email ? undefined : t("organization.transfer.emailHelp")} error={errors.email} alertError>
+              {(c) => <Input {...c} type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)} />}
+            </Field>
+            <Field label={t("organization.transfer.typeLabel")} error={errors.confirmation} alertError>
+              {(c) => <Input {...c} autoComplete="off" value={word} onChange={(e) => setWord(e.target.value)} />}
+            </Field>
             <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="outline" className="min-h-11" onClick={close} disabled={phase === "sending"}>
+              <Button type="button" variant="secondary" className="min-h-11" onClick={close} disabled={phase === "sending"}>
                 {t("common.cancel")}
               </Button>
               <Button type="submit" className="min-h-11" disabled={!ready || phase === "sending"}>
