@@ -30,7 +30,7 @@ describe("buildMenu", () => {
   it("CA12 / CA19 / CA16 (#29), CA21 (#31) e #37, #46, #49 e #53: com o catálogo real, o Coordenador vê Unidade, Organização, Usuários e Unidades, o Administrador Unidade, Organização e Usuários e o Professor Início e Agenda", () => {
     const home = { id: "home", label: "menu.groups.home", items: [{ id: "home", label: "menu.items.home", href: "/" }] };
     const agenda = { id: "agenda", label: "menu.items.agenda", href: "/agenda" };
-    expect(buildMenu(mockPermissions("TEACHER"), t)).toEqual([home, { id: "operation", label: "menu.groups.operation", items: [agenda] }]);
+    expect(bare(buildMenu(mockPermissions("TEACHER"), t))).toEqual([home, { id: "operation", label: "menu.groups.operation", items: [agenda] }]);
     const unit = { id: "unitSettings", label: "menu.items.unitSettings", href: "/configuracoes/unidade" };
     const organization = { id: "organizationSettings", label: "menu.items.organizationSettings", href: "/configuracoes/organizacao" };
     const users = { id: "staffUsers", label: "menu.items.staffUsers", href: "/configuracoes/usuarios" };
@@ -43,8 +43,8 @@ describe("buildMenu", () => {
     const people = { id: "people", label: "menu.groups.people", items: [{ id: "students", label: "menu.items.students", href: "/alunos" }, { id: "requests", label: "menu.items.requests", href: "/pedidos" }, { id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
     const finance = { id: "finance", label: "menu.groups.finance", items: [{ id: "plans", label: "menu.items.plans", href: "/planos" }, { id: "benefits", label: "menu.items.benefits", href: "/beneficios" }] };
     const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
-    expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, terms, texts, users, units])]);
-    expect(buildMenu(mockPermissions("ADMINISTRATOR"), t)).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, terms, texts, users])]);
+    expect(bare(buildMenu(mockPermissions("COORDINATOR"), t))).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, terms, texts, users, units])]);
+    expect(bare(buildMenu(mockPermissions("ADMINISTRATOR"), t))).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, terms, texts, users])]);
   });
 });
 
@@ -63,3 +63,6 @@ describe("mock de permissões x OpenAPI (CA14)", () => {
     expect((await fetch("/api/v1/permissions")).status).toBe(401);
   });
 });
+
+// O ícone é só visual: a regra por perfil compara id, nome e endereço.
+const bare = (menu: ReturnType<typeof buildMenu>) => menu.map((g) => ({ ...g, items: g.items.map(({ icon, ...i }) => (void icon, i)) }));

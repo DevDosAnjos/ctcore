@@ -17,6 +17,7 @@ import { LogoCropDialog } from "./LogoCropDialog";
 import { checkLogoFile, LOGO_TYPES } from "./logoFile";
 import { TransferCoordinationDialog } from "./TransferCoordinationDialog";
 import { useOrganization, type OrganizationView } from "./useOrganization";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Notice = { kind: "ok" | "error"; text: string };
 type Api = ReturnType<typeof useOrganization>;
@@ -286,7 +287,7 @@ function Content({ canEdit }: { canEdit: boolean }) {
   if (!api.view) return <ErrorState onRetry={api.retry} />;
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("organization.title")}</h1>
+      <PageHeader title={t("organization.title")} />
       {!canEdit && <p className="text-muted-foreground">{t("organization.readOnly")}</p>}
       <LastChange value={api.view.lastChange} />
       <DataCard view={api.view} api={api} canEdit={canEdit} />

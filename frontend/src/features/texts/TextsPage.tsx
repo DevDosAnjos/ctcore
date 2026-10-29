@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { useTexts, type TextGroup, type TextModel } from "./useTexts";
+import { PageHeader } from "@/components/ui/page-header";
 
 const GROUPS: TextGroup[] = ["REMINDERS", "WELCOME", "ANNOUNCEMENTS"];
 const when = (iso: string | null) => (iso ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(iso)) : "");
@@ -202,7 +203,7 @@ function Content() {
   const selected = models.find((m) => m.key === key);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("texts.title")}</h1>
+      <PageHeader title={t("texts.title")} />
       <p className="text-muted-foreground">{t("texts.intro")}</p>
       {models.length === 0 && <EmptyState title={t("texts.emptyTitle")} text={t("texts.emptyText")} />}
       {GROUPS.map((g) => {

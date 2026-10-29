@@ -75,7 +75,7 @@ export function ChooseLinkModal({
               aria-current={l.id === activeLinkId ? "true" : undefined}
               onClick={() => void choose(l)}
             >
-              <span className="font-semibold">{l.organizationName}</span>
+              <span className="text-lg font-semibold uppercase leading-tight">{l.organizationName}</span>
               {" "}
               <span className="font-normal">
                 {t("chooseLink.areaOption", {

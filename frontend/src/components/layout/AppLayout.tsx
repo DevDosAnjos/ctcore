@@ -1,94 +1,81 @@
-import { useState, type ReactNode } from "react";
-import * as Dialog from "@radix-ui/react-dialog";
-import { Menu, X } from "lucide-react";
+import { useRef, type ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/theme/ThemeToggle";
+import { MobileTabs, type NavTab } from "./MobileTabs";
+import { Sidebar } from "./Sidebar";
+import { Topbar } from "./Topbar";
+import { useSidebarCollapsed } from "./useSidebarCollapsed";
 
-export type NavItem = { id: string; label: string; href: string };
+export type NavItem = { id: string; label: string; href: string; icon?: string };
 export type NavGroup = { id: string; label: string; items: NavItem[] };
 
-const linkClass =
-  "flex min-h-11 items-center rounded-md px-3 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[current=page]:bg-accent aria-[current=page]:font-semibold";
-
 // D1: sem roteador; a tela passa os grupos e o id ativo, e os itens são links comuns.
-function NavList({ groups, activeId }: { groups: NavGroup[]; activeId: string }) {
-  const { t } = useTranslation();
-  return (
-    <nav aria-label={t("layout.main")} className="flex flex-col gap-1 p-2">
-      {groups.map((g) => (
-        <details key={g.id} open={g.items.some((i) => i.id === activeId)}>
-          <summary className="flex min-h-11 cursor-pointer items-center rounded-md px-3 text-sm font-medium hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            {g.label}
-          </summary>
-          <ul>
-            {g.items.map((i) => (
-              <li key={i.id}>
-                <a href={i.href} aria-current={i.id === activeId ? "page" : undefined} className={cn(linkClass, "pl-6")}>
-                  {i.label}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ))}
-    </nav>
-  );
-}
-
+// Moldura da gestão: menu lateral escuro (desktop); no celular, barra de cima, abas embaixo e menu em tela cheia.
 export function AppLayout({
   groups,
   activeId,
   headerExtra,
+  org,
+  roleLabel,
+  badges,
+  tabs = [],
   children,
 }: {
   groups: NavGroup[];
   activeId: string;
   headerExtra?: ReactNode;
+  org?: string;
+  roleLabel?: string;
+  badges?: Record<string, number>;
+  tabs?: NavTab[];
   children: ReactNode;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [collapsed, toggle] = useSidebarCollapsed();
+  const main = useRef<HTMLElement>(null);
+  const side = { groups, activeId, org, roleLabel, badges };
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[16rem_1fr]">
-      <aside className="hidden border-r md:block">
-        <div className="px-4 py-3 text-lg font-semibold">{t("app.name")}</div>
-        <NavList groups={groups} activeId={activeId} />
+    <div className="min-h-screen md:flex">
+      <a
+        href="#conteudo"
+        onClick={(e) => {
+          e.preventDefault();
+          main.current?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
+      >
+        {t("layout.skip")}
+      </a>
+      <aside className="sticky top-0 hidden h-screen shrink-0 md:block">
+        <Sidebar {...side} collapsed={collapsed} onToggle={toggle} />
       </aside>
-      <div className="min-w-0">
-        <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
-          <Dialog.Root open={open} onOpenChange={setOpen}>
-            <Dialog.Trigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label={t("layout.openMenu")}>
-                <Menu aria-hidden="true" />
-              </Button>
-            </Dialog.Trigger>
-            <Dialog.Portal>
-              <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50" />
-              <Dialog.Content
-                aria-describedby={undefined}
-                className="fixed inset-y-0 left-0 z-50 w-72 max-w-full overflow-y-auto border-r bg-background"
-              >
-                <div className="flex items-center justify-between px-4 py-2">
-                  <Dialog.Title className="text-lg font-semibold">{t("layout.menu")}</Dialog.Title>
-                  <Dialog.Close asChild>
-                    <Button variant="ghost" size="icon" aria-label={t("layout.closeMenu")}>
-                      <X aria-hidden="true" />
-                    </Button>
-                  </Dialog.Close>
-                </div>
-                <NavList groups={groups} activeId={activeId} />
-              </Dialog.Content>
-            </Dialog.Portal>
-          </Dialog.Root>
-          <span className="text-lg font-semibold md:hidden">{t("app.name")}</span>
-          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
-            {headerExtra}
-            <ThemeToggle />
-          </div>
-        </header>
-        <main className="px-4 py-6">{children}</main>
+      <div className="min-w-0 flex-1">
+        <Topbar
+          groups={groups}
+          activeId={activeId}
+          leading={
+            <div className="md:hidden">
+              {activeId === "home" ? (
+                <span aria-hidden="true" className="flex size-9 items-center justify-center rounded-md bg-primary font-semibold text-primary-foreground">
+                  {t("app.name").charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <Button asChild variant="ghost" size="icon">
+                  <a href="/" aria-label={t("layout.back")}>
+                    <ArrowLeft aria-hidden="true" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          }
+        >
+          {headerExtra}
+        </Topbar>
+        <main id="conteudo" ref={main} tabIndex={-1} className="px-4 py-6 pb-20 focus:outline-none md:pb-6">
+          {children}
+        </main>
+        <MobileTabs tabs={tabs} {...side} />
       </div>
     </div>
   );

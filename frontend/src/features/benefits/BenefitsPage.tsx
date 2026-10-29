@@ -11,6 +11,7 @@ import { BenefitFilters } from "./BenefitFilters";
 import { EndBenefitDialog } from "./EndBenefitDialog";
 import { GrantBenefitDialog } from "./GrantBenefitDialog";
 import { fetchBenefits, type BenefitRow } from "./useBenefits";
+import { PageHeader } from "@/components/ui/page-header";
 
 const badge = (text: string) => <span className="rounded-md border px-2 py-0.5 text-sm">{text}</span>;
 
@@ -75,14 +76,14 @@ function Content() {
   const [version, setVersion] = useState(0);
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("benefits.title")}</h1>
-        {canGrant && (
+      <PageHeader
+        title={t("benefits.title")}
+        actions={canGrant && (
           <Button className="min-h-11" onClick={() => setGranting(true)}>
             {t("benefits.grant.button")}
           </Button>
         )}
-      </div>
+      />
       <p className="text-muted-foreground">{t("benefits.intro")}</p>
       {granting && <GrantBenefitDialog onClose={() => setGranting(false)} onDone={() => setVersion((n) => n + 1)} />}
       {ending && <EndBenefitDialog benefit={ending} onClose={() => setEnding(undefined)} onDone={() => setVersion((n) => n + 1)} />}

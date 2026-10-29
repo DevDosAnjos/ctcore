@@ -9,6 +9,7 @@ import { ALL, useUnitScope } from "@/features/units/UnitScopeProvider";
 import { formatCurrency } from "@/lib/format";
 import { ChargePreviewRows } from "./ChargePreviewRows";
 import { PERIODS, useChargePreview } from "./useChargePreview";
+import { PageHeader } from "@/components/ui/page-header";
 
 const select = "min-h-11 rounded-md border bg-background px-2 font-normal";
 
@@ -55,7 +56,7 @@ function Content() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("charges.preview.title")}</h1>
+      <PageHeader title={t("charges.preview.title")} />
       <p className="text-muted-foreground">{t("charges.preview.intro")}</p>
       <div className="flex flex-wrap items-end gap-3">
         {all && (

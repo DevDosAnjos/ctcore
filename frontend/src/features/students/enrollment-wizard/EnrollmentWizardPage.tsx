@@ -14,6 +14,7 @@ import { StepModalities } from "./StepModalities";
 import { StepStudent } from "./StepStudent";
 import { StepSummary } from "./StepSummary";
 import type { EnrollmentConcluded, ModalityDraft, UnitDraft, WizardStudent } from "./types";
+import { PageHeader } from "@/components/ui/page-header";
 
 const STEPS = ["student", "modalities", "billing", "summary", "done"] as const;
 const BILLING_FIELDS = new Set(["dueDay", "feeExemptReason", "secondDueOn", "units"]);
@@ -113,7 +114,7 @@ function Wizard() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("enrollmentWizard.title")}</h1>
+      <PageHeader title={t("enrollmentWizard.title")} />
       {student && step > 0 && <p className="break-words">{t("enrollmentWizard.forStudent", { name: student.name })}</p>}
       <Progress step={step} />
       {step === 0 && (

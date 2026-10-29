@@ -13,6 +13,7 @@ import { StudentFilters } from "./StudentFilters";
 import { StudentRecordPanel } from "./StudentRecordPanel";
 import { OPTIONAL_COLUMNS, useStudentColumns, type OptionalColumn } from "./useStudentColumns";
 import { fetchStudents } from "./useStudents";
+import { PageHeader } from "@/components/ui/page-header";
 
 const initials = (name: string) =>
   name
@@ -87,7 +88,7 @@ function Content({ accountId }: { accountId: string }) {
   const columns = [all.name, ...visible.map((c) => all[c])];
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("students.title")}</h1>
+      <PageHeader title={t("students.title")} />
       <p className="text-muted-foreground">{t("students.intro")}</p>
       <NewEnrollmentLink />
       <details>

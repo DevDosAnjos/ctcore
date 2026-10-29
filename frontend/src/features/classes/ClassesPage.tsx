@@ -10,6 +10,7 @@ import { usePermissions } from "@/features/permissions/usePermissions";
 import { ClassFilters } from "./ClassFilters";
 import { ClassFormDialog } from "./ClassFormDialog";
 import { fetchClasses, type TrainingClass } from "./useClasses";
+import { PageHeader } from "@/components/ui/page-header";
 
 const columns = (t: TFunction): Column<TrainingClass>[] => [
   {
@@ -71,14 +72,14 @@ function Content() {
   const canManage = !!permissions && permissions.CLASSES_MANAGE !== "NONE";
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("classes.title")}</h1>
-        {canManage && (
+      <PageHeader
+        title={t("classes.title")}
+        actions={canManage && (
           <Button className="min-h-11" onClick={() => setCreating(true)}>
             {t("classes.newButton")}
           </Button>
         )}
-      </div>
+      />
       <p className="text-muted-foreground">{t("classes.intro")}</p>
       <QueryPage
         columns={columns(t)}

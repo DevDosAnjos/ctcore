@@ -10,6 +10,7 @@ import { usePermissions } from "@/features/permissions/usePermissions";
 import { NoClassDayDialog } from "./NoClassDayDialog";
 import { UndoNoClassDayDialog } from "./UndoNoClassDayDialog";
 import { useNoClassDays, type NoClassDayItem, type Suggestion } from "./useNoClassDays";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Dialog = { kind: "new"; suggestion?: Suggestion } | { kind: "edit"; item: NoClassDayItem } | { kind: "undo"; item: NoClassDayItem };
 
@@ -29,21 +30,21 @@ function Content() {
   if (status === "forbidden") {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">{t("noClassDays.title")}</h1>
+        <PageHeader title={t("noClassDays.title")} />
         <ForbiddenState />
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("noClassDays.title")}</h1>
-        {canManage && (
+      <PageHeader
+        title={t("noClassDays.title")}
+        actions={canManage && (
           <Button className="min-h-11" onClick={() => setDialog({ kind: "new" })}>
             {t("noClassDays.new")}
           </Button>
         )}
-      </div>
+      />
       <p className="text-muted-foreground">{t("noClassDays.intro")}</p>
       {options && options.units.length > 1 && (
         <label className="flex max-w-xs flex-col gap-1 text-sm">

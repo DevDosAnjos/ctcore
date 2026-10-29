@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { useTerms, type TermsKind, type TermsVersion } from "./useTerms";
+import { PageHeader } from "@/components/ui/page-header";
 
 const KINDS: TermsKind[] = ["ENROLLMENT", "IMAGE_USE"];
 const when = (iso: string | null) => (iso ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(iso)) : "");
@@ -138,7 +139,7 @@ function Content() {
   const [kind, setKind] = useState<TermsKind>("ENROLLMENT");
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("terms.title")}</h1>
+      <PageHeader title={t("terms.title")} />
       <p className="text-muted-foreground">{t("terms.intro")}</p>
       <div className="flex flex-wrap gap-2" role="group" aria-label={t("terms.tabs")}>
         {KINDS.map((k) => (

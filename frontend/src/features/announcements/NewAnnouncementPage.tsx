@@ -12,6 +12,7 @@ import { AnnouncementTargetPicker, draftTarget, targetName } from "./Announcemen
 import { templateFor } from "./announcementTemplates";
 import { ANNOUNCEMENT_TYPES, type AnnouncementChannel, type AnnouncementDraft, type AnnouncementTargets, type AnnouncementTemplates, type AnnouncementType } from "./types";
 import { createAnnouncement, fetchTargets, fetchTemplates, previewAnnouncement, uploadAnnouncementImage } from "./useAnnouncements";
+import { PageHeader } from "@/components/ui/page-header";
 
 const FIELD_ORDER = ["type", "title", "body", "file", "channels", "pinnedUntil", "sendAt"];
 const inputClass = "min-h-11 w-full rounded-md border bg-background px-2";
@@ -320,7 +321,7 @@ function Content() {
       <Link to="/comunicados" className="inline-flex min-h-11 items-center self-start text-sm underline">
         {t("announcements.new.back")}
       </Link>
-      <h1 className="text-2xl font-semibold">{t("announcements.new.title")}</h1>
+      <PageHeader title={t("announcements.new.title")} />
       {state.status === "loading" && <LoadingState />}
       {state.status === "error" && <ErrorState onRetry={() => {
             setState({ status: "loading" });

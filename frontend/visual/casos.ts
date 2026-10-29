@@ -11,11 +11,17 @@ export type Caso = {
 };
 
 const ana = "ana@exemplo.com"; // Coordenador, todas as áreas
+const admin = "admin@exemplo.com"; // Administrador
+const prof = "prof@exemplo.com"; // Professor
 
 export const casos: Caso[] = [
   { nome: "vitrine", rota: "/dev/vitrine", fullPage: true },
   { nome: "entrar", rota: "/entrar" },
   { nome: "inicio", rota: "/", perfil: ana, canvas: "Main", canvasEscuro: "MainEscuro" },
+  // Moldura da gestão (#417): menu, barra de cima, abas e menu de celular por perfil
+  { nome: "moldura-coordenacao", rota: "/alunos", perfil: ana, canvas: "Sidebar" },
+  { nome: "moldura-administrador", rota: "/alunos", perfil: admin, canvas: "Topbar" },
+  { nome: "moldura-professor", rota: "/agenda", perfil: prof, canvas: "GMMenu" },
   { nome: "alunos", rota: "/alunos", perfil: ana, canvas: "Alunos" },
   { nome: "professores", rota: "/professores", perfil: ana, canvas: "Professores" },
   { nome: "agenda", rota: "/agenda", perfil: ana, canvas: "Agenda" },

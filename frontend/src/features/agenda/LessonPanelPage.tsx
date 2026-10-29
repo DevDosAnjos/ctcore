@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 import { Card } from "@/components/Card";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   EmptyState,
   ErrorState,
@@ -69,10 +70,10 @@ function Panel({
   return (
     <div className="flex flex-col gap-4">
       <BackLink />
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="min-w-0 break-words text-2xl font-semibold">
-          {lessonName(lesson)}
-        </h1>
+      <PageHeader
+        title={lessonName(lesson)}
+        actions={
+          <>
         {!lesson.class && (
           <span className="rounded border px-1.5 text-sm font-medium">
             {t("agenda.adhoc")}
@@ -86,7 +87,9 @@ function Panel({
             {t("agenda.substitute")}
           </span>
         )}
-      </header>
+          </>
+        }
+      />
       {cancelled && cancelReasonText(lesson, t) && (
         <p role="status" className="text-sm">
           <span className="font-medium">{t("agenda.panel.reason")}</span>{" "}

@@ -10,6 +10,7 @@ import { AgendaFilters, type FilterValues } from "./AgendaFilters";
 import { AgendaWeekGrid } from "./AgendaWeekGrid";
 import { NewLessonDialog } from "./NewLessonDialog";
 import { useAgenda } from "./useAgenda";
+import { PageHeader } from "@/components/ui/page-header";
 
 const narrow = () => window.innerWidth < 768;
 
@@ -43,21 +44,21 @@ function Content() {
   if (status === "forbidden") {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold">{t("agenda.title")}</h1>
+        <PageHeader title={t("agenda.title")} />
         <ForbiddenState />
       </div>
     );
   }
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold">{t("agenda.title")}</h1>
-        {canCreate && (
+      <PageHeader
+        title={t("agenda.title")}
+        actions={canCreate && (
           <Button className="min-h-11" onClick={() => setCreating(true)}>
             {t("agenda.new.open")}
           </Button>
         )}
-      </div>
+      />
       <p className="text-muted-foreground">{t("agenda.intro")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" className="min-h-11" aria-label={t(isNarrow ? "agenda.prevDay" : "agenda.prevWeek")} onClick={() => setAnchor(addDays(anchor, -step))}>

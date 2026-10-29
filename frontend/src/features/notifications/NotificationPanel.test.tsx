@@ -170,7 +170,7 @@ describe("NotificationPanel (RF-NOT-01)", () => {
 
   it("CA17: perfil sem permissão não mostra o sino", async () => {
     setup("ADMINISTRATOR", { count: () => HttpResponse.json({ code: "FORBIDDEN" }, { status: 403 }) });
-    await screen.findByRole("link", { name: "Início", hidden: true });
+    await screen.findAllByRole("link", { name: "Início", hidden: true });
     await waitFor(() => expect(screen.queryByRole("button", { name: /^Notificações/ })).not.toBeInTheDocument());
   });
 
