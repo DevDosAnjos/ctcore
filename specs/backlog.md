@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 10 (Portal do aluno). O dono confirmou em 26/10/2026 que revisou a Sprint 09 (Comunicação) e liberou a Sprint 10. Só o dono libera a seguinte.
+Sprint liberada: Sprint 10.5 (Identidade visual). O dono confirmou em 29/10/2026 que a Sprint 10 foi revisada e fechada e liberou a Sprint 10.5 (#414 a #423), que entra antes da Sprint 11. A Sprint 11 fica para depois da 10.5 e começa retomando a #96 do branch `item/96-porta-de-pagamento-simulador` (trabalho em andamento, já enviado, sem PR). Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -129,6 +129,16 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 403 | Teste UnitSettingsPage CA17 instável no test:cov: medir e estabilizar | issue #403 | Sprint 10 | — | agente | feito |
 | 404 | Ajustar a especificação e o marco com as decisões da Sprint 10 (R10-3, D1, D2) | issue #404 | Sprint 10 | — | agente | feito |
 | 405 | Agenda do portal mostra o nome do professor (D2) | issue #405 | Sprint 10 | 404 | agente | feito |
+| 414 | Base visual: tokens de cor, fontes e tema escuro do canvas | issue #414 | Sprint 10.5 | — | agente | feito |
+| 415 | Componentes base no padrão do canvas | issue #415 | Sprint 10.5 | — | agente | a fazer |
+| 416 | Teste visual: referências das telas e comparação lado a lado com o canvas | issue #416 | Sprint 10.5 | — | agente | a fazer |
+| 417 | Estrutura da gestão: menu lateral, barra de cima, cabeçalho e versão de celular | issue #417 | Sprint 10.5 | — | agente | a fazer |
+| 418 | Estrutura do portal do aluno: barra com a marca, abas e versão de celular | issue #418 | Sprint 10.5 | — | agente | a fazer |
+| 419 | Telas de acesso, conta, configurações e usuários no visual do canvas (Sprints 01 a 03) | issue #419 | Sprint 10.5 | — | agente | a fazer |
+| 420 | Modalidades, faixas etárias, professores, turmas e agenda no visual do canvas (Sprints 04 e 05) | issue #420 | Sprint 10.5 | — | agente | a fazer |
+| 421 | Planos, alunos, ficha, responsáveis, matrícula e benefícios no visual do canvas (Sprints 06 e 07) | issue #421 | Sprint 10.5 | — | agente | a fazer |
+| 422 | Cobranças, comunicação, notificações, pedidos e conferência no visual do canvas (Sprints 08 a 10, gestão) | issue #422 | Sprint 10.5 | — | agente | a fazer |
+| 423 | Páginas do portal do aluno e do responsável no visual do canvas (Sprint 10) | issue #423 | Sprint 10.5 | — | agente | a fazer |
 | 96 | Porta de pagamento com o simulador: baixa, webhook e conciliação | issue #96 | Sprint 11 | — | agente | a fazer |
 | 97 | RF-PAG-01 · Configurações › Unidade › Pagamentos | issue #97 | Sprint 11 | — | agente | a fazer |
 | 98 | RF-PAG-02 · Janela de pagamento no portal | issue #98 | Sprint 11 | — | agente | a fazer |

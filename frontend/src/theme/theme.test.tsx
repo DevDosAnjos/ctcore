@@ -45,11 +45,81 @@ describe("tokens (CA4)", () => {
     }
   });
 
+  // [token, claro, escuro] — tabela de docs/design/README.md (e D1/D2 do item 414)
+  const table: [string, string, string][] = [
+    ["background", "#F4F2ED", "#141416"],
+    ["card", "#FFFFFF", "#1D1D21"],
+    ["popover", "#FFFFFF", "#1D1D21"],
+    ["surface-soft", "#FAF8F4", "#19191C"],
+    ["secondary", "#FAF8F4", "#19191C"],
+    ["muted", "#FAF8F4", "#19191C"],
+    ["accent", "#FAF8F4", "#19191C"],
+    ["foreground", "#1B1B1F", "#ECE9E2"],
+    ["card-foreground", "#1B1B1F", "#ECE9E2"],
+    ["muted-foreground", "#6B675F", "#A8A398"],
+    ["subtle", "#8C877D", "#8F8A80"],
+    ["border", "#E3DFD6", "#34343A"],
+    ["divider", "#EEEAE2", "#2A2A2F"],
+    ["input", "#D9D4C9", "#45454C"],
+    ["brand", "#C8462C", "#C8462C"],
+    ["ring", "#B23C24", "#F08A70"],
+    ["primary", "#1B1B1F", "#ECE9E2"],
+    ["primary-foreground", "#FFFFFF", "#1D1D21"],
+    ["sidebar", "#17171A", "#17171A"],
+    ["sidebar-foreground", "#D8D4CB", "#D8D4CB"],
+    ["sidebar-accent", "#2B2B30", "#2B2B30"],
+    ["ok", "#E2EFE5", "#1E3626"],
+    ["ok-foreground", "#1D5E34", "#8FD3A3"],
+    ["warn", "#FAEBC8", "#3D3018"],
+    ["warn-foreground", "#7A4E00", "#F0C674"],
+    ["danger", "#F8DED8", "#45231D"],
+    ["danger-foreground", "#9C2516", "#F4A08F"],
+    ["info", "#E1E8F4", "#1E2A40"],
+    ["info-foreground", "#23427A", "#A9C1EA"],
+    ["neutral", "#ECE9E2", "#2C2C31"],
+    ["neutral-foreground", "#4A4740", "#CFCAC0"],
+    ["acc", "#FBE7E1", "#43241C"],
+    ["acc-foreground", "#9C2F18", "#F2A48F"],
+  ];
+
+  it.each(table)("%s tem o valor da tabela do design nos dois temas (CA1 a CA3)", (k, l, d) => {
+    expect(light[k].toUpperCase()).toBe(l);
+    expect(dark[k].toUpperCase()).toBe(d);
+  });
+
+  it("raios, tamanho base, sombras e fontes (CA4, CA5)", () => {
+    for (const t of [light, dark]) {
+      expect(t).toMatchObject({
+        radius: "0.5rem",
+        "radius-card": "0.75rem",
+        "radius-window": "1rem",
+        "text-base": "0.875rem",
+      });
+      expect(t["shadow-window"]).toBeTruthy();
+      expect(t["shadow-panel"]).toBeTruthy();
+      expect(t["shadow-menu"]).toBeTruthy();
+      expect(t["font-sans"]).toMatch(/^"IBM Plex Sans"/);
+      expect(t["font-heading"]).toMatch(/^"Barlow Condensed"/);
+    }
+  });
+
+  it("tons e menu estão expostos ao Tailwind (CA2)", () => {
+    for (const n of ["ok", "warn", "danger", "info", "neutral", "acc"]) {
+      expect(css).toContain(`--color-${n}: var(--${n});`);
+      expect(css).toContain(`--color-${n}-foreground: var(--${n}-foreground);`);
+    }
+  });
+
   it.each([
     ["claro", light],
     ["escuro", dark],
   ])("pares texto/fundo têm contraste mínimo de 4,5:1 no tema %s", (_n, t) => {
     for (const [fg, bg] of [
+      ...["ok", "warn", "danger", "info", "neutral", "acc"].map((n) => [`${n}-foreground`, n]),
+      ["foreground", "card"],
+      ["muted-foreground", "card"],
+      ["sidebar-foreground", "sidebar"],
+      ["ring", "background"],
       ["foreground", "background"],
       ["card-foreground", "card"],
       ["popover-foreground", "popover"],
