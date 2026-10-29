@@ -15,6 +15,9 @@ Precisa do Node 24 e do npm. Rode os comandos de dentro de `frontend/`.
 | Testes com cobertura (falha abaixo de 80% de linhas; 100% em `src/features/{billing,payments,subscription,deactivation}`) | `npm run test:cov` |
 | Ponta a ponta, só `@critical` (Playwright; 1ª vez: `npx playwright install chromium`) | `npm run e2e` |
 | Ponta a ponta, suíte completa | `npm run e2e:full` |
+| Teste visual, no container do CI (gera/atualiza as referências com `-- --update-snapshots`) | `npm run test:visual:docker` |
+| Teste visual direto (só vale no container do CI; ver "Teste visual") | `npm run test:visual` |
+| Lado a lado sistema x canvas em `docs/design/prints/lado-a-lado/index.html` | `npm run visual:canvas` |
 | Dependências com falha conhecida (alta ou crítica) | `npm run audit` |
 
 ## Como o projeto funciona
@@ -74,3 +77,12 @@ test("sino 99+", async ({ page, msw }) => {
 ## Imagem Docker
 
 `docker build -t ctcore-frontend frontend` (Node 24 gera o `dist`; nginx sem root serve em `8080`). `docker run --rm -p 8082:8080 ctcore-frontend`: `/` e rotas do app (ex.: `/qualquer`) devolvem `index.html`, `/assets/*` inexistente e `/api/*` devolvem 404. O CI constrói esta imagem quando a etapa `frontend` roda. Publicação: README da raiz.
+
+## Teste visual
+
+`visual/` guarda o teste que abre as telas de `visual/casos.ts` com os dados do MSW, em 1440 × 1000 e 390 × 844, nos temas claro e escuro, e compara com as imagens de `visual/referencias/` (`toHaveScreenshot`, tolerância de 0,1% dos pixels). Relógio fixo em 29/10/2026 12:00 (America/Sao_Paulo). É uma configuração à parte (`playwright.visual.config.ts`): `e2e` e `e2e:full` não o executam. O CI roda o job `visual` em todo PR que mexe em `frontend/`.
+
+- **Rode no container:** `npm run test:visual:docker` usa a mesma imagem do CI (`mcr.microsoft.com/playwright:v<versão>-noble`). Rodar `npm run test:visual` direto na sua máquina dá fontes e serrilhado diferentes e reprova sem motivo; não é o caminho.
+- **Quando atualizar as referências:** só quando a issue pede a mudança visual. Rode `npm run test:visual:docker -- --update-snapshots`, **olhe cada imagem alterada** (o diff do PR mostra) e commite. Nunca atualize só para o teste passar.
+- **Tela nova:** acrescente um caso em `visual/casos.ts` (`nome`, `rota`, `perfil`, `canvas`); `visual/casos.test.ts` confere a rota e a tela do canvas.
+- **Revisão com o canvas:** `npm run visual:canvas` gera `docs/design/prints/lado-a-lado/index.html` (pasta fora do Git) com o print do sistema ao lado do print do canvas, a partir das referências.

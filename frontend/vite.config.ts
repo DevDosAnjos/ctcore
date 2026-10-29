@@ -14,7 +14,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     testTimeout: 20000, // jsdom com userEvent fica lento com a máquina carregada
     css: true,
-    exclude: ["e2e/**", "node_modules/**"], // e2e é do Playwright
+    exclude: ["e2e/**", "node_modules/**"], // e2e é do Playwright (visual/*.visual.ts não casa com *.test.*)
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
