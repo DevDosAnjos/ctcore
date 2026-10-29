@@ -114,3 +114,20 @@ Achados:
 - Verificação: `test:visual` lista 108 testes; `test:visual:docker` passa 108 em duas rodadas seguidas sem diferença; caso de prova (`--primary` e `Button` alterados) reprova 12 casos e volta a passar ao reverter. Lint, typecheck, build, `test:cov` (1544 testes) e `e2e` (81 passed) verdes. O `e2e` não inclui nenhum teste `visual`.
 - Decisões: o teste espera o login sumir, os esqueletos "Carregando" sumirem e 300 ms fixos (marcado com `ponytail:`), senão 27 casos oscilavam. Todos os casos usam o perfil fictício `ana@exemplo.com` (Coordenador).
 - Limitações: o job `visual` do CI só será provado no PR; o CI roda como root no container e pode precisar de ajuste de permissão ou cache. A espera fixa de 300 ms pode gerar oscilação.
+
+### Correção da entrega
+- Falha do PR #426 (jobs `e2e` e `visual`, passo "Conferir versão do Playwright"): o `sed` passou a achar duas linhas `image:` no `ci.yml` (e2e e visual) e a comparação virou "1.64.1" contra "1.64.1\n1.64.1". Corrigido com `| head -n1` nos dois passos — arquivos: `.github/workflows/ci.yml` — prova: o mesmo `sed` com `head -n1` → `1.64.1`, igual ao lockfile; o `ci-gate` caiu só por consequência desses dois jobs. Execução real só no PR.
+Regressão: nenhum código do front mudou nesta correção; a regressão do front segue a registrada acima. Não rodei o CI localmente.
+
+### Rodada 2 — OK — 2026-10-29, estado ad49a1efba45ccc4afb7244287fde8858c769c59
+
+Rodada depois da "Correção da entrega" (falha do PR #426 no passo "Conferir versão do Playwright"). Desde a rodada 1 (estado 0f54ff9) o diff toca só `.github/workflows/ci.yml` (dois `| head -n1`), este arquivo e `specs/backlog.md`; nenhum código do front mudou.
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA7, CA9, CA10 | PASSOU (mantido da rodada 1) | nada do front ou dos scripts mudou |
+| CA8 | PASSOU (por leitura) | `ci.yml` linhas 102 e 135: `sed ... \| head -n1` nos jobs `e2e` e `visual`; o `sed` local devolve `1.64.1`, igual a `@playwright/test` no `package-lock.json`; `visual` segue em `ci-gate.needs`; `bash infra/scripts/changed-areas.test.sh` ok. Execução real só no PR |
+
+Comandos: `sed` do passo contra o `ci.yml` com `head -n1` → `1.64.1`; `changed-areas.test.sh` → ok; `git diff 0f54ff9 <estado>` conferido.
+Achado obrigatório da rodada 1: nenhum existia. Achados:
+- sugestão, código, `.github/workflows/ci.yml` passo "Conferir versão do Playwright" — as duas imagens do arquivo estão na mesma versão, então `head -n1` basta; se um dia divergirem, o passo só confere a do `e2e`.

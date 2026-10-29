@@ -99,7 +99,7 @@ jobs:
       - name: Conferir versão do Playwright (lockfile x imagem)
         run: |
           lock=$(node -p "require('@playwright/test/package.json').version")
-          img=$(sed -nE 's/^ *image: mcr\.microsoft\.com\/playwright:v([0-9.]+)-.*/\1/p' "$GITHUB_WORKSPACE/.github/workflows/ci.yml")
+          img=$(sed -nE 's/^ *image: mcr\.microsoft\.com\/playwright:v([0-9.]+)-.*/\1/p' "$GITHUB_WORKSPACE/.github/workflows/ci.yml" | head -n1)
           [ "$lock" = "$img" ] || { echo "::error::@playwright/test $lock no package-lock.json difere da imagem $img em ci.yml"; exit 1; }
       # @critical em todo PR que muda frontend/; suíte completa no PR para main
       - run: npm run ${{ github.base_ref == 'main' && 'e2e:full' || 'e2e' }}
@@ -132,7 +132,7 @@ jobs:
       - name: Conferir versão do Playwright (lockfile x imagem)
         run: |
           lock=$(node -p "require('@playwright/test/package.json').version")
-          img=$(sed -nE 's/^ *image: mcr\.microsoft\.com\/playwright:v([0-9.]+)-.*/\1/p' "$GITHUB_WORKSPACE/.github/workflows/ci.yml")
+          img=$(sed -nE 's/^ *image: mcr\.microsoft\.com\/playwright:v([0-9.]+)-.*/\1/p' "$GITHUB_WORKSPACE/.github/workflows/ci.yml" | head -n1)
           [ "$lock" = "$img" ] || { echo "::error::@playwright/test $lock no package-lock.json difere da imagem $img em ci.yml"; exit 1; }
       # referências geradas só nesta imagem (frontend/README.md, "Teste visual")
       - run: npm run test:visual
