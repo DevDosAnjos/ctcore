@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { EmptyState, ErrorState, ForbiddenState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 import { ApiError } from "@/lib/api";
 import type { BenefitRow } from "./useBenefits";
 import { endBenefit } from "./useGrantBenefit";
@@ -55,9 +56,8 @@ export function EndBenefitDialog({ benefit, onClose, onDone }: { benefit: Benefi
             <label htmlFor={id} className="block text-sm font-medium">
               {t(`${k}reason`)}
             </label>
-            <input
+            <Input
               id={id}
-              className="min-h-11 w-full rounded-md border bg-background px-2"
               maxLength={200}
               value={reason}
               aria-invalid={fieldError ? true : undefined}
@@ -65,7 +65,7 @@ export function EndBenefitDialog({ benefit, onClose, onDone }: { benefit: Benefi
               onChange={(e) => setReason(e.target.value)}
             />
             {fieldError && (
-              <p id={`${id}-erro`} className="text-sm text-destructive">
+              <p id={`${id}-erro`} className="text-sm text-danger-foreground">
                 {fieldError}
               </p>
             )}

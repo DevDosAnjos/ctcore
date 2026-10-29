@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { formatPhone } from "@/components/fields/masks";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
 import { api, ApiError } from "@/lib/api";
 import { GuardianLinkDialog } from "./GuardianLinkDialog";
 import type { StudentRecord, StudentRecordGuardian } from "./types";
@@ -38,9 +39,9 @@ export function RecordGuardians({ record, onChanged, canManage = false }: { reco
         </p>
       )}
       {problem && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {problem}
-        </p>
+        </Banner>
       )}
       {record.guardians.length === 0 ? (
         <p className="text-muted-foreground">{t(`${k}empty`)}</p>

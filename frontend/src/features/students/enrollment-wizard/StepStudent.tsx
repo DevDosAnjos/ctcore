@@ -4,6 +4,7 @@ import { CpfField, PhoneField } from "@/components/fields/fields";
 import { isValidCpf, isValidPhone, onlyDigits } from "@/components/fields/masks";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
 import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import { PickSelect } from "../ModalityPickers";
@@ -192,9 +193,9 @@ function NewStudentForm({ cpf, onCreated, onExisting }: { cpf: string; onCreated
       <h2 className="text-lg font-semibold">{t(`${k}title`)}</h2>
       <p className="text-sm text-muted-foreground">{t(`${k}intro`)}</p>
       {formError && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {formError}
-        </p>
+        </Banner>
       )}
       {possible && (
         <div role="alert" className="flex flex-col gap-2 rounded-md border p-3 text-sm">
@@ -214,7 +215,7 @@ function NewStudentForm({ cpf, onCreated, onExisting }: { cpf: string; onCreated
       <Text label={t(`${k}birthDate`)} type="date" value={f.birthDate} onChange={set("birthDate")} error={errors.birthDate} />
       <Text label={t(`${k}email`)} type="email" value={f.email} onChange={set("email")} error={errors.email} />
       <PhoneField label={t(`${k}phone`)} onChange={set("phone")} />
-      {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+      {errors.phone && <p className="text-sm text-danger-foreground">{errors.phone}</p>}
       <Text label={t(`${k}postalCode`)} value={f.postalCode} onChange={set("postalCode")} error={errors.postalCode} inputMode="numeric" />
       <Text label={t(`${k}street`)} value={f.street} onChange={set("street")} error={errors.street} />
       <Text label={t(`${k}number`)} value={f.number} onChange={set("number")} error={errors.number} />
@@ -227,10 +228,10 @@ function NewStudentForm({ cpf, onCreated, onExisting }: { cpf: string; onCreated
           <p className="text-sm text-muted-foreground">{t(`${k}guardianHelp`)}</p>
           <Text label={t(`${k}guardianName`)} value={g.name} onChange={setGuardian("name")} error={errors.guardianName} />
           <CpfField label={t(`${k}guardianCpf`)} onChange={setGuardian("cpf")} />
-          {errors.guardianCpf && <p className="text-sm text-destructive">{errors.guardianCpf}</p>}
+          {errors.guardianCpf && <p className="text-sm text-danger-foreground">{errors.guardianCpf}</p>}
           <Text label={t(`${k}guardianEmail`)} type="email" value={g.email} onChange={setGuardian("email")} error={errors.guardianEmail} />
           <PhoneField label={t(`${k}guardianPhone`)} onChange={setGuardian("phone")} />
-          {errors.guardianPhone && <p className="text-sm text-destructive">{errors.guardianPhone}</p>}
+          {errors.guardianPhone && <p className="text-sm text-danger-foreground">{errors.guardianPhone}</p>}
         </fieldset>
       )}
       <Button type="submit" className="min-h-11 self-start" disabled={busy}>

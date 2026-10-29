@@ -2,12 +2,13 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
+import { Input, Textarea } from "@/components/ui/field";
 import { CpfField, PhoneField } from "@/components/fields/fields";
 import { isValidCpf, isValidPhone } from "@/components/fields/masks";
 import { api, ApiError } from "@/lib/api";
 import type { StudentGuardianInput } from "./types";
 
-const inputClass = "min-h-11 w-full rounded-md border bg-background px-2";
 const empty = { name: "", cpf: "", email: "", phone: "", financial: false, reason: "" };
 
 // RN-RSP-02: vincula um responsável (nome, CPF, e-mail, celular, financeiro e o motivo que o servidor exige). Erro do servidor aparece junto do campo ou no alto, sem fechar.
@@ -66,28 +67,28 @@ export function GuardianLinkDialog({ studentId, open, onOpenChange, onLinked }: 
     <Modal open={open} onOpenChange={close} title={t("students.record.guardians.linkTitle")}>
       <form onSubmit={submit} noValidate className="flex flex-col gap-3">
         {serverText && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {serverText}
-          </p>
+          </Banner>
         )}
         <div>
           <label htmlFor="guardian-name" className="block text-sm font-medium">
             {t("students.record.guardians.name")}
           </label>
-          <input id="guardian-name" className={inputClass} value={form.name} onChange={(e) => set("name", e.target.value)} autoComplete="off" aria-invalid={Boolean(errs.name) || undefined} />
-          {errs.name && <p className="text-sm text-destructive">{errs.name}</p>}
+          <Input id="guardian-name" value={form.name} onChange={(e) => set("name", e.target.value)} autoComplete="off" aria-invalid={Boolean(errs.name) || undefined} />
+          {errs.name && <p className="text-sm text-danger-foreground">{errs.name}</p>}
         </div>
         <CpfField label={t("students.record.guardians.cpf")} onChange={(v) => set("cpf", v)} />
-        {errs.cpf && <p className="text-sm text-destructive">{errs.cpf}</p>}
+        {errs.cpf && <p className="text-sm text-danger-foreground">{errs.cpf}</p>}
         <div>
           <label htmlFor="guardian-email" className="block text-sm font-medium">
             {t("students.record.guardians.email")}
           </label>
-          <input id="guardian-email" type="email" className={inputClass} value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="off" aria-invalid={Boolean(errs.email) || undefined} />
-          {errs.email && <p className="text-sm text-destructive">{errs.email}</p>}
+          <Input id="guardian-email" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="off" aria-invalid={Boolean(errs.email) || undefined} />
+          {errs.email && <p className="text-sm text-danger-foreground">{errs.email}</p>}
         </div>
         <PhoneField label={t("students.record.guardians.phone")} onChange={(v) => set("phone", v)} />
-        {errs.phone && <p className="text-sm text-destructive">{errs.phone}</p>}
+        {errs.phone && <p className="text-sm text-danger-foreground">{errs.phone}</p>}
         <label className="flex min-h-11 items-center gap-2">
           <input type="checkbox" className="size-5" checked={form.financial} onChange={(e) => set("financial", e.target.checked)} />
           {t("students.record.guardians.makeItFinancial")}
@@ -96,8 +97,8 @@ export function GuardianLinkDialog({ studentId, open, onOpenChange, onLinked }: 
           <label htmlFor="guardian-reason" className="block text-sm font-medium">
             {t("students.record.guardians.reason")}
           </label>
-          <textarea id="guardian-reason" className="w-full rounded-md border bg-background p-2" value={form.reason} onChange={(e) => set("reason", e.target.value)} aria-invalid={Boolean(errs.reason) || undefined} />
-          {errs.reason && <p className="text-sm text-destructive">{errs.reason}</p>}
+          <Textarea id="guardian-reason" value={form.reason} onChange={(e) => set("reason", e.target.value)} aria-invalid={Boolean(errs.reason) || undefined} />
+          {errs.reason && <p className="text-sm text-danger-foreground">{errs.reason}</p>}
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" className="min-h-11" onClick={() => close(false)}>

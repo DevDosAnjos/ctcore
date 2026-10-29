@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { ApiError } from "@/lib/api";
 import { useEnrollment, useResource } from "../useStudentRecord";
@@ -141,9 +142,9 @@ function Wizard() {
       {step === 3 && student && !network && (
         <>
           {Object.keys(errors).length > 0 && (
-            <p role="alert" className="text-sm text-destructive">
+            <Banner tone="danger">
               {Object.values(errors).join(" ")}
-            </p>
+            </Banner>
           )}
           <StepSummary studentId={student.id} request={request} onInvalid={fail} onReady={() => undefined} />
         </>

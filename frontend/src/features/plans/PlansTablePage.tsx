@@ -5,6 +5,7 @@ import { QueryPage } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
 import { formatMoney } from "@/components/fields/masks";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { usePermissions } from "@/features/permissions/usePermissions";
 import { ApiError } from "@/lib/api";
@@ -97,9 +98,9 @@ function Content() {
       />
       <p className="text-muted-foreground">{t("plans.table.intro")}</p>
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {error}
-        </p>
+        </Banner>
       )}
       <QueryPage
         key={version}

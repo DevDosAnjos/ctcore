@@ -47,7 +47,7 @@ export function RecordSummary({ record, modalities }: { record: StudentRecord; m
             <Line label={t(`${k}phone`)} value={record.contact.phone ? formatPhone(record.contact.phone) : null} />
             <Line label={t(`${k}email`)} value={record.contact.email} />
           </dl>
-          {record.contact.emailProblem && <p className="mt-1 text-sm text-destructive">{t(`${k}emailProblem`)}</p>}
+          {record.contact.emailProblem && <p className="mt-1 text-sm text-danger-foreground">{t(`${k}emailProblem`)}</p>}
         </Card>
       )}
       <Card title={t(`${k}guardians`)}>

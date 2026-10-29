@@ -103,6 +103,11 @@ export const casos: Caso[] = [
   { nome: "turma-painel", rota: "/turmas/00000000-0000-0000-0000-000000000601", perfil: ana, canvas: "TurmaPainel" },
   { nome: "agenda-aula-avulsa", rota: "/agenda", perfil: ana, canvas: "AulaAvulsa", passos: [{ clicar: "Nova aula avulsa" }] },
   { nome: "dia-sem-aula-novo", rota: "/dias-sem-aula", perfil: ana, canvas: "DiaSemAulaNovo", passos: [{ clicar: "Novo dia sem aula" }] },
+  // Planos, alunos, matrícula, benefícios e termos (#421). Janelas abrem pelos passos.
+  // Sem caso: ficha, trocar turma/plano, transferir, encerrar e passos da matrícula (id gerado ou fluxo longo no MSW); GM* e FichaProfessor são as mesmas telas a 390 px ou com o perfil Professor (D1).
+  { nome: "planos-lista", rota: "/planos/lista", perfil: ana, canvas: "PlanosRegras" },
+  { nome: "plano-novo", rota: "/planos/lista", perfil: ana, canvas: "PlanosRegras", passos: [{ clicar: "Novo plano" }] },
+  { nome: "beneficio-conceder", rota: "/beneficios", perfil: ana, canvas: "BeneficioConceder", passos: [{ clicar: "Conceder benefício" }] },
 ];
 
 export const larguras = [

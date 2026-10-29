@@ -2,6 +2,8 @@ import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MoneyField } from "@/components/fields/fields";
 import { formatMoney } from "@/components/fields/masks";
+import { Banner } from "@/components/ui/banner";
+import { Input, Select } from "@/components/ui/field";
 import {
   EmptyState,
   ErrorState,
@@ -44,15 +46,13 @@ function Field({
       </label>
       {children(id, error ? `${id}-erro` : undefined)}
       {error && (
-        <p id={`${id}-erro`} className="text-sm text-destructive">
+        <p id={`${id}-erro`} className="text-sm text-danger-foreground">
           {error}
         </p>
       )}
     </div>
   );
 }
-
-const input = "min-h-11 w-full rounded-md border bg-background px-2";
 
 // Aluno por busca de nome (sem rota nova) e as modalidades ativas que a pessoa pode alterar, quando a janela não vem da ficha.
 export function useStudentModalities(query: string, studentId: string) {
@@ -153,9 +153,8 @@ export function GrantBenefitDialog({
             <>
               <Field label={t(`${k}search`)}>
                 {(id) => (
-                  <input
+                  <Input
                     id={id}
-                    className={input}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value);
@@ -228,23 +227,21 @@ export function GrantBenefitDialog({
           )}
           <Field label={t(`${k}type`)} error={errors.type}>
             {(id) => (
-              <select
+              <Select
                 id={id}
-                className={input}
                 value={type}
                 onChange={(e) => setType(e.target.value as BenefitType)}
               >
                 <option value="PERCENT">{t("benefits.types.PERCENT")}</option>
                 <option value="AMOUNT">{t("benefits.types.AMOUNT")}</option>
-              </select>
+              </Select>
             )}
           </Field>
           {type === "PERCENT" ? (
             <Field label={t(`${k}percent`)} error={errors.value}>
               {(id, d) => (
-                <input
+                <Input
                   id={id}
-                  className={input}
                   inputMode="numeric"
                   value={percent}
                   aria-invalid={errors.value ? true : undefined}
@@ -264,15 +261,14 @@ export function GrantBenefitDialog({
                 onChange={setAmount}
               />
               {errors.value && (
-                <p className="text-sm text-destructive">{errors.value}</p>
+                <p className="text-sm text-danger-foreground">{errors.value}</p>
               )}
             </>
           )}
           <Field label={t(`${k}reason`)} error={errors.reason}>
             {(id, d) => (
-              <input
+              <Input
                 id={id}
-                className={input}
                 maxLength={200}
                 value={reason}
                 aria-invalid={errors.reason ? true : undefined}
@@ -283,9 +279,8 @@ export function GrantBenefitDialog({
           </Field>
           <Field label={t(`${k}decidedBy`)} error={errors.decidedBy}>
             {(id, d) => (
-              <input
+              <Input
                 id={id}
-                className={input}
                 maxLength={80}
                 value={decidedBy}
                 aria-invalid={errors.decidedBy ? true : undefined}
@@ -296,10 +291,9 @@ export function GrantBenefitDialog({
           </Field>
           <Field label={t(`${k}validUntil`)} error={errors.validUntil}>
             {(id, d) => (
-              <input
+              <Input
                 id={id}
                 type="date"
-                className={input}
                 value={validUntil}
                 aria-invalid={errors.validUntil ? true : undefined}
                 aria-describedby={d}
@@ -310,21 +304,21 @@ export function GrantBenefitDialog({
           {teachers.status === "ready" && (teachers.data?.items.length ?? 0) > 0 && (
             <Field label={t(`${k}teacher`)} error={errors.teacherId}>
               {(id) => (
-                <select id={id} className={input} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+                <Select id={id} value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
                   <option value="">{t(`${k}noTeacher`)}</option>
                   {teachers.data!.items.map((x) => (
                     <option key={x.id} value={x.id}>
                       {x.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
             </Field>
           )}
           {errors.replaceExisting && (
-            <p role="alert" className="text-sm text-destructive">
+            <Banner tone="danger">
               {errors.replaceExisting}
-            </p>
+            </Banner>
           )}
           {preview.status === "loading" && <LoadingState />}
           {preview.status === "forbidden" && <ForbiddenState />}

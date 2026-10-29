@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
+import { Select } from "@/components/ui/field";
 import { ApiError } from "@/lib/api";
 import { useResource } from "./useStudentRecord";
 
@@ -23,9 +25,8 @@ export function PickSelect({ label, value, onChange, options, error }: { label: 
       <label htmlFor={id} className="block text-sm font-medium">
         {label}
       </label>
-      <select
+      <Select
         id={id}
-        className="min-h-11 w-full rounded-md border bg-background px-2"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-invalid={error ? true : undefined}
@@ -37,9 +38,9 @@ export function PickSelect({ label, value, onChange, options, error }: { label: 
             {o.name}
           </option>
         ))}
-      </select>
+      </Select>
       {error && (
-        <p id={`${id}-erro`} className="text-sm text-destructive">
+        <p id={`${id}-erro`} className="text-sm text-danger-foreground">
           {error}
         </p>
       )}
@@ -61,7 +62,7 @@ export function OtherClasses({ options, primary, value, onChange, error }: { opt
           {o.name}
         </label>
       ))}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p className="text-sm text-danger-foreground">{error}</p>}
     </fieldset>
   );
 }
@@ -133,9 +134,9 @@ export function ModalityDialog({
         <form onSubmit={submit} noValidate className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">{effect}</p>
           {form && (
-            <p role="alert" className="text-sm text-destructive">
+            <Banner tone="danger">
               {form}
-            </p>
+            </Banner>
           )}
           {children(errors)}
           <div className="flex flex-wrap justify-end gap-2">

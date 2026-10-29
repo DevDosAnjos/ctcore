@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
+import { Select } from "@/components/ui/field";
 import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import { centsToReais, createPlan, reaisToCents, updatePlan, usePlanImpact, usePlanOptions, type PlanInput, type PlanOptions, type PlanRow } from "./usePlans";
@@ -12,7 +14,6 @@ type Errors = Partial<Record<Field, string>>;
 // Campo do servidor -> campo da tela.
 const FIELD: Record<string, Field> = { unitId: "unit", modalityId: "modality", name: "name", valueCents: "value", weeklyFrequency: "frequency" };
 const F = { unit: "unit", modality: "modality", frequency: "frequency" } as const;
-const select = "min-h-11 w-full rounded-md border bg-background px-2 disabled:opacity-60";
 
 // RF-PLA-03: criação (sem `plan`) e edição do plano. O servidor reconfere tudo (alcance, unicidade do nome, regra de outras unidades).
 export function PlanFormDialog({ open, plan, onClose, onSaved }: { open: boolean; plan?: PlanRow; onClose: () => void; onSaved: (saved: PlanRow) => void }) {
@@ -84,7 +85,7 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
   }
 
   const err = (field: Field) => errors[field] && (
-    <p id={`plan-${field}-erro`} className="text-sm text-destructive">
+    <p id={`plan-${field}-erro`} className="text-sm text-danger-foreground">
       {errors[field]}
     </p>
   );
@@ -111,9 +112,8 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
             <label htmlFor="plan-unit" className="block text-sm font-medium">
               {t("plans.form.unit")}
             </label>
-            <select
+            <Select
               {...props(F.unit)}
-              className={select}
               value={unitId}
               onChange={(e) => {
                 setUnitId(e.target.value);
@@ -126,7 +126,7 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
                   {u.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </>
         )}
         {err(F.unit)}
@@ -142,14 +142,14 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
             <label htmlFor="plan-modality" className="block text-sm font-medium">
               {t("plans.form.modality")}
             </label>
-            <select {...props(F.modality)} className={select} value={modalityId} onChange={(e) => setModalityId(e.target.value)}>
+            <Select {...props(F.modality)} value={modalityId} onChange={(e) => setModalityId(e.target.value)}>
               <option value="">{t("plans.form.choose")}</option>
               {(unit?.modalities ?? []).map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {unit && unit.modalities.length === 0 && <p className="text-sm text-muted-foreground">{t("plans.form.noModalities")}</p>}
           </>
         )}
@@ -161,11 +161,11 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
         <label htmlFor="plan-frequency" className="block text-sm font-medium">
           {t("plans.form.frequency")}
         </label>
-        <select {...props(F.frequency)} className={select} value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+        <Select {...props(F.frequency)} value={frequency} onChange={(e) => setFrequency(e.target.value)}>
           <option value="2">{t("plans.form.frequencyOptions.2")}</option>
           <option value="3">{t("plans.form.frequencyOptions.3")}</option>
           <option value="">{t("plans.form.frequencyOptions.free")}</option>
-        </select>
+        </Select>
         {err(F.frequency)}
         <p className="text-sm text-muted-foreground">{t("plans.form.frequencyHelp")}</p>
       </div>
@@ -183,7 +183,7 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
             {t("plans.form.impact.title")}
           </h3>
           {impact.status === "loading" && <p role="status">{t("plans.form.impact.loading")}</p>}
-          {impact.status === "error" && <p role="alert" className="text-sm text-destructive">{t("plans.form.impact.error")}</p>}
+          {impact.status === "error" && <Banner tone="danger">{t("plans.form.impact.error")}</Banner>}
           {impact.impact && <p>{t("plans.form.impact.students", { count: impact.impact.studentsAffected })}</p>}
           <p className="text-sm">{t("plans.form.impact.from")}</p>
           {(impact.impact?.unpaidCharges ?? 0) > 0 && (
@@ -211,9 +211,9 @@ function Form({ options, plan, onClose, onSaved }: { options: PlanOptions; plan?
         </section>
       )}
       {errors.form && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {errors.form}
-        </p>
+        </Banner>
       )}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>

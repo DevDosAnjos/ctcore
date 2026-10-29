@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { Input, Textarea } from "@/components/ui/field";
 import { combine, ModalityDialog, PickSelect } from "./ModalityPickers";
 import type { ChargeDecision, EndReason, EnrollmentModality } from "./types";
 import { endModality, useEndPreview } from "./useStudentRecord";
@@ -77,8 +78,8 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
                           </label>
                         </div>
                         {choice?.cancel && (
-                          <input
-                            className="min-h-11 rounded-md border bg-background px-3"
+                          <Input
+                            
                             aria-label={t(`${k}cancelReason`, { line })}
                             maxLength={200}
                             value={choice.reason}
@@ -97,9 +98,8 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
             <label htmlFor={noteId} className="block text-sm font-medium">
               {t(`${k}note`)}
             </label>
-            <textarea
+            <Textarea
               id={noteId}
-              className="w-full rounded-md border bg-background p-2"
               rows={3}
               maxLength={500}
               value={note}
@@ -108,7 +108,7 @@ export function EndModalityDialog({ studentId, studentName, row, onClose, onDone
               aria-describedby={errors.note ? `${noteId}-erro` : undefined}
             />
             {errors.note && (
-              <p id={`${noteId}-erro`} className="text-sm text-destructive">
+              <p id={`${noteId}-erro`} className="text-sm text-danger-foreground">
                 {errors.note}
               </p>
             )}

@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/field";
 import { ApiError } from "@/lib/api";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { useTerms, type TermsKind, type TermsVersion } from "./useTerms";
@@ -86,9 +88,7 @@ function TermEditor({ kind }: { kind: TermsKind }) {
           : t("terms.current.published", { version: current.version, date: when(current.publishedAt), by: current.publishedBy ?? "" })}
       </p>
       {message && (
-        <p role={message.kind === "alert" ? "alert" : "status"} className={message.kind === "alert" ? "text-sm text-destructive" : "text-sm"}>
-          {message.text}
-        </p>
+        <Banner tone={message.kind === "alert" ? "danger" : "ok"}>{message.text}</Banner>
       )}
       {canManage ? (
         <form
@@ -101,9 +101,9 @@ function TermEditor({ kind }: { kind: TermsKind }) {
           <label htmlFor={`terms-${kind}`} className="text-sm font-medium">
             {t("terms.editor.label")}
           </label>
-          <textarea
+          <Textarea
             id={`terms-${kind}`}
-            className="min-h-64 w-full rounded-md border bg-background px-2 py-1"
+            className="min-h-64 py-1"
             value={body}
             onChange={(e) => setText(e.target.value)}
           />
