@@ -79,11 +79,11 @@ describe("componentes (CA21, CA22)", () => {
   });
 
   it.each([["default"], ["sm"], ["icon"]] as const)("RNF-20: botão de tamanho %s tem alvo de 44 px", (size) => {
-    expect(buttonVariants({ size }).split(" ")).toEqual(expect.arrayContaining([expect.stringMatching(/^(min-)?h-11$/)]));
+    expect(buttonVariants({ size }).split(" ")).toEqual(expect.arrayContaining(["after:min-h-11", "after:min-w-11"])); // D2: alvo por área invisível
   });
 
   it("RNF-20: botão só de ícone é quadrado de 44 px; links do menu e paginação também", () => {
-    expect(buttonVariants({ size: "icon" }).split(" ")).toEqual(expect.arrayContaining(["min-h-11", "min-w-11"]));
+    expect(buttonVariants({ size: "icon" }).split(" ")).toEqual(expect.arrayContaining(["after:min-h-11", "after:min-w-11"]));
     const dir = join(process.cwd(), "src/components");
     for (const f of ["layout/AppLayout.tsx", "query/Pagination.tsx"]) {
       expect(readFileSync(join(dir, f), "utf8"), f).toMatch(/min-h-11/);

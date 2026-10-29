@@ -28,4 +28,16 @@ describe("componentes de estado (CA3)", () => {
     render(<ForbiddenState />);
     expect(screen.getByText("Você não tem acesso")).toBeInTheDocument();
   });
+
+  it("CA21: carregando mostra esqueleto e o texto fica para leitor de tela", () => {
+    const { container } = render(<LoadingState />);
+    expect(container.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+    expect(screen.getByText("Carregando...")).toHaveClass("sr-only");
+  });
+
+  it("CA21: vazio com título e texto próprios", () => {
+    render(<EmptyState title="Sem alunos" text="Cadastre o primeiro." />);
+    expect(screen.getByRole("heading", { name: "Sem alunos" })).toHaveClass("font-heading");
+    expect(screen.getByText("Cadastre o primeiro.")).toBeInTheDocument();
+  });
 });

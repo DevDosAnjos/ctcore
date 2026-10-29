@@ -39,6 +39,41 @@ describe("SidePanel", () => {
   it("CA9: ocupa a largura toda no celular", async () => {
     render(<Demo Comp={SidePanel as typeof Modal} />);
     await userEvent.click(screen.getByRole("button", { name: "Abrir" }));
-    expect(screen.getByRole("dialog")).toHaveClass("w-full", "md:w-96");
+    expect(screen.getByRole("dialog")).toHaveClass("w-full", "md:w-[min(680px,100%)]");
+  });
+});
+
+describe("CA15/CA17: visual", () => {
+  it("Modal: título em fonte de títulos e rodapé com fundo suave", () => {
+    render(
+      <Modal open onOpenChange={() => {}} title="Detalhes" footer={<button>Salvar</button>}>
+        <p>Corpo</p>
+      </Modal>,
+    );
+    expect(screen.getByText("Detalhes")).toHaveClass("font-heading");
+    expect(screen.getByRole("button", { name: "Salvar" }).parentElement).toHaveClass("bg-surface-soft");
+  });
+
+  it("dismissible=false: sem X", () => {
+    render(<Modal open onOpenChange={() => {}} title="Detalhes" dismissible={false}>x</Modal>);
+    expect(screen.queryByRole("button", { name: "Fechar" })).not.toBeInTheDocument();
+  });
+
+  it("SidePanel com abas: navega por teclado", async () => {
+    render(
+      <SidePanel
+        open
+        onOpenChange={() => {}}
+        title="Ficha"
+        tabs={[
+          { id: "a", label: "Dados", content: <p>Painel A</p> },
+          { id: "b", label: "Histórico", content: <p>Painel B</p> },
+        ]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Dados" }));
+    await userEvent.keyboard("{ArrowRight}");
+    expect(screen.getByRole("tab", { name: "Histórico" })).toHaveFocus();
+    expect(screen.getByText("Painel B")).toBeInTheDocument();
   });
 });

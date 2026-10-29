@@ -130,7 +130,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 404 | Ajustar a especificação e o marco com as decisões da Sprint 10 (R10-3, D1, D2) | issue #404 | Sprint 10 | — | agente | feito |
 | 405 | Agenda do portal mostra o nome do professor (D2) | issue #405 | Sprint 10 | 404 | agente | feito |
 | 414 | Base visual: tokens de cor, fontes e tema escuro do canvas | issue #414 | Sprint 10.5 | — | agente | feito |
-| 415 | Componentes base no padrão do canvas | issue #415 | Sprint 10.5 | — | agente | a fazer |
+| 415 | Componentes base no padrão do canvas | issue #415 | Sprint 10.5 | — | agente | feito |
 | 416 | Teste visual: referências das telas e comparação lado a lado com o canvas | issue #416 | Sprint 10.5 | — | agente | a fazer |
 | 417 | Estrutura da gestão: menu lateral, barra de cima, cabeçalho e versão de celular | issue #417 | Sprint 10.5 | — | agente | a fazer |
 | 418 | Estrutura do portal do aluno: barra com a marca, abas e versão de celular | issue #418 | Sprint 10.5 | — | agente | a fazer |
