@@ -13,6 +13,9 @@
     "test:cov": "vitest run --coverage",
     "e2e": "playwright test --grep @critical",
     "e2e:full": "playwright test",
+    "test:visual": "playwright test -c playwright.visual.config.ts",
+    "test:visual:docker": "bash scripts/visual-docker.sh",
+    "visual:canvas": "node scripts/visual-canvas.mjs",
     "audit": "npm audit --audit-level=high"
   },
   "dependencies": {
