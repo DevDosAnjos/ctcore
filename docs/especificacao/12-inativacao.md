@@ -35,7 +35,7 @@ Tirar da operação quem não paga, sem trabalho manual, e devolver na hora quan
 - **RN-INA-05.** Reativação automática: quando o aluno quita tudo, isto é, com o pagamento confirmado e nenhuma outra cobrança vencida (avulsas não contam), as modalidades bloqueadas por atraso voltam a Ativa sozinhas e o Administrador é avisado. A próxima cobrança volta ao ciclo normal de vencimento.
 - **RN-INA-06.** O Administrador pode: inativar à mão, com motivo; reativar mesmo com débito, caso em que o prazo recomeça do zero a partir da reativação; cancelar cobranças acumuladas, com motivo.
 - **RN-INA-07.** Carência: modalidade bloqueada pela gestão só pode ser reativada à mão 2 dias depois. Pagando as cobranças vencidas, reativa na hora.
-- **RN-INA-08.** Portal do aluno Inativo: cobranças em aberto com "Pagar", histórico financeiro, recibos, dados da conta e contato da unidade. A carteirinha continua visível, com o selo "Inativo". Agenda, avisos e graduação ficam ocultos.
+- **RN-INA-08.** Portal do aluno Inativo: cobranças em aberto com "Pagar", histórico financeiro, recibos, dados da conta e contato da unidade. A carteirinha continua visível, com o selo "Inativo". Agenda, avisos e graduação ficam ocultos. "Inativo" no portal é calculado do que existe: aluno matriculado sem modalidade ativa (RN-POR-08).
 - **RN-INA-09.** Ex-aluno sem débito vê o histórico financeiro e os recibos pelo prazo da organização (padrão 12 meses). Depois o acesso do vínculo é desligado, sem apagar dados. Ex-aluno com débito vê como o Inativo.
 - **RN-INA-10.** Todas as mudanças de situação vão para a auditoria e geram e-mail ao aluno (bloqueio, reativação, encerramento).
 - **RN-INA-11.** A contagem de alunos ativos para a assinatura usa a situação do aluno (ver `16`).

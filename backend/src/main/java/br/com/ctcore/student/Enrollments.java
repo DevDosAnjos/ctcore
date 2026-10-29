@@ -45,7 +45,7 @@ public class Enrollments {
     public record Named(UUID id, String name) {}
 
     public record ModalityView(UUID id, Named unit, Named modality, Named primaryClass, List<Named> otherClasses, Named plan, Named nextPlan,
-            int dueDay, String status, OffsetDateTime startedAt, OffsetDateTime endedAt, boolean canEdit) {}
+            int dueDay, String status, OffsetDateTime startedAt, OffsetDateTime endedAt, boolean canEdit, OffsetDateTime closureRequestedAt) {}
 
     /** {@code status}: NONE (sem matrícula), ACTIVE ou FORMER (ex-aluno). */
     public record Enrollment(UUID id, String status, OffsetDateTime enrolledAt, OffsetDateTime reopenedAt, List<ModalityView> modalities) {}
@@ -60,10 +60,12 @@ public class Enrollments {
     private final BenefitWrite benefitWrite;
     private final ChargeActions chargeActions;
     private final Charges charges;
+    private final PortalRequests requests;
     private final Clock clock;
 
     public Enrollments(@Lazy JdbcClient jdbc, @Lazy OrganizationTransactions transactions, Students students, Permissions permissions, AuditService audit,
-            BenefitWrite benefitWrite, ChargeActions chargeActions, Charges charges, Clock clock) {
+            BenefitWrite benefitWrite, ChargeActions chargeActions, Charges charges, PortalRequests requests, Clock clock) {
+        this.requests = requests;
         this.chargeActions = chargeActions;
         this.charges = charges;
         this.benefitWrite = benefitWrite;
@@ -392,6 +394,9 @@ public class Enrollments {
 
     private static final Set<String> END_REASONS = Set.of("CITY_CHANGE", "FINANCIAL", "SCHEDULE", "INJURY", "DISSATISFACTION", "OTHER");
 
+    /** Motivo fixo das cobranças com vencimento depois do pedido de encerramento (RN-MAT-18, D6). */
+    static final String AFTER_REQUEST_REASON = "Vencimento depois do pedido de encerramento";
+
     /** RN-MAT-17, RN-BEN-01 (R1 a R5, R8): encerra a modalidade ativa, libera a vaga e encerra o benefício dela; a linha fica. */
     public Enrollment end(AccountPrincipal who, UUID studentId, UUID rowId, EndInput in, String ip) {
         String reason = in == null || in.reason() == null ? "" : in.reason();
@@ -412,22 +417,39 @@ public class Enrollments {
                     cancels.put(d.chargeId(), "CANCEL".equals(d.action()) ? ChargeActions.reason(d.reason()) : null);
                 }
             }
-            jdbc.sql("update enrollment_modality set status = 'ENDED', ended_at = :now, end_reason = :why, end_note = :note where organization_id = :org and id = :id")
-                    .param("now", OffsetDateTime.now(clock)).param("why", reason).param("note", savedNote).param("org", org).param("id", rowId).update();
-            benefitWrite.endModalityBenefits(who, rowId, ip);
-            cancels.forEach((id, why) -> {
-                if (why != null) chargeActions.cancelLocked(who, id, why, ip);
-            });
-            Map<String, Object> before = new LinkedHashMap<>(), after = new LinkedHashMap<>();
-            before.put("modalityRowId", rowId.toString());
-            before.put("status", "ACTIVE");
-            after.put("modalityRowId", rowId.toString());
-            after.put("status", "ENDED");
-            after.put("reason", reason);
-            after.put("hasNote", savedNote != null);
-            audit.record(new AuditEntry(actor(who), "student.modality_ended", "student", studentId.toString(), row.unitId(), before, after, null, ip));
+            endLocked(org, actor(who), studentId, rowId, row.unitId(), reason, savedNote, cancels, OffsetDateTime.now(clock), ip);
             return read(who, studentId);
         });
+    }
+
+    /**
+     * Dentro da transação, com o aluno travado: encerra a modalidade em {@code endedAt}. Havendo pedido de encerramento aberto, as cobranças em aberto com
+     * vencimento depois dele são canceladas (a decisão da gestão não vale para elas) e o pedido passa a Encerrado. Devolve o pedido fechado, ou {@code null}.
+     */
+    PortalRequests.Saved endLocked(UUID org, AuditActor actor, UUID studentId, UUID rowId, UUID unitId, String reason, String note, Map<UUID, String> decisions,
+            OffsetDateTime endedAt, String ip) {
+        UUID closing = requests.openClosure(org, rowId);
+        Map<UUID, String> cancels = new LinkedHashMap<>(decisions);
+        if (closing != null) {
+            for (Charges.OpenCharge c : charges.openOfModality(org, rowId)) {
+                if (c.afterRequest()) cancels.put(c.id(), AFTER_REQUEST_REASON);
+            }
+        }
+        jdbc.sql("update enrollment_modality set status = 'ENDED', ended_at = :now, end_reason = :why, end_note = :note where organization_id = :org and id = :id")
+                .param("now", endedAt).param("why", reason).param("note", note).param("org", org).param("id", rowId).update();
+        benefitWrite.endModalityBenefits(org, actor, rowId, ip);
+        cancels.forEach((id, why) -> {
+            if (why != null) chargeActions.cancelLocked(org, actor, id, why, ip);
+        });
+        Map<String, Object> before = new LinkedHashMap<>(), after = new LinkedHashMap<>();
+        before.put("modalityRowId", rowId.toString());
+        before.put("status", "ACTIVE");
+        after.put("modalityRowId", rowId.toString());
+        after.put("status", "ENDED");
+        after.put("reason", reason);
+        after.put("hasNote", note != null);
+        audit.record(new AuditEntry(actor, "student.modality_ended", "student", studentId.toString(), unitId, before, after, null, ip));
+        return closing == null ? null : requests.finish(org, closing, "CLOSED", actor, "portal_request.closed", ip);
     }
 
     /** RN-MAT-17 (R6): leitura do que a janela de encerramento mostra; não grava nem audita. */
@@ -463,7 +485,8 @@ public class Enrollments {
                 }).list();
         Map<UUID, Boolean> editable = new HashMap<>();
         List<ModalityView> views = jdbc.sql("select m.id, m.unit_id, u.name, m.modality_id, md.name, m.primary_class_id, c.name, m.plan_id, p.name, "
-                + "m.next_plan_id, np.name, m.due_day, m.status, m.started_at, m.ended_at from enrollment_modality m "
+                + "m.next_plan_id, np.name, m.due_day, m.status, m.started_at, m.ended_at, (select min(r.created_at) from portal_request r where r.organization_id = m.organization_id "
+                + "and r.enrollment_modality_id = m.id and r.kind = 'CLOSURE' and r.status = 'OPEN') from enrollment_modality m "
                 + "join unit u on u.organization_id = m.organization_id and u.id = m.unit_id join modality md on md.id = m.modality_id "
                 + "join training_class c on c.organization_id = m.organization_id and c.id = m.primary_class_id "
                 + "join plan p on p.organization_id = m.organization_id and p.id = m.plan_id "
@@ -476,7 +499,8 @@ public class Enrollments {
                     return new ModalityView(row, new Named(unit, rs.getString(3)), new Named(rs.getObject(4, UUID.class), rs.getString(5)),
                             new Named(rs.getObject(6, UUID.class), rs.getString(7)), others.getOrDefault(row, List.of()),
                             new Named(rs.getObject(8, UUID.class), rs.getString(9)), next == null ? null : new Named(next, rs.getString(11)),
-                            rs.getInt(12), rs.getString(13), rs.getObject(14, OffsetDateTime.class), rs.getObject(15, OffsetDateTime.class), edit);
+                            rs.getInt(12), rs.getString(13), rs.getObject(14, OffsetDateTime.class), rs.getObject(15, OffsetDateTime.class), edit,
+                            rs.getObject(16, OffsetDateTime.class));
                 }).list();
         boolean anyActive = views.stream().anyMatch(v -> "ACTIVE".equals(v.status()));
         return new Enrollment((UUID) header.get()[0], anyActive ? "ACTIVE" : "FORMER", (OffsetDateTime) header.get()[1], (OffsetDateTime) header.get()[2], views);

@@ -234,7 +234,7 @@ public class Students {
         String age = AGE;
         List<Row> found = jdbc.sql("select s.id, s.name, s.photo, s.birth_date, " + age + ", r.id, r.name, u.id, u.name, s.created_at, "
                 + sealPredicate(StudentSeal.INCOMPLETE_REGISTRATION, age) + ", " + sealPredicate(StudentSeal.EMAIL_PROBLEM, age) + ", "
-                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + ", " + sealPredicate(StudentSeal.NEW, age) + ", " + sealPredicate(StudentSeal.SCHOLARSHIP, age) + ", u.timezone, " + STATUS + ", " + FINANCIAL + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
+                + sealPredicate(StudentSeal.BIRTHDAY_TODAY, age) + ", " + sealPredicate(StudentSeal.NEW, age) + ", " + sealPredicate(StudentSeal.SCHOLARSHIP, age) + ", " + sealPredicate(StudentSeal.TERM_PENDING, age) + ", u.timezone, " + STATUS + ", " + FINANCIAL + " from student s join unit u on u.id = s.registered_unit_id " + PAYER + " "
                 + "left join lateral (select a.id, a.name from age_range a where a.organization_id = s.organization_id and a.min_age <= " + age
                 + " and (a.max_age is null or a.max_age >= " + age + ") order by a.min_age desc, a.name_key limit 1) r on true "
                 + "where " + where + " " + tail)
@@ -243,8 +243,8 @@ public class Students {
                     LocalDate birth = rs.getObject(4, LocalDate.class);
                     UUID rangeId = rs.getObject(6, UUID.class);
                     return new Row(rs.getObject(1, UUID.class), rs.getString(2), photoUrl(rs.getString(3)), birth, rs.getInt(5),
-                            !InviteRules.adult(birth, today(rs.getString(16))), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
-                            new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs), rs.getString(17), rs.getString(18),
+                            !InviteRules.adult(birth, today(rs.getString(17))), rangeId == null ? null : new RangeRef(rangeId, rs.getString(7)),
+                            new UnitRef(rs.getObject(8, UUID.class), rs.getString(9)), rs.getObject(10, OffsetDateTime.class), seals(rs), rs.getString(18), rs.getString(19),
                             List.of());
                 }).list();
         if (found.isEmpty()) return found;
@@ -326,6 +326,11 @@ public class Students {
             case SCHOLARSHIP -> "exists (select 1 from benefit b join enrollment_modality em on em.organization_id = b.organization_id and em.id = b.enrollment_modality_id "
                     + "where b.organization_id = s.organization_id and b.student_id = s.id and b.type = 'PERCENT' and b.status = 'ACTIVE' and em.status = 'ACTIVE' "
                     + "and (b.valid_until is null or b.valid_until >= " + TODAY + "))";
+            // RN-MAT-11, RN-MAT-14 (D2): com matrícula, sem aceite ou com aceite menor que a maior versão publicada com reaccept (mesma regra de PortalTerms.pending).
+            case TERM_PENDING -> "(exists (select 1 from enrollment e where e.organization_id = s.organization_id and e.student_id = s.id) "
+                    + "and (select coalesce(max(a.version), -1) from term_acceptance a where a.organization_id = s.organization_id and a.student_id = s.id "
+                    + "and a.kind = 'ENROLLMENT' and a.event = 'ACCEPTED') < (select coalesce(max(t.version), 0) from terms_version t "
+                    + "where t.organization_id = s.organization_id and t.kind = 'ENROLLMENT' and t.reaccept))";
         };
     }
 

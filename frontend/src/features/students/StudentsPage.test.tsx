@@ -127,7 +127,7 @@ describe("StudentsPage", () => {
     expect(badges("Aniversário hoje")).toHaveLength(1);
     expect(badges("E-mail com problema")).toHaveLength(0);
     const seal = screen.getByRole("combobox", { name: "Selo" });
-    expect(within(seal).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todos os selos", "Cadastro incompleto", "E-mail com problema", "Aniversário hoje", "Novo", "Bolsista"]);
+    expect(within(seal).getAllByRole("option").map((o) => o.textContent)).toEqual(["Todos os selos", "Cadastro incompleto", "E-mail com problema", "Aniversário hoje", "Novo", "Bolsista", "Termo pendente"]);
     await user.selectOptions(seal, "EMAIL_PROBLEM");
     await waitFor(() => expect(calls.at(-1)!.get("seal")).toBe("EMAIL_PROBLEM"));
     await user.click(await screen.findByRole("button", { name: "Limpar filtros" }));

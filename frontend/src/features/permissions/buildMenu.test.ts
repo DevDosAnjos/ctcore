@@ -40,7 +40,7 @@ describe("buildMenu", () => {
     const texts = { id: "texts", label: "menu.items.texts", href: "/configuracoes/textos" };
     const units = { id: "units", label: "menu.items.units", href: "/configuracoes/unidades" };
     const operation = { id: "operation", label: "menu.groups.operation", items: [agenda, { id: "classes", label: "menu.items.classes", href: "/turmas" }, { id: "noClassDays", label: "menu.items.noClassDays", href: "/dias-sem-aula" }] };
-    const people = { id: "people", label: "menu.groups.people", items: [{ id: "students", label: "menu.items.students", href: "/alunos" }, { id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
+    const people = { id: "people", label: "menu.groups.people", items: [{ id: "students", label: "menu.items.students", href: "/alunos" }, { id: "requests", label: "menu.items.requests", href: "/pedidos" }, { id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
     const finance = { id: "finance", label: "menu.groups.finance", items: [{ id: "plans", label: "menu.items.plans", href: "/planos" }, { id: "benefits", label: "menu.items.benefits", href: "/beneficios" }] };
     const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
     expect(buildMenu(mockPermissions("COORDINATOR"), t)).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, terms, texts, users, units])]);

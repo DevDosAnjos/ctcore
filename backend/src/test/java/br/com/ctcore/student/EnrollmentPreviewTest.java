@@ -2,6 +2,7 @@ package br.com.ctcore.student;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.com.ctcore.storage.FileKind;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
@@ -36,11 +37,11 @@ class EnrollmentPreviewTest {
     @Test
     @DisplayName("CA11: o tipo do comprovante vem do conteúdo (JPG, PNG, WebP, PDF); o resto é recusado")
     void proofKind() {
-        assertThat(OriginProof.kind(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0})[0]).isEqualTo("jpg");
-        assertThat(OriginProof.kind(new byte[] {(byte) 0x89, 'P', 'N', 'G', 0, 0, 0, 0})[0]).isEqualTo("png");
-        assertThat(OriginProof.kind("RIFF....WEBPVP8 ".getBytes(StandardCharsets.ISO_8859_1))[0]).isEqualTo("webp");
-        assertThat(OriginProof.kind("%PDF-1.7".getBytes(StandardCharsets.ISO_8859_1))[0]).isEqualTo("pdf");
-        assertThat(OriginProof.kind("GIF89a".getBytes(StandardCharsets.ISO_8859_1))).isNull();
-        assertThat(OriginProof.kind(new byte[] {1, 2})).isNull();
+        assertThat(FileKind.of(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0}).extension()).isEqualTo("jpg");
+        assertThat(FileKind.of(new byte[] {(byte) 0x89, 'P', 'N', 'G', 0, 0, 0, 0}).extension()).isEqualTo("png");
+        assertThat(FileKind.of("RIFF....WEBPVP8 ".getBytes(StandardCharsets.ISO_8859_1)).extension()).isEqualTo("webp");
+        assertThat(FileKind.of("%PDF-1.7".getBytes(StandardCharsets.ISO_8859_1)).extension()).isEqualTo("pdf");
+        assertThat(FileKind.of("GIF89a".getBytes(StandardCharsets.ISO_8859_1))).isNull();
+        assertThat(FileKind.of(new byte[] {1, 2})).isNull();
     }
 }

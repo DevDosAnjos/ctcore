@@ -32,7 +32,13 @@ public enum EmailTemplate {
     /** RN-COM-13: comunicado da academia, o único que o aluno ou responsável desliga (texto). */
     ANNOUNCEMENT("mail.announcement", false, false, Kind.ANNOUNCEMENT),
     /** RN-NOT-02: aviso urgente ao gestor; assunto e texto por tipo (chaves {@code notification.<TIPO>}; a geral é o modelo do registro), via {@code sendText}, sem dado de pessoa. */
-    NOTIFICATION_URGENT("notification.urgent", false, false, Kind.ALWAYS);
+    NOTIFICATION_URGENT("notification.urgent", false, false, Kind.ALWAYS),
+    /** RN-MAT-11: boas-vindas na conclusão da matrícula; assunto e texto vêm do modelo de texto (próprio ou da plataforma), via {@code sendText}. */
+    WELCOME("mail.welcome", false, false, Kind.ALWAYS),
+    /** RF-MAT-04: resposta ao pedido do portal; assunto e texto vêm prontos (chaves {@code mail.portal-request.*}), via {@code sendText}. */
+    PORTAL_REQUEST("mail.portal-request", false, false, Kind.ALWAYS),
+    /** RN-COM-11: comprovante de Pix recusado (referência da cobrança, motivo); texto pronto via {@code sendText}. */
+    PROOF_REFUSED("mail.proof-refused", false, false, Kind.ALWAYS);
 
     public enum Kind { ALWAYS, ANNOUNCEMENT }
 

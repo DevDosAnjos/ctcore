@@ -93,6 +93,18 @@ describe("janela Encerrar modalidade (RF-MAT-03, CA9, CA10)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("já foi encerrada");
   });
 
+  it("RN-MAT-18: a cobrança com vencimento depois do pedido aparece já cancelada, sem escolha, e fica fora das decisões", async () => {
+    const user = userEvent.setup();
+    setup(undefined, preview([{ ...open("c1", "2026-02-05"), afterRequest: false }, { ...open("c2", "2026-03-05"), afterRequest: true }]));
+    expect(await screen.findByText(/cobranças com vencimento depois do pedido são canceladas/)).toBeInTheDocument();
+    expect(screen.getByText(/será cancelada/)).toBeInTheDocument();
+    expect(screen.getAllByRole("radio", { name: "Manter" })).toHaveLength(1);
+    await user.selectOptions(screen.getByLabelText("Motivo"), "OTHER");
+    await user.click(screen.getByRole("button", { name: "Encerrar modalidade" }));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(bodies).toEqual([{ reason: "OTHER", charges: [{ chargeId: "c1", action: "KEEP" }] }]);
+  });
+
   it("falha na consulta pede nova tentativa e 403 mostra sem permissão", async () => {
     const user = userEvent.setup();
     setup(undefined, http.get("/api/v1/students/s1/modalities/m1/end-preview", () => HttpResponse.json({ code: "INTERNAL_ERROR" }, { status: 500 }), { once: true }));

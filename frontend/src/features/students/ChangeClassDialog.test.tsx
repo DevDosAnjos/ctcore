@@ -46,6 +46,16 @@ describe("janela Trocar turma (R9, R25, CA34)", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("R18: com a turma pedida pelo aluno a janela abre com ela escolhida", async () => {
+    render(
+      <ThemeProvider>
+        <ChangeClassDialog studentId="s1" row={modalityRow()} initial="k3" onClose={onClose} onDone={onDone} />
+      </ThemeProvider>,
+    );
+    server.use(...choiceRoutes());
+    expect(await screen.findByLabelText("Turma principal")).toHaveValue("k3");
+  });
+
   it("mostra o 422 do servidor no campo e não fecha", async () => {
     const user = userEvent.setup();
     setup(() => HttpResponse.json({ code: "UNPROCESSABLE", fields: [{ field: "primaryClassId", message: "turma inativa" }] }, { status: 422 }));

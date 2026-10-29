@@ -2,7 +2,7 @@
 
 Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 09. O dono confirmou em 23/10/2026 que revisou a Sprint 08 (Cobranças) e fez o PR dev→main (#348, merge). Só o dono libera a seguinte.
+Sprint liberada: Sprint 10 (Portal do aluno). O dono confirmou em 26/10/2026 que revisou a Sprint 09 (Comunicação) e liberou a Sprint 10. Só o dono libera a seguinte.
 
 Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
 
@@ -108,19 +108,27 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 372 | Log sem a exceção inteira nos jobs da Sprint 09 | issue #372 | Sprint 09 | — | agente | feito |
 | 374 | Atualizar a especificação com as decisões da Sprint 09 | issue #374 | Sprint 09 | — | agente | feito |
 | 378 | Encaixes da Sprint 09 no backlog | issue #378 | Sprint 09 | — | agente | feito |
-| 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | a fazer |
-| 368 | Testes e2e poderem sobrescrever respostas do MSW por teste (worker.use) | issue #368 | Sprint 10 | — | agente | a fazer |
-| 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | a fazer |
-| 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | a fazer |
-| 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | a fazer |
-| 88 | RF-POR-01 · Portal: barra e navegação | issue #88 | Sprint 10 | — | agente | a fazer |
-| 89 | RF-POR-02 · Portal: Início | issue #89 | Sprint 10 | — | agente | a fazer |
-| 90 | RF-POR-03 · Portal: carteirinha | issue #90 | Sprint 10 | — | agente | a fazer |
-| 91 | RF-POR-04 · Portal: Agenda | issue #91 | Sprint 10 | — | agente | a fazer |
-| 92 | RF-POR-05 · Portal: Financeiro | issue #92 | Sprint 10 | — | agente | a fazer |
-| 93 | RF-POR-06 · Portal: Avisos | issue #93 | Sprint 10 | — | agente | a fazer |
-| 94 | RF-POR-07 · Portal: Minhas informações | issue #94 | Sprint 10 | — | agente | a fazer |
-| 95 | RF-POR-08 · Portal: estados de tela | issue #95 | Sprint 10 | — | agente | a fazer |
+| 363 | Fechar a medição do CA4 da #343: tempo do job e2e em mais 4 PRs | issue #363 | Sprint 10 | — | agente | feito |
+| 368 | Testes e2e poderem sobrescrever respostas do MSW por teste (worker.use) | issue #368 | Sprint 10 | — | agente | feito |
+| 85 | Aceite do termo e confirmações no portal | issue #85 | Sprint 10 | — | agente | feito |
+| 86 | RF-MAT-04 · Pedidos do portal | issue #86 | Sprint 10 | — | agente | feito |
+| 87 | RF-COB-05 · Comprovantes em conferência | issue #87 | Sprint 10 | — | agente | feito |
+| 88 | RF-POR-01 · Portal: barra e navegação | issue #88 | Sprint 10 | — | agente | feito |
+| 89 | RF-POR-02 · Portal: Início | issue #89 | Sprint 10 | — | agente | feito |
+| 90 | RF-POR-03 · Portal: carteirinha | issue #90 | Sprint 10 | — | agente | feito |
+| 91 | RF-POR-04 · Portal: Agenda | issue #91 | Sprint 10 | — | agente | feito |
+| 92 | RF-POR-05 · Portal: Financeiro | issue #92 | Sprint 10 | — | agente | feito |
+| 93 | RF-POR-06 · Portal: Avisos | issue #93 | Sprint 10 | — | agente | feito |
+| 94 | RF-POR-07 · Portal: Minhas informações | issue #94 | Sprint 10 | — | agente | feito |
+| 385 | Teste LessonPanelPage instável no test:cov: medir e estabilizar (antes da #95: trava a regressão do front) | issue #385 | Sprint 10 | — | agente | feito |
+| 95 | RF-POR-08 · Portal: estados de tela | issue #95 | Sprint 10 | — | agente | feito |
+| 386 | Teste e2e comprovantes instável: medir e estabilizar | issue #386 | Sprint 10 | — | agente | feito |
+| 388 | Teste e2e "gestão recusa e confirma comprovantes (light)" estoura 30 s na suíte inteira | issue #388 | Sprint 10 | — | agente | feito |
+| 390 | ChargeNoticeIT.minor instável: o agendador envia o aviso ao aluno menor antes de o teste ligar o responsável | issue #390 | Sprint 10 | — | agente | feito |
+| 402 | Teste ChargeNoticeIT e BillingFixtures dependem da data de hoje: remover o vencimento fixo de 2026-11-10 | issue #402 | Sprint 10 | — | agente | feito |
+| 403 | Teste UnitSettingsPage CA17 instável no test:cov: medir e estabilizar | issue #403 | Sprint 10 | — | agente | feito |
+| 404 | Ajustar a especificação e o marco com as decisões da Sprint 10 (R10-3, D1, D2) | issue #404 | Sprint 10 | — | agente | feito |
+| 405 | Agenda do portal mostra o nome do professor (D2) | issue #405 | Sprint 10 | 404 | agente | feito |
 | 96 | Porta de pagamento com o simulador: baixa, webhook e conciliação | issue #96 | Sprint 11 | — | agente | a fazer |
 | 97 | RF-PAG-01 · Configurações › Unidade › Pagamentos | issue #97 | Sprint 11 | — | agente | a fazer |
 | 98 | RF-PAG-02 · Janela de pagamento no portal | issue #98 | Sprint 11 | — | agente | a fazer |

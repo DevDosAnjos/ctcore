@@ -2991,7 +2991,7 @@ paths:
       summary: Cartões dos alunos do portal (RN-RSP-03, RN-LGP-03). Responsável e Aluno.
       description: |
         Um cartão por aluno ligado ao responsável da sessão (em qualquer unidade da organização) e, se a conta também é a de um aluno, o
-        cartão dele com `self` igual a `true`. Só `id`, `name`, `photoUrl` e `self`. Sessão de gestão ou de Professor: 403.
+        cartão dele com `self` igual a `true`. Só `id`, `name`, `photoUrl` e `self`. Sessão de gestão ou de Professor: 403. Com termo de matrícula pendente que a conta deve aceitar: 403 `TERM_PENDING` (RN-POR-03); o aceite está em `/portal/term`.
       security: [{ sessionCookie: [] }]
       responses:
         '200':
@@ -3003,6 +3003,712 @@ paths:
                 items: { $ref: '#/components/schemas/PortalStudentCard' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/home:
+    get:
+      summary: Início do portal (RF-POR-02, RN-POR-04, RN-POR-05, RN-POR-09). Responsável e Aluno.
+      description: |
+        Quatro seções do aluno escolhido (`studentId`, padrão o primeiro cartão): cobranças que pedem ação (vencidas, que vencem em até 3 dias e em conferência;
+        vencidas primeiro) com `nextDueOn` quando não há nenhuma, as próximas 3 aulas, os avisos não lidos ou fixados (até 5) e a faixa atual por modalidade. O
+        responsável recebe ainda um cartão por aluno com o em aberto e `familyOpenCents`, a soma só do que a conta paga. Com o portal reduzido (RN-INA-08) só
+        vem a cobrança. Sem presença, frequência nem progresso de graduação. `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e
+        Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Início.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalHome' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/finance:
+    get:
+      summary: Financeiro do portal (RF-POR-05, RN-POR-02, RN-POR-05, RN-POR-08). Responsável e Aluno.
+      description: |
+        Cobranças em aberto (`OPEN` e `IN_REVIEW`) do aluno escolhido (`studentId`, padrão o primeiro cartão) com a composição guardada na cobrança (`planCents`,
+        `benefitCents`, `amountCents`); vencidas primeiro, depois por vencimento. `situation` é `OVERDUE`, `DUE_TODAY`, `DUE_SOON`, `PENDING` ou `IN_REVIEW`; em
+        conferência `canPay` é falso. `scope=FAMILY` devolve as abertas de todos os alunos que a conta paga, cada uma com aluno e unidade, e o histórico vem vazio;
+        `familyOpenCents` é a soma do que a conta paga. O histórico (`PAID`, `REFUNDED`, `CANCELED`, `RENEGOTIATED`) é do `year` pedido (padrão o ano de hoje no fuso da
+        unidade de cadastro) com data de pagamento, meio e recibo (`receipt.code` baixa o PDF em `/portal/receipts/{code}/pdf`); `years` lista os anos com histórico.
+        `year` fora de 2000 a 2100: 400. Aluno que a conta não paga (menor com responsável não financeiro) vem com listas vazias. `studentId` de aluno não ligado à
+        conta ou de outra organização: 404. Vale também com o portal reduzido (`reduced`). Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: scope, in: query, required: false, schema: { type: string, enum: [STUDENT, FAMILY], default: STUDENT } }
+        - { name: year, in: query, required: false, schema: { type: integer, minimum: 2000, maximum: 2100 } }
+      responses:
+        '200':
+          description: Financeiro.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalFinance' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/receipts/{code}/pdf:
+    get:
+      summary: PDF do recibo de uma cobrança que a conta paga (RF-POR-05, RN-COB-16). Responsável e Aluno.
+      description: |
+        Mesmo recibo do link público, com o CPF de quem pagou mascarado. Só de recibo de aluno que a conta paga; código desconhecido, de aluno de outra conta ou de
+        outra organização: 404 igual. Vale também com o portal reduzido. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Resposta `Cache-Control: private, no-store`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: O PDF.
+          content: { application/pdf: { schema: { type: string, format: binary } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/charges/pix-instructions:
+    get:
+      summary: Chave Pix da unidade para pagar várias cobranças abertas juntas (RF-POR-05, RN-COB-13). Aluno adulto e responsável financeiro.
+      description: |
+        `ids` com 1 a 20 cobranças abertas da mesma unidade, todas de alunos que a conta paga. Devolve a chave Pix, o total e as cobranças. Lista vazia, mais de 20,
+        repetida ou de unidades diferentes: 422 no campo `ids`. Cobrança de aluno não ligado à conta ou de outra organização: 404; responsável não financeiro: 403;
+        fora de aberta: 409 `CHARGE_NOT_PAYABLE`; unidade sem chave Pix: 422 `PIX_KEY_MISSING`. Com termo pendente: 403 `TERM_PENDING`. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: ids, in: query, required: true, style: form, explode: false, schema: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid } } }
+      responses:
+        '200':
+          description: Instruções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PixBatchInstructions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Seleção inválida (campo `ids`) ou unidade sem chave Pix (PIX_KEY_MISSING).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /portal/charges/proof:
+    post:
+      summary: Envia um comprovante do Pix na chave para várias cobranças e põe todas em conferência (RF-POR-05, RN-COB-13). Aluno adulto e responsável financeiro.
+      description: |
+        Multipart com `chargeIds` (1 a 20 cobranças abertas da mesma unidade, de alunos que a conta paga) e `file` (JPG, PNG, WebP ou PDF, até 5 MB, conferido pelo
+        conteúdo). Grava um comprovante pendente por cobrança com o mesmo arquivo, põe todas em `IN_REVIEW` e audita cada envio (`payment_proof.sent`, sem a chave do
+        arquivo), tudo ou nada. Seleção inválida (vazia, mais de 20, repetida ou de unidades diferentes): 422 em `chargeIds`; arquivo ausente, vazio, grande demais ou
+        de outro tipo: 422 em `file`. Cobrança fora de aberta: 409 `CHARGE_NOT_PAYABLE`; aluno não ligado: 404; responsável não financeiro: 403; unidade sem chave Pix:
+        422 `PIX_KEY_MISSING`. Cada comprovante é decidido um a um pela gestão.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [chargeIds, file]
+              properties:
+                chargeIds: { type: array, minItems: 1, maxItems: 20, items: { type: string, format: uuid } }
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Comprovantes enviados, pendentes (um por cobrança).
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/PaymentProofSent' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Seleção ou arquivo inválido, ou unidade sem chave Pix (PIX_KEY_MISSING). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /portal/card:
+    get:
+      summary: Carteirinha do aluno (RF-POR-03, RN-POR-01, RN-INA-08). Responsável e Aluno.
+      description: |
+        Foto, nome, marca da organização, selo (`ACTIVE` com ao menos uma modalidade ativa, `INACTIVE` caso contrário), `today` (data do dia no fuso da unidade de
+        cadastro, `timezone`), `generatedAt` e as modalidades ativas com unidade e faixa atual (`belt` nulo sem registro de graduação). `studentId` opcional, padrão
+        o primeiro cartão; `students` lista os alunos ligados para o responsável escolher. Funciona também com o portal reduzido (aluno inativo e ex-aluno veem o
+        selo `INACTIVE`). Sem QR code, presença, frequência, progresso, CPF, telefone nem e-mail. `studentId` de aluno não ligado à conta ou de outra organização:
+        404. Gestão e Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Carteirinha.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalCard' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/info:
+    get:
+      summary: Minhas informações do portal (RF-POR-07, RN-POR-01, RN-POR-02, RN-POR-06, RN-POR-07, RN-POR-09, RN-INA-08). Responsável e Aluno.
+      description: |
+        Aba do aluno escolhido (`studentId`, padrão o primeiro cartão; `students` lista os ligados à conta). `personal`: nome, nascimento, CPF mascarado
+        (`***.***.***-NN`, só leitura), foto, telefone, e-mail, endereço e contato de emergência, com `canEdit` e os `editableFields` (nome, CPF, nascimento e e-mail
+        não entram). Vale para qualquer conta ligada ao aluno, não só o pagador. `trainings`: por modalidade ativa, a unidade com o contato dela, a turma principal e
+        os outros horários (dias, horário e nome do professor; nunca o contato do professor). `plans`: plano, benefício vigente (encerrado ou vencido não conta),
+        mensalidade em centavos (`ChargePricing`), dia de vencimento e plano seguinte; só leitura. `graduation`: faixa atual e histórico, do mais novo ao mais antigo.
+        `emailAnnouncements` é a preferência da conta; `terms` traz o aceite do termo de matrícula e o uso de imagem. Com o portal reduzido (RN-INA-08) `reduced` é
+        verdadeiro, `unitContacts` traz só a unidade de cadastro e `trainings`, `plans` e `graduation` vêm vazios. `studentId` de aluno não ligado à conta ou de outra
+        organização: 404. Gestão e Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Resposta `Cache-Control: private, no-store`. Não
+        altera dado. Sem presença, frequência, progresso nem chave de arquivo.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Minhas informações.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfo' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/students/{id}/contact:
+    put:
+      summary: Edita telefone, endereço e contato de emergência pelo portal (RN-ALU-11, RN-ALU-03, RF-POR-07). Responsável e Aluno.
+      description: |
+        Corpo com `phone`, `postalCode`, `street`, `number`, `complement`, `district`, `city`, `state`, `emergencyName`, `emergencyRelationship` e
+        `emergencyPhone`, com as mesmas validações do cadastro (celular com DDD, CEP, UF, endereço completo, contato de emergência completo ou vazio). Campo fora da
+        lista (nome, CPF, nascimento, e-mail ou qualquer outro) é 422 e nada muda. Vale para qualquer conta ligada ao aluno (o próprio adulto ou um dos responsáveis do
+        menor). Aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Grava `student.updated` com
+        ator `PORTAL`, só com os campos mudados (sem o valor); repetir o mesmo corpo não grava. Resposta `Cache-Control: private, no-store`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                phone: { type: string, nullable: true }
+                postalCode: { type: string }
+                street: { type: string }
+                number: { type: string }
+                complement: { type: string, nullable: true }
+                district: { type: string }
+                city: { type: string }
+                state: { type: string }
+                emergencyName: { type: string, nullable: true }
+                emergencyRelationship: { type: string, nullable: true }
+                emergencyPhone: { type: string, nullable: true }
+      responses:
+        '200':
+          description: Dados pessoais atualizados.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfoPersonal' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Campo inválido ou não editável (UNPROCESSABLE, com o campo). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /portal/students/{id}/photo:
+    put:
+      summary: Troca a foto do aluno pelo portal (RN-ALU-02, RN-ALU-11, RF-POR-07). Responsável e Aluno.
+      description: |
+        Campo `file` com JPG, PNG ou WebP quadrado (reduzido a 512 px) e até 5 MB, conferido pelo conteúdo. Arquivo inválido: 422 (campo `file`) e a foto anterior
+        permanece. O arquivo antigo é apagado. Aluno não ligado à conta ou de outra organização: 404. Grava `student.photo_updated` com ator `PORTAL`, sem o nome do arquivo.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200':
+          description: Foto trocada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfoPersonal' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: 'Arquivo inválido ou grande demais (UNPROCESSABLE, campo `file`). Nada muda.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      summary: Remove a foto do aluno pelo portal (RN-ALU-02, RN-ALU-11). Responsável e Aluno.
+      description: Apaga o arquivo e grava `student.photo_removed` com ator `PORTAL`; sem foto, repete sem erro e sem auditoria. Aluno não ligado à conta dá 404.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Foto removida.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalInfoPersonal' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/schedule:
+    get:
+      summary: Agenda da semana do aluno (RF-POR-04, RN-POR-02). Responsável e Aluno.
+      description: |
+        Aulas da semana (segunda a domingo) do aluno escolhido: turma principal (`MAIN`), outros horários (`OTHER`) e avulsas visíveis (`ADHOC`), com o mesmo
+        alcance do Início. `scope` `ALL` (padrão) ou `MAIN` (só a turma principal). `week` é qualquer data `yyyy-MM-dd`; vale a segunda-feira dela, padrão a semana de
+        hoje no fuso da unidade de cadastro. Aula cancelada traz `cancelReasonCode` e `cancelReason`; aula alterada traz `changed`, `originalDate`,
+        `originalStartsAt` e `substitute`; `noticeId` é o comunicado enviado mais recente do tipo adequado que alcança a turma e o aluno. `past` vale pelo relógio do
+        fuso da unidade da aula. `noClassDays` traz um item por dia da semana sem aula que vale para o aluno. Com o portal reduzido, 200 com `reduced` e listas vazias.
+        `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`. Do professor, só o nome
+        (`teacherName`, o substituto quando há); sem presença, frequência, progresso, lista de espera nem cobrança. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: week, in: query, required: false, schema: { type: string, format: date } }
+        - { name: scope, in: query, required: false, schema: { type: string, enum: [ALL, MAIN], default: ALL } }
+      responses:
+        '200':
+          description: Agenda da semana.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalSchedule' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/announcements:
+    get:
+      summary: Avisos do aluno (RF-POR-06, RN-POR-01, RN-POR-02). Responsável e Aluno.
+      description: |
+        Comunicados enviados (nunca o agendado) que alcançam o aluno escolhido por uma modalidade ativa, com o mesmo alcance do Início e do sino. Fixados no topo
+        (`pinned_until` ainda valendo no fuso da unidade do aviso), depois do mais recente ao mais antigo. `filter` `ALL` (padrão), `UNREAD` ou `MODALITY` (com
+        `modalityId` de modalidade ativa do aluno); `filter` desconhecido ou `modalityId` que o aluno não pratica: 400. `page` a partir de 1 e `size` padrão 20,
+        limitado a 50. `unread` é verdadeiro sem leitura do aluno e sem "limpo" da conta; `unreadCount` não depende do filtro. Com o portal reduzido, 200 com `reduced`
+        e lista vazia. `studentId` de aluno não ligado à conta ou de outra organização: 404. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`.
+        Sem contato do professor, presença, frequência, progresso nem dado financeiro. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: filter, in: query, required: false, schema: { type: string, enum: [ALL, UNREAD, MODALITY], default: ALL } }
+        - { name: modalityId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: size, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Página de avisos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalAnnouncements' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/announcements/{id}/open:
+    post:
+      summary: Abrir um aviso e gravar a leitura (RF-POR-06, RN-COM-08). Responsável e Aluno.
+      description: |
+        Devolve o aviso completo (`body` como texto puro e `imageUrl` assinada e temporária, ou nulo) e grava a leitura do aluno escolhido (no menor, a leitura do
+        responsável conta uma vez); repetir não duplica nem muda a abertura. Aviso que não alcança o aluno, agendado, de outra organização ou com o portal
+        reduzido: 404, sem distinguir. Audita `portal_announcement.opened` na primeira abertura, sem título nem texto. Gestão e Professor: 403. Com termo pendente:
+        403 `TERM_PENDING`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: studentId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Aviso completo.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalAnnouncementDetail' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/announcements/read-all:
+    post:
+      summary: Marcar todos os avisos como lidos (RF-POR-06, RN-COM-08). Responsável e Aluno.
+      description: |
+        Limpa, para a conta, todos os avisos hoje não lidos de qualquer aluno ligado a ela; grava só uma marca de "limpo", nunca uma leitura (a gestão continua
+        vendo zero leitores). Aviso enviado depois volta a contar. Responde com quantos foram limpos; repetir responde 0. Audita `portal_announcement.read_all`
+        só se limpou algo. Com o portal reduzido, 0 sem gravar. Gestão e Professor: 403. Com termo pendente: 403 `TERM_PENDING`.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Quantos avisos foram limpos.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [dismissed]
+                properties:
+                  dismissed: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/shell:
+    get:
+      summary: Moldura do portal (RF-POR-01, RN-POR-08). Responsável e Aluno.
+      description: |
+        Marca da organização do vínculo (`logoUrl` é a URL temporária assinada, nulo sem logo), `reduced` (a conta tem aluno matriculado e nenhum com modalidade
+        ativa) e `unreadAnnouncements` (comunicados enviados e ainda não lidos por algum aluno ligado à conta e não limpos por "Marcar todos como lidos"; 0 no portal reduzido). Considera só os alunos
+        da conta da sessão. Gestão e Professor: 403. Com termo pendente que a conta deve aceitar: 403 `TERM_PENDING`. Não altera dado.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Moldura.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalShell' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/term:
+    get:
+      summary: Alunos com termo de matrícula pendente que a conta aceita (RN-MAT-11, RN-MAT-14, RN-POR-03). Responsável e Aluno.
+      description: |
+        Só alunos com matrícula, sem aceite ou com aceite anterior à última versão publicada com reaceite, que a sessão pode aceitar: o próprio aluno adulto
+        ou o responsável financeiro do menor. Cada item traz o texto vigente do termo e do uso de imagem. Sem pendência, lista vazia. Funciona com o termo
+        pendente. Gestão e Professor: 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Pendências.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PortalTermPending' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/students/{id}/term-acceptance:
+    post:
+      summary: Aceita o termo de matrícula, com a caixa opcional de uso de imagem (RN-MAT-11, RN-MAT-12). Responsável e Aluno.
+      description: |
+        Só o aluno adulto (conta dele) ou o responsável financeiro do menor. `version` é obrigatória (400) e deve ser a vigente (409 `TERMS_VERSION_CONFLICT`).
+        Grava conta, versão, data, hora e IP, sem nunca alterar nem apagar, e `term.accepted` (e `image-use.granted`) na auditoria, sem o texto. Repetir o aceite, ou
+        aceitar aluno sem matrícula ou sem pendência, responde 200 sem gravar. Aluno não ligado à conta ou de outra organização: 404; ligado mas que a conta não
+        aceita (responsável não financeiro): 403.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalTermAcceptInput' } } }
+      responses:
+        '201':
+          description: Aceite gravado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalTermAcceptance' } } }
+        '200':
+          description: Nada a gravar (já aceito, sem pendência ou sem matrícula).
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalTermAcceptance' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal/students/{id}/image-use:
+    get:
+      summary: Estado do uso de imagem do aluno (RN-MAT-12). Responsável e Aluno.
+      description: |
+        `granted` é verdadeiro quando o último registro é uma concessão de versão não anterior à última publicada com reaceite; `version` e `body` são os vigentes.
+        Funciona com o termo pendente. Mesmas regras de 404 e 403 do aceite.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Estado atual.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalImageUse' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: Concede ou revoga o uso de imagem (RN-MAT-12). Responsável e Aluno.
+      description: |
+        Cada concessão e cada revogação é um registro novo (o histórico fica). Conceder com `version` diferente da vigente: 409 `TERMS_VERSION_CONFLICT`. Pedir o
+        estado em que já está responde 200 sem gravar. Grava `image-use.granted` ou `image-use.revoked` na auditoria. Não bloqueia o portal.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalImageUseInput' } } }
+      responses:
+        '200':
+          description: Estado depois da chamada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalImageUse' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal/modality-confirmations:
+    get:
+      summary: Modalidades novas a confirmar (RN-MAT-13). Responsável e Aluno.
+      description: |
+        Modalidades ativas criadas depois do primeiro aceite do termo do aluno e ainda sem confirmação, dos alunos que a conta aceita (o próprio adulto ou o
+        responsável financeiro do menor), com plano e valor atual em centavos. Com termo pendente: 403 `TERM_PENDING`. Gestão e Professor: 403.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Pendências de confirmação.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ModalityConfirmationItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal/modality-confirmations/{modalityRowId}:
+    post:
+      summary: Confirma a modalidade nova com o plano e o valor mostrados (RN-MAT-13). Responsável e Aluno.
+      description: |
+        Grava conta, data, hora, IP, plano e valor e `modality.confirmed` na auditoria. Nunca altera matrícula, plano nem cobrança. Repetir responde 200 com a mesma
+        confirmação, sem nova linha. Modalidade inexistente, de aluno não ligado à conta ou de outra organização, ou que não está a confirmar (anterior ao aceite ou
+        encerrada): 404; de aluno ligado que a conta não aceita: 403; com termo pendente: 403 `TERM_PENDING`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: modalityRowId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '201':
+          description: Confirmação gravada.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ModalityConfirmed' } } }
+        '200':
+          description: Já confirmada antes.
+          content: { application/json: { schema: { $ref: '#/components/schemas/ModalityConfirmed' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/students/{id}/request-options:
+    get:
+      summary: O que o aluno pode pedir (RF-MAT-04). Responsável e Aluno.
+      description: |
+        Modalidades ativas do aluno com a turma e o plano atuais, as turmas e os planos que podem ser pedidos (ativos, da mesma unidade e modalidade, menos os atuais)
+        e `closureRequestedAt` quando há pedido de encerramento aberto; mais as ofertas (unidade e modalidade) que ele ainda não tem. Lê qualquer responsável ligado.
+        Aluno não ligado à conta ou de outra organização: 404. Com termo pendente: 403 `TERM_PENDING`. Gestão e Professor: 403.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Opções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestOptions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal/students/{id}/requests:
+    get:
+      summary: Pedidos do aluno (RF-MAT-04). Responsável e Aluno.
+      description: Do mais novo ao mais antigo, com a situação e a resposta da gestão. Mesmas regras de acesso de `request-options`.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Pedidos.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PortalRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    post:
+      summary: Pede troca de turma, nova modalidade, troca de plano ou encerramento (RF-MAT-04, RN-MAT-16). Aluno adulto e responsável financeiro.
+      description: |
+        Nunca altera matrícula, turma, plano, vencimento nem cobrança; só o pedido de encerramento deixa a modalidade "Encerramento solicitado" e sem nova cobrança
+        (RN-MAT-18). Dados inválidos (tipo, motivo fora da lista, turma ou plano de outra unidade ou modalidade, igual ao atual, modalidade já ativa, mensagem acima de 500
+        caracteres): 400 `VALIDATION_ERROR` com o campo, sem gravar. Pedido igual ainda aberto (mesma modalidade e tipo; ou troca de turma e de plano com encerramento aberto):
+        409 `REQUEST_ALREADY_OPEN`. Responsável não financeiro do menor: 403; aluno não ligado à conta ou de outra organização: 404; termo pendente: 403 `TERM_PENDING`.
+        Grava `portal_request.created` (sem o texto livre) e avisa a gestão (`PORTAL_REQUEST`; no encerramento também `CLOSURE_REQUEST`).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestInput' } } }
+      responses:
+        '201':
+          description: Pedido criado, aberto.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal-requests:
+    get:
+      summary: Lista de pedidos do portal da gestão (RF-MAT-04). Coordenador e Administrador.
+      description: |
+        Por padrão os abertos (`status=OPEN`; `ALL` traz todos), do mais antigo ao mais novo. O Coordenador vê todas as unidades; o Administrador só as do seu alcance
+        (RN-ALU-07), e `unitId` fora dele devolve lista vazia. Professor, Aluno e Responsável: 403. Valor inválido de `status` ou `kind`: 400.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [OPEN, APPROVED, REFUSED, EXPIRED, CLOSED, ALL], default: OPEN } }
+        - { name: kind, in: query, required: false, schema: { $ref: '#/components/schemas/PortalRequestKind' } }
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de pedidos.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestList' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /portal-requests/{id}:
+    get:
+      summary: Um pedido do portal (RF-MAT-04). Coordenador e Administrador.
+      description: "Pedido de outra organização ou de unidade fora do alcance do Administrador: 404. Professor e perfis de portal: 403."
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: O pedido.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /portal-requests/{id}/approve:
+    post:
+      summary: Aprova o pedido (RN-MAT-16, D4). Coordenador e Administrador.
+      description: |
+        Marca o pedido como `APPROVED` com mensagem opcional ao aluno (e-mail à conta que pediu); a matrícula só muda quando a gestão conclui o fluxo correspondente.
+        Pedido de encerramento não tem aprovação: 400 (a gestão encerra pelo fluxo da matrícula ou recusa). Pedido já decidido ou expirado: 409 `REQUEST_NOT_OPEN`.
+        Grava `portal_request.approved` sem o texto livre.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestDecision' } } }
+      responses:
+        '200':
+          description: Pedido aprovado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal-requests/{id}/refuse:
+    post:
+      summary: Recusa o pedido com mensagem ao aluno (RF-MAT-04). Coordenador e Administrador.
+      description: |
+        `message` obrigatória, de 3 a 500 caracteres (senão 400 e o pedido segue aberto); o pedido fica `REFUSED` e a mensagem vai por e-mail à conta que pediu. Recusar o
+        encerramento devolve a modalidade a Ativa (sem "Encerramento solicitado"). Pedido já decidido ou expirado: 409 `REQUEST_NOT_OPEN`. Grava `portal_request.refused`
+        sem o texto livre.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequestDecision' } } }
+      responses:
+        '200':
+          description: Pedido recusado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /portal/charges/{id}/pix-instructions:
+    get:
+      summary: Chave Pix da unidade para pagar uma cobrança aberta (RF-COB-05). Aluno adulto e responsável financeiro.
+      description: |
+        Devolve a chave Pix da unidade, o valor, o vencimento e o nome da unidade. Cobrança de aluno não ligado à conta ou de outra organização: 404; responsável não
+        financeiro do menor: 403; cobrança fora de aberta: 409 `CHARGE_NOT_PAYABLE`; unidade sem chave Pix: 422 `PIX_KEY_MISSING`. Com termo pendente: 403 `TERM_PENDING`.
+        Gestão e Professor: 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Instruções.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PixInstructions' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Unidade sem chave Pix (PIX_KEY_MISSING).', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /portal/charges/{id}/proof:
+    post:
+      summary: Envia o comprovante do Pix na chave e põe a cobrança em conferência (RF-COB-05, RN-COB-13). Aluno adulto e responsável financeiro.
+      description: |
+        Multipart com o campo `file` (JPG, PNG, WebP ou PDF, até 5 MB; o tipo é conferido pelo conteúdo, nunca pela extensão). Arquivo ausente, vazio, grande demais ou de outro tipo:
+        422 com o campo `file`, sem gravar. A cobrança passa de `OPEN` a `IN_REVIEW` (sem lembretes, fora de "Em atraso") e o arquivo fica na pasta da organização, sem link público.
+        Cobrança que não está aberta (inclusive já em conferência): 409 `CHARGE_NOT_PAYABLE`; duas chamadas simultâneas gravam um só comprovante. Unidade sem chave Pix: 422
+        `PIX_KEY_MISSING`. Aluno não ligado à conta ou de outra organização: 404; responsável não financeiro: 403; termo pendente: 403 `TERM_PENDING`.
+        Grava `payment_proof.sent` (sem a chave do arquivo) e avisa os Administradores da unidade (`PAYMENT_PROOF`).
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: Comprovante enviado, pendente.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofSent' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { description: 'Arquivo inválido (campo `file`) ou unidade sem chave Pix (PIX_KEY_MISSING). Nada é gravado.', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /payment-proofs:
+    get:
+      summary: Comprovantes pendentes de conferência (RF-COB-05). Coordenador e Administrador.
+      description: |
+        Só os pendentes, do mais antigo ao mais novo, com a imagem em URL assinada e temporária (`imageUrl`, nula se o arquivo sumiu do armazenamento). O Coordenador vê
+        todas as unidades; o Administrador só as do seu alcance, e `unitId` fora dele devolve lista vazia. Exige cobranças completo na unidade: Professor, Aluno e
+        Responsável: 403. Só lê; não audita.
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: unitId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/Size' }
+      responses:
+        '200':
+          description: Página de comprovantes.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofList' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /payment-proofs/{id}:
+    get:
+      summary: Um comprovante (RF-COB-05). Coordenador e Administrador.
+      description: "Comprovante de outra organização ou de unidade fora do alcance do Administrador: 404. Professor e perfis de portal: 403."
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: O comprovante.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProof' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payment-proofs/{id}/confirm:
+    post:
+      summary: Confirma o comprovante e registra o pagamento (RN-COB-13). Coordenador e Administrador.
+      description: |
+        Cria o pagamento da cobrança (meio `PIX_KEY`, origem `PORTAL`, valor da cobrança, data do envio do comprovante, lançado por quem confirmou) com recibo numerado,
+        marca a cobrança `PAID` e o comprovante `CONFIRMED`. `sendReceipt` (padrão falso) manda o recibo por e-mail depois de gravar. Comprovante já decidido: 409
+        `PROOF_NOT_PENDING`, sem segundo pagamento. Fora do alcance ou de outra organização: 404. Grava `payment_proof.confirmed` e `payment.registered`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofConfirmInput' } } }
+      responses:
+        '200':
+          description: Comprovante confirmado e o pagamento criado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofConfirmed' } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /payment-proofs/{id}/refuse:
+    post:
+      summary: Recusa o comprovante com motivo (RN-COB-13). Coordenador e Administrador.
+      description: |
+        `reason` obrigatório, de 3 a 200 caracteres (senão 400 e o comprovante segue pendente). O comprovante fica `REFUSED`, a cobrança volta a `OPEN` e os dias em conferência
+        (data local da unidade) somam em `block_pause_days`, adiando o bloqueio (RN-INA-02); o motivo vai por e-mail à conta que enviou. Comprovante já decidido: 409
+        `PROOF_NOT_PENDING`. Fora do alcance ou de outra organização: 404. Grava `payment_proof.refused`.
+      security: [{ sessionCookie: [], csrfHeader: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProofRefuseInput' } } }
+      responses:
+        '200':
+          description: Comprovante recusado.
+          content: { application/json: { schema: { $ref: '#/components/schemas/PaymentProof' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
 components:
   securitySchemes:
     sessionCookie:
@@ -3239,10 +3945,14 @@ components:
             - TEACHER_MODALITY_IN_USE
             - MODALITY_NOT_ACTIVE
             - REQUEST_ALREADY_OPEN
+            - REQUEST_NOT_OPEN
             - ALREADY_IN_CATALOG
             - AGE_RANGE_NAME_TAKEN
             - TERMS_VERSION_CONFLICT
+            - TERM_PENDING
             - CHARGE_NOT_PAYABLE
+            - PROOF_NOT_PENDING
+            - PIX_KEY_MISSING
             - ANNOUNCEMENT_ALREADY_SENT
             - ANNOUNCEMENT_DAILY_LIMIT
             - STAFF_LIMIT_REACHED
@@ -3428,7 +4138,7 @@ components:
         reaccept: { type: boolean }
     NotificationType:
       type: string
-      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE]
+      enum: [PAYMENT_RECEIVED, HIGH_BENEFIT, STUDENT_MAJORITY, EMAIL_PROBLEM, INVITE_PENDING, CLOSURE_REQUEST, MP_DISCONNECTED, SUBSCRIPTION_OVERDUE, PORTAL_REQUEST, PAYMENT_PROOF]
     Notification:
       type: object
       required: [id, type, group, createdAt, readAt, refType, refId, params]
@@ -4504,8 +5214,8 @@ components:
         confirmDuplicate: { type: boolean, description: Confirma a edição apesar do aviso STUDENT_POSSIBLE_DUPLICATE. }
     StudentSeal:
       type: string
-      description: "Selo calculado (RF-ALU-02). `NEW` vale até 30 dias da matrícula mais recente (`enrolledAt` ou `reopenedAt`), no fuso da unidade de cadastro. `SCHOLARSHIP` (Bolsista, RF-BEN-02): benefício `PERCENT` ativo e dentro da validade numa modalidade ativa. Termo pendente entra com o termo."
-      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW, SCHOLARSHIP]
+      description: "Selo calculado (RF-ALU-02). `NEW` vale até 30 dias da matrícula mais recente (`enrolledAt` ou `reopenedAt`), no fuso da unidade de cadastro. `SCHOLARSHIP` (Bolsista, RF-BEN-02): benefício `PERCENT` ativo e dentro da validade numa modalidade ativa. `TERM_PENDING` (Termo pendente, RN-MAT-11): aluno com matrícula sem aceite da versão exigida do termo (última versão aceita menor que a maior publicada com reaccept); sai ao aceitar no portal."
+      enum: [INCOMPLETE_REGISTRATION, EMAIL_PROBLEM, BIRTHDAY_TODAY, NEW, SCHOLARSHIP, TERM_PENDING]
     StudentRow:
       type: object
       required: [id, name, photoUrl, birthDate, age, minor, ageRange, registeredUnit, createdAt, seals, status, financialStatus, modalities]
@@ -4959,13 +5669,14 @@ components:
           description: Cobranças em aberto da modalidade (RN-MAT-17), da mais antiga para a mais nova.
           items:
             type: object
-            required: [id, referenceMonth, dueOn, amountCents, status]
+            required: [id, referenceMonth, dueOn, amountCents, status, afterRequest]
             properties:
               id: { type: string, format: uuid }
               referenceMonth: { type: string, format: date, nullable: true }
               dueOn: { type: string, format: date }
               amountCents: { type: integer, format: int64 }
               status: { $ref: '#/components/schemas/ChargeSituation' }
+              afterRequest: { type: boolean, description: "Verdadeiro quando há pedido de encerramento aberto e o vencimento é depois da data dele (RN-MAT-18); o servidor cancela estas ao encerrar." }
     EnrollmentNamed:
       type: object
       required: [id, name]
@@ -4974,7 +5685,7 @@ components:
         name: { type: string }
     EnrollmentModality:
       type: object
-      required: [id, unit, modality, primaryClass, otherClasses, plan, nextPlan, dueDay, status, startedAt, endedAt, canEdit]
+      required: [id, unit, modality, primaryClass, otherClasses, plan, nextPlan, dueDay, status, startedAt, endedAt, canEdit, closureRequestedAt]
       properties:
         id: { type: string, format: uuid }
         unit: { $ref: '#/components/schemas/EnrollmentNamed' }
@@ -4988,6 +5699,7 @@ components:
         startedAt: { type: string, format: date-time }
         endedAt: { type: string, format: date-time, nullable: true }
         canEdit: { type: boolean }
+        closureRequestedAt: { type: string, format: date-time, nullable: true, description: "Instante do pedido de encerramento aberto (RN-MAT-18); a modalidade aparece como Encerramento solicitado." }
     Enrollment:
       type: object
       required: [id, status, enrolledAt, reopenedAt, modalities]
@@ -5244,6 +5956,691 @@ components:
         name: { type: string }
         photoUrl: { type: string, nullable: true }
         self: { type: boolean, description: Cartão do próprio aluno ("Você"). }
+    PortalHomeRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    PortalHomeStudent:
+      type: object
+      required: [id, name, photoUrl, self, openCents]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        photoUrl: { type: string, nullable: true }
+        self: { type: boolean }
+        openCents: { type: integer, format: int64, minimum: 0, description: 'Cobranças abertas e em conferência que a conta paga; 0 se não é a pagadora.' }
+    PortalHomeCharge:
+      type: object
+      required: [id, studentId, description, referenceMonth, dueOn, amountCents, situation, canPay, modality, unit]
+      properties:
+        id: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        description: { type: string, nullable: true }
+        referenceMonth: { type: string, format: date, nullable: true }
+        dueOn: { type: string, format: date }
+        amountCents: { type: integer, format: int64, minimum: 0 }
+        situation: { type: string, enum: [OVERDUE, DUE_TODAY, DUE_SOON, IN_REVIEW] }
+        canPay: { type: boolean, description: 'Aberta e a conta é quem paga; falso em conferência.' }
+        modality: { allOf: [{ $ref: '#/components/schemas/PortalHomeRef' }], nullable: true }
+        unit: { $ref: '#/components/schemas/PortalHomeRef' }
+    PortalHomeLesson:
+      type: object
+      required: [id, date, startsAt, endsAt, title, status, cancelReason, changed, adhoc, modality, unit]
+      properties:
+        id: { type: string, format: uuid }
+        date: { type: string, format: date }
+        startsAt: { type: string, example: '19:00' }
+        endsAt: { type: string, example: '20:00' }
+        title: { type: string }
+        status: { type: string, enum: [SCHEDULED, CANCELLED] }
+        cancelReason: { type: string, nullable: true }
+        changed: { type: boolean, description: Com professor substituto ou alterada à mão. }
+        adhoc: { type: boolean }
+        modality: { $ref: '#/components/schemas/PortalHomeRef' }
+        unit: { $ref: '#/components/schemas/PortalHomeRef' }
+    PortalHomeNotice:
+      type: object
+      required: [id, title, sentAt, pinned, unread, authorName]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        sentAt: { type: string, format: date-time }
+        pinned: { type: boolean }
+        unread: { type: boolean }
+        authorName: { type: string, nullable: true }
+    PortalHomeBelt:
+      type: object
+      required: [modality, levelName, color, secondaryColor, degree, achievedOn, isNew]
+      properties:
+        modality: { $ref: '#/components/schemas/PortalHomeRef' }
+        levelName: { type: string }
+        color: { type: string }
+        secondaryColor: { type: string, nullable: true }
+        degree: { type: integer, minimum: 0 }
+        achievedOn: { type: string, format: date, nullable: true }
+        isNew: { type: boolean, description: 'Registro que não é de origem, criado há 14 dias ou menos.' }
+    PortalHome:
+      type: object
+      required: [reduced, students, familyOpenCents, selectedStudentId, charges, lessons, announcements, belts]
+      properties:
+        reduced: { type: boolean }
+        students: { type: array, items: { $ref: '#/components/schemas/PortalHomeStudent' } }
+        familyOpenCents: { type: integer, format: int64, minimum: 0 }
+        selectedStudentId: { type: string, format: uuid, nullable: true }
+        charges:
+          type: object
+          required: [items, nextDueOn]
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PortalHomeCharge' } }
+            nextDueOn: { type: string, format: date, nullable: true }
+        lessons: { type: array, maxItems: 3, items: { $ref: '#/components/schemas/PortalHomeLesson' } }
+        announcements:
+          type: object
+          required: [unreadCount, items]
+          properties:
+            unreadCount: { type: integer, minimum: 0 }
+            items: { type: array, maxItems: 5, items: { $ref: '#/components/schemas/PortalHomeNotice' } }
+        belts: { type: array, items: { $ref: '#/components/schemas/PortalHomeBelt' } }
+    PortalFinance:
+      type: object
+      required: [reduced, students, selectedStudentId, scope, year, years, familyOpenCents, open, history]
+      properties:
+        reduced: { type: boolean }
+        students: { type: array, items: { $ref: '#/components/schemas/PortalHomeStudent' } }
+        selectedStudentId: { type: string, format: uuid, nullable: true }
+        scope: { type: string, enum: [STUDENT, FAMILY] }
+        year: { type: integer, description: Ano do histórico. }
+        years: { type: array, items: { type: integer }, description: 'Anos com histórico, do mais novo ao mais antigo.' }
+        familyOpenCents: { type: integer, format: int64, minimum: 0 }
+        open:
+          type: array
+          items:
+            type: object
+            required: [id, studentId, studentName, type, description, referenceLabel, referenceMonth, dueOn, situation, amountCents, planCents, benefitCents, canPay, modality, unit]
+            properties:
+              id: { type: string, format: uuid }
+              studentId: { type: string, format: uuid }
+              studentName: { type: string }
+              type: { type: string, enum: [MONTHLY, ENROLLMENT_FEE, ONE_OFF, INSTALLMENT, READJUSTMENT_DIFF] }
+              description: { type: string, nullable: true }
+              referenceLabel: { type: string }
+              referenceMonth: { type: string, format: date, nullable: true }
+              dueOn: { type: string, format: date }
+              situation: { type: string, enum: [OVERDUE, DUE_TODAY, DUE_SOON, PENDING, IN_REVIEW] }
+              amountCents: { type: integer, format: int64, minimum: 0, description: Valor final. }
+              planCents: { type: integer, format: int64, minimum: 0, description: Valor do plano guardado na cobrança. }
+              benefitCents: { type: integer, format: int64, minimum: 0, description: Benefício guardado na cobrança. }
+              canPay: { type: boolean, description: 'Aberta; falso em conferência.' }
+              modality: { allOf: [{ $ref: '#/components/schemas/PortalHomeRef' }], nullable: true }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
+        history:
+          type: array
+          items:
+            type: object
+            required: [id, referenceLabel, dueOn, amountCents, status, paidAt, method, receipt]
+            properties:
+              id: { type: string, format: uuid }
+              referenceLabel: { type: string }
+              dueOn: { type: string, format: date }
+              amountCents: { type: integer, format: int64, minimum: 0 }
+              status: { type: string, enum: [PAID, REFUNDED, CANCELED, RENEGOTIATED] }
+              paidAt: { type: string, format: date-time, nullable: true }
+              method: { type: string, nullable: true, enum: [PIX_MP, CREDIT_CARD, DEBIT_CARD, BOLETO, PIX_KEY, CASH, CARD_MACHINE, TRANSFER] }
+              receipt:
+                nullable: true
+                type: object
+                required: [number, code]
+                properties:
+                  number: { type: integer }
+                  code: { type: string }
+    PixBatchInstructions:
+      type: object
+      required: [pixKey, totalCents, unit, charges]
+      properties:
+        pixKey: { type: string }
+        totalCents: { type: integer, format: int64, minimum: 0 }
+        unit: { type: string }
+        charges:
+          type: array
+          items:
+            type: object
+            required: [chargeId, studentName, amountCents, dueOn]
+            properties:
+              chargeId: { type: string, format: uuid }
+              studentName: { type: string }
+              amountCents: { type: integer, format: int64 }
+              dueOn: { type: string, format: date }
+    PortalCard:
+      type: object
+      required: [organization, student, students, status, today, generatedAt, timezone, modalities]
+      properties:
+        organization:
+          type: object
+          required: [name, color, logoUrl]
+          properties:
+            name: { type: string }
+            color: { type: string, nullable: true }
+            logoUrl: { type: string, nullable: true }
+        student:
+          type: object
+          required: [id, name, photoUrl]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            photoUrl: { type: string, nullable: true }
+        students:
+          type: array
+          items:
+            type: object
+            required: [id, name, self]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              self: { type: boolean }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        today: { type: string, format: date, description: Data do dia no fuso da unidade de cadastro. }
+        generatedAt: { type: string, format: date-time }
+        timezone: { type: string, example: America/Sao_Paulo }
+        modalities:
+          type: array
+          items:
+            type: object
+            required: [modality, unit, belt]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
+              belt:
+                type: object
+                nullable: true
+                required: [levelName, color, secondaryColor, degree]
+                properties:
+                  levelName: { type: string }
+                  color: { type: string }
+                  secondaryColor: { type: string, nullable: true }
+                  degree: { type: integer, minimum: 0 }
+    PortalInfoPersonal:
+      type: object
+      required: [name, birthDate, maskedCpf, photoUrl, phone, email, address, emergency, canEdit, editableFields]
+      properties:
+        name: { type: string }
+        birthDate: { type: string, format: date }
+        maskedCpf: { type: string, nullable: true, example: '***.***.***-25' }
+        photoUrl: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        address:
+          type: object
+          required: [postalCode, street, number, complement, district, city, state]
+          properties:
+            postalCode: { type: string }
+            street: { type: string }
+            number: { type: string }
+            complement: { type: string, nullable: true }
+            district: { type: string }
+            city: { type: string }
+            state: { type: string }
+        emergency:
+          type: object
+          required: [name, relationship, phone]
+          properties:
+            name: { type: string, nullable: true }
+            relationship: { type: string, nullable: true }
+            phone: { type: string, nullable: true }
+        canEdit: { type: boolean }
+        editableFields:
+          type: array
+          items: { type: string }
+    PortalInfoUnit:
+      type: object
+      required: [id, name, phone, whatsapp, email]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string, nullable: true }
+        whatsapp: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+    PortalInfoClass:
+      type: object
+      required: [clazz, teacherName, schedule]
+      properties:
+        clazz: { $ref: '#/components/schemas/PortalHomeRef' }
+        teacherName: { type: string }
+        schedule:
+          type: array
+          items:
+            type: object
+            required: [weekday, startsAt, endsAt]
+            properties:
+              weekday: { type: integer, minimum: 1, maximum: 7, description: 1 é segunda-feira. }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+    PortalInfoLevel:
+      type: object
+      required: [id, levelName, color, secondaryColor, degree, achievedOn, origin]
+      properties:
+        id: { type: string, format: uuid }
+        levelName: { type: string }
+        color: { type: string }
+        secondaryColor: { type: string, nullable: true }
+        degree: { type: integer, minimum: 0 }
+        achievedOn: { type: string, format: date, nullable: true }
+        origin: { type: boolean, description: Registro de origem (faixa com que o aluno chegou). }
+    PortalInfo:
+      type: object
+      required: [reduced, students, selectedStudentId, personal, unitContacts, trainings, plans, graduation, emailAnnouncements, terms]
+      properties:
+        reduced: { type: boolean }
+        students:
+          type: array
+          items: { $ref: '#/components/schemas/PortalStudentCard' }
+        selectedStudentId: { type: string, format: uuid }
+        personal: { $ref: '#/components/schemas/PortalInfoPersonal' }
+        unitContacts:
+          type: array
+          items: { $ref: '#/components/schemas/PortalInfoUnit' }
+        trainings:
+          type: array
+          items:
+            type: object
+            required: [modality, unit, mainClass, otherClasses]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              unit: { $ref: '#/components/schemas/PortalInfoUnit' }
+              mainClass: { $ref: '#/components/schemas/PortalInfoClass' }
+              otherClasses:
+                type: array
+                items: { $ref: '#/components/schemas/PortalInfoClass' }
+        plans:
+          type: array
+          items:
+            type: object
+            required: [modality, plan, planCents, benefit, benefitCents, monthlyCents, dueDay, nextPlan]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              plan: { $ref: '#/components/schemas/PortalHomeRef' }
+              planCents: { type: integer, format: int64 }
+              benefit:
+                type: object
+                nullable: true
+                required: [type, value, validUntil]
+                properties:
+                  type: { type: string, enum: [PERCENT, AMOUNT] }
+                  value: { type: integer, format: int64 }
+                  validUntil: { type: string, format: date, nullable: true }
+              benefitCents: { type: integer, format: int64, description: Quanto o benefício abate hoje; 0 sem benefício vigente. }
+              monthlyCents: { type: integer, format: int64 }
+              dueDay: { type: integer, minimum: 1, maximum: 28 }
+              nextPlan:
+                type: object
+                nullable: true
+                required: [id, name, valueCents]
+                properties:
+                  id: { type: string, format: uuid }
+                  name: { type: string }
+                  valueCents: { type: integer, format: int64 }
+        graduation:
+          type: array
+          items:
+            type: object
+            required: [modality, belt, history]
+            properties:
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              belt:
+                allOf: [{ $ref: '#/components/schemas/PortalInfoLevel' }]
+                nullable: true
+              history:
+                type: array
+                items: { $ref: '#/components/schemas/PortalInfoLevel' }
+        emailAnnouncements: { type: boolean }
+        terms:
+          type: object
+          required: [enrollment, imageUse]
+          properties:
+            enrollment:
+              type: object
+              nullable: true
+              required: [version, acceptedAt]
+              properties:
+                version: { type: integer }
+                acceptedAt: { type: string, format: date-time }
+            imageUse:
+              type: object
+              required: [granted, version, at]
+              properties:
+                granted: { type: boolean }
+                version: { type: integer, nullable: true }
+                at: { type: string, format: date-time, nullable: true }
+    PortalSchedule:
+      type: object
+      required: [reduced, students, studentId, scope, weekStart, weekEnd, today, timezone, lessons, noClassDays]
+      properties:
+        reduced: { type: boolean }
+        students:
+          type: array
+          items:
+            type: object
+            required: [id, name, self]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              self: { type: boolean }
+        studentId: { type: string, format: uuid }
+        scope: { type: string, enum: [ALL, MAIN] }
+        weekStart: { type: string, format: date }
+        weekEnd: { type: string, format: date }
+        today: { type: string, format: date, description: Data do dia no fuso da unidade de cadastro. }
+        timezone: { type: string, example: America/Sao_Paulo }
+        lessons:
+          type: array
+          items:
+            type: object
+            required: [id, date, startsAt, endsAt, title, kind, status, cancelReasonCode, cancelReason, changed, originalDate, originalStartsAt, substitute, past, noticeId, modality, unit, teacherName]
+            properties:
+              id: { type: string, format: uuid }
+              date: { type: string, format: date }
+              startsAt: { type: string, example: '19:00' }
+              endsAt: { type: string, example: '20:00' }
+              title: { type: string }
+              kind: { type: string, enum: [MAIN, OTHER, ADHOC] }
+              status: { type: string, enum: [SCHEDULED, CANCELLED] }
+              cancelReasonCode: { type: string, nullable: true, enum: [TEACHER_UNAVAILABLE, HOLIDAY, ACADEMY_EVENT, OTHER] }
+              cancelReason: { type: string, nullable: true }
+              changed: { type: boolean, description: Com professor substituto ou alterada à mão. }
+              originalDate: { type: string, format: date, nullable: true }
+              originalStartsAt: { type: string, nullable: true, example: '19:00' }
+              substitute: { type: boolean }
+              past: { type: boolean, description: Já terminou pelo relógio do fuso da unidade da aula. }
+              noticeId: { type: string, format: uuid, nullable: true }
+              modality: { $ref: '#/components/schemas/PortalHomeRef' }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
+              teacherName: { type: string, description: 'Nome do professor que dá a aula (o substituto, quando há); nada mais do professor.' }
+        noClassDays:
+          type: array
+          items:
+            type: object
+            required: [date, reason, unit]
+            properties:
+              date: { type: string, format: date }
+              reason: { type: string }
+              unit: { $ref: '#/components/schemas/PortalHomeRef' }
+    PortalAnnouncementItem:
+      type: object
+      required: [id, title, type, sentAt, pinned, unread, destination, author]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        type: { type: string, enum: [CANCELED_CLASS, TEACHER_CHANGE, SCHEDULE_CHANGE, NO_CLASS_DAY, GENERAL] }
+        sentAt: { type: string, format: date-time }
+        pinned: { type: boolean }
+        unread: { type: boolean }
+        destination:
+          type: object
+          required: [kind, names]
+          properties:
+            kind: { type: string, enum: [ORGANIZATION, UNIT, MODALITY, CLASS, CLASSES] }
+            names: { type: array, items: { type: string }, description: 'Unidade, modalidade, turma ou turmas; vazio para a organização.' }
+        author: { type: string, description: Nome da conta que criou o comunicado. }
+    PortalAnnouncementDetail:
+      allOf:
+        - $ref: '#/components/schemas/PortalAnnouncementItem'
+        - type: object
+          required: [body, imageUrl]
+          properties:
+            body: { type: string, description: Texto puro com quebras de linha; nunca HTML. }
+            imageUrl: { type: string, nullable: true, description: URL assinada e temporária da imagem. }
+    PortalAnnouncements:
+      type: object
+      required: [reduced, students, studentId, filter, modalityId, modalities, unreadCount, items, page, size, total]
+      properties:
+        reduced: { type: boolean }
+        students:
+          type: array
+          items:
+            type: object
+            required: [id, name, self]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              self: { type: boolean }
+        studentId: { type: string, format: uuid }
+        filter: { type: string, enum: [ALL, UNREAD, MODALITY] }
+        modalityId: { type: string, format: uuid, nullable: true }
+        modalities: { type: array, items: { $ref: '#/components/schemas/PortalHomeRef' } }
+        unreadCount: { type: integer, minimum: 0, description: 'Não lidos do aluno, independente do filtro.' }
+        items: { type: array, items: { $ref: '#/components/schemas/PortalAnnouncementItem' } }
+        page: { type: integer, minimum: 1 }
+        size: { type: integer, minimum: 1, maximum: 50 }
+        total: { type: integer, minimum: 0 }
+    PortalShell:
+      type: object
+      required: [organization, reduced, unreadAnnouncements]
+      properties:
+        organization:
+          type: object
+          required: [name, color, logoUrl]
+          properties:
+            name: { type: string }
+            color: { type: string, nullable: true }
+            logoUrl: { type: string, nullable: true }
+        reduced: { type: boolean }
+        unreadAnnouncements: { type: integer, minimum: 0 }
+    PortalTermText:
+      type: object
+      required: [version, body]
+      properties:
+        version: { type: integer, minimum: 0 }
+        body: { type: string, description: Texto puro com quebras de linha. }
+    PortalImageUse:
+      type: object
+      required: [version, body, granted]
+      properties:
+        version: { type: integer, minimum: 0, description: Versão vigente do termo de uso de imagem. }
+        body: { type: string }
+        granted: { type: boolean, description: 'Verdadeiro quando o último registro é uma concessão de versão não anterior à última publicada com reaceite.' }
+    PortalTermPending:
+      type: object
+      required: [id, name, term, imageUse]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        term: { $ref: '#/components/schemas/PortalTermText' }
+        imageUse: { $ref: '#/components/schemas/PortalImageUse' }
+    PortalTermAcceptInput:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 0, description: Versão vigente do termo de matrícula. }
+        imageUse: { type: boolean, description: 'Caixa opcional do uso de imagem. Ausente ou falso, não concede.' }
+    PortalTermAcceptance:
+      type: object
+      required: [studentId, version, imageUse]
+      properties:
+        studentId: { type: string, format: uuid }
+        version: { type: integer, minimum: 0 }
+        imageUse: { type: boolean, description: Uso de imagem concedido depois da chamada. }
+    PortalImageUseInput:
+      type: object
+      required: [granted]
+      properties:
+        granted: { type: boolean }
+        version: { type: integer, minimum: 0, description: 'Versão vigente. Só confere na concessão e, ausente, vale a vigente.' }
+    ModalityConfirmationItem:
+      type: object
+      required: [modalityRowId, studentId, studentName, modality, unit, planId, plan, planValueCents]
+      properties:
+        modalityRowId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        modality: { type: string }
+        unit: { type: string }
+        planId: { type: string, format: uuid }
+        plan: { type: string }
+        planValueCents: { type: integer, format: int64, minimum: 0, description: 'Valor atual do plano em centavos, sem benefício.' }
+    ModalityConfirmed:
+      type: object
+      required: [modalityRowId, studentId, planId, planValueCents]
+      properties:
+        modalityRowId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        planId: { type: string, format: uuid }
+        planValueCents: { type: integer, format: int64, minimum: 0 }
+    PortalRequestKind:
+      type: string
+      enum: [CLASS_CHANGE, NEW_MODALITY, PLAN_CHANGE, CLOSURE]
+    PortalRequestStatus:
+      type: string
+      enum: [OPEN, APPROVED, REFUSED, EXPIRED, CLOSED]
+    PortalRequestInput:
+      type: object
+      required: [kind]
+      description: |
+        Campos por tipo. `CLASS_CHANGE`: `modalityRowId` e `targetClassId`. `PLAN_CHANGE`: `modalityRowId` e `targetPlanId`. `NEW_MODALITY`: `targetUnitId` e
+        `targetModalityId`. `CLOSURE`: `modalityRowId` e `reason`. Os campos que não são do tipo são ignorados.
+      properties:
+        kind: { $ref: '#/components/schemas/PortalRequestKind' }
+        modalityRowId: { type: string, format: uuid }
+        targetClassId: { type: string, format: uuid }
+        targetPlanId: { type: string, format: uuid }
+        targetUnitId: { type: string, format: uuid }
+        targetModalityId: { type: string, format: uuid }
+        reason: { type: string, enum: [CITY_CHANGE, FINANCIAL, SCHEDULE, INJURY, DISSATISFACTION, OTHER], description: Motivo do encerramento (RN-MAT-17). }
+        note: { type: string, maxLength: 500, description: "Mensagem opcional do aluno; texto puro, nunca vai para auditoria nem notificação." }
+    PortalRequest:
+      type: object
+      required: [id, kind, status, studentId, studentName, unitId, unit, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { $ref: '#/components/schemas/PortalRequestKind' }
+        status: { $ref: '#/components/schemas/PortalRequestStatus' }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        modalityRowId: { type: string, nullable: true, format: uuid }
+        modality: { type: string, nullable: true }
+        targetClassId: { type: string, nullable: true, format: uuid }
+        targetClass: { type: string, nullable: true }
+        targetPlanId: { type: string, nullable: true, format: uuid }
+        targetPlan: { type: string, nullable: true }
+        targetModalityId: { type: string, nullable: true, format: uuid }
+        targetUnitId: { type: string, nullable: true, format: uuid }
+        targetUnit: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
+        note: { type: string, nullable: true }
+        response: { type: string, nullable: true, description: Mensagem da gestão ao decidir. }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: string, nullable: true, format: date-time }
+    PortalRequestList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PortalRequest' } }
+    PixInstructions:
+      type: object
+      required: [chargeId, pixKey, amountCents, dueOn, unit]
+      properties:
+        chargeId: { type: string, format: uuid }
+        pixKey: { type: string }
+        amountCents: { type: integer, format: int64 }
+        dueOn: { type: string, format: date }
+        unit: { type: string }
+    PaymentProofSent:
+      type: object
+      required: [id, chargeId, status, sentAt]
+      properties:
+        id: { type: string, format: uuid }
+        chargeId: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING] }
+        sentAt: { type: string, format: date-time }
+    PaymentProof:
+      type: object
+      required: [id, chargeId, studentId, studentName, studentPhotoUrl, unitId, unit, reference, amountCents, dueOn, sentAt, status, contentType, imageUrl, refusalReason, decidedAt]
+      properties:
+        id: { type: string, format: uuid }
+        chargeId: { type: string, format: uuid }
+        studentId: { type: string, format: uuid }
+        studentName: { type: string }
+        studentPhotoUrl: { type: string, nullable: true }
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        reference: { type: string }
+        amountCents: { type: integer, format: int64 }
+        dueOn: { type: string, format: date }
+        sentAt: { type: string, format: date-time }
+        status: { type: string, enum: [PENDING, CONFIRMED, REFUSED] }
+        contentType: { type: string }
+        imageUrl: { type: string, nullable: true, description: URL assinada e temporária; nula se o arquivo não está no armazenamento. }
+        refusalReason: { type: string, nullable: true }
+        decidedAt: { type: string, nullable: true, format: date-time }
+    PaymentProofList:
+      allOf:
+        - $ref: '#/components/schemas/Page'
+        - type: object
+          properties:
+            items: { type: array, items: { $ref: '#/components/schemas/PaymentProof' } }
+    PaymentProofConfirmInput:
+      type: object
+      properties:
+        sendReceipt: { type: boolean, default: false }
+    PaymentProofRefuseInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3, maxLength: 200 }
+    PaymentProofConfirmed:
+      type: object
+      required: [proof, payment]
+      properties:
+        proof: { $ref: '#/components/schemas/PaymentProof' }
+        payment: { $ref: '#/components/schemas/Payment' }
+    PortalRequestChoice:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    PortalRequestPlanChoice:
+      type: object
+      required: [id, name, valueCents]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        valueCents: { type: integer, format: int64, minimum: 0 }
+    PortalRequestModality:
+      type: object
+      required: [modalityRowId, modalityId, modality, unitId, unit, currentClass, currentPlan, classes, plans]
+      properties:
+        modalityRowId: { type: string, format: uuid }
+        modalityId: { type: string, format: uuid }
+        modality: { type: string }
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        currentClass: { $ref: '#/components/schemas/PortalRequestChoice' }
+        currentPlan: { $ref: '#/components/schemas/PortalRequestChoice' }
+        closureRequestedAt: { type: string, nullable: true, format: date-time, description: 'Preenchido enquanto há pedido de encerramento aberto ("Encerramento solicitado").' }
+        classes: { type: array, items: { $ref: '#/components/schemas/PortalRequestChoice' }, description: "Turmas ativas da mesma unidade e modalidade, menos a atual." }
+        plans: { type: array, items: { $ref: '#/components/schemas/PortalRequestPlanChoice' }, description: "Planos ativos da mesma unidade e modalidade, menos o atual." }
+    PortalRequestOffer:
+      type: object
+      required: [unitId, unit, modalityId, modality]
+      properties:
+        unitId: { type: string, format: uuid }
+        unit: { type: string }
+        modalityId: { type: string, format: uuid }
+        modality: { type: string }
+    PortalRequestOptions:
+      type: object
+      required: [modalities, offers]
+      properties:
+        modalities: { type: array, items: { $ref: '#/components/schemas/PortalRequestModality' } }
+        offers: { type: array, items: { $ref: '#/components/schemas/PortalRequestOffer' }, description: "Unidade e modalidade ofertadas que o aluno ainda não tem ativa." }
+    PortalRequestDecision:
+      type: object
+      properties:
+        message: { type: string, maxLength: 500, description: "Mensagem ao aluno. Obrigatória (3 a 500 caracteres) ao recusar; opcional ao aprovar." }
   responses:
     BadRequest:
       description: Dados inválidos (VALIDATION_ERROR) ou requisição ilegível (MALFORMED_REQUEST).

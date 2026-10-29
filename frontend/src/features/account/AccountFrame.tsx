@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { useSession } from "@/features/auth/SessionProvider";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
+import { PortalLayout } from "@/features/portal/PortalLayout";
 import { ThemeToggle } from "@/theme/ThemeToggle";
 
 const MANAGEMENT = ["COORDINATOR", "ADMINISTRATOR", "TEACHER"];
@@ -18,16 +19,20 @@ export function AccountLink() {
   );
 }
 
-/** Moldura da gestão (com menu) ou do portal (só cabeçalho), conforme o vínculo ativo. */
-export function AccountFrame({ children }: { children: ReactNode }) {
+/**
+ * Moldura da gestão (com menu) ou do portal (barra e abas, #88), conforme o vínculo ativo. `plain`: no portal, só o cabeçalho simples, para a tela
+ * do aceite do termo, que abre antes de a moldura poder ler a rota do portal (TERM_PENDING).
+ */
+export function AccountFrame({ children, plain = false }: { children: ReactNode; plain?: boolean }) {
   const { t } = useTranslation();
   const { state } = useSession();
   const session = state.status === "ready" ? state.session : undefined;
   const role = session?.links.find((l) => l.id === session.activeLinkId)?.role ?? "";
   if (MANAGEMENT.includes(role)) return <ManagementLayout activeId="account">{children}</ManagementLayout>;
+  if (!plain) return <PortalLayout>{children}</PortalLayout>;
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
         <Link to="/" className="text-lg font-semibold">
           {t("app.name")}
         </Link>

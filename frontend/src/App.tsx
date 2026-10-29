@@ -1,12 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { Route, Routes } from "react-router";
+import { Link, Route, Routes } from "react-router";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { AreaUnavailablePage } from "@/features/auth/AreaUnavailablePage";
 import { InvitePage } from "@/features/auth/InvitePage";
 import { PublicReceiptPage } from "@/features/payments/PublicReceiptPage";
 import { ResetPasswordPage } from "@/features/auth/ResetPasswordPage";
-import { ChooseLinkTrigger } from "@/features/auth/ChooseLinkTrigger";
 import { RequireSession } from "@/features/auth/RequireSession";
 import { RequireTwoFactor, TWO_FACTOR_REQUIRED_PATH } from "@/features/auth/RequireTwoFactor";
 import { TwoFactorRequiredPage } from "@/features/auth/TwoFactorRequiredPage";
@@ -22,11 +21,13 @@ import { UnitSettingsPage } from "@/features/units/UnitSettingsPage";
 import { UnitsPage } from "@/features/units/UnitsPage";
 import { BirthdaysCard } from "@/features/students/BirthdaysCard";
 import { EnrollmentWizardPage } from "@/features/students/enrollment-wizard/EnrollmentWizardPage";
+import { PortalRequestsPage } from "@/features/portal-requests/PortalRequestsPage";
 import { StudentsPage } from "@/features/students/StudentsPage";
 import { ChargesPage } from "@/features/charges/ChargesPage";
 import { ChargePreviewPage } from "@/features/charges/ChargePreviewPage";
 import { DailyReceiptsPage } from "@/features/charges/DailyReceiptsPage";
 import { OverduePage } from "@/features/charges/OverduePage";
+import { PaymentProofsPage } from "@/features/payment-proofs/PaymentProofsPage";
 import { AnnouncementsPage } from "@/features/announcements/AnnouncementsPage";
 import { NewAnnouncementPage } from "@/features/announcements/NewAnnouncementPage";
 import { TeachersPage } from "@/features/teachers/TeachersPage";
@@ -40,12 +41,22 @@ import { AgendaPage } from "@/features/agenda/AgendaPage";
 import { LessonPanelPage } from "@/features/agenda/LessonPanelPage";
 import { NoClassDaysPage } from "@/features/noClassDays/NoClassDaysPage";
 import { UsersPage } from "@/features/users/UsersPage";
-import { AccountLink } from "@/features/account/AccountFrame";
 import { AccountPage } from "@/features/account/AccountPage";
 import { ConfirmEmailPage } from "@/features/account/ConfirmEmailPage";
+import { ModalityConfirmations } from "@/features/portal/ModalityConfirmations";
+import { PortalRequestsPage as PortalOwnRequestsPage } from "@/features/portal/PortalRequestsPage";
+import { PortalAgendaPage } from "@/features/portal/PortalAgendaPage";
+import { PortalAnnouncementsPage } from "@/features/portal/PortalAnnouncementsPage";
+import { PortalCardPage } from "@/features/portal/PortalCardPage";
+import { PortalFinancePage } from "@/features/portal/PortalFinancePage";
+import { PortalHomePage } from "@/features/portal/PortalHomePage";
+import { PortalLayout } from "@/features/portal/PortalLayout";
+import { PortalInfoPage } from "@/features/portal/PortalInfoPage";
+import { RequireFullPortal } from "@/features/portal/RequireFullPortal";
+import { PortalTermPage } from "@/features/portal/PortalTermPage";
+import { RequirePortalTerm } from "@/features/portal/RequirePortalTerm";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
-import { ThemeToggle } from "@/theme/ThemeToggle";
 
 function Welcome() {
   const { t } = useTranslation();
@@ -73,19 +84,13 @@ function Home() {
     );
   }
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between gap-2 border-b px-4 py-2">
-        <span className="text-lg font-semibold">{t("app.name")}</span>
-        <div className="flex items-center gap-2">
-          <AccountLink />
-          <ChooseLinkTrigger />
-          <ThemeToggle />
-        </div>
-      </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        <Welcome />
-      </main>
-    </div>
+    <PortalLayout>
+      <PortalHomePage />
+      <ModalityConfirmations />
+      <Link to="/portal/pedidos" className="mt-6 inline-flex min-h-11 items-center underline">
+        {t("portalOwn.link")}
+      </Link>
+    </PortalLayout>
   );
 }
 
@@ -101,8 +106,19 @@ export function App() {
       <Route element={<RequireSession />}>
         <Route element={<RequireTwoFactor />}>
           <Route path={TWO_FACTOR_REQUIRED_PATH} element={<TwoFactorRequiredPage />} />
-          <Route path="/" element={<Home />} />
-          <Route path="/conta" element={<AccountPage />} />
+          <Route path="/portal/termo" element={<PortalTermPage />} />
+          <Route element={<RequirePortalTerm />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/conta" element={<AccountPage />} />
+            <Route path="/portal/pedidos" element={<PortalOwnRequestsPage />} />
+            <Route path="/portal/carteirinha" element={<PortalCardPage />} />
+            <Route element={<RequireFullPortal />}>
+              <Route path="/portal/agenda" element={<PortalAgendaPage />} />
+              <Route path="/portal/avisos" element={<PortalAnnouncementsPage />} />
+            </Route>
+            <Route path="/portal/financeiro" element={<PortalFinancePage />} />
+            <Route path="/portal/minhas-informacoes" element={<PortalInfoPage />} />
+          </Route>
           <Route path="/confirmar-email/:code" element={<ConfirmEmailPage />} />
           <Route path="/sem-acesso" element={<AreaUnavailablePage />} />
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR", "TEACHER"]} />}>
@@ -120,10 +136,12 @@ export function App() {
             <Route path="/beneficios" element={<BenefitsPage />} />
             <Route path="/alunos/nova-matricula" element={<EnrollmentWizardPage />} />
             <Route path="/alunos/:id?" element={<StudentsPage />} />
+            <Route path="/pedidos" element={<PortalRequestsPage />} />
             <Route path="/cobrancas" element={<ChargesPage />} />
             <Route path="/cobrancas/previa" element={<ChargePreviewPage />} />
             <Route path="/cobrancas/recebimentos" element={<DailyReceiptsPage />} />
             <Route path="/cobrancas/atrasados" element={<OverduePage />} />
+            <Route path="/cobrancas/conferencia" element={<PaymentProofsPage />} />
             <Route path="/professores" element={<TeachersPage />} />
             <Route path="/professores/:id" element={<TeacherPanelPage />} />
             <Route path="/configuracoes/organizacao" element={<OrganizationSettingsPage />} />

@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -29,9 +30,11 @@ public class EmailChangeService {
     private final AccountAudit audit;
     private final MessageSource messages;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     public EmailChangeService(@Lazy JdbcClient jdbc, @Lazy AccountTransactions accountTx, TwoFactorService twoFactor,
-            AccountMailer mailer, AccountAudit audit, MessageSource messages, Clock clock) {
+            AccountMailer mailer, AccountAudit audit, MessageSource messages, Clock clock, ApplicationEventPublisher events) {
+        this.events = events;
         this.jdbc = jdbc;
         this.accountTx = accountTx;
         this.twoFactor = twoFactor;
@@ -89,9 +92,9 @@ public class EmailChangeService {
 
     /** The link of this account, once: any other case is the same 410 and nothing changes. */
     public void confirm(UUID accountId, String code, String ip) {
-        String oldEmail;
+        String[] emails;
         try {
-            oldEmail = accountTx.forAccount(accountId, () -> {
+            emails = accountTx.forAccount(accountId, () -> {
                 var row = jdbc.sql("select id, new_email from account_email_change where code_hash = :h and account_id = :a "
                         + "and used_at is null and canceled_at is null and expires_at > :now")
                         .param("h", Codes.hash(code)).param("a", accountId).param("now", now())
@@ -108,13 +111,15 @@ public class EmailChangeService {
                 jdbc.sql("update account_email_change set canceled_at = :now where account_id = :a and used_at is null and canceled_at is null")
                         .param("now", now()).param("a", accountId).update();
                 jdbc.sql("update account set email = :e where id = :a").param("e", row[1]).param("a", accountId).update();
-                return old;
+                return new String[]{old, row[1]};
             });
         } catch (DataIntegrityViolationException e) {
             // Another account took the address between the check and the update: the unique index on lower(email) decides.
             throw new IdentityException(Code.EMAIL_CHANGE_INVALID, null);
         }
         audit.record(accountId, actor(accountId), ip, "account.email_changed");
-        mailer.emailChanged(oldEmail);
+        mailer.emailChanged(emails[0]);
+        // Committed above; a listener failure never undoes the confirmation (the listener logs and isolates by organization).
+        events.publishEvent(new AccountEmailChanged(accountId, emails[1], ip));
     }
 }

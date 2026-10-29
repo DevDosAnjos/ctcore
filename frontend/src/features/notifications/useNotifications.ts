@@ -10,7 +10,9 @@ export type NotificationType =
   | "INVITE_PENDING"
   | "CLOSURE_REQUEST"
   | "MP_DISCONNECTED"
-  | "SUBSCRIPTION_OVERDUE";
+  | "SUBSCRIPTION_OVERDUE"
+  | "PORTAL_REQUEST"
+  | "PAYMENT_PROOF";
 export interface AppNotification {
   id: string;
   type: NotificationType;

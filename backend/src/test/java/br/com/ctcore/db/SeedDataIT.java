@@ -32,7 +32,7 @@ class SeedDataIT extends PostgresIT {
         jdbc.execute("alter table audit_log disable trigger user");
         jdbc.update("delete from audit_log");
         jdbc.execute("alter table audit_log enable trigger user");
-        for (String table : new String[]{"notification", "notification_preference", "announcement_read", "announcement", "receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
+        for (String table : new String[]{"notification", "notification_preference", "announcement_read", "announcement", "payment_proof", "receipt", "receipt_counter", "payment", "charge", "modality_confirmation", "term_acceptance", "terms_version", "portal_request", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher", "age_range", "unit_modality", "graduation_level", "modality_request", "organization_modality", "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite",
                 "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -48,7 +48,7 @@ class SeedDataIT extends PostgresIT {
     // Os professores do seed referenciam contas: sem apagar, os testes seguintes não conseguem limpar account.
     @org.junit.jupiter.api.AfterEach
     void cleanTeachers() {
-        for (String table : new String[]{"notification", "notification_preference", "announcement_read", "announcement", "receipt", "receipt_counter", "payment", "charge", "terms_version", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
+        for (String table : new String[]{"notification", "notification_preference", "announcement_read", "announcement", "payment_proof", "receipt", "receipt_counter", "payment", "charge", "modality_confirmation", "term_acceptance", "terms_version", "portal_request", "student_graduation", "enrollment_start", "benefit", "enrollment_modality_class", "enrollment_modality", "enrollment", "plan", "student_guardian", "guardian", "student", "lesson", "no_class_day", "training_class_assistant", "training_class_schedule", "training_class", "teacher_modality", "teacher_unit", "teacher",
                 "email_message", "account_device", "login_attempt", "account_session", "password_reset", "account_invite", "account_link_unit", "account_link", "account"}) {
             jdbc.update("delete from " + table);
         }
@@ -276,6 +276,7 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from announcement where sent_at is not null", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from announcement where sent_at is null", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from announcement_class", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(*) from announcement_read", Integer.class)).isEqualTo(1);
     }
 
 
@@ -288,6 +289,33 @@ class SeedDataIT extends PostgresIT {
         assertThat(jdbc.queryForObject("select count(*) from notification where read_at is not null", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(distinct link_id) from notification", Integer.class)).isEqualTo(2);
     }
+    @Test
+    @DisplayName("#85, CA24: seed grava o aceite do termo e do uso de imagem do aluno 1, sem duplicar")
+    void termAcceptanceSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from term_acceptance", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(distinct kind) from term_acceptance where event = 'ACCEPTED' and version = 1", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("#86, CA22: seed grava dois pedidos do portal abertos, sem duplicar")
+    void portalRequestSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from portal_request where status = 'OPEN'", Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("select count(distinct kind) from portal_request", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("#87, CA17: seed grava um comprovante pendente de uma cobrança em conferência, sem duplicar")
+    void paymentProofSeed() throws IOException {
+        apply(jdbc, SEED_DIR);
+        apply(jdbc, SEED_DIR);
+        assertThat(jdbc.queryForObject("select count(*) from payment_proof where status = 'PENDING'", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from charge where status = 'IN_REVIEW'", Integer.class)).isEqualTo(1);
+    }
+
     @Test
     @DisplayName("CA6: arquivos aplicados em ordem do nome")
     void order(@org.junit.jupiter.api.io.TempDir Path tmp) throws IOException {

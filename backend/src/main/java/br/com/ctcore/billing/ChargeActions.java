@@ -163,11 +163,21 @@ public class ChargeActions {
     public boolean cancelLocked(AccountPrincipal who, UUID id, String reason, String ip) {
         Locked c = lock(who.organizationId(), List.of(id)).stream().findFirst().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
         requireFull(who, c.unit());
+        return cancel(c, actor(who), reason, ip);
+    }
+
+    /** Igual ao anterior, para quem já foi autorizado (encerramento automático, ator sistema). */
+    public boolean cancelLocked(UUID org, AuditActor actor, UUID id, String reason, String ip) {
+        Locked c = lock(org, List.of(id)).stream().findFirst().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+        return cancel(c, actor, reason, ip);
+    }
+
+    private boolean cancel(Locked c, AuditActor actor, String reason, String ip) {
         if ("CANCELED".equals(c.status())) return false;
         if (!"OPEN".equals(c.status())) throw new ApiStatusException(ErrorCode.CONFLICT);
         jdbc.sql("update charge set status = 'CANCELED', reason = :reason, canceled_at = :now, canceled_by_account_id = :by where id = :id")
-                .param("reason", reason).param("now", OffsetDateTime.now(clock)).param("by", who.accountId()).param("id", id).update();
-        audit.record(new AuditEntry(actor(who), "charge.canceled", "charge", id.toString(), c.unit(), snapshot(c),
+                .param("reason", reason).param("now", OffsetDateTime.now(clock)).param("by", actor.accountId()).param("id", c.id()).update();
+        audit.record(new AuditEntry(actor, "charge.canceled", "charge", c.id().toString(), c.unit(), snapshot(c),
                 Map.of("status", "CANCELED", "amountCents", c.amount(), "dueOn", c.dueOn().toString()), reason, ip));
         return true;
     }

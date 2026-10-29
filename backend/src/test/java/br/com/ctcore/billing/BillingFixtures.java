@@ -6,6 +6,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Cobranças direto no banco para os testes de pagamento e de recibo; sem passar pela API. */
 public final class BillingFixtures {
+    /** Vencimento padrão: fora da janela do agendador real (10 dias a partir de hoje) em qualquer data de execução. */
+    public static final String FAR_DUE = "2100-01-10";
+
     private BillingFixtures() {}
 
     public static UUID student(JdbcTemplate db, UUID org, UUID unit, String name) {
@@ -66,7 +69,7 @@ public final class BillingFixtures {
     public static UUID charge(JdbcTemplate db, UUID org, UUID unit, UUID student, UUID modalityRow, LocalDate reference, String description, long amount, String status) {
         UUID id = UUID.randomUUID();
         db.update("insert into charge (id, organization_id, unit_id, student_id, type, enrollment_modality_id, reference_month, description, due_on, plan_cents, amount_cents, status) "
-                + "values (?, ?, ?, ?, ?, ?, ?, ?, date '2026-11-10', ?, ?, ?)", id, org, unit, student, modalityRow == null ? "ONE_OFF" : "MONTHLY", modalityRow,
+                + "values (?, ?, ?, ?, ?, ?, ?, ?, date '" + FAR_DUE + "', ?, ?, ?)", id, org, unit, student, modalityRow == null ? "ONE_OFF" : "MONTHLY", modalityRow,
                 reference, description, amount, amount, status);
         return id;
     }
@@ -77,6 +80,6 @@ public final class BillingFixtures {
 
     /** Apaga o que os testes criaram (as tabelas não têm DELETE para o papel de execução; aqui é o administrador). */
     public static void clean(JdbcTemplate db) {
-        for (String table : new String[] {"charge_reminder", "sms_log", "receipt", "payment", "receipt_counter", "charge"}) db.update("delete from " + table);
+        for (String table : new String[] {"charge_reminder", "sms_log", "receipt", "payment_proof", "payment", "receipt_counter", "charge"}) db.update("delete from " + table);
     }
 }

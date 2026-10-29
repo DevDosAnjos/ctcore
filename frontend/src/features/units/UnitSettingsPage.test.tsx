@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
@@ -100,18 +100,16 @@ const save = () => screen.getByRole("button", { name: "Salvar" });
 
 describe("UnitSettingsPage (RF-ORG-04)", () => {
   it("CA17: o Coordenador altera dados, vencimentos, taxas e permissões e salva em centavos; vê a confirmação e os valores novos", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     setup("COORDINATOR");
     await ready();
-    await user.type(screen.getByLabelText("Telefone"), "21999998888");
+    fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "21999998888" } });
     await user.click(screen.getByRole("checkbox", { name: "15" }));
     await user.click(screen.getByRole("checkbox", { name: "20" }));
     await user.click(screen.getByRole("checkbox", { name: "Cobrar taxa de matrícula" }));
-    await user.clear(screen.getByLabelText("Valor da taxa de matrícula"));
-    await user.type(screen.getByLabelText("Valor da taxa de matrícula"), "15000");
+    fireEvent.change(screen.getByLabelText("Valor da taxa de matrícula"), { target: { value: "15000" } });
     expect(screen.getByLabelText("Valor da taxa de matrícula")).toHaveValue("R$ 150,00");
-    await user.clear(screen.getByLabelText("Pix"));
-    await user.type(screen.getByLabelText("Pix"), "199");
+    fireEvent.change(screen.getByLabelText("Pix"), { target: { value: "199" } });
     expect(screen.getByRole("checkbox", { name: "Ver ficha do aluno" })).not.toBeChecked();
     await user.click(screen.getByRole("checkbox", { name: "Editar a agenda" }));
     await user.click(screen.getByRole("checkbox", { name: "Ver ficha do aluno" }));

@@ -45,7 +45,7 @@ function Wizard() {
   const preset = useResource<{ id: string; name: string; photoUrl: string | null }>(presetId ? `/students/${presetId}/record` : null);
   const [chosen, setChosen] = useState<WizardStudent>();
   const [step, setStep] = useState(presetId ? 1 : 0);
-  const [modalities, setModalities] = useState<ModalityDraft[]>(() => [newModality()]);
+  const [modalities, setModalities] = useState<ModalityDraft[]>(() => [{ ...newModality(), unitId: params.get("unidade") ?? "", modalityId: params.get("modalidade") ?? "" }]); // R18: o pedido de nova modalidade chega com unidade e modalidade
   const [drafts, setDrafts] = useState<Record<string, UnitDraft>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);

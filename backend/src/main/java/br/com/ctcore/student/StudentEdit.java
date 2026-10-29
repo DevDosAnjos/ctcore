@@ -1,5 +1,6 @@
 package br.com.ctcore.student;
 
+import br.com.ctcore.api.error.ApiStatusException;
 import br.com.ctcore.api.error.ApiValidationException;
 import br.com.ctcore.api.error.ErrorCode;
 import br.com.ctcore.audit.AuditActor;
@@ -122,48 +123,62 @@ public class StudentEdit {
 
     public Students.Detail replacePhoto(AccountPrincipal who, UUID id, byte[] content, String ip) {
         students.requireAccess(who);
+        // Sem alcance ou fora da organização: 404 antes de gravar o arquivo.
+        savePhoto(who.organizationId(), id, content, actor(who), ip, () -> transactions.execute(() -> students.detail(who, id)));
+        return transactions.execute(() -> students.detail(who, id));
+    }
+
+    public Students.Detail removePhoto(AccountPrincipal who, UUID id, String ip) {
+        students.requireAccess(who);
+        // Sem alcance ou fora da organização: 404 (o detalhe confere o alcance antes da troca).
+        transactions.execute(() -> students.detail(who, id));
+        clearPhoto(who.organizationId(), id, actor(who), ip);
+        return transactions.execute(() -> students.detail(who, id));
+    }
+
+    /** Miolo comum à gestão e ao portal: valida a imagem, confere o acesso, grava o arquivo, troca a coluna com auditoria e descarta o anterior. */
+    void savePhoto(UUID org, UUID id, byte[] content, AuditActor actor, String ip, Runnable access) {
+        // O acesso vem antes da validação do arquivo: quem não alcança o aluno recebe 404, nunca 422.
+        access.run();
         LogoImage image;
         try {
             image = LogoImage.parse(content);
         } catch (IllegalArgumentException e) {
             throw new ApiValidationException("file", e.getMessage());
         }
-        // Sem alcance ou fora da organização: 404 antes de gravar o arquivo.
-        transactions.execute(() -> students.detail(who, id));
         String name = "student-" + UUID.randomUUID() + "." + image.extension();
         storage.put(name, image.bytes(), image.contentType());
         String previous;
         try {
-            previous = transactions.execute(() -> setPhoto(who, id, name, ip));
+            previous = transactions.execute(() -> setPhoto(org, id, name, actor, ip));
         } catch (RuntimeException e) {
             discard(name);
             throw e;
         }
         if (previous != null) discard(previous);
-        return transactions.execute(() -> students.detail(who, id));
     }
 
-    public Students.Detail removePhoto(AccountPrincipal who, UUID id, String ip) {
-        students.requireAccess(who);
-        String previous = transactions.execute(() -> setPhoto(who, id, null, ip));
+    void clearPhoto(UUID org, UUID id, AuditActor actor, String ip) {
+        String previous = transactions.execute(() -> setPhoto(org, id, null, actor, ip));
         if (previous != null) discard(previous);
-        return transactions.execute(() -> students.detail(who, id));
     }
 
-    /** Dentro da transação: troca a coluna e audita; devolve o arquivo anterior. */
-    private String setPhoto(AccountPrincipal who, UUID id, String name, String ip) {
-        UUID unit = students.detail(who, id).registeredUnitId();
-        String before = jdbc.sql("select photo from student where organization_id = :org and id = :id").param("org", who.organizationId())
-                .param("id", id).query((rs, n) -> rs.getString(1)).list().get(0); // the row exists: detail() above found it
-        if (Objects.equals(before, name)) return null;
+    private record PhotoRow(String photo, UUID unitId) {}
+
+    /** Dentro da transação: troca a coluna e audita; devolve o arquivo anterior. Pelo portal o nome do arquivo não vai para a auditoria (R16). */
+    private String setPhoto(UUID org, UUID id, String name, AuditActor actor, String ip) {
+        PhotoRow row = jdbc.sql("select photo, registered_unit_id from student where organization_id = :org and id = :id").param("org", org).param("id", id)
+                .query((rs, n) -> new PhotoRow(rs.getString(1), rs.getObject(2, UUID.class))).optional().orElseThrow(() -> new ApiStatusException(ErrorCode.NOT_FOUND));
+        if (Objects.equals(row.photo(), name)) return null;
         jdbc.sql("update student set photo = :photo where organization_id = :org and id = :id").param("photo", name)
-                .param("org", who.organizationId()).param("id", id).update();
+                .param("org", org).param("id", id).update();
+        boolean portal = actor.type() == AuditActor.Type.PORTAL;
         Map<String, Object> old = new LinkedHashMap<>(), next = new LinkedHashMap<>();
-        old.put("photo", before);
-        next.put("photo", name);
-        audit.record(new AuditEntry(actor(who), name == null ? "student.photo_removed" : "student.photo_updated", "student", id.toString(), unit, old, next,
+        old.put("photo", portal && row.photo() != null ? "informada" : row.photo());
+        next.put("photo", portal && name != null ? "informada" : name);
+        audit.record(new AuditEntry(actor, name == null ? "student.photo_removed" : "student.photo_updated", "student", id.toString(), row.unitId(), old, next,
                 null, ip));
-        return before;
+        return row.photo();
     }
 
     // Arquivo antigo (ou novo, se a transação falhou): falha ao apagar vai para o log e não desfaz a troca.

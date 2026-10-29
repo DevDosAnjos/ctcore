@@ -52,6 +52,24 @@ const accounts: Record<string, ReturnType<typeof withTwoFactor>> = {
   "duas@exemplo.com": withTwoFactor("duas@exemplo.com", true, true),
   "vencida@exemplo.com": withTwoFactor("vencida@exemplo.com", true, true),
   "coord@exemplo.com": withTwoFactor("coord@exemplo.com", false, true),
+  // Aluno adulto com matrícula e termo pendente (#85): o portal leva ao aceite antes de qualquer tela.
+  "termo@exemplo.com": {
+    ...withTwoFactor("termo@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000014", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "STUDENT", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000014",
+  },
+  // Aluno cujas modalidades acabaram (#88): o portal abre reduzido (sem Agenda nem Avisos), sem termo pendente.
+  "reduzido@exemplo.com": {
+    ...withTwoFactor("reduzido@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000015", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "STUDENT", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000015",
+  },
+  // Responsável com dois filhos (#89): o Início mostra a faixa de cartões e o total da família.
+  "familia@exemplo.com": {
+    ...withTwoFactor("familia@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-000000000016", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "GUARDIAN", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-000000000016",
+  },
 };
 const VALID_CODES = ["123456", "RESERVA001"];
 const backupCodes = () => ({ backupCodes: Array.from({ length: 10 }, (_, i) => `RESERVA${String(i + 1).padStart(3, "0")}`) });
@@ -108,6 +126,15 @@ export const resetMockSession = () => {
   textCustoms = {};
   mockNotifications = initialNotifications();
   notificationReceiveAll = false;
+  portalAccepted.clear();
+  portalImage.clear();
+  portalInfoEdits.clear();
+  portalConfirmed.clear();
+  noticeRead.clear();
+  noticeDismissed.clear();
+  financeReview.clear();
+  mockPortalRequests = [];
+  mockProofsSent = [];
 };
 
 // Organização do vínculo ativo (RF-ORG-01), em memória: sem cor, titular nem logo.
@@ -800,7 +827,7 @@ const enrollmentView = (studentId: string) => {
     modalities: e.modalities.map((m) => ({
       id: m.id, unit: named(m.unitId, units.find((u) => u.id === m.unitId)?.name ?? ""), modality: named(m.modalityId, modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? ""),
       primaryClass: className(m.primaryClassId), otherClasses: m.otherClassIds.map(className), plan: planName(m.planId), nextPlan: m.nextPlanId ? planName(m.nextPlanId) : null,
-      dueDay: m.dueDay, status: m.status, startedAt: m.startedAt, endedAt: m.endedAt, canEdit: activeRole() === "COORDINATOR" || m.unitId === ADMIN_UNIT,
+      dueDay: m.dueDay, status: m.status, startedAt: m.startedAt, endedAt: m.endedAt, canEdit: activeRole() === "COORDINATOR" || m.unitId === ADMIN_UNIT, closureRequestedAt: closureOpenAt(m.id),
     })),
   };
 };
@@ -814,7 +841,7 @@ const mockProofs = new Map<string, string>();
 const mockStartedUnits: { studentId: string; unitId: string; feeCents: number; feeExemptReason: string | null; secondDueOn: string }[] = [];
 // RN-COB-12, RN-MAT-05 (#71): cobranças, pagamentos e recibos em memória (o simulado paga só no balcão, uma cobrança por vez).
 // RF-COB-02 (#73): cancelar e renegociar acrescentam as situações CANCELED e RENEGOTIATED, a parcela (INSTALLMENT) e os campos do painel.
-type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
+type MockCharge = { id: string; type: "MONTHLY" | "ENROLLMENT_FEE" | "INSTALLMENT" | "ONE_OFF"; studentId: string; unitId: string; modalityRowId: string | null; referenceMonth: string | null; dueOn: string; toleranceDays: number; amountCents: number; status: "OPEN" | "IN_REVIEW" | "PAID" | "CANCELED" | "RENEGOTIATED"; description: string; reason?: string; canceledAt?: string; originId?: string; renegotiationId?: string };
 let mockCharges: MockCharge[] = [];
 let mockReceipts: { code: string; unitId: string; number: number; chargeId: string; amountCents: number; paidAt: string; studentName: string; method?: string; observation?: string | null; by?: { id: string; name: string } }[] = [];
 // RF-COB-06 (#79): histórico de lembretes por cobrança, em memória; só o envio manual por e-mail existe no simulado.
@@ -884,7 +911,7 @@ const addDays = (day: string, n: number) => isoDay(new Date(Date.parse(`${day}T0
 // RF-COB-01 (R2, D1, D2): situação calculada na leitura; o simulado só grava aberta e paga, então as demais situações não aparecem aqui.
 const chargeSituation = (c: MockCharge, today: string) => {
   const limit = addDays(c.dueOn, c.toleranceDays);
-  if (c.status === "CANCELED" || c.status === "RENEGOTIATED") return c.status;
+  if (c.status === "CANCELED" || c.status === "RENEGOTIATED" || c.status === "IN_REVIEW") return c.status;
   if (c.status === "PAID") {
     const paidAt = mockReceipts.find((r) => r.chargeId === c.id)?.paidAt ?? `${today}T00:00:00Z`;
     return paidAt.slice(0, 10) > limit ? "PAID_LATE" : "PAID";
@@ -1122,8 +1149,413 @@ const checkClasses = (unitId: string, modalityId: string, primaryId: string, oth
   }
   return null;
 };
+// Pedidos do portal (#86), em memória. Pedido nunca muda a matrícula; só o de encerramento marca a modalidade ("Encerramento solicitado") até encerrar ou recusar.
+type MockPortalRequest = {
+  id: string; kind: string; status: string; studentId: string; unitId: string; modalityRowId: string | null; targetClassId: string | null; targetPlanId: string | null;
+  targetModalityId: string | null; targetUnitId: string | null; reason: string | null; note: string | null; response: string | null; createdAt: string; decidedAt: string | null;
+};
+let mockPortalRequests: MockPortalRequest[] = [];
+const REQUEST_KINDS = ["CLASS_CHANGE", "NEW_MODALITY", "PLAN_CHANGE", "CLOSURE"];
+const REQUEST_STATUSES = ["OPEN", "APPROVED", "REFUSED", "EXPIRED", "CLOSED"];
+const openClosure = (rowId: string) => mockPortalRequests.find((r) => r.kind === "CLOSURE" && r.status === "OPEN" && r.modalityRowId === rowId);
+const closureOpenAt = (rowId: string) => openClosure(rowId)?.createdAt ?? null;
+const afterClosure = (rowId: string, dueOn: string) => {
+  const at = closureOpenAt(rowId);
+  return at !== null && dueOn > at.slice(0, 10);
+};
+const requestView = (r: MockPortalRequest) => {
+  const row = r.modalityRowId ? (mockEnrollments[r.studentId]?.modalities ?? []).find((m) => m.id === r.modalityRowId) : undefined;
+  const modalityId = r.targetModalityId ?? row?.modalityId;
+  return {
+    id: r.id, kind: r.kind, status: r.status, studentId: r.studentId, studentName: mockStudents.find((s) => s.id === r.studentId)?.name ?? "", unitId: r.unitId,
+    unit: units.find((u) => u.id === r.unitId)?.name ?? "", modalityRowId: r.modalityRowId, modality: modalityCatalog.find((m) => m.id === modalityId)?.name ?? null,
+    targetClassId: r.targetClassId, targetClass: mockClasses.find((c) => c.id === r.targetClassId)?.name ?? null, targetPlanId: r.targetPlanId,
+    targetPlan: mockPlans.find((p) => p.id === r.targetPlanId)?.name ?? null, targetModalityId: r.targetModalityId, targetUnitId: r.targetUnitId,
+    targetUnit: units.find((u) => u.id === r.targetUnitId)?.name ?? null, reason: r.reason, note: r.note, response: r.response, createdAt: r.createdAt, decidedAt: r.decidedAt,
+  };
+};
+// Rotas do portal: termo em dia e aluno ligado à conta (404 fora).
+const portalRequestStudent = (id: string) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  const mine = portalMine();
+  if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return mine.find((s) => s.id === id) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// Gestão: Coordenador e Administrador; o Administrador só alcança a unidade dele (404 fora).
+const requestAdminAccess = () => {
+  if (!loggedIn) return unauthenticated();
+  return activeRole() === "COORDINATOR" || activeRole() === "ADMINISTRATOR" ? null : error(403, "FORBIDDEN", "Sem permissão.");
+};
+const requestFor = (id: string) => {
+  const denied = requestAdminAccess();
+  if (denied) return denied;
+  return mockPortalRequests.find((r) => r.id === id && (activeRole() === "COORDINATOR" || r.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// Comprovantes de Pix na chave (#87), em memória. Enviar põe a cobrança em conferência; recusar a devolve a aberta; confirmar paga no meio PIX_KEY.
+type MockPaymentProof = { id: string; chargeId: string; studentId: string; unitId: string; sentAt: string; status: "PENDING" | "CONFIRMED" | "REFUSED"; contentType: string; refusalReason: string | null; decidedAt: string | null };
+let mockProofsSent: MockPaymentProof[] = [];
+const PROOF_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const chargeReference = (c: MockCharge) => {
+  const row = mockEnrollments[c.studentId]?.modalities.find((x) => x.id === c.modalityRowId);
+  return c.type === "MONTHLY" ? `${modalityCatalog.find((m) => m.id === row?.modalityId)?.name ?? ""} · ${c.referenceMonth!.slice(5, 7)}/${c.referenceMonth!.slice(0, 4)}` : c.description;
+};
+const proofView = (p: MockPaymentProof) => {
+  const c = mockCharges.find((x) => x.id === p.chargeId)!;
+  const student = mockStudents.find((s) => s.id === p.studentId)!;
+  return {
+    id: p.id, chargeId: p.chargeId, studentId: p.studentId, studentName: student.name, studentPhotoUrl: student.photoUrl, unitId: p.unitId, unit: units.find((u) => u.id === p.unitId)?.name ?? "",
+    reference: chargeReference(c), amountCents: c.amountCents, dueOn: c.dueOn, sentAt: p.sentAt, status: p.status, contentType: p.contentType, imageUrl: MOCK_LOGO, refusalReason: p.refusalReason, decidedAt: p.decidedAt,
+  };
+};
+// Portal: só Aluno e Responsável, termo em dia; cobrança de aluno fora da conta é 404.
+const portalCharge = (id: string) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  const mine = portalMine();
+  if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return mockCharges.find((x) => x.id === id && mine.some((s) => s.id === x.studentId)) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+const unitPixKey = (unitId: string) => unitDetail(unitId).settings.pixKey;
+// Gestão: Coordenador e Administrador; o Administrador só alcança a unidade dele (404 fora).
+const proofFor = (id: string) => {
+  const denied = studentAccess();
+  if (denied) return denied;
+  return mockProofsSent.find((p) => p.id === id && (activeRole() === "COORDINATOR" || p.unitId === ADMIN_UNIT)) ?? error(404, "NOT_FOUND", "Não encontrado.");
+};
+// Aceite do termo no portal (#85), em memória. Pendente = aluno com matrícula (ou o adulto da conta "termo@exemplo.com") sem aceite.
+const portalAccepted = new Map<string, string>();
+const portalImage = new Map<string, boolean>();
+const portalConfirmed = new Set<string>();
+const TERM_ACCOUNT = "termo@exemplo.com";
+const REDUCED_ACCOUNT = "reduzido@exemplo.com";
+const termEnrolled = (id: string) => current.account.email !== REDUCED_ACCOUNT && (enrollmentStatus(id) !== "NONE" || (id === STUDENT_ADULT && current.account.email === TERM_ACCOUNT));
+const termPending = (id: string) => termEnrolled(id) && !portalAccepted.has(id);
+// Rotas do portal: só Aluno e Responsável. O Aluno aceita o adulto; o Responsável, o menor (financeiro).
+const portalAccess = () => (!loggedIn ? unauthenticated() : isPortal() ? null : error(403, "FORBIDDEN", "Sem permissão."));
+const portalMine = () => mockStudents.filter((s) => s.id === (activeRole() === "STUDENT" ? STUDENT_ADULT : STUDENT_MINOR));
+// Início do portal (#89): cartões, cobranças do simulado e conteúdo fixo por aluno. Hoje e prazos pelo relógio do navegador.
+const CHILD_TWO = "00000000-0000-0000-0000-000000000703";
+const REDUCED_CHARGE = "00000000-0000-0000-0000-0000000007c2";
+const SECOND_CHARGE = "00000000-0000-0000-0000-0000000007c1";
+const dayShift = (days: number) => isoDay(new Date(Date.now() + days * 86_400_000));
+const homeRef = (name: string) => ({ id: modalityCatalog.find((m) => m.name === name)!.id, name });
+const homeUnit = (id: string) => ({ id, name: units.find((u) => u.id === id)?.name ?? "" });
+const homeCards = () =>
+  activeRole() === "STUDENT"
+    ? mockStudents.filter((s) => s.id === STUDENT_ADULT).map((s) => ({ id: s.id, name: s.name, photoUrl: null, self: true }))
+    : [...mockStudents.filter((s) => s.id === STUDENT_MINOR).map((s) => ({ id: s.id, name: s.name, photoUrl: null, self: false })), { id: CHILD_TWO, name: "Filho Fictício Dois", photoUrl: null, self: false }];
+// Minhas informações do portal (#94): dados pessoais editáveis em memória (`portalInfoEdits`), o resto é conteúdo fixo por aluno, como no Início.
+const PHOTO_URL = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><rect width='64' height='64' fill='%23dbeafe'/></svg>";
+const CONTACT_FIELDS = ["phone", "postalCode", "street", "number", "complement", "district", "city", "state", "emergencyName", "emergencyRelationship", "emergencyPhone"];
+const portalInfoEdits = new Map<string, Record<string, string | null>>();
+const infoPersonal = (id: string) => {
+  const base = mockStudents.find((s) => s.id === id);
+  const s: Record<string, string | null> = base
+    ? { name: base.name, birthDate: base.birthDate, cpf: base.cpf, email: base.email, phone: base.phone, postalCode: base.postalCode, street: base.street, number: base.number, complement: base.complement, district: base.district, city: base.city, state: base.state, emergencyName: base.emergencyName, emergencyRelationship: base.emergencyRelationship, emergencyPhone: base.emergencyPhone, photoUrl: base.photoUrl }
+    : { name: "Filho Fictício Dois", birthDate: "2016-08-20", cpf: null, email: null, phone: "21900000003", postalCode: "01001000", street: "Rua Fictícia", number: "3", complement: null, district: "Centro", city: "Rio de Janeiro", state: "RJ", emergencyName: null, emergencyRelationship: null, emergencyPhone: null, photoUrl: null };
+  const v = { ...s, ...portalInfoEdits.get(id) };
+  return {
+    name: v.name, birthDate: v.birthDate, maskedCpf: v.cpf ? `***.***.***-${v.cpf.slice(-2)}` : null, photoUrl: v.photoUrl, phone: v.phone, email: v.email,
+    address: { postalCode: v.postalCode, street: v.street, number: v.number, complement: v.complement, district: v.district, city: v.city, state: v.state },
+    emergency: { name: v.emergencyName, relationship: v.emergencyRelationship, phone: v.emergencyPhone },
+    canEdit: true, editableFields: [...CONTACT_FIELDS, "photo"],
+  };
+};
+const infoGate = (id: string) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return homeCards().some((c) => c.id === id) ? null : error(404, "NOT_FOUND", "Não encontrado.");
+};
+const infoUnit = (id: string) => ({ ...homeUnit(id), phone: "2133334444", whatsapp: id === CENTRO ? "21999990000" : null, email: "contato@exemplo.com" });
+const infoClass = (id: string, name: string, schedule: [number, string, string][]) => ({
+  clazz: { id: `00000000-0000-0000-0000-0000000007b${id}`, name }, teacherName: "Professor Fictício", schedule: schedule.map(([weekday, startsAt, endsAt]) => ({ weekday, startsAt, endsAt })),
+});
+const infoLevel = (id: string, levelName: string, color: string, degree: number, achievedOn: string | null, origin = false) => ({ id: `00000000-0000-0000-0000-0000000007a${id}`, levelName, color, secondaryColor: null, degree, achievedOn, origin });
+const portalInfo = (studentId: string | null) => {
+  const cards = homeCards();
+  const selected = studentId ?? cards[0].id;
+  const gate = infoGate(selected);
+  if (gate) return gate;
+  const reduced = current.account.email === REDUCED_ACCOUNT;
+  const jiu = homeRef("Jiu-Jitsu");
+  const judo = homeRef("Judô");
+  const granted = portalImage.get(selected) ?? false;
+  const head = {
+    reduced, students: cards, selectedStudentId: selected, personal: infoPersonal(selected), emailAnnouncements: announcementEmail,
+    terms: {
+      enrollment: reduced ? null : { version: termText("ENROLLMENT").version, acceptedAt: portalAccepted.get(selected) ?? "2026-01-10T12:00:00.000Z" },
+      imageUse: { granted, version: granted ? termText("IMAGE_USE").version : null, at: granted ? "2026-01-10T12:00:00.000Z" : null },
+    },
+  };
+  if (reduced) return HttpResponse.json({ ...head, unitContacts: [infoUnit(CENTRO)], trainings: [], plans: [], graduation: [] });
+  const second = selected === CHILD_TWO;
+  const trainings = second
+    ? [{ modality: judo, unit: infoUnit(CENTRO), mainClass: infoClass("1", "Judô Infantil", [[1, "17:00", "18:00"]]), otherClasses: [] }]
+    : [
+        { modality: jiu, unit: infoUnit(CENTRO), mainClass: infoClass("2", "Jiu-Jitsu Adulto", [[1, "19:00", "20:00"], [3, "19:00", "20:00"]]), otherClasses: [infoClass("3", "Jiu-Jitsu Livre", [[5, "20:00", "21:00"]])] },
+        { modality: judo, unit: infoUnit(NORTE), mainClass: infoClass("4", "Judô Adulto", [[2, "19:00", "20:00"]]), otherClasses: [] },
+      ];
+  const plans = second
+    ? [{ modality: judo, plan: { id: "00000000-0000-0000-0000-0000000007b9", name: "Judô Mensal" }, planCents: 5000, benefit: null, benefitCents: 0, monthlyCents: 5000, dueDay: 10, nextPlan: null }]
+    : [{ modality: jiu, plan: { id: "00000000-0000-0000-0000-0000000007b8", name: "Jiu-Jitsu Mensal" }, planCents: 20000, benefit: { type: "PERCENT", value: 10, validUntil: null }, benefitCents: 2000, monthlyCents: 18000, dueDay: 5, nextPlan: { id: "00000000-0000-0000-0000-0000000007b7", name: "Jiu-Jitsu Trimestral", valueCents: 54000 } }];
+  const graduation = second
+    ? [{ modality: judo, belt: infoLevel("1", "Branca", "#FFFFFF", 0, null, true), history: [infoLevel("1", "Branca", "#FFFFFF", 0, null, true)] }]
+    : [
+        { modality: jiu, belt: infoLevel("4", "Azul", "#1E40AF", 2, dayShift(-3)), history: [infoLevel("4", "Azul", "#1E40AF", 2, dayShift(-3)), infoLevel("3", "Azul", "#1E40AF", 1, dayShift(-200)), infoLevel("2", "Azul", "#1E40AF", 0, null, true)] },
+        { modality: judo, belt: null, history: [] },
+      ];
+  return HttpResponse.json({ ...head, unitContacts: trainings.map((t) => t.unit), trainings, plans, graduation }, { headers: { "Cache-Control": "private, no-store" } });
+};
+// RN-ALU-11, RN-ALU-03: lista fechada de campos (o resto, 422) e as validações do cadastro; nada muda quando recusa.
+const portalContact = (id: string, body: Record<string, unknown>) => {
+  const gate = infoGate(id);
+  if (gate) return gate;
+  const bad = (field: string, message: string) => error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.", [{ field, message }]);
+  const unknown = Object.keys(body).find((k) => !CONTACT_FIELDS.includes(k));
+  if (unknown) return bad(unknown, "campo não editável");
+  const text = (k: string) => (typeof body[k] === "string" ? (body[k] as string).trim() : "");
+  const phone = text("phone");
+  if (phone && !/^\d{10,11}$/.test(phone)) return bad("phone", "celular com DDD");
+  if (!/^\d{8}$/.test(text("postalCode"))) return bad("postalCode", "8 dígitos");
+  for (const k of ["street", "number", "district", "city"]) if (!text(k) || text(k).length > 120) return bad(k, "obrigatório");
+  if (!/^[A-Z]{2}$/.test(text("state"))) return bad("state", "UF válida");
+  const em = ["emergencyName", "emergencyRelationship", "emergencyPhone"].map(text);
+  if (em.some(Boolean) && !em.every(Boolean)) return bad("emergencyName", "nome, parentesco e telefone, ou nenhum");
+  if (em[2] && !/^\d{10,11}$/.test(em[2])) return bad("emergencyPhone", "celular com DDD");
+  portalInfoEdits.set(id, { ...portalInfoEdits.get(id), ...Object.fromEntries(CONTACT_FIELDS.map((k) => [k, text(k) || null])) });
+  return HttpResponse.json(infoPersonal(id), { headers: { "Cache-Control": "private, no-store" } });
+};
+const homeCharges = (studentId: string) => {
+  if (studentId === CHILD_TWO) {
+    return [{ id: SECOND_CHARGE, studentId, description: "Mensalidade de Judô", referenceMonth: null, dueOn: dayShift(2), amountCents: 5000, status: "OPEN", unitId: CENTRO, modality: homeRef("Judô") }];
+  }
+  if (current.account.email === REDUCED_ACCOUNT) {
+    return [{ id: REDUCED_CHARGE, studentId, description: "Mensalidade em atraso", referenceMonth: null, dueOn: dayShift(-5), amountCents: 12000, status: "OPEN", unitId: CENTRO, modality: null }];
+  }
+  return mockCharges
+    .filter((c) => c.studentId === studentId && (c.status === "OPEN" || c.status === "IN_REVIEW"))
+    .map((c) => ({ id: c.id, studentId, description: c.description || null, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, status: c.status as string, unitId: c.unitId, modality: null as { id: string; name: string } | null }));
+};
+const portalHome = (studentId: string | null) => {
+  const cards = homeCards();
+  const selected = studentId ?? cards[0].id;
+  if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const reduced = current.account.email === REDUCED_ACCOUNT;
+  const today = isoDay(new Date());
+  const soon = dayShift(3);
+  const all = homeCharges(selected);
+  const sit = (c: { status: string; dueOn: string }) => (c.status === "IN_REVIEW" ? "IN_REVIEW" : c.dueOn < today ? "OVERDUE" : c.dueOn === today ? "DUE_TODAY" : c.dueOn <= soon ? "DUE_SOON" : "PENDING");
+  const items = all
+    .filter((c) => sit(c) !== "PENDING")
+    .sort((a, b) => Number(sit(b) === "OVERDUE") - Number(sit(a) === "OVERDUE") || a.dueOn.localeCompare(b.dueOn))
+    .map((c) => ({ id: c.id, studentId: c.studentId, description: c.description, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, situation: sit(c), canPay: c.status === "OPEN", modality: c.modality, unit: homeUnit(c.unitId) }));
+  const nextDueOn = all.filter((c) => sit(c) === "PENDING").map((c) => c.dueOn).sort()[0] ?? null;
+  const open = (id: string) => homeCharges(id).reduce((sum, c) => sum + c.amountCents, 0);
+  const base = { reduced, students: cards.map((c) => ({ ...c, openCents: open(c.id) })), familyOpenCents: cards.reduce((sum, c) => sum + open(c.id), 0), selectedStudentId: selected, charges: { items, nextDueOn } };
+  if (reduced) return HttpResponse.json({ ...base, lessons: [], announcements: { unreadCount: 0, items: [] }, belts: [] });
+  const jiu = homeRef("Jiu-Jitsu");
+  const judo = homeRef("Judô");
+  const lessons =
+    selected === CHILD_TWO
+      ? [{ id: "00000000-0000-0000-0000-0000000007d1", date: dayShift(1), startsAt: "17:00", endsAt: "18:00", title: "Judô Infantil", status: "SCHEDULED", cancelReason: null, changed: false, adhoc: false, modality: judo, unit: homeUnit(CENTRO) }]
+      : [
+          { id: "00000000-0000-0000-0000-0000000007d2", date: dayShift(1), startsAt: "19:00", endsAt: "20:00", title: "Jiu-Jitsu Adulto", status: "SCHEDULED", cancelReason: null, changed: true, adhoc: false, modality: jiu, unit: homeUnit(CENTRO) },
+          { id: "00000000-0000-0000-0000-0000000007d3", date: dayShift(2), startsAt: "19:00", endsAt: "20:00", title: "Judô Adulto", status: "CANCELLED", cancelReason: "Feriado", changed: false, adhoc: false, modality: judo, unit: homeUnit(NORTE) },
+          { id: "00000000-0000-0000-0000-0000000007d4", date: dayShift(4), startsAt: "10:00", endsAt: "11:00", title: "Seminário de guarda", status: "SCHEDULED", cancelReason: null, changed: false, adhoc: true, modality: jiu, unit: homeUnit(CENTRO) },
+        ];
+  const belts =
+    selected === CHILD_TWO
+      ? [{ modality: judo, levelName: "Branca", color: "#FFFFFF", secondaryColor: null, degree: 0, achievedOn: null, isNew: false }]
+      : [
+          { modality: jiu, levelName: "Azul", color: "#1E40AF", secondaryColor: null, degree: 2, achievedOn: dayShift(-3), isNew: true },
+          { modality: judo, levelName: "Amarela", color: "#FACC15", secondaryColor: null, degree: 0, achievedOn: null, isNew: false },
+        ];
+  const announcements = noticeSummary(selected);
+  return HttpResponse.json({ ...base, lessons, announcements, belts });
+};
+// Avisos do portal (#93), em memória. `reach` são os alunos que o aviso alcança; "lido" é por aluno e "limpo" (Marcar todos como lidos) por conta, sem virar leitura.
+// Sem `modality`, o aviso alcança o aluno por qualquer modalidade dele. O sino (`/portal/shell`), o Início e a lista saem do mesmo estado.
+const NOTICE_IMAGE = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='120'><rect width='320' height='120' fill='%23dbeafe'/></svg>";
+const portalNotices = [
+  { id: "00000000-0000-0000-0000-0000000007e1", title: "Mudança de horário no sábado", body: "A aula de sábado será às 10h.\nTexto fictício <b>sem HTML</b>.", type: "SCHEDULE_CHANGE", daysAgo: 1, pinned: true, kind: "UNIT", names: ["Unidade Centro"], modality: null as string | null, reach: [STUDENT_ADULT, STUDENT_MINOR, CHILD_TWO], image: NOTICE_IMAGE as string | null },
+  { id: "00000000-0000-0000-0000-0000000007e2", title: "Exame de faixa em dezembro", body: "O exame de faixa de Jiu-Jitsu será em dezembro (texto fictício).", type: "GENERAL", daysAgo: 2, pinned: false, kind: "MODALITY", names: ["Jiu-Jitsu"], modality: "Jiu-Jitsu", reach: [STUDENT_ADULT, STUDENT_MINOR], image: null },
+  { id: "00000000-0000-0000-0000-0000000007e3", title: "Recesso de fim de ano", body: "A academia fecha de 24 a 31 de dezembro (texto fictício).", type: "GENERAL", daysAgo: 3, pinned: false, kind: "ORGANIZATION", names: [] as string[], modality: null, reach: [STUDENT_ADULT, STUDENT_MINOR, CHILD_TWO], image: null },
+  { id: "00000000-0000-0000-0000-0000000007e4", title: "Judô Infantil sem aula na quarta", body: "Sem aula na quarta (texto fictício).", type: "CANCELED_CLASS", daysAgo: 4, pinned: false, kind: "CLASS", names: ["Judô Infantil"], modality: "Judô", reach: [CHILD_TWO], image: null },
+];
+const noticeRead = new Set<string>();
+const noticeDismissed = new Set<string>();
+const NOTICE_AUTHOR = "Coordenação Fictícia";
+const studentModalities = (studentId: string) => (studentId === CHILD_TWO ? ["Judô"] : ["Jiu-Jitsu", "Judô"]);
+const noticeUnread = (studentId: string, id: string) => !noticeRead.has(`${studentId}:${id}`) && !noticeDismissed.has(id);
+const noticesFor = (studentId: string, modality: string | null = null) =>
+  portalNotices
+    .filter((n) => n.reach.includes(studentId) && (modality === null || (n.modality ?? modality) === modality))
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || a.daysAgo - b.daysAgo || a.id.localeCompare(b.id));
+const noticeItem = (n: (typeof portalNotices)[number], studentId: string) => ({
+  id: n.id, title: n.title, type: n.type, sentAt: `${dayShift(-n.daysAgo)}T12:00:00Z`, pinned: n.pinned, unread: noticeUnread(studentId, n.id),
+  destination: { kind: n.kind, names: n.names }, author: NOTICE_AUTHOR,
+});
+const unreadIds = (studentId: string) => noticesFor(studentId).filter((n) => noticeUnread(studentId, n.id)).map((n) => n.id);
+const bellCount = () => new Set(homeCards().flatMap((c) => unreadIds(c.id))).size;
+const noticeSummary = (studentId: string) => ({
+  unreadCount: unreadIds(studentId).length,
+  items: noticesFor(studentId)
+    .filter((n) => n.pinned || noticeUnread(studentId, n.id))
+    .slice(0, 5)
+    .map((n) => ({ id: n.id, title: n.title, sentAt: `${dayShift(-n.daysAgo)}T12:00:00Z`, pinned: n.pinned, unread: noticeUnread(studentId, n.id), authorName: NOTICE_AUTHOR })),
+});
+const portalNoticeGate = () => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  return null;
+};
+const portalAnnouncements = (url: URL) => {
+  const q = url.searchParams;
+  const cards = homeCards();
+  const selected = q.get("studentId") ?? cards[0].id;
+  if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const filter = q.get("filter") ?? "ALL";
+  const mine = studentModalities(selected).map(homeRef);
+  const modalityId = filter === "MODALITY" ? q.get("modalityId") : null;
+  if (!["ALL", "UNREAD", "MODALITY"].includes(filter) || (filter === "MODALITY" && !mine.some((m) => m.id === modalityId))) return error(400, "VALIDATION_ERROR", "Dados inválidos.");
+  const size = Math.min(Math.max(Number(q.get("size") ?? 20) || 20, 1), 50);
+  const page = Math.max(Number(q.get("page") ?? 1) || 1, 1);
+  const head = { students: cards.map((c) => ({ id: c.id, name: c.name, self: c.self })), studentId: selected, filter };
+  if (current.account.email === REDUCED_ACCOUNT) return HttpResponse.json({ ...head, reduced: true, modalityId: null, modalities: [], unreadCount: 0, items: [], page, size, total: 0 });
+  const all = noticesFor(selected, mine.find((m) => m.id === modalityId)?.name ?? null).filter((n) => filter !== "UNREAD" || noticeUnread(selected, n.id));
+  return HttpResponse.json({
+    ...head, reduced: false, modalityId, modalities: mine, unreadCount: unreadIds(selected).length, items: all.slice((page - 1) * size, page * size).map((n) => noticeItem(n, selected)), page, size, total: all.length,
+  });
+};
+const portalOpenNotice = (id: string, studentId: string | null) => {
+  const cards = homeCards();
+  const selected = studentId ?? cards[0].id;
+  const found = noticesFor(selected).find((n) => n.id === id);
+  if (!cards.some((c) => c.id === selected) || !found || current.account.email === REDUCED_ACCOUNT) return error(404, "NOT_FOUND", "Não encontrado.");
+  noticeRead.add(`${selected}:${id}`);
+  return HttpResponse.json({ ...noticeItem(found, selected), body: found.body, imageUrl: found.image });
+};
+const portalReadAll = () => {
+  if (current.account.email === REDUCED_ACCOUNT) return HttpResponse.json({ dismissed: 0 });
+  const pending = new Set(homeCards().flatMap((c) => unreadIds(c.id)));
+  pending.forEach((id) => noticeDismissed.add(id));
+  return HttpResponse.json({ dismissed: pending.size });
+};
+// Financeiro do portal (#92): as abertas saem das mesmas cobranças do Início (mais um "Kimono" longe do segundo filho); o histórico é fixo.
+// Cobrança que não está em `mockCharges` vai para "Em conferência" por este conjunto.
+const THIRD_CHARGE = "00000000-0000-0000-0000-0000000007c3";
+const financeReview = new Set<string>();
+const financeRaw = (studentId: string) =>
+  [
+    ...homeCharges(studentId),
+    ...(studentId === CHILD_TWO ? [{ id: THIRD_CHARGE, studentId, description: "Kimono", referenceMonth: null, dueOn: dayShift(20), amountCents: 3000, status: "OPEN", unitId: CENTRO, modality: null as { id: string; name: string } | null }] : []),
+  ].map((c) => (financeReview.has(c.id) ? { ...c, status: "IN_REVIEW" } : c));
+const financeOpen = () => homeCards().flatMap((card) => financeRaw(card.id).map((c) => ({ ...c, studentName: card.name })));
+const financeHistory = (studentId: string, year: number) => {
+  if (studentId === STUDENT_MINOR) return [];
+  const cy = new Date().getFullYear();
+  const row = (n: number, y: number, status: string, amountCents: number) => ({
+    id: `00000000-0000-0000-0000-0000${String(y).slice(-2)}00000${n}${studentId.slice(-1)}`,
+    referenceLabel: `Mensalidade · 0${n}/${y}`, dueOn: `${y}-0${n}-05`, amountCents, status,
+    paidAt: status === "PAID" ? `${y}-0${n}-04T15:00:00Z` : null, method: status === "PAID" ? "PIX_KEY" : null,
+    receipt: status === "PAID" ? { number: 100 * (y % 100) + n, code: `RC-MOCK-${y}-${n}` } : null,
+  });
+  const all = [row(3, cy, "PAID", 12000), row(2, cy, "PAID", 12000), row(1, cy - 1, "PAID", 11000), row(2, cy - 1, "CANCELED", 11000)];
+  return all.filter((r) => r.dueOn.startsWith(String(year)));
+};
+const portalFinance = (url: URL) => {
+  const cards = homeCards();
+  const selected = url.searchParams.get("studentId") ?? cards[0].id;
+  if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const cy = new Date().getFullYear();
+  const yearParam = url.searchParams.get("year");
+  const year = yearParam === null ? cy : Number(yearParam);
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) return studentBad("year", "ano inválido");
+  const family = url.searchParams.get("scope") === "FAMILY";
+  const today = isoDay(new Date());
+  const soon = dayShift(3);
+  const sit = (c: { status: string; dueOn: string }) => (c.status === "IN_REVIEW" ? "IN_REVIEW" : c.dueOn < today ? "OVERDUE" : c.dueOn === today ? "DUE_TODAY" : c.dueOn <= soon ? "DUE_SOON" : "PENDING");
+  const sum = (id: string) => financeRaw(id).reduce((n, c) => n + c.amountCents, 0);
+  const open = financeOpen()
+    .filter((c) => family || c.studentId === selected)
+    .sort((a, b) => Number(sit(b) === "OVERDUE") - Number(sit(a) === "OVERDUE") || a.dueOn.localeCompare(b.dueOn))
+    .map((c) => {
+      const benefitCents = c.id === SECOND_CHARGE ? 1000 : 0;
+      return {
+        id: c.id, studentId: c.studentId, studentName: c.studentName, type: c.referenceMonth ? "MONTHLY" : "ONE_OFF", description: c.description, referenceLabel: c.description || "Cobrança", referenceMonth: c.referenceMonth, dueOn: c.dueOn,
+        situation: sit(c), amountCents: c.amountCents, planCents: c.amountCents + benefitCents, benefitCents, canPay: c.status === "OPEN", modality: c.modality, unit: homeUnit(c.unitId),
+      };
+    });
+  return HttpResponse.json({
+    reduced: current.account.email === REDUCED_ACCOUNT,
+    students: cards.map((c) => ({ ...c, openCents: sum(c.id) })),
+    selectedStudentId: selected,
+    scope: family ? "FAMILY" : "STUDENT",
+    year,
+    years: selected === STUDENT_MINOR ? [] : [cy, cy - 1],
+    familyOpenCents: cards.reduce((n, c) => n + sum(c.id), 0),
+    open,
+    history: family ? [] : financeHistory(selected, year),
+  });
+};
+// Várias cobranças abertas da mesma unidade, de alunos da conta.
+const financeBatch = (ids: string[]) => {
+  const denied = portalAccess();
+  if (denied) return denied;
+  if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+  if (ids.length === 0 || ids.length > 20 || new Set(ids).size !== ids.length) return rule("ids", "de 1 a 20 cobranças, sem repetir");
+  const all = financeOpen();
+  const found = ids.map((id) => all.find((c) => c.id === id));
+  if (found.some((c) => !c)) return error(404, "NOT_FOUND", "Não encontrado.");
+  const charges = found as NonNullable<(typeof found)[number]>[];
+  if (charges.some((c) => c.status !== "OPEN")) return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
+  if (new Set(charges.map((c) => c.unitId)).size > 1) return rule("ids", "escolha cobranças da mesma unidade");
+  if (!financeKey(charges[0])) return error(422, "PIX_KEY_MISSING", "A unidade não tem chave Pix.");
+  return charges;
+};
+// As cobranças fixas do simulado (fora de `mockCharges`) trazem a chave delas, para a tela poder ser provada sem a gestão cadastrar uma.
+const fixedId = (id: string) => !mockCharges.some((x) => x.id === id) && financeOpen().some((c) => c.id === id);
+const financeKey = (c: { id: string; unitId: string }) => unitPixKey(c.unitId) ?? (fixedId(c.id) ? "pix@alfa.example" : null);
+// Um arquivo (`file`) para uma ou várias cobranças: todas vão para "Em conferência" ou nenhuma. Multipart lido como texto (o parser do Node não aceita o File do jsdom).
+const financeSend = (ids: string[], text: string) => {
+  const charges = financeBatch(ids);
+  if (charges instanceof Response) return charges;
+  const part = /Content-Type:\s*(\S+)\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(text);
+  if (!part || part[2].length === 0) return rule("file", "envie o comprovante");
+  if (part[2].length > 5 * 1024 * 1024) return rule("file", "até 5 MB");
+  if (!PROOF_TYPES.includes(part[1])) return rule("file", "use JPG, PNG, WebP ou PDF");
+  const sentAt = new Date().toISOString();
+  return charges.map((c) => {
+    const real = mockCharges.find((x) => x.id === c.id);
+    const proof: MockPaymentProof = { id: crypto.randomUUID(), chargeId: c.id, studentId: c.studentId, unitId: c.unitId, sentAt, status: "PENDING", contentType: part[1], refusalReason: null, decidedAt: null };
+    if (real) {
+      real.status = "IN_REVIEW";
+      mockProofsSent.push(proof); // a gestão só vê comprovante de cobrança do simulado
+    } else financeReview.add(c.id);
+    return { id: proof.id, chargeId: c.id, status: "PENDING", sentAt };
+  });
+};
+const termText = (kind: "ENROLLMENT" | "IMAGE_USE") => {
+  const { version, body } = termsCurrent(kind);
+  return { version, body };
+};
+const confirmable = (s: StudentDetail) => {
+  const since = portalAccepted.get(s.id);
+  return (mockEnrollments[s.id]?.modalities ?? [])
+    .filter((m) => since && m.status === "ACTIVE" && m.startedAt > since.slice(0, 10) && !portalConfirmed.has(m.id))
+    .map((m) => {
+      const plan = mockPlans.find((p) => p.id === m.planId);
+      return {
+        modalityRowId: m.id, studentId: s.id, studentName: s.name, modality: modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? "",
+        unit: units.find((u) => u.id === m.unitId)?.name ?? "", planId: m.planId, plan: plan?.name ?? "", planValueCents: plan?.valueCents ?? 0,
+      };
+    });
+};
 // RF-ALU-02: selos pelos mesmos critérios do servidor; paga o próprio adulto ou o responsável financeiro do menor (RN-ALU-09, RN-ALU-10).
-const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP"];
+const SEALS: StudentSeal[] = ["INCOMPLETE_REGISTRATION", "EMAIL_PROBLEM", "BIRTHDAY_TODAY", "NEW", "SCHOLARSHIP", "TERM_PENDING"];
 const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const guardian = s.minor ? s.guardians.find((g) => g.financial) : undefined;
   const hasCpf = s.minor ? Boolean(guardian && guardianCpfs[guardian.guardianId]) : Boolean(s.cpf);
@@ -1139,7 +1571,7 @@ const sealsOf = (s: StudentDetail): StudentSeal[] => {
   const isNew = latest !== null && Math.floor((now.getTime() - latest) / 86_400_000) <= 30;
   // RF-BEN-02, D10: Bolsista = bolsa percentual ativa (não vencida) numa modalidade ativa.
   const scholarship = benefitRows.some((b) => b.student.id === s.id && b.type === "PERCENT" && b.status === "ACTIVE" && (mockEnrollments[s.id]?.modalities ?? []).some((m) => m.id === b.rowId && m.status === "ACTIVE"));
-  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : seal === "SCHOLARSHIP" ? scholarship : isNew));
+  return SEALS.filter((seal) => (seal === "INCOMPLETE_REGISTRATION" ? !hasCpf || !email : seal === "EMAIL_PROBLEM" ? problem : seal === "BIRTHDAY_TODAY" ? birthday : seal === "SCHOLARSHIP" ? scholarship : seal === "TERM_PENDING" ? termPending(s.id) : isNew));
 };
 // RF-BEN-02: validação e alvo da concessão (mesma ordem do servidor: 401/403, 400, 404, 403 fora do alcance, 400 de validade).
 type BenefitBody = { studentId?: string; modalityRowId?: string; type?: string; value?: unknown; reason?: string; decidedBy?: string; validUntil?: string | null; replaceExisting?: boolean; teacherId?: string };
@@ -3871,7 +4303,10 @@ export const routes: Route[] = [
         const bad = d.action === "CANCEL" ? reasonError(d.reason) : null;
         if (bad) return studentBad(`charges[${i}].reason`, bad);
       }
-      for (const d of decisions) if (d.action === "CANCEL") cancelMock(open(d.chargeId)!, d.reason!.trim());
+      // RN-MAT-18 (#86): com pedido de encerramento aberto, as cobranças com vencimento depois dele saem canceladas, sem escolha.
+      for (const c of mockCharges) if (c.modalityRowId === found.row.id && c.status === "OPEN" && afterClosure(found.row.id, c.dueOn)) cancelMock(c, "Encerramento solicitado pelo aluno");
+      for (const d of decisions) if (d.action === "CANCEL" && open(d.chargeId)) cancelMock(open(d.chargeId)!, d.reason!.trim());
+      for (const r of mockPortalRequests) if (r.kind === "CLOSURE" && r.status === "OPEN" && r.modalityRowId === found.row.id) Object.assign(r, { status: "CLOSED", decidedAt: new Date().toISOString() });
       found.row.status = "ENDED";
       found.row.endedAt = new Date().toISOString();
       logStudent(found.student.id, "student.modality_ended", null);
@@ -3889,7 +4324,7 @@ export const routes: Route[] = [
       const openCharges = mockCharges
         .filter((c) => c.modalityRowId === found.row.id && c.status === "OPEN")
         .sort((a, b) => a.dueOn.localeCompare(b.dueOn))
-        .map((c) => ({ id: c.id, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, status: chargeSituation(c, today) }));
+        .map((c) => ({ id: c.id, referenceMonth: c.referenceMonth, dueOn: c.dueOn, amountCents: c.amountCents, status: chargeSituation(c, today), afterRequest: afterClosure(found.row.id, c.dueOn) }));
       return HttpResponse.json({ openCharges });
     },
   },
@@ -4089,13 +4524,531 @@ export const routes: Route[] = [
     method: "get",
     path: "/portal/students",
     resolver: () => {
-      if (!loggedIn) return unauthenticated();
-      const role = activeRole();
-      if (role !== "STUDENT" && role !== "GUARDIAN") return error(403, "FORBIDDEN", "Sem permissão.");
+      const denied = portalAccess();
+      if (denied) return denied;
+      // RN-POR-03: com termo pendente que a conta aceita, 403 TERM_PENDING.
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
       const card = (s: StudentDetail, self: boolean) => ({ id: s.id, name: s.name, photoUrl: s.photoUrl, self });
       const adult = mockStudents.find((s) => s.id === STUDENT_ADULT)!;
       const minor = mockStudents.find((s) => s.id === STUDENT_MINOR)!;
-      return HttpResponse.json(role === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
+      return HttpResponse.json(activeRole() === "STUDENT" ? [card(adult, true), card(minor, false)] : [card(minor, false)]);
+    },
+  },
+  {
+    // RF-POR-01, RN-POR-08: moldura do portal. "reduzido@exemplo.com" é o aluno sem modalidade ativa (reduced, contador 0); as demais contas têm 3 avisos não lidos.
+    method: "get",
+    path: "/portal/shell",
+    resolver: () => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const reduced = current.account.email === REDUCED_ACCOUNT;
+      return HttpResponse.json({ organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl }, reduced, unreadAnnouncements: reduced ? 0 : bellCount() });
+    },
+  },
+  {
+    // RF-POR-02 (#89): Início do portal. Aluno: o adulto (cobranças reais do simulado); "familia@exemplo.com" é o Responsável com dois filhos; "reduzido@exemplo.com" só vê a cobrança.
+    // O que não vem do simulado (aulas, avisos, faixas e o segundo filho) é fixo; a gestão recebe 403, `studentId` fora da conta 404.
+    method: "get",
+    path: "/portal/home",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      return portalHome(new URL(request.url).searchParams.get("studentId"));
+    },
+  },
+  {
+    // RF-POR-05 (#92): Financeiro. Abertas (com a conferência), família, histórico por ano e recibos; o débito automático não tem rota (Sprint 11). Gestão 403, `studentId` fora da conta 404, `year` fora de 2000 a 2100 400.
+    method: "get",
+    path: "/portal/finance",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      return portalFinance(new URL(request.url));
+    },
+  },
+  {
+    // RN-COB-16: PDF do recibo de aluno da conta; código desconhecido 404 igual.
+    method: "get",
+    path: "/portal/receipts/{code}/pdf",
+    resolver: ({ params }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const known = String(params.code).startsWith("RC-MOCK-") || mockReceipts.some((r) => r.code === params.code && portalMine().some((s) => mockCharges.find((c) => c.id === r.chargeId)?.studentId === s.id));
+      if (!known) return error(404, "NOT_FOUND", "Não encontrado.");
+      return new HttpResponse("%PDF-1.4\n%%EOF", { headers: { "Content-Type": "application/pdf", "Cache-Control": "private, no-store" } });
+    },
+  },
+  {
+    // RF-POR-05, RN-COB-13: pagar junto. Chave Pix, total e cobranças.
+    method: "get",
+    path: "/portal/charges/pix-instructions",
+    resolver: ({ request }) => {
+      const ids = (new URL(request.url).searchParams.get("ids") ?? "").split(",").filter(Boolean);
+      const charges = financeBatch(ids);
+      if (charges instanceof Response) return charges;
+      return HttpResponse.json({
+        pixKey: financeKey(charges[0]),
+        totalCents: charges.reduce((n, c) => n + c.amountCents, 0),
+        unit: units.find((u) => u.id === charges[0].unitId)?.name ?? "",
+        charges: charges.map((c) => ({ chargeId: c.id, studentName: c.studentName, amountCents: c.amountCents, dueOn: c.dueOn })),
+      });
+    },
+  },
+  {
+    // Um arquivo (`file`) para várias cobranças (`chargeIds`): todas vão para "Em conferência" ou nenhuma; responde um comprovante por cobrança.
+    method: "post",
+    path: "/portal/charges/proof",
+    resolver: async ({ request }) => {
+      const text = await request.text();
+      const sent = financeSend([...text.matchAll(/name="chargeIds"\r?\n\r?\n([^\r\n]*)/gi)].map((m) => m[1].trim()), text);
+      return sent instanceof Response ? sent : HttpResponse.json(sent, { status: 201 });
+    },
+  },
+  {
+    // RF-POR-07 (#94): Minhas informações. Mesmas contas do Início; "reduzido@exemplo.com" vem com `reduced` e sem treinos, planos e graduação; gestão 403, `studentId` fora da conta 404.
+    method: "get",
+    path: "/portal/info",
+    resolver: ({ request }) => portalInfo(new URL(request.url).searchParams.get("studentId")),
+  },
+  {
+    // Telefone, endereço e emergência: lista fechada de campos; campo fora dela ou regra do cadastro quebrada, 422 no campo.
+    method: "put",
+    path: "/portal/students/{id}/contact",
+    resolver: async ({ request, params }) => portalContact(String(params.id), ((await request.json().catch(() => ({}))) as Record<string, unknown>) ?? {}),
+  },
+  {
+    // Foto: arquivo (`file`) PNG, JPG ou WebP; outro tipo, 422 no campo `file` e a foto fica.
+    method: "put",
+    path: "/portal/students/{id}/photo",
+    resolver: async ({ request, params }) => {
+      const gate = infoGate(String(params.id));
+      if (gate) return gate;
+      const text = await request.text();
+      const type = /name="file"[^\r\n]*\r?\nContent-Type: ([^\r\n]+)/i.exec(text)?.[1]?.trim();
+      if (!type || !["image/png", "image/jpeg", "image/webp"].includes(type)) return error(422, "UNPROCESSABLE", "Regra de negócio recusa o pedido.", [{ field: "file", message: "imagem PNG, JPG ou WebP" }]);
+      portalInfoEdits.set(String(params.id), { ...portalInfoEdits.get(String(params.id)), photoUrl: PHOTO_URL });
+      return HttpResponse.json(infoPersonal(String(params.id)));
+    },
+  },
+  {
+    method: "delete",
+    path: "/portal/students/{id}/photo",
+    resolver: ({ params }) => {
+      const gate = infoGate(String(params.id));
+      if (gate) return gate;
+      portalInfoEdits.set(String(params.id), { ...portalInfoEdits.get(String(params.id)), photoUrl: null });
+      return HttpResponse.json(infoPersonal(String(params.id)));
+    },
+  },
+  {
+    // RF-POR-03 (#90): carteirinha. Mesmas contas do Início; "reduzido@exemplo.com" é o aluno inativo (INACTIVE, sem modalidades, rota continua 200); gestão 403, `studentId` fora da conta 404.
+    method: "get",
+    path: "/portal/card",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const cards = homeCards();
+      const selected = new URL(request.url).searchParams.get("studentId") ?? cards[0].id;
+      const student = cards.find((c) => c.id === selected);
+      if (!student) return error(404, "NOT_FOUND", "Não encontrado.");
+      const jiu = homeRef("Jiu-Jitsu");
+      const judo = homeRef("Judô");
+      const inactive = current.account.email === REDUCED_ACCOUNT;
+      const modalities = inactive
+        ? []
+        : selected === CHILD_TWO
+          ? [{ modality: judo, unit: homeUnit(CENTRO), belt: { levelName: "Branca", color: "#FFFFFF", secondaryColor: null, degree: 0 } }]
+          : [
+              { modality: jiu, unit: homeUnit(CENTRO), belt: { levelName: "Azul", color: "#1E40AF", secondaryColor: null, degree: 2 } },
+              { modality: judo, unit: homeUnit(NORTE), belt: null },
+            ];
+      return HttpResponse.json({
+        organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl },
+        student: { id: student.id, name: student.name, photoUrl: student.photoUrl },
+        students: cards.map((c) => ({ id: c.id, name: c.name, self: c.self })),
+        status: inactive ? "INACTIVE" : "ACTIVE",
+        today: isoDay(new Date()),
+        generatedAt: new Date().toISOString(),
+        timezone: "America/Sao_Paulo",
+        modalities,
+      });
+    },
+  },
+  {
+    // RF-POR-06 (#93): avisos do aluno. Mesmas contas do Início; "reduzido@exemplo.com" é 200 vazio com `reduced`; gestão 403, `studentId` fora da conta 404, `filter` ou `modalityId` inválidos 400.
+    method: "get",
+    path: "/portal/announcements",
+    resolver: ({ request }) => portalNoticeGate() ?? portalAnnouncements(new URL(request.url)),
+  },
+  {
+    // Abrir grava a leitura do aluno escolhido; aviso que ele não alcança, 404.
+    method: "post",
+    path: "/portal/announcements/{id}/open",
+    resolver: ({ request, params }) => portalNoticeGate() ?? portalOpenNotice(String(params.id), new URL(request.url).searchParams.get("studentId")),
+  },
+  {
+    // Marcar todos como lidos: marca de "limpo" da conta, sem leitura; repetir responde 0.
+    method: "post",
+    path: "/portal/announcements/read-all",
+    resolver: () => portalNoticeGate() ?? portalReadAll(),
+  },
+  {
+    // RF-POR-04 (#91): agenda da semana. Mesmas contas do Início; "reduzido@exemplo.com" é 200 vazio com `reduced`; gestão 403, `studentId` fora da conta 404, `week` ou `scope` inválidos 400.
+    method: "get",
+    path: "/portal/schedule",
+    resolver: ({ request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const q = new URL(request.url).searchParams;
+      const cards = homeCards();
+      const selected = q.get("studentId") ?? cards[0].id;
+      if (!cards.some((c) => c.id === selected)) return error(404, "NOT_FOUND", "Não encontrado.");
+      const scope = q.get("scope") ?? "ALL";
+      const asked = q.get("week");
+      const valid = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && isoDay(new Date(`${d}T12:00:00Z`)) === d;
+      if ((scope !== "ALL" && scope !== "MAIN") || (asked !== null && !valid(asked))) return error(400, "VALIDATION_ERROR", "Dados inválidos.");
+      const today = isoDay(new Date());
+      const base = asked ?? today;
+      const monday = addDays(base, -((new Date(`${base}T12:00:00Z`).getUTCDay() + 6) % 7));
+      const head = { reduced: false, students: cards.map((c) => ({ id: c.id, name: c.name, self: c.self })), studentId: selected, scope, weekStart: monday, weekEnd: addDays(monday, 6), today, timezone: "America/Sao_Paulo" };
+      if (current.account.email === REDUCED_ACCOUNT) return HttpResponse.json({ ...head, reduced: true, lessons: [], noClassDays: [] });
+      const jiu = homeRef("Jiu-Jitsu");
+      const judo = homeRef("Judô");
+      const lesson = (id: string, day: number, startsAt: string, endsAt: string, title: string, kind: string, modality: { id: string; name: string }, unit: string, over: object = {}) => {
+        const date = addDays(monday, day);
+        return {
+          id: `00000000-0000-0000-0000-0000000007f${id}`, date, startsAt, endsAt, title, kind, status: "SCHEDULED", cancelReasonCode: null, cancelReason: null, changed: false,
+          originalDate: null, originalStartsAt: null, substitute: false, past: new Date(`${date}T${endsAt}:00`).getTime() <= Date.now(), noticeId: null, modality, unit: homeUnit(unit), teacherName: "Prof. Carlos Teste", ...over,
+        };
+      };
+      const lessons =
+        selected === CHILD_TWO
+          ? [lesson("1", 0, "17:00", "18:00", "Judô Infantil", "MAIN", judo, CENTRO)]
+          : [
+              lesson("2", 1, "19:00", "20:00", "Jiu-Jitsu Adulto", "MAIN", jiu, CENTRO, { changed: true, originalDate: addDays(monday, 0), originalStartsAt: "18:00", noticeId: "00000000-0000-0000-0000-0000000007e1" }),
+              lesson("3", 3, "19:00", "20:00", "Judô Adulto", "OTHER", judo, NORTE, { status: "CANCELLED", cancelReasonCode: "HOLIDAY", noticeId: "00000000-0000-0000-0000-0000000007e2" }),
+              lesson("4", 5, "10:00", "11:00", "Seminário de guarda", "ADHOC", jiu, CENTRO, { substitute: true, changed: true, teacherName: "Prof. Marta Teste" }),
+            ];
+      const noClassDays = selected === CHILD_TWO ? [] : [{ date: addDays(monday, 2), reason: "Reforma do tatame", unit: homeUnit(CENTRO) }];
+      return HttpResponse.json({ ...head, lessons: scope === "MAIN" ? lessons.filter((l) => l.kind === "MAIN") : lessons, noClassDays });
+    },
+  },
+  {
+    // RN-MAT-11, RN-MAT-14: pendências de aceite que a conta aceita; funciona com o termo pendente.
+    method: "get",
+    path: "/portal/term",
+    resolver: () => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      return HttpResponse.json(portalMine().filter((s) => termPending(s.id)).map((s) => ({ id: s.id, name: s.name, term: termText("ENROLLMENT"), imageUse: { ...termText("IMAGE_USE"), granted: portalImage.get(s.id) ?? false } })));
+    },
+  },
+  {
+    // RN-MAT-12: versão obrigatória (400) e vigente (409); repetir ou sem pendência, 200 sem gravar; aluno de outra conta, 404.
+    method: "post",
+    path: "/portal/students/{id}/term-acceptance",
+    resolver: async ({ params, request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const body = (await request.json().catch(() => ({}))) as { version?: unknown; imageUse?: boolean };
+      if (!Number.isInteger(body.version)) return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "version", message: "obrigatória" }]);
+      const student = portalMine().find((s) => s.id === params.id);
+      if (!student) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (body.version !== termText("ENROLLMENT").version) return error(409, "TERMS_VERSION_CONFLICT", "O termo mudou.");
+      const wrote = termPending(student.id);
+      if (wrote) {
+        portalAccepted.set(student.id, new Date().toISOString());
+        if (body.imageUse) portalImage.set(student.id, true);
+      }
+      return HttpResponse.json({ studentId: student.id, version: body.version, imageUse: portalImage.get(student.id) ?? false }, { status: wrote ? 201 : 200 });
+    },
+  },
+  {
+    method: "get",
+    path: "/portal/students/{id}/image-use",
+    resolver: ({ params }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      if (!homeCards().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      return HttpResponse.json({ ...termText("IMAGE_USE"), granted: portalImage.get(params.id as string) ?? false });
+    },
+  },
+  {
+    method: "put",
+    path: "/portal/students/{id}/image-use",
+    resolver: async ({ params, request }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const body = (await request.json().catch(() => ({}))) as { granted?: unknown; version?: number };
+      if (typeof body.granted !== "boolean") return error(400, "VALIDATION_ERROR", "Dados inválidos.", [{ field: "granted", message: "obrigatório" }]);
+      if (!homeCards().some((s) => s.id === params.id)) return error(404, "NOT_FOUND", "Não encontrado.");
+      if (body.granted && body.version !== undefined && body.version !== termText("IMAGE_USE").version) return error(409, "TERMS_VERSION_CONFLICT", "O termo mudou.");
+      portalImage.set(params.id as string, body.granted);
+      return HttpResponse.json({ ...termText("IMAGE_USE"), granted: body.granted });
+    },
+  },
+  {
+    // RN-MAT-13: modalidades ativas criadas depois do aceite e ainda sem confirmação, com o valor atual do plano.
+    method: "get",
+    path: "/portal/modality-confirmations",
+    resolver: () => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const mine = portalMine();
+      if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      return HttpResponse.json(mine.flatMap((s) => confirmable(s)));
+    },
+  },
+  {
+    method: "post",
+    path: "/portal/modality-confirmations/{modalityRowId}",
+    resolver: ({ params }) => {
+      const denied = portalAccess();
+      if (denied) return denied;
+      const mine = portalMine();
+      if (mine.some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
+      const found = mine.flatMap((s) => confirmable(s)).find((i) => i.modalityRowId === params.modalityRowId);
+      if (!found) return error(404, "NOT_FOUND", "Não encontrado.");
+      portalConfirmed.add(found.modalityRowId);
+      return HttpResponse.json({ modalityRowId: found.modalityRowId, studentId: found.studentId, planId: found.planId, planValueCents: found.planValueCents }, { status: 201 });
+    },
+  },
+  {
+    // RF-MAT-04 (#86): o que o aluno pode pedir; lê o adulto (Aluno) ou o menor (Responsável).
+    method: "get",
+    path: "/portal/students/{id}/request-options",
+    resolver: ({ params }) => {
+      const student = portalRequestStudent(params.id as string);
+      if (student instanceof Response) return student;
+      const rows = (mockEnrollments[student.id]?.modalities ?? []).filter((m) => m.status === "ACTIVE");
+      const named = (id: string, list: { id: string; name: string }[]) => ({ id, name: list.find((x) => x.id === id)?.name ?? "" });
+      const modalities = rows.map((m) => ({
+        modalityRowId: m.id, modalityId: m.modalityId, modality: modalityCatalog.find((c) => c.id === m.modalityId)?.name ?? "", unitId: m.unitId,
+        unit: units.find((u) => u.id === m.unitId)?.name ?? "", currentClass: named(m.primaryClassId, mockClasses), currentPlan: named(m.planId, mockPlans),
+        closureRequestedAt: closureOpenAt(m.id),
+        classes: mockClasses.filter((c) => c.status === "ACTIVE" && c.unitId === m.unitId && c.modalityId === m.modalityId && c.id !== m.primaryClassId).map((c) => ({ id: c.id, name: c.name })),
+        plans: mockPlans.filter((p) => p.status === "ACTIVE" && p.unitId === m.unitId && modalityCatalog[p.modalityIndex].id === m.modalityId && p.id !== m.planId).map((p) => ({ id: p.id, name: p.name, valueCents: p.valueCents })),
+      }));
+      const offers = units.flatMap((u) =>
+        modalityCatalog.filter((c) => activeModalities.has(c.id) && unitModalities.get(u.id)?.has(c.id) && !rows.some((m) => m.modalityId === c.id)).map((c) => ({ unitId: u.id, unit: u.name, modalityId: c.id, modality: c.name })),
+      );
+      return HttpResponse.json({ modalities, offers });
+    },
+  },
+  {
+    method: "get",
+    path: "/portal/students/{id}/requests",
+    resolver: ({ params }) => {
+      const student = portalRequestStudent(params.id as string);
+      if (student instanceof Response) return student;
+      return HttpResponse.json(mockPortalRequests.filter((r) => r.studentId === student.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map(requestView));
+    },
+  },
+  {
+    // RN-MAT-16, RN-MAT-18: cria o pedido; igual ainda aberto, 409; encerramento aberto trava troca de turma e de plano.
+    method: "post",
+    path: "/portal/students/{id}/requests",
+    resolver: async ({ request, params }) => {
+      const student = portalRequestStudent(params.id as string);
+      if (student instanceof Response) return student;
+      const b = ((await request.json().catch(() => ({}))) as Record<string, string | undefined>) ?? {};
+      const kind = b.kind ?? "";
+      if (!REQUEST_KINDS.includes(kind)) return studentBad("kind", "um dos tipos de pedido");
+      if ((b.note ?? "").length > 500) return studentBad("note", "até 500 caracteres");
+      const rows = (mockEnrollments[student.id]?.modalities ?? []).filter((m) => m.status === "ACTIVE");
+      const row = rows.find((m) => m.id === b.modalityRowId);
+      if (kind !== "NEW_MODALITY" && !row) return studentBad("modalityRowId", "modalidade ativa do aluno");
+      const draft: MockPortalRequest = {
+        id: crypto.randomUUID(), kind, status: "OPEN", studentId: student.id, unitId: row?.unitId ?? b.targetUnitId ?? "", modalityRowId: row?.id ?? null, targetClassId: null, targetPlanId: null,
+        targetModalityId: null, targetUnitId: null, reason: null, note: b.note?.trim() || null, response: null, createdAt: new Date().toISOString(), decidedAt: null,
+      };
+      if (kind === "CLASS_CHANGE") {
+        const klass = mockClasses.find((c) => c.id === b.targetClassId);
+        if (!klass || klass.status !== "ACTIVE" || klass.unitId !== row!.unitId || klass.modalityId !== row!.modalityId || klass.id === row!.primaryClassId) return studentBad("targetClassId", "turma ativa da mesma unidade e modalidade, diferente da atual");
+        draft.targetClassId = klass.id;
+      } else if (kind === "PLAN_CHANGE") {
+        const plan = mockPlans.find((p) => p.id === b.targetPlanId);
+        if (!plan || plan.status !== "ACTIVE" || plan.unitId !== row!.unitId || modalityCatalog[plan.modalityIndex].id !== row!.modalityId || plan.id === row!.planId) return studentBad("targetPlanId", "plano ativo da mesma unidade e modalidade, diferente do atual");
+        draft.targetPlanId = plan.id;
+      } else if (kind === "NEW_MODALITY") {
+        if (!units.some((u) => u.id === b.targetUnitId) || !b.targetModalityId || !activeModalities.has(b.targetModalityId) || !unitModalities.get(b.targetUnitId!)?.has(b.targetModalityId)) return studentBad("targetModalityId", "modalidade inativa ou não oferecida pela unidade");
+        if (rows.some((m) => m.modalityId === b.targetModalityId)) return studentBad("targetModalityId", "o aluno já tem esta modalidade ativa");
+        draft.targetUnitId = b.targetUnitId!;
+        draft.targetModalityId = b.targetModalityId;
+      } else {
+        if (!b.reason || !END_REASONS.includes(b.reason)) return studentBad("reason", "um dos motivos da lista");
+        draft.reason = b.reason;
+      }
+      const same = (r: MockPortalRequest) =>
+        r.status === "OPEN" && r.studentId === student.id && r.kind === kind && (kind === "NEW_MODALITY" ? r.targetUnitId === draft.targetUnitId && r.targetModalityId === draft.targetModalityId : r.modalityRowId === draft.modalityRowId);
+      const locked = row && (kind === "CLASS_CHANGE" || kind === "PLAN_CHANGE") && openClosure(row.id);
+      if (locked || mockPortalRequests.some(same)) return error(409, "REQUEST_ALREADY_OPEN", "Já existe um pedido igual em aberto.");
+      mockPortalRequests.push(draft);
+      return HttpResponse.json(requestView(draft), { status: 201 });
+    },
+  },
+  {
+    // RF-MAT-04 (#86): lista da gestão; por padrão os abertos, do mais antigo ao mais novo; o Administrador só vê a unidade dele.
+    method: "get",
+    path: "/portal-requests",
+    resolver: ({ request }) => {
+      const denied = requestAdminAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const status = p.get("status") ?? "OPEN";
+      const kind = p.get("kind");
+      if ((status !== "ALL" && !REQUEST_STATUSES.includes(status)) || (kind && !REQUEST_KINDS.includes(kind))) return error(400, "BAD_REQUEST", "Filtro inválido.");
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const all = mockPortalRequests
+        .filter((r) => (activeRole() === "COORDINATOR" || r.unitId === ADMIN_UNIT) && (status === "ALL" || r.status === status) && (!kind || r.kind === kind) && (!p.get("unitId") || r.unitId === p.get("unitId")))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return HttpResponse.json({ items: all.slice((page - 1) * size, page * size).map(requestView), page, size, total: all.length });
+    },
+  },
+  {
+    method: "get",
+    path: "/portal-requests/{id}",
+    resolver: ({ params }) => {
+      const found = requestFor(params.id as string);
+      return found instanceof Response ? found : HttpResponse.json(requestView(found));
+    },
+  },
+  {
+    // D4: Aprovar só marca o pedido; o encerramento não tem aprovação (400). Já decidido, 409.
+    method: "post",
+    path: "/portal-requests/{id}/approve",
+    resolver: async ({ request, params }) => {
+      const found = requestFor(params.id as string);
+      if (found instanceof Response) return found;
+      const message = (((await request.json().catch(() => ({}))) as { message?: string }) ?? {}).message?.trim() ?? "";
+      if (found.kind === "CLOSURE") return studentBad("kind", "o encerramento não tem aprovação");
+      if (message.length > 500) return studentBad("message", "até 500 caracteres");
+      if (found.status !== "OPEN") return error(409, "REQUEST_NOT_OPEN", "O pedido já foi decidido.");
+      Object.assign(found, { status: "APPROVED", response: message || null, decidedAt: new Date().toISOString() });
+      return HttpResponse.json(requestView(found));
+    },
+  },
+  {
+    // Recusar exige mensagem de 3 a 500 caracteres; no encerramento a modalidade volta a Ativa (o selo sai com o pedido aberto).
+    method: "post",
+    path: "/portal-requests/{id}/refuse",
+    resolver: async ({ request, params }) => {
+      const found = requestFor(params.id as string);
+      if (found instanceof Response) return found;
+      const message = (((await request.json().catch(() => ({}))) as { message?: string }) ?? {}).message?.trim() ?? "";
+      if (message.length < 3 || message.length > 500) return studentBad("message", "de 3 a 500 caracteres");
+      if (found.status !== "OPEN") return error(409, "REQUEST_NOT_OPEN", "O pedido já foi decidido.");
+      Object.assign(found, { status: "REFUSED", response: message, decidedAt: new Date().toISOString() });
+      return HttpResponse.json(requestView(found));
+    },
+  },
+  {
+    // RF-COB-05 (#87): chave Pix da unidade para pagar; só cobrança aberta (409) de unidade com chave (422).
+    method: "get",
+    path: "/portal/charges/{id}/pix-instructions",
+    resolver: ({ params }) => {
+      if (fixedId(params.id as string)) {
+        const fixed = financeBatch([params.id as string]);
+        if (fixed instanceof Response) return fixed;
+        const [f] = fixed;
+        return HttpResponse.json({ chargeId: f.id, pixKey: financeKey(f), amountCents: f.amountCents, dueOn: f.dueOn, unit: units.find((u) => u.id === f.unitId)?.name ?? "" });
+      }
+      const c = portalCharge(params.id as string);
+      if (c instanceof Response) return c;
+      if (c.status !== "OPEN") return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
+      const pixKey = unitPixKey(c.unitId);
+      if (!pixKey) return error(422, "PIX_KEY_MISSING", "A unidade não tem chave Pix.");
+      return HttpResponse.json({ chargeId: c.id, pixKey, amountCents: c.amountCents, dueOn: c.dueOn, unit: units.find((u) => u.id === c.unitId)?.name ?? "" });
+    },
+  },
+  {
+    // RN-COB-13: comprovante JPG, PNG, WebP ou PDF até 5 MB (campo `file`); a cobrança passa a "Em conferência" e a gestão é avisada.
+    method: "post",
+    path: "/portal/charges/{id}/proof",
+    resolver: async ({ request, params }) => {
+      if (fixedId(params.id as string)) {
+        const sent = financeSend([params.id as string], await request.text());
+        return sent instanceof Response ? sent : HttpResponse.json(sent[0], { status: 201 });
+      }
+      const c = portalCharge(params.id as string);
+      if (c instanceof Response) return c;
+      // Multipart lido como texto (o parser do Node não aceita o File do jsdom nos testes): cabeçalho da parte, linha em branco, conteúdo.
+      const part = /Content-Type:\s*(\S+)\r?\n\r?\n([\s\S]*?)\r?\n--/i.exec(await request.text());
+      if (!part || part[2].length === 0) return rule("file", "envie o comprovante");
+      if (part[2].length > 5 * 1024 * 1024) return rule("file", "até 5 MB");
+      if (!PROOF_TYPES.includes(part[1])) return rule("file", "use JPG, PNG, WebP ou PDF");
+      if (c.status !== "OPEN") return error(409, "CHARGE_NOT_PAYABLE", "Esta cobrança não pode receber pagamento.");
+      if (!unitPixKey(c.unitId)) return error(422, "PIX_KEY_MISSING", "A unidade não tem chave Pix.");
+      const proof: MockPaymentProof = { id: crypto.randomUUID(), chargeId: c.id, studentId: c.studentId, unitId: c.unitId, sentAt: new Date().toISOString(), status: "PENDING", contentType: part[1], refusalReason: null, decidedAt: null };
+      mockProofsSent.push(proof);
+      c.status = "IN_REVIEW";
+      mockNotifications.unshift({ id: crypto.randomUUID(), type: "PAYMENT_PROOF", createdAt: proof.sentAt, readAt: null, refType: "payment_proof", refId: proof.id, params: { studentName: mockStudents.find((s) => s.id === c.studentId)?.name ?? "", amountCents: c.amountCents } });
+      return HttpResponse.json({ id: proof.id, chargeId: c.id, status: "PENDING", sentAt: proof.sentAt }, { status: 201 });
+    },
+  },
+  {
+    // RF-COB-05: pendentes, do mais antigo ao mais novo; o Administrador só vê a unidade dele.
+    method: "get",
+    path: "/payment-proofs",
+    resolver: ({ request }) => {
+      const denied = studentAccess();
+      if (denied) return denied;
+      const p = new URL(request.url).searchParams;
+      const page = Number(p.get("page") ?? 1);
+      const size = Number(p.get("size") ?? 25);
+      const all = mockProofsSent
+        .filter((x) => x.status === "PENDING" && (activeRole() === "COORDINATOR" || x.unitId === ADMIN_UNIT) && (!p.get("unitId") || x.unitId === p.get("unitId")))
+        .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
+      return HttpResponse.json({ items: all.slice((page - 1) * size, page * size).map(proofView), page, size, total: all.length });
+    },
+  },
+  {
+    method: "get",
+    path: "/payment-proofs/{id}",
+    resolver: ({ params }) => {
+      const found = proofFor(params.id as string);
+      return found instanceof Response ? found : HttpResponse.json(proofView(found));
+    },
+  },
+  {
+    // RN-COB-13: confirmar paga a cobrança (PIX_KEY, origem PORTAL, data do envio) com recibo; repetir é 409.
+    method: "post",
+    path: "/payment-proofs/{id}/confirm",
+    resolver: async ({ request, params }) => {
+      const found = proofFor(params.id as string);
+      if (found instanceof Response) return found;
+      const body = ((await request.json().catch(() => ({}))) as { sendReceipt?: boolean }) ?? {};
+      if (found.status !== "PENDING") return error(409, "PROOF_NOT_PENDING", "O comprovante já foi decidido.");
+      const charge = mockCharges.find((c) => c.id === found.chargeId)!;
+      const number = mockReceipts.filter((r) => r.unitId === charge.unitId).length + 1;
+      const code = crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase();
+      charge.status = "PAID";
+      mockReceipts.push({ code, unitId: charge.unitId, number, chargeId: charge.id, amountCents: charge.amountCents, paidAt: found.sentAt, studentName: mockStudents.find((s) => s.id === charge.studentId)?.name ?? "", method: "PIX_KEY", observation: null, by: { id: session.account.id, name: session.account.name } });
+      Object.assign(found, { status: "CONFIRMED", decidedAt: new Date().toISOString() });
+      const payment = { id: crypto.randomUUID(), chargeId: charge.id, amountCents: charge.amountCents, method: "PIX_KEY", paidAt: found.sentAt, registeredBy: session.account.id, observation: null, receipt: { number, code }, receiptEmail: body.sendReceipt ? "SENT" : "NOT_REQUESTED" };
+      return HttpResponse.json({ proof: proofView(found), payment });
+    },
+  },
+  {
+    // Recusar exige motivo de 3 a 200 caracteres; a cobrança volta a aberta e o comprovante sai da fila.
+    method: "post",
+    path: "/payment-proofs/{id}/refuse",
+    resolver: async ({ request, params }) => {
+      const found = proofFor(params.id as string);
+      if (found instanceof Response) return found;
+      const reason = (((await request.json().catch(() => ({}))) as { reason?: string }) ?? {}).reason?.trim() ?? "";
+      if (reason.length < 3 || reason.length > 200) return studentBad("reason", "de 3 a 200 caracteres");
+      if (found.status !== "PENDING") return error(409, "PROOF_NOT_PENDING", "O comprovante já foi decidido.");
+      mockCharges.find((c) => c.id === found.chargeId)!.status = "OPEN";
+      Object.assign(found, { status: "REFUSED", refusalReason: reason, decidedAt: new Date().toISOString() });
+      return HttpResponse.json(proofView(found));
     },
   },
   {

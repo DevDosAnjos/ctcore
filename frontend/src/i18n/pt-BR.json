@@ -372,7 +372,8 @@
       "EMAIL_PROBLEM": "E-mail com problema",
       "BIRTHDAY_TODAY": "Aniversário hoje",
       "NEW": "Novo",
-      "SCHOLARSHIP": "Bolsista"
+      "SCHOLARSHIP": "Bolsista",
+      "TERM_PENDING": "Termo pendente"
     },
     "edit": {
       "button": "Editar dados",
@@ -488,6 +489,7 @@
           "benefit": "Conceder benefício",
           "end": "Encerrar"
         },
+        "closureRequested": "Encerramento solicitado",
         "readOnly": "Modalidade de outra unidade: só leitura.",
         "errors": {
           "403": "Você não tem permissão para alterar esta modalidade.",
@@ -514,6 +516,8 @@
           "who": "{{student}} · {{modality}} ({{unit}})",
           "charges": "Cobranças em aberto",
           "noCharges": "Nenhuma cobrança em aberto",
+          "afterRequest": "Há um pedido de encerramento do aluno. As cobranças com vencimento depois do pedido são canceladas ao encerrar; as anteriores seguem a sua decisão.",
+          "autoCanceled": "será cancelada",
           "chargeLine": "{{due}} · {{amount}} · {{status}}",
           "keep": "Manter",
           "cancel": "Cancelar",
@@ -1783,6 +1787,7 @@
       "trialClasses": "Aulas experimentais",
       "announcements": "Comunicados",
       "students": "Alunos",
+      "requests": "Pedidos",
       "teachers": "Professores",
       "collections": "Cobranças e pagamentos",
       "plans": "Planos",
@@ -2028,6 +2033,7 @@
       "DUE_TODAY": "Vence hoje",
       "IN_REVIEW": "Em conferência",
       "PAID_MONTH": "Pagas no mês",
+      "openReview": "Abrir conferência",
       "withCount": "{{label}} ({{count}})"
     },
     "filters": {
@@ -2110,6 +2116,7 @@
       "sendReminder": "Enviar lembrete",
       "refund": "Estornar",
       "disabled": {
+        "inReview": "Há um comprovante de Pix aguardando conferência.",
         "registerPayment": "Só cobranças em aberto recebem pagamento.",
         "sendReminder": "Só cobranças em aberto recebem lembrete.",
         "refund": "Disponível quando o estorno for entregue."
@@ -2443,6 +2450,81 @@
       "error": "Não foi possível registrar o pagamento. Nada foi gravado. Tente de novo."
     }
   },
+  "portalRequests": {
+    "title": "Pedidos do portal",
+    "intro": "Pedidos de troca de turma, nova modalidade, troca de plano e encerramento feitos pelos alunos. Um pedido nunca altera a matrícula sozinho: ao aprovar, você conclui o fluxo já preenchido.",
+    "emptyTitle": "Nenhum pedido",
+    "emptyText": "Quando um aluno fizer um pedido pelo portal, ele aparece aqui.",
+    "kinds": {
+      "CLASS_CHANGE": "Troca de turma",
+      "NEW_MODALITY": "Nova modalidade",
+      "PLAN_CHANGE": "Troca de plano",
+      "CLOSURE": "Encerramento"
+    },
+    "statuses": {
+      "OPEN": "Aberto",
+      "APPROVED": "Aprovado",
+      "REFUSED": "Recusado",
+      "EXPIRED": "Expirado",
+      "CLOSED": "Encerrado"
+    },
+    "summary": {
+      "CLASS_CHANGE": "{{modality}}: para a turma {{targetClass}}",
+      "PLAN_CHANGE": "{{modality}}: para o plano {{targetPlan}}",
+      "NEW_MODALITY": "{{modality}} na unidade {{targetUnit}}",
+      "CLOSURE": "{{modality}}: encerrar ({{reason}})"
+    },
+    "filters": {
+      "status": "Situação",
+      "open": "Abertos",
+      "allStatuses": "Todas",
+      "kind": "Tipo",
+      "allKinds": "Todos os tipos",
+      "unit": "Unidade",
+      "allUnits": "Todas as unidades"
+    },
+    "columns": {
+      "kind": "Tipo",
+      "student": "Aluno",
+      "unit": "Unidade",
+      "request": "Pedido",
+      "message": "Mensagem",
+      "date": "Data",
+      "status": "Situação",
+      "actions": "Ações"
+    },
+    "cardUnit": "{{unit}} · {{date}}",
+    "actions": {
+      "approve": "Aprovar",
+      "approveFor": "Aprovar pedido de {{student}}",
+      "refuse": "Recusar",
+      "refuseFor": "Recusar pedido de {{student}}",
+      "openRecord": "Abrir ficha",
+      "openRecordFor": "Abrir ficha de {{student}} para encerrar"
+    },
+    "decide": {
+      "who": "{{student}} · {{summary}}",
+      "note": "Mensagem do aluno: {{note}}"
+    },
+    "approve": {
+      "title": "Aprovar pedido",
+      "effect": "O pedido fica aprovado e o aluno é avisado por e-mail. A matrícula só muda quando você concluir o fluxo que vai abrir.",
+      "message": "Mensagem ao aluno (opcional)",
+      "submit": "Aprovar e continuar"
+    },
+    "refuse": {
+      "title": "Recusar pedido",
+      "effect": "O aluno recebe a sua mensagem por e-mail. No pedido de encerramento, a modalidade volta a ficar ativa.",
+      "message": "Mensagem ao aluno",
+      "submit": "Recusar pedido"
+    },
+    "errors": {
+      "403": "Você não tem permissão para decidir este pedido.",
+      "404": "Este pedido não existe mais.",
+      "409": "Este pedido já foi decidido. Atualize a lista.",
+      "generic": "Não conseguimos concluir. Nada foi alterado."
+    }
+  },
   "common": {
     "cancel": "Cancelar",
     "confirm": "Confirmar",
@@ -2580,7 +2662,9 @@
       "STUDENT_MAJORITY": { "text": "{{studentName}} completou 18 anos.", "action": "Ver aluno" },
       "EMAIL_PROBLEM": { "text": "Um e-mail de aluno ou responsável está com problema.", "action": "Ver aluno" },
       "INVITE_PENDING": { "text": "O convite de {{personName}} segue sem aceite há 7 dias.", "action": "Ver usuários" },
-      "CLOSURE_REQUEST": { "text": "Há um pedido de encerramento aguardando decisão.", "action": "Abrir configurações" },
+      "CLOSURE_REQUEST": { "text": "Há um pedido de encerramento aguardando decisão.", "action": "Ver pedidos" },
+      "PORTAL_REQUEST": { "text": "Há um pedido novo do portal aguardando resposta.", "action": "Ver pedidos" },
+      "PAYMENT_PROOF": { "text": "{{studentName}} enviou um comprovante de {{amount}} para conferir.", "action": "Conferir comprovantes" },
       "MP_DISCONNECTED": { "text": "A conexão de pagamentos da academia caiu.", "action": "Abrir configurações" },
       "SUBSCRIPTION_OVERDUE": { "text": "A assinatura do CTCore está em atraso.", "action": "Abrir configurações" }
     }
@@ -2601,6 +2685,496 @@
       "aconteceu": "Não conseguimos carregar as informações agora.",
       "alterado": "Nada foi alterado nos seus dados.",
       "fazer": "Tente de novo em instantes. Se continuar, fale com o suporte."
+    }
+  },
+  "portalTerm": {
+    "title": "Termo de matrícula",
+    "intro": "Leia o termo e aceite para continuar usando o portal.",
+    "studentHeading": "Termo de {{name}}",
+    "imageUseTitle": "Uso de imagem (opcional)",
+    "accept": "Li e aceito o termo de matrícula",
+    "imageUse": "Autorizo o uso de imagem, nos termos acima. Posso revogar quando quiser, sem prejuízo da matrícula.",
+    "submit": "Aceitar e continuar",
+    "saving": "Salvando...",
+    "emptyTitle": "Nenhum termo para aceitar",
+    "emptyText": "Você está em dia com os termos.",
+    "emptyAction": "Ir para o início",
+    "errors": {
+      "conflict": "O termo mudou. Leia a nova versão e aceite de novo.",
+      "generic": "Não conseguimos registrar o aceite. Tente de novo."
+    }
+  },
+  "paymentProofs": {
+    "title": "Comprovantes em conferência",
+    "intro": "Comprovantes de Pix na chave enviados pelos alunos. Confirme para registrar o pagamento ou recuse com o motivo.",
+    "back": "Voltar às cobranças",
+    "emptyTitle": "Nenhum comprovante em conferência",
+    "emptyText": "Quando um aluno enviar um comprovante de Pix, ele aparece aqui.",
+    "columns": { "proof": "Comprovante", "student": "Aluno", "unit": "Unidade", "reference": "Referência", "amount": "Valor", "dueOn": "Vencimento", "sentAt": "Enviado em", "actions": "Ações" },
+    "cardLine": "{{unit}} · {{reference}}",
+    "cardDates": "{{amount}} · vence em {{dueOn}} · enviado em {{sentAt}}",
+    "image": { "alt": "Comprovante de {{student}}", "zoom": "Ampliar comprovante de {{student}}", "unavailable": "Imagem indisponível", "openFile": "Abrir arquivo", "viewTitle": "Comprovante de {{student}}", "pdf": "Arquivo PDF" },
+    "actions": { "confirm": "Confirmar", "confirmFor": "Confirmar comprovante de {{student}}", "refuse": "Recusar", "refuseFor": "Recusar comprovante de {{student}}" },
+    "confirm": {
+      "title": "Confirmar comprovante",
+      "effect": "A cobrança passa a Paga, com recibo, no meio Pix na chave e na data do envio do comprovante.",
+      "who": "{{student}} · {{reference}} · {{amount}}",
+      "sendReceipt": "Enviar o recibo por e-mail",
+      "submit": "Confirmar pagamento",
+      "done": "Pagamento registrado. Recibo {{number}}."
+    },
+    "refuse": {
+      "title": "Recusar comprovante",
+      "effect": "A cobrança volta a aberta, o prazo de bloqueio segue de onde parou e o aluno recebe o motivo por e-mail.",
+      "reason": "Motivo da recusa (3 a 200 caracteres)",
+      "submit": "Recusar comprovante"
+    },
+    "errors": {
+      "400": "Confira os dados e tente de novo.",
+      "404": "Este comprovante não existe mais ou não está ao seu alcance.",
+      "409": "Este comprovante já foi decidido. Atualize a lista.",
+      "generic": "Não foi possível concluir. Nada foi alterado; tente de novo."
+    }
+  },
+  "pixProof": {
+    "title": "Pix na chave com comprovante",
+    "effect": "Faça o Pix para a chave abaixo, depois anexe o comprovante. A academia confere e confirma o pagamento.",
+    "key": "Chave Pix",
+    "copy": "Copiar",
+    "copied": "Chave copiada.",
+    "copyFailed": "Não foi possível copiar. Selecione a chave e copie.",
+    "amount": "Valor",
+    "unit": "Unidade",
+    "file": "Comprovante (JPG, PNG, WebP ou PDF, até 5 MB)",
+    "submit": "Enviar comprovante",
+    "done": "Comprovante enviado. A cobrança ficou em conferência.",
+    "noKeyTitle": "Esta unidade não tem chave Pix cadastrada",
+    "noKeyText": "Fale com a academia para pagar de outra forma.",
+    "charges": "Cobranças deste pagamento",
+    "badSelectionTitle": "Estas cobranças não podem ser pagas juntas",
+    "badSelectionText": "Escolha até 20 cobranças da mesma unidade, sem repetir.",
+    "notPayableTitle": "Esta cobrança não está aberta",
+    "notPayableText": "Ela já está em conferência ou foi paga.",
+    "errors": {
+      "403": "Você não tem permissão para pagar esta cobrança.",
+      "404": "Cobrança não encontrada.",
+      "409": "Esta cobrança não está mais aberta. Atualize a tela.",
+      "422": "A unidade não tem chave Pix cadastrada.",
+      "generic": "Não foi possível enviar. Nada foi alterado; tente de novo."
+    }
+  },
+  "portalShell": {
+    "logoAlt": "Logo da organização",
+    "nav": "Portal",
+    "tabs": {
+      "home": "Início",
+      "schedule": "Agenda",
+      "finance": "Financeiro",
+      "notices": "Avisos",
+      "info": "Minhas informações"
+    },
+    "bell": {
+      "label": "Avisos",
+      "withCount": "Avisos, {{count}} não lidos"
+    },
+    "person": "{{name}} · {{role}}",
+    "reduced": "Seu acesso está reduzido: você vê Início, Financeiro e Minhas informações. Fale com a academia para voltar a treinar."
+  },
+  "portalOwn": {
+    "title": "Meus pedidos",
+    "intro": "Peça troca de turma, nova modalidade, troca de plano ou encerramento. O pedido não altera a sua matrícula: a academia responde e conclui com você.",
+    "link": "Meus pedidos",
+    "student": "Aluno",
+    "noStudentTitle": "Nenhum aluno ligado à conta",
+    "noStudentText": "Quando houver um aluno ligado a esta conta, os pedidos aparecem aqui.",
+    "actionsTitle": "Fazer um pedido",
+    "modalityLine": "{{modality}} ({{unit}}) · turma {{klass}} · plano {{plan}}",
+    "closureOpen": "Encerramento solicitado em {{date}}. A academia vai entrar em contato.",
+    "actions": {
+      "CLASS_CHANGE": "Pedir troca de turma",
+      "PLAN_CHANGE": "Pedir troca de plano",
+      "CLOSURE": "Solicitar encerramento",
+      "NEW_MODALITY": "Pedir nova modalidade"
+    },
+    "listTitle": "Pedidos feitos",
+    "emptyTitle": "Nenhum pedido ainda",
+    "emptyText": "Os pedidos que você fizer aparecem aqui, com a resposta da academia.",
+    "statusLine": "{{status}} · {{date}}",
+    "response": "Resposta da academia: {{response}}",
+    "dialog": {
+      "of": "{{modality}} ({{unit}})",
+      "note": "Mensagem (opcional)",
+      "CLASS_CHANGE": {
+        "title": "Pedir troca de turma",
+        "effect": "É só um pedido: a turma só muda quando a academia concluir a troca com você.",
+        "field": "Turma desejada",
+        "submit": "Enviar pedido"
+      },
+      "PLAN_CHANGE": {
+        "title": "Pedir troca de plano",
+        "effect": "É só um pedido: o plano e o valor só mudam quando a academia concluir a troca com você.",
+        "field": "Plano desejado",
+        "submit": "Enviar pedido"
+      },
+      "NEW_MODALITY": {
+        "title": "Pedir nova modalidade",
+        "effect": "É só um pedido: a academia entra em contato para matricular você.",
+        "field": "Modalidade e unidade",
+        "submit": "Enviar pedido"
+      },
+      "CLOSURE": {
+        "title": "Solicitar encerramento",
+        "effect": "A modalidade deixa de gerar novas cobranças. Se a academia não responder em 7 dias, ela é encerrada na data do pedido. As cobranças já vencidas continuam devidas.",
+        "field": "Motivo",
+        "submit": "Solicitar encerramento"
+      }
+    },
+    "errors": {
+      "403": "Só o aluno adulto ou o responsável financeiro pode fazer pedidos.",
+      "404": "Não encontramos este aluno.",
+      "409": "Já existe um pedido igual em aberto.",
+      "generic": "Não conseguimos enviar. Nada foi alterado; tente de novo."
+    }
+  },
+  "portalConfirm": {
+    "title": "Confirme a modalidade nova",
+    "text": "{{student}} começou em {{modality}} ({{unit}}). Plano {{plan}}, {{value}} por mês. A confirmação não altera a matrícula nem a cobrança.",
+    "confirm": "Confirmar {{modality}}",
+    "error": "Não conseguimos confirmar. Nada foi alterado; tente de novo."
+  },
+  "portalFinance": {
+    "student": "Aluno",
+    "you": "Você",
+    "family": "Toda a família",
+    "familyTotal": "Total da família em aberto: {{value}}",
+    "open": {
+      "title": "Em aberto",
+      "emptyTitle": "Nenhuma cobrança em aberto",
+      "emptyText": "Quando houver uma cobrança, ela aparece aqui. Se o responsável financeiro cuida dos pagamentos, é ele quem as vê.",
+      "dueOn": "Vence em {{date}}",
+      "pay": "Pagar",
+      "payItem": "Pagar {{what}}",
+      "paySelected": "Pagar selecionadas",
+      "select": "Selecionar {{what}}",
+      "selected": "{{count}} selecionadas · Total {{value}}",
+      "mixedUnits": "Escolha cobranças da mesma unidade para pagar juntas.",
+      "composition": "Composição",
+      "plan": "Plano",
+      "benefit": "Benefício",
+      "final": "Valor final",
+      "unit": "Unidade: {{unit}}",
+      "situation": {
+        "OVERDUE": "Vencida",
+        "DUE_TODAY": "Vence hoje",
+        "DUE_SOON": "Vencendo",
+        "PENDING": "A vencer",
+        "IN_REVIEW": "Em conferência"
+      }
+    },
+    "history": {
+      "title": "Histórico",
+      "year": "Ano",
+      "emptyTitle": "Nenhum histórico neste ano",
+      "emptyText": "As cobranças pagas ou encerradas aparecem aqui.",
+      "dueOn": "Vencimento {{date}}",
+      "paidOn": "Pago em {{date}}",
+      "method": "Meio: {{method}}",
+      "receipt": "Baixar recibo",
+      "receiptItem": "Baixar recibo de {{what}}",
+      "status": {
+        "PAID": "Paga",
+        "REFUNDED": "Estornada",
+        "CANCELED": "Cancelada",
+        "RENEGOTIATED": "Renegociada"
+      }
+    },
+    "autoDebit": {
+      "title": "Débito automático",
+      "inactive": "Inativo",
+      "text": "O débito automático chega junto com o pagamento online. Por enquanto, pague pelo Pix na chave."
+    }
+  },
+  "portalAgenda": {
+    "title": "Agenda",
+    "student": "Aluno",
+    "you": "Você",
+    "scopeLabel": "Aulas mostradas",
+    "scopeMain": "Só minha turma",
+    "scopeAll": "Todos os meus horários",
+    "weekNav": "Semana",
+    "prevWeek": "Semana anterior",
+    "today": "Hoje",
+    "nextWeek": "Próxima semana",
+    "weekRange": "Semana de {{start}} a {{end}}",
+    "legendTitle": "Legenda",
+    "gridLabel": "Aulas da semana",
+    "daysLabel": "Dias da semana",
+    "timeColumn": "Horário",
+    "kind": {
+      "MAIN": "Principal",
+      "OTHER": "Outro horário",
+      "ADHOC": "Avulsa"
+    },
+    "changed": "Alterada",
+    "cancelled": "Cancelada",
+    "past": "Já aconteceu",
+    "noClass": "Sem aula",
+    "noClassReason": "Sem aula: {{reason}}",
+    "noLessonsDay": "Nenhuma aula neste dia.",
+    "when": "{{start}} às {{end}}",
+    "reason": "Motivo: {{reason}}",
+    "wasOn": "Era em {{date}} às {{time}}",
+    "teacher": "Professor: {{name}}",
+    "substituteName": "Professor substituto: {{name}}",
+    "changedGeneric": "Aula alterada",
+    "viewNotice": "Ver aviso",
+    "viewNoticeOf": "Ver aviso sobre {{title}}",
+    "emptyTitle": "Nenhuma aula nesta semana",
+    "emptyText": "Quando houver aulas nesta semana, elas aparecem aqui."
+  },
+  "portalAnnouncements": {
+    "title": "Avisos",
+    "student": "Aluno",
+    "you": "Você",
+    "filterLabel": "Avisos mostrados",
+    "filter": {
+      "ALL": "Todos",
+      "UNREAD": "Não lidos",
+      "MODALITY": "Por modalidade"
+    },
+    "modality": "Modalidade",
+    "markAll": "Marcar todos como lidos",
+    "cleared_one": "{{count}} aviso marcado como lido.",
+    "cleared_other": "{{count}} avisos marcados como lidos.",
+    "clearFailed": "Não foi possível marcar os avisos como lidos. Tente de novo.",
+    "listLabel": "Lista de avisos",
+    "pinned": "Fixado",
+    "unread": "Não lido",
+    "sentAt": "Enviado em {{date}}",
+    "author": "Por {{name}}",
+    "destination": {
+      "ORGANIZATION": "Para: toda a academia",
+      "UNIT": "Para: {{names}}",
+      "MODALITY": "Para: {{names}}",
+      "CLASS": "Para: turma {{names}}",
+      "CLASSES": "Para: turmas {{names}}"
+    },
+    "pageNav": "Páginas de avisos",
+    "prev": "Página anterior",
+    "next": "Próxima página",
+    "pageOf": "Página {{page}} de {{pages}}",
+    "emptyTitle": "Nenhum aviso",
+    "emptyText": "Quando a academia enviar um aviso para você, ele aparece aqui.",
+    "emptyUnreadTitle": "Nenhum aviso não lido",
+    "emptyUnreadText": "Você está em dia com os avisos.",
+    "dialogTitle": "Aviso",
+    "imageAlt": "Imagem do aviso",
+    "notFoundTitle": "Aviso indisponível",
+    "notFoundText": "Este aviso não está mais disponível para você."
+  },
+  "portalCard": {
+    "link": "Ver carteirinha",
+    "title": "Carteirinha",
+    "selector": "Aluno",
+    "you": "Você",
+    "status": {
+      "ACTIVE": "Ativo",
+      "INACTIVE": "Inativo"
+    },
+    "statusOn": "em {{date}}",
+    "modalitiesTitle": "Modalidades",
+    "noBelt": "Sem faixa registrada",
+    "emptyTitle": "Nenhuma modalidade ativa",
+    "emptyText": "Quando houver uma matrícula ativa, as modalidades aparecem aqui.",
+    "updatedAt": "Atualizada em {{date}}",
+    "offline": "Sem conexão",
+    "cardLabel": "Carteirinha de {{name}}"
+  },
+  "portalHome": {
+    "family": {
+      "label": "Alunos da família",
+      "you": "Você",
+      "open": "Em aberto: {{value}}",
+      "total": "Total da família em aberto: {{value}}"
+    },
+    "filter": {
+      "label": "Filtrar por modalidade e unidade",
+      "all": "Todas",
+      "option": "{{modality}} · {{unit}}"
+    },
+    "charges": {
+      "title": "Cobrança",
+      "upToDate": "Tudo em dia",
+      "nextDue": "Próximo vencimento em {{date}}.",
+      "generic": "Cobrança",
+      "dueOn": "Vence em {{date}}",
+      "pay": "Pagar",
+      "payItem": "Pagar {{what}}",
+      "situation": {
+        "OVERDUE": "Vencida",
+        "DUE_TODAY": "Vence hoje",
+        "DUE_SOON": "Vencendo",
+        "IN_REVIEW": "Em conferência"
+      }
+    },
+    "lessons": {
+      "title": "Próximas aulas",
+      "emptyTitle": "Nenhuma aula por enquanto",
+      "emptyText": "Quando houver aulas nos próximos dias, elas aparecem aqui.",
+      "when": "{{date}} · {{start}} às {{end}}",
+      "cancelled": "Cancelada",
+      "changed": "Alterada",
+      "adhoc": "Avulsa",
+      "reason": "Motivo: {{reason}}"
+    },
+    "notices": {
+      "title": "Avisos",
+      "emptyTitle": "Nenhum aviso novo",
+      "emptyText": "Avisos não lidos e fixados da academia aparecem aqui.",
+      "unreadCount_one": "{{count}} aviso não lido",
+      "unreadCount_other": "{{count}} avisos não lidos",
+      "pinned": "Fixado",
+      "unread": "Não lido",
+      "sentAt": "Enviado em {{date}}",
+      "viewAll": "Ver todos os avisos"
+    },
+    "belts": {
+      "title": "Faixa",
+      "emptyTitle": "Nenhuma faixa registrada",
+      "emptyText": "A faixa aparece aqui quando a academia registrar a sua graduação.",
+      "line": "{{level}}, grau {{degree}}",
+      "since": "desde {{date}}",
+      "new": "Nova",
+      "swatch": "Cor da faixa {{level}}"
+    }
+  },
+  "portalInfo": {
+    "title": "Minhas informações",
+    "selector": "Aluno",
+    "you": "Você",
+    "cardLink": "Ver carteirinha",
+    "none": "Não informado",
+    "emptyTitle": "Nenhuma modalidade ativa",
+    "emptyText": "Quando houver uma matrícula ativa, os treinos, o plano e a graduação aparecem aqui.",
+    "personal": {
+      "title": "Dados pessoais",
+      "edit": "Editar contato",
+      "readOnlyHint": "Nome, CPF, nascimento e e-mail só mudam pela academia (o e-mail, em Minha conta).",
+      "name": "Nome",
+      "birthDate": "Nascimento",
+      "cpf": "CPF",
+      "phone": "Telefone",
+      "email": "E-mail",
+      "address": "Endereço",
+      "addressLine": "{{street}}, {{number}}{{complement}} · {{district}} · {{city}}/{{state}} · CEP {{postalCode}}",
+      "emergency": "Contato de emergência",
+      "emergencyLine": "{{name}} ({{relationship}}) · {{phone}}",
+      "photo": "Foto",
+      "photoChoose": "Escolher foto",
+      "photoReplace": "Trocar foto",
+      "photoRemove": "Remover foto",
+      "photoFile": "Arquivo da foto",
+      "photoTypeError": "Use uma imagem PNG, JPG ou WebP.",
+      "photoSizeError": "A foto precisa ter até 5 MB.",
+      "photoFailed": "Não foi possível salvar a foto. Tente de novo.",
+      "cropTitle": "Cortar a foto",
+      "cropHint": "Arraste a imagem ou use os controles para escolher o quadrado.",
+      "cropPreview": "Prévia do corte da foto"
+    },
+    "contact": {
+      "title": "Editar contato",
+      "phone": "Telefone",
+      "postalCode": "CEP",
+      "street": "Logradouro",
+      "number": "Número",
+      "complement": "Complemento",
+      "district": "Bairro",
+      "city": "Cidade",
+      "state": "UF",
+      "stateChoose": "Escolha a UF",
+      "emergency": "Contato de emergência",
+      "emergencyName": "Nome do contato",
+      "emergencyRelationship": "Parentesco",
+      "emergencyPhone": "Telefone do contato",
+      "emergencyAll": "Informe nome, parentesco e telefone do contato, ou deixe os três em branco.",
+      "required": "Preencha este campo.",
+      "postalCodeInvalid": "O CEP tem 8 dígitos.",
+      "invalid": "Confira este campo.",
+      "failed": "Não foi possível salvar. Tente de novo.",
+      "save": "Salvar",
+      "saving": "Salvando...",
+      "cancel": "Cancelar"
+    },
+    "units": {
+      "title": "Contato da academia",
+      "phone": "Telefone",
+      "whatsapp": "WhatsApp",
+      "email": "E-mail"
+    },
+    "trainings": {
+      "title": "Treinos",
+      "unit": "Unidade",
+      "main": "Turma principal",
+      "others": "Outros horários",
+      "slot": "{{days}} {{from}}–{{to}}",
+      "classLine": "{{name}} · Prof. {{teacher}}",
+      "noSchedule": "Sem horário definido"
+    },
+    "plans": {
+      "title": "Plano e mensalidade",
+      "plan": "Plano",
+      "benefit": "Benefício",
+      "benefitPercent": "{{value}}% de desconto",
+      "benefitAmount": "{{value}} de desconto",
+      "benefitUntil": "até {{date}}",
+      "noBenefit": "Sem benefício",
+      "monthly": "Mensalidade",
+      "dueDay": "Vencimento",
+      "dueDayValue": "todo dia {{day}}",
+      "next": "Plano seguinte",
+      "nextValue": "{{name}} ({{value}})",
+      "changeHint": "Para mudar de plano, turma ou horário, faça um pedido à academia."
+    },
+    "graduation": {
+      "title": "Graduação",
+      "current": "Faixa atual",
+      "none": "Sem faixa registrada",
+      "history": "Histórico",
+      "line": "{{level}}, grau {{degree}}",
+      "origin": "De origem",
+      "on": "em {{date}}"
+    },
+    "preferences": {
+      "title": "Preferências",
+      "emailAnnouncements": "Receber comunicados por e-mail",
+      "failed": "Não foi possível salvar a preferência. Tente de novo."
+    },
+    "terms": {
+      "title": "Termos aceitos",
+      "enrollment": "Termo de matrícula",
+      "enrollmentAccepted": "Aceito (versão {{version}}) em {{date}}",
+      "enrollmentNone": "Ainda não aceito",
+      "imageUse": "Uso de imagem",
+      "imageGranted": "Concedido (versão {{version}}) em {{date}}",
+      "imageNotGranted": "Não concedido",
+      "revoke": "Revogar uso de imagem",
+      "grant": "Conceder uso de imagem",
+      "failed": "Não foi possível salvar. Tente de novo."
+    },
+    "requests": {
+      "title": "Pedidos à academia",
+      "empty": "Nenhum pedido feito.",
+      "line": "{{kind}} · {{status}} · {{date}}",
+      "make": "Fazer um pedido"
+    },
+    "account": {
+      "title": "Minha conta"
+    },
+    "data": {
+      "title": "Seus dados",
+      "download": "Baixar meus dados",
+      "delete": "Excluir minha conta",
+      "soon": "Estas ações ficam disponíveis em breve."
     }
   }
 }
