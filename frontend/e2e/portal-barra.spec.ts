@@ -31,7 +31,7 @@ test.describe("barra do portal a 360 px", () => {
       await expect(page.getByRole("link", { name: "Academia Alfa" })).toBeVisible();
 
       const nav = page.getByRole("navigation", { name: "Portal" });
-      await expect(nav.getByRole("link")).toHaveText(["Início", "Agenda", "Financeiro", "Avisos", "Minhas informações"]);
+      await expect(nav.getByRole("link")).toHaveText(["Início", "Agenda", "Financeiro", /^Avisos/, "Eu"]); // a 360 px valem as abas de baixo, com nome curto (#418)
       const box = (await nav.boundingBox())!;
       expect(Math.round(box.y + box.height)).toBe(740);
       expect(await noOverflow(page)).toBe(true);
@@ -49,7 +49,7 @@ test.describe("barra do portal a 360 px", () => {
     await login(page, "reduzido@exemplo.com");
     await expect(page.getByRole("heading", { name: "Bem-vindo ao ctcore" })).toBeVisible();
     const nav = page.getByRole("navigation", { name: "Portal" });
-    await expect(nav.getByRole("link")).toHaveText(["Início", "Financeiro", "Minhas informações"]);
+    await expect(nav.getByRole("link")).toHaveText(["Início", "Financeiro", "Eu"]);
     await expect(page.getByText(/Seu acesso está reduzido/)).toBeVisible();
     await expect(page.getByRole("link", { name: /^Avisos/ })).toHaveCount(0);
 

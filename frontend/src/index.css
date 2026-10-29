@@ -41,6 +41,7 @@
   --input: #D9D4C9;
   --ring: #B23C24;
   --brand: #C8462C;
+  --brand-foreground: #FFFFFF;
   --surface-soft: #FAF8F4;
   --divider: #EEEAE2;
   --subtle: #8C877D;
@@ -100,6 +101,7 @@
   --input: #45454C;
   --ring: #F08A70;
   --brand: #C8462C;
+  --brand-foreground: #FFFFFF;
   --surface-soft: #19191C;
   --divider: #2A2A2F;
   --subtle: #8F8A80;
@@ -146,6 +148,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-surface-soft: var(--surface-soft);
   --color-divider: var(--divider);
   --color-subtle: var(--subtle);

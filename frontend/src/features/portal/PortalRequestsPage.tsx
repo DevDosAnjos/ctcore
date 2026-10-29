@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
@@ -101,7 +102,7 @@ export function PortalRequestsPage() {
   return (
     <AccountFrame>
       <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-semibold">{t("portalOwn.title")}</h1>
+        <PageHeader title={t("portalOwn.title")} />
         <p className="mb-4 mt-2 text-muted-foreground">{t("portalOwn.intro")}</p>
         {body}
       </div>

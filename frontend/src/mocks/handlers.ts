@@ -70,6 +70,12 @@ const accounts: Record<string, ReturnType<typeof withTwoFactor>> = {
     links: [{ id: "00000000-0000-0000-0000-000000000016", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "GUARDIAN", unitIds: [] }],
     activeLinkId: "00000000-0000-0000-0000-000000000016",
   },
+  // Aluno adulto com portal completo (#418, teste visual da moldura do portal).
+  "aluno@exemplo.com": {
+    ...withTwoFactor("aluno@exemplo.com", false, false),
+    links: [{ id: "00000000-0000-0000-0000-0000000000a1", organizationId: "00000000-0000-0000-0000-000000000003", organizationName: "Academia Alfa", role: "STUDENT", unitIds: [] }],
+    activeLinkId: "00000000-0000-0000-0000-0000000000a1",
+  },
   // Gestão por perfil (#417, teste visual da moldura): Administrador e Professor com vínculo ativo.
   "admin@exemplo.com": {
     ...withTwoFactor("admin@exemplo.com", false, false),
@@ -4554,7 +4560,7 @@ export const routes: Route[] = [
       if (denied) return denied;
       if (portalMine().some((s) => termPending(s.id))) return error(403, "TERM_PENDING", "Aceite o termo para continuar.");
       const reduced = current.account.email === REDUCED_ACCOUNT;
-      return HttpResponse.json({ organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl }, reduced, unreadAnnouncements: reduced ? 0 : bellCount() });
+      return HttpResponse.json({ organization: { name: organization.name, color: organization.color, logoUrl: organization.logoUrl }, reduced, unreadAnnouncements: reduced ? 0 : bellCount(), unit: reduced ? null : { name: "Unidade Centro", address: "Rua Fictícia, 100, Centro, Rio de Janeiro", whatsapp: "(21) 90000-0000" } });
     },
   },
   {

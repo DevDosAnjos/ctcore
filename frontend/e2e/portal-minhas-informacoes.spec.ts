@@ -17,7 +17,7 @@ async function login(page: Page, email: string) {
   await page.getByLabel("Senha").fill("segredo123");
   await page.getByRole("button", { name: "Entrar" }).click();
 }
-const openTab = (page: Page) => page.getByRole("navigation", { name: "Portal" }).getByRole("link", { name: "Minhas informações" }).click();
+const openTab = (page: Page) => page.getByRole("navigation", { name: "Portal" }).getByRole("link", { name: /^(Minhas informações|Eu)$/ }).click(); // "Eu" nas abas de baixo (#418)
 
 // RF-POR-07 (#94): Minhas informações a 360 px e a 1024 px, nos dois temas.
 for (const [width, height] of [

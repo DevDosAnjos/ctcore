@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate } from "react-router";
@@ -86,7 +87,7 @@ export function PortalTermPage() {
   return (
     <AccountFrame plain>
       <div className="mx-auto max-w-3xl">
-        <h1 className="text-2xl font-semibold">{t("portalTerm.title")}</h1>
+        <PageHeader title={t("portalTerm.title")} />
         <p className="mb-4 mt-2 text-muted-foreground">{t("portalTerm.intro")}</p>
         {body}
       </div>

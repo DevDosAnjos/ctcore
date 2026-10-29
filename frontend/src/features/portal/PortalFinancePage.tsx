@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -36,7 +37,7 @@ export function PortalFinancePage() {
 
   return (
     <PortalLayout>
-      <h1 className="mb-4 text-2xl font-semibold">{t("portalShell.tabs.finance")}</h1>
+      <PageHeader title={t("portalShell.tabs.finance")} className="mb-4" />
       {shown && shown.students.length > 1 && (
         <div className="mb-4 flex flex-col gap-2">
           <label className="flex flex-col gap-1">

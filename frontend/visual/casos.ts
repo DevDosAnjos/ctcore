@@ -13,6 +13,9 @@ export type Caso = {
 const ana = "ana@exemplo.com"; // Coordenador, todas as áreas
 const admin = "admin@exemplo.com"; // Administrador
 const prof = "prof@exemplo.com"; // Professor
+const aluno = "aluno@exemplo.com"; // Aluno adulto, portal completo
+const familia = "familia@exemplo.com"; // Responsável com dois filhos
+const reduzido = "reduzido@exemplo.com"; // Aluno sem modalidade ativa, portal reduzido
 
 export const casos: Caso[] = [
   { nome: "vitrine", rota: "/dev/vitrine", fullPage: true },
@@ -22,6 +25,13 @@ export const casos: Caso[] = [
   { nome: "moldura-coordenacao", rota: "/alunos", perfil: ana, canvas: "Sidebar" },
   { nome: "moldura-administrador", rota: "/alunos", perfil: admin, canvas: "Topbar" },
   { nome: "moldura-professor", rota: "/agenda", perfil: prof, canvas: "GMMenu" },
+  // Moldura do portal (#418): barra com a marca, abas, sino, rodapé e faixa de acesso reduzido; a 390 px, barra de cima e abas embaixo
+  { nome: "portal-aluno", rota: "/", perfil: aluno, canvas: "PortalInicio" },
+  { nome: "portal-responsavel", rota: "/portal/financeiro", perfil: familia, canvas: "PortalNav" },
+  { nome: "portal-reduzido", rota: "/", perfil: reduzido, canvas: "PortalReduzido" },
+  { nome: "portal-celular-topo", rota: "/portal/minhas-informacoes", perfil: aluno, canvas: "PortalMTopo" },
+  { nome: "portal-celular-abas", rota: "/portal/agenda", perfil: familia, canvas: "PortalMTabs" },
+  { nome: "portal-celular-reduzido", rota: "/portal/financeiro", perfil: reduzido, canvas: "PortalMReduzido" },
   { nome: "alunos", rota: "/alunos", perfil: ana, canvas: "Alunos" },
   { nome: "professores", rota: "/professores", perfil: ana, canvas: "Professores" },
   { nome: "agenda", rota: "/agenda", perfil: ana, canvas: "Agenda" },

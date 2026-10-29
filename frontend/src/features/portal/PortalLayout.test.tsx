@@ -46,7 +46,8 @@ function setup(path = "/", over: { role?: string; shell?: () => Response | Promi
 }
 const ready = () => screen.findByRole("link", { name: "Academia Alfa" });
 const tabs = () => within(screen.getByRole("navigation", { name: "Portal" })).getAllByRole("link");
-const current = () => tabs().filter((a) => a.getAttribute("aria-current") === "page").map((a) => a.textContent);
+const label = (a: HTMLElement) => a.getAttribute("aria-label") ?? a.textContent;
+const current = () => tabs().filter((a) => a.getAttribute("aria-current") === "page").map(label);
 const bell = () => screen.queryAllByRole("link", { name: /^Avisos/ }).find((a) => !a.closest("nav"));
 
 describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
@@ -65,11 +66,11 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
   it("CA2: as cinco abas na ordem, como links, com a atual marcada", async () => {
     setup("/");
     await ready();
-    expect(tabs().map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+    expect(tabs().map((a) => [label(a), a.getAttribute("href")])).toEqual([
       ["Início", "/"],
       ["Agenda", "/portal/agenda"],
       ["Financeiro", "/portal/financeiro"],
-      ["Avisos", "/portal/avisos"],
+      ["Avisos 22 não lidos", "/portal/avisos"],
       ["Minhas informações", "/portal/minhas-informacoes"],
     ]);
     expect(current()).toEqual(["Início"]);
@@ -80,19 +81,45 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
     await screen.findByRole("heading", { name: "Financeiro", level: 1 });
     expect(current()).toEqual(["Financeiro"]);
     expect(await screen.findByText("Nenhuma cobrança em aberto")).toBeInTheDocument();
-    expect(screen.getAllByRole("banner")).toHaveLength(1);
+    expect(screen.getAllByRole("banner").filter((h) => !h.closest("main"))).toHaveLength(1); // o header do PageHeader fica dentro do main
   });
 
-  it("CA3: abas fixas embaixo abaixo de 768 px, na barra a partir de md, e o conteúdo ganha folga", async () => {
+  it("CA1, CA4: barra escura a partir de md; abas fixas embaixo (5, com ícone) abaixo de 768 px, e o rodapé ganha folga", async () => {
+    const { container } = setup("/");
+    await ready();
+    expect(container.querySelector("header")).toHaveClass("bg-sidebar");
+    expect(screen.getByRole("navigation", { name: "Portal" })).toHaveClass("hidden", "md:flex");
+    const bottom = screen.getByRole("navigation", { name: "Portal, abas" });
+    expect(bottom).toHaveClass("fixed", "inset-x-0", "bottom-0", "md:hidden");
+    const links = within(bottom).getAllByRole("link");
+    expect(links.map((a) => a.textContent)).toEqual(["Início", "Agenda", "Financeiro", "Avisos 22 não lidos", "Eu"]);
+    links.forEach((a) => expect(a.querySelector("svg")).not.toBeNull());
+    expect(screen.getByRole("contentinfo")).toHaveClass("pb-20", "md:pb-4");
+  });
+
+  it("CA3: o rodapé traz organização, unidade, endereço, WhatsApp e feito com ctcore", async () => {
+    setup("/", { data: shell({ unit: { name: "Unidade Centro", address: "Rua Fictícia, 10", whatsapp: "(21) 90000-0000" } }) });
+    await ready();
+    expect(screen.getByRole("contentinfo")).toHaveTextContent("Academia Alfa · Unidade Centro · Rua Fictícia, 10 · WhatsApp (21) 90000-0000feito com ctcore");
+  });
+
+  it("CA8: no reduzido as abas de baixo também escondem Agenda e Avisos", async () => {
+    setup("/", { data: shell({ reduced: true, unreadAnnouncements: 0 }) });
+    await ready();
+    expect(within(screen.getByRole("navigation", { name: "Portal, abas" })).getAllByRole("link").map((a) => a.textContent)).toEqual(["Início", "Financeiro", "Eu"]);
+  });
+
+  it("CA11: \"Ir para o conteúdo\" leva o foco ao main", async () => {
+    const user = userEvent.setup();
     setup("/");
     await ready();
-    expect(screen.getByRole("navigation", { name: "Portal" })).toHaveClass("fixed", "inset-x-0", "bottom-0", "md:static");
-    expect(screen.getByRole("main")).toHaveClass("pb-24", "md:pb-6");
+    await user.click(screen.getByRole("link", { name: "Ir para o conteúdo" }));
+    expect(screen.getByRole("main")).toHaveFocus();
   });
 
   it("CA6: 120 não lidos mostram 99+ e o sino leva a /portal/avisos", async () => {
     setup("/", { data: shell({ unreadAnnouncements: 120 }) });
-    const link = await screen.findByRole("link", { name: "Avisos, 99+ não lidos" });
+    const link = (await screen.findAllByRole("link", { name: "Avisos, 99+ não lidos" })).find((a) => !a.closest("nav"))!;
     expect(link).toHaveAttribute("href", "/portal/avisos");
     expect(link).toHaveTextContent("99+");
   });
@@ -107,7 +134,7 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
   it("CA7, CA9: portal reduzido esconde Agenda, Avisos e o sino, mostra o aviso e leva /portal/agenda ao Início", async () => {
     setup("/portal/agenda", { data: shell({ reduced: true, unreadAnnouncements: 0 }) });
     await screen.findByRole("heading", { name: "Bem-vindo ao ctcore" });
-    expect(tabs().map((a) => a.textContent)).toEqual(["Início", "Financeiro", "Minhas informações"]);
+    expect(tabs().map(label)).toEqual(["Início", "Financeiro", "Minhas informações"]);
     expect(bell()).toBeUndefined();
     expect(screen.getByText(/Seu acesso está reduzido/)).toBeInTheDocument();
   });
@@ -149,12 +176,12 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
     setup("/");
     await ready();
     const seen: string[] = [];
-    for (let i = 0; i < 9; i += 1) {
+    for (let i = 0; i < 10; i += 1) {
       await user.tab();
       seen.push(document.activeElement?.getAttribute("aria-label") ?? document.activeElement?.textContent ?? "");
     }
-    expect(seen.slice(0, 8)).toEqual(["Academia Alfa", "Início", "Agenda", "Financeiro", "Avisos", "Minhas informações", "Avisos, 2 não lidos", "Minha conta"]);
-    expect(seen[8]).toMatch(/tema/i);
+    expect(seen.slice(0, 9)).toEqual(["Ir para o conteúdo", "Academia Alfa", "Início", "Agenda", "Financeiro", "Avisos 22 não lidos", "Minhas informações", "Avisos, 2 não lidos", "Minha conta"]);
+    expect(seen[9]).toMatch(/tema/i);
   });
 
   it("CA12: passa no axe nos dois temas", async () => {
@@ -171,7 +198,7 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
     setup(path);
     await ready();
     if (path === "/") await screen.findByText("Tudo em dia"); // deixa a leitura do Início terminar antes de o teste acabar
-    expect(screen.getAllByRole("banner")).toHaveLength(1);
+    expect(screen.getAllByRole("banner").filter((h) => !h.closest("main"))).toHaveLength(1); // o header do PageHeader fica dentro do main
     expect(tabs()).toHaveLength(5);
   });
 });

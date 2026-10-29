@@ -6,6 +6,8 @@ export interface PortalShellData {
   organization: { name: string; color: string | null; logoUrl: string | null };
   reduced: boolean;
   unreadAnnouncements: number;
+  /** Unidade do rodapé; nulo sem modalidade ativa. Opcional só para os testes que montam a moldura sem ela. */
+  unit?: { name: string; address: string | null; whatsapp: string | null } | null;
 }
 
 /** D5: a moldura é lida na abertura e a cada 60 s (mesmo ritmo do sino da gestão). */

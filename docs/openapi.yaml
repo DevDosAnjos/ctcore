@@ -6415,7 +6415,7 @@ components:
         total: { type: integer, minimum: 0 }
     PortalShell:
       type: object
-      required: [organization, reduced, unreadAnnouncements]
+      required: [organization, reduced, unreadAnnouncements, unit]
       properties:
         organization:
           type: object
@@ -6426,6 +6426,15 @@ components:
             logoUrl: { type: string, nullable: true }
         reduced: { type: boolean }
         unreadAnnouncements: { type: integer, minimum: 0 }
+        unit:
+          type: object
+          nullable: true
+          description: Unidade do rodapé (primeira modalidade ativa do primeiro aluno ligado); nulo sem modalidade ativa.
+          required: [name, address, whatsapp]
+          properties:
+            name: { type: string }
+            address: { type: string, nullable: true }
+            whatsapp: { type: string, nullable: true }
     PortalTermText:
       type: object
       required: [version, body]

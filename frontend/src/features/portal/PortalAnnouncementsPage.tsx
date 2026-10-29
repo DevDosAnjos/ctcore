@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router";
@@ -56,7 +57,7 @@ export function PortalAnnouncementsPage() {
   const pages = shown ? Math.max(Math.ceil(shown.total / shown.size), 1) : 1;
   return (
     <PortalLayout>
-      <h1 className="mb-4 text-2xl font-semibold">{t("portalAnnouncements.title")}</h1>
+      <PageHeader title={t("portalAnnouncements.title")} className="mb-4" />
       {shown && !shown.reduced && (
         <div className="mb-4 flex flex-col gap-3">
           {shown.students.length > 1 && (

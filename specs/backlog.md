@@ -133,7 +133,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 415 | Componentes base no padrão do canvas | issue #415 | Sprint 10.5 | — | agente | feito |
 | 416 | Teste visual: referências das telas e comparação lado a lado com o canvas | issue #416 | Sprint 10.5 | — | agente | feito |
 | 417 | Estrutura da gestão: menu lateral, barra de cima, cabeçalho e versão de celular | issue #417 | Sprint 10.5 | — | agente | feito |
-| 418 | Estrutura do portal do aluno: barra com a marca, abas e versão de celular | issue #418 | Sprint 10.5 | — | agente | a fazer |
+| 418 | Estrutura do portal do aluno: barra com a marca, abas e versão de celular | issue #418 | Sprint 10.5 | — | agente | feito |
 | 419 | Telas de acesso, conta, configurações e usuários no visual do canvas (Sprints 01 a 03) | issue #419 | Sprint 10.5 | — | agente | a fazer |
 | 420 | Modalidades, faixas etárias, professores, turmas e agenda no visual do canvas (Sprints 04 e 05) | issue #420 | Sprint 10.5 | — | agente | a fazer |
 | 421 | Planos, alunos, ficha, responsáveis, matrícula e benefícios no visual do canvas (Sprints 06 e 07) | issue #421 | Sprint 10.5 | — | agente | a fazer |

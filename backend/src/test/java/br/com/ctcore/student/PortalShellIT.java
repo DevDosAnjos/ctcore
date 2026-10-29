@@ -127,6 +127,32 @@ class PortalShellIT extends PortalTermBase {
     }
 
     @Test
+    @DisplayName("CA13: unit traz nome, endereço e WhatsApp da unidade da modalidade ativa; campos nulos ficam nulos; reduzido e sem matrícula, unit nulo; nada de outra organização")
+    void unit() throws Exception {
+        Tenant t = tenant(), other = tenant();
+        adminJdbc().update("update unit set address = 'Rua Fictícia, 10', whatsapp = '+55 11 90000-0000' where id = ?", t.unitId());
+        adminJdbc().update("update unit set address = 'Rua Outra, 99', whatsapp = '+55 11 91111-1111' where id = ?", other.unitId());
+        UUID acc = account("aluno@portal.example");
+        enroll(t, student(t, "Aluno Um", "1990-01-01", acc), "ACTIVE");
+        var u = body(get(portal(t, acc, Role.STUDENT), "/shell")).get("unit");
+        assertThat(u.get("name").asText()).isEqualTo(adminJdbc().queryForObject("select name from unit where id = ?", String.class, t.unitId()));
+        assertThat(u.get("address").asText()).isEqualTo("Rua Fictícia, 10");
+        assertThat(u.get("whatsapp").asText()).isEqualTo("+55 11 90000-0000");
+
+        adminJdbc().update("update unit set address = null, whatsapp = null where id = ?", t.unitId());
+        var empty = body(get(portal(t, acc, Role.STUDENT), "/shell")).get("unit");
+        assertThat(empty.get("address").isNull()).isTrue();
+        assertThat(empty.get("whatsapp").isNull()).isTrue();
+
+        UUID former = account("ex@portal.example");
+        enroll(t, student(t, "Ex Aluno", "1990-01-01", former), "ENDED");
+        assertThat(body(get(portal(t, former, Role.STUDENT), "/shell")).get("unit").isNull()).isTrue();
+        UUID fresh = account("novo@portal.example");
+        student(t, "Sem Matrícula", "1990-01-01", fresh);
+        assertThat(body(get(portal(t, fresh, Role.STUDENT), "/shell")).get("unit").isNull()).isTrue();
+    }
+
+    @Test
     @DisplayName("CA10: nada de outra organização nem de outra conta entra na resposta")
     void isolation() throws Exception {
         Tenant a = tenant(), b = tenant();
