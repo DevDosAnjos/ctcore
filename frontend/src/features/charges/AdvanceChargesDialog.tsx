@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/field";
 import { useStudentModalities } from "@/features/benefits/GrantBenefitDialog";
 import { ModalityDialog, PickSelect } from "@/features/students/ModalityPickers";
 import { StudentSearch } from "./StudentSearch";
@@ -82,16 +83,15 @@ export function AdvanceChargesDialog({ onClose, onDone }: { onClose: () => void;
           )}
           <label className="flex flex-col gap-1 text-sm font-medium">
             {t(`${k}count`)}
-            <input
+            <Input
               inputMode="numeric"
-              className="min-h-11 rounded-md border bg-background px-2 font-normal"
               value={count}
               aria-invalid={errors.count ? true : undefined}
               onChange={(e) => setCount(e.target.value.replace(/\D/g, "").slice(0, 2))}
             />
           </label>
           <p className="text-sm text-muted-foreground">{t(`${k}countHint`)}</p>
-          {errors.count && <p className="text-sm text-destructive">{errors.count}</p>}
+          {errors.count && <p className="text-sm text-danger-foreground">{errors.count}</p>}
         </>
       )}
     </ModalityDialog>

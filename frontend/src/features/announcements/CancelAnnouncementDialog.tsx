@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import type { AnnouncementItem } from "./types";
@@ -39,9 +40,7 @@ export function CancelAnnouncementDialog({ announcement, onClose, onDone }: { an
       <div className="flex flex-col gap-3">
         <p>{t("announcements.cancel.summary", { title: announcement.title })}</p>
         {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
+          <Banner tone="danger">{error}</Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" className="min-h-11" onClick={onClose}>

@@ -5,6 +5,7 @@ import type { TFunction } from "i18next";
 import type { Column } from "@/components/query/DataTable";
 import { QueryPage, type Query } from "@/components/query/QueryPage";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/field";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { formatDateTime } from "@/lib/format";
 import { ApproveRequestDialog, RefuseRequestDialog } from "./RefuseRequestDialog";
@@ -25,13 +26,13 @@ function Filter({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="flex min-w-0 flex-col gap-1 text-sm">
       {label}
-      <select className="min-h-11 rounded-md border bg-background px-2" value={value} onChange={(e) => onChange(e.target.value)}>
+      <Select value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

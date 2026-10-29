@@ -137,7 +137,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 419 | Telas de acesso, conta, configurações e usuários no visual do canvas (Sprints 01 a 03) | issue #419 | Sprint 10.5 | — | agente | feito |
 | 420 | Modalidades, faixas etárias, professores, turmas e agenda no visual do canvas (Sprints 04 e 05) | issue #420 | Sprint 10.5 | — | agente | feito |
 | 421 | Planos, alunos, ficha, responsáveis, matrícula e benefícios no visual do canvas (Sprints 06 e 07) | issue #421 | Sprint 10.5 | — | agente | feito |
-| 422 | Cobranças, comunicação, notificações, pedidos e conferência no visual do canvas (Sprints 08 a 10, gestão) | issue #422 | Sprint 10.5 | — | agente | a fazer |
+| 422 | Cobranças, comunicação, notificações, pedidos e conferência no visual do canvas (Sprints 08 a 10, gestão) | issue #422 | Sprint 10.5 | — | agente | feito |
 | 423 | Páginas do portal do aluno e do responsável no visual do canvas (Sprint 10) | issue #423 | Sprint 10.5 | — | agente | a fazer |
 | 96 | Porta de pagamento com o simulador: baixa, webhook e conciliação | issue #96 | Sprint 11 | — | agente | a fazer |
 | 97 | RF-PAG-01 · Configurações › Unidade › Pagamentos | issue #97 | Sprint 11 | — | agente | a fazer |

@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { CharCounter } from "@/components/CharCounter";
+import { CHAR_COUNTER_FIELD, CharCounter } from "@/components/CharCounter";
 import { MoneyField } from "@/components/fields/fields";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/field";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { failureOf, FieldError, NO_FAILURE, type Failure } from "./CancelChargeDialog";
 import type { ChargeRow } from "./types";
@@ -57,9 +59,7 @@ export function RenegotiateDialog({ charges, onClose, onDone }: { charges: Charg
       <form onSubmit={submit} noValidate className="flex flex-col gap-3">
         <p className="text-sm text-muted-foreground">{t("charges.renegotiate.effect")}</p>
         {err.form && (
-          <p role="alert" className="text-sm text-destructive">
-            {err.form}
-          </p>
+          <Banner tone="danger">{err.form}</Banner>
         )}
         <ul className="flex flex-col gap-1 text-sm">
           {charges.map((c) => (
@@ -71,18 +71,18 @@ export function RenegotiateDialog({ charges, onClose, onDone }: { charges: Charg
         <FieldError message={err.fields.amountCents} />
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.renegotiate.firstDueOn")}
-          <input type="date" className="min-h-11 rounded-md border bg-background px-2 font-normal" value={firstDueOn} onChange={(e) => setFirstDueOn(e.target.value)} aria-invalid={err.fields.firstDueOn ? true : undefined} />
+          <Input type="date" value={firstDueOn} onChange={(e) => setFirstDueOn(e.target.value)} aria-invalid={err.fields.firstDueOn ? true : undefined} />
         </label>
         <FieldError message={err.fields.firstDueOn} />
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.renegotiate.installments")}
-          <select className="min-h-11 rounded-md border bg-background px-2 font-normal" value={installments} onChange={(e) => setInstallments(Number(e.target.value))}>
+          <Select value={installments} onChange={(e) => setInstallments(Number(e.target.value))}>
             {[1, 2, 3, 4, 5, 6].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <FieldError message={err.fields.installments} />
         {rows.length > 0 && (
@@ -98,7 +98,7 @@ export function RenegotiateDialog({ charges, onClose, onDone }: { charges: Charg
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.actions.reason")}
-          <CharCounter value={reason} max={200} onChange={setReason} aria-required="true" className="w-full rounded-md border bg-background p-2 font-normal" />
+          <CharCounter value={reason} max={200} onChange={setReason} aria-required="true" className={CHAR_COUNTER_FIELD} />
         </label>
         <FieldError message={err.fields.reason} />
         <div className="flex flex-wrap justify-end gap-2">

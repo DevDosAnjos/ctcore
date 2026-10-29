@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Input } from "@/components/ui/field";
 import { PickSelect } from "@/features/students/ModalityPickers";
 import type { StudentList } from "@/features/students/types";
 import type { useResource } from "@/features/students/useStudentRecord";
@@ -29,7 +30,7 @@ export function StudentSearch({
         <label htmlFor={id} className="block text-sm font-medium">
           {t("charges.creation.search")}
         </label>
-        <input id={id} className="min-h-11 w-full rounded-md border bg-background px-2" value={query} onChange={(e) => onQuery(e.target.value)} />
+        <Input id={id} value={query} onChange={(e) => onQuery(e.target.value)} />
       </div>
       {students.status === "loading" && <LoadingState />}
       {students.status === "forbidden" && <ForbiddenState />}

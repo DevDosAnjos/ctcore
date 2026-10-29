@@ -1,7 +1,8 @@
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CharCounter } from "@/components/CharCounter";
+import { CHAR_COUNTER_FIELD, CharCounter } from "@/components/CharCounter";
 import { MoneyField } from "@/components/fields/fields";
+import { Input } from "@/components/ui/field";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { useStudentModalities } from "@/features/benefits/GrantBenefitDialog";
 import { ModalityDialog, PickSelect } from "@/features/students/ModalityPickers";
@@ -70,16 +71,16 @@ export function OneOffChargeDialog({ onClose, onDone }: { onClose: () => void; o
             <label htmlFor={descriptionId} className="block text-sm font-medium">
               {t(`${k}description`)}
             </label>
-            <CharCounter id={descriptionId} value={description} max={80} onChange={setDescription} rows={2} aria-invalid={errors.description ? true : undefined} />
+            <CharCounter id={descriptionId} value={description} max={80} onChange={setDescription} rows={2} aria-invalid={errors.description ? true : undefined} className={CHAR_COUNTER_FIELD} />
           </div>
-          {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
+          {errors.description && <p className="text-sm text-danger-foreground">{errors.description}</p>}
           <MoneyField label={t(`${k}amount`)} onChange={setAmount} />
-          {errors.amountCents && <p className="text-sm text-destructive">{errors.amountCents}</p>}
+          {errors.amountCents && <p className="text-sm text-danger-foreground">{errors.amountCents}</p>}
           <label className="flex flex-col gap-1 text-sm font-medium">
             {t(`${k}dueOn`)}
-            <input type="date" min={todayIso()} className="min-h-11 rounded-md border bg-background px-2 font-normal" value={dueOn} onChange={(e) => setDueOn(e.target.value)} aria-invalid={errors.dueOn ? true : undefined} />
+            <Input type="date" min={todayIso()} value={dueOn} onChange={(e) => setDueOn(e.target.value)} aria-invalid={errors.dueOn ? true : undefined} />
           </label>
-          {errors.dueOn && <p className="text-sm text-destructive">{errors.dueOn}</p>}
+          {errors.dueOn && <p className="text-sm text-danger-foreground">{errors.dueOn}</p>}
         </>
       )}
     </ModalityDialog>

@@ -10,9 +10,9 @@ export function AnnouncementPreviewPanel({ state }: { state: PreviewState | null
   const p = state.status === "ready" ? state.data : null;
   const whatsapp = !p?.whatsapp ? "" : t(p.whatsapp.mode === "GROUP" ? "announcements.new.previewWhatsappGroup" : "announcements.new.previewWhatsappConversation");
   return (
-    <section aria-label={t("announcements.new.previewLabel")} role="status" className="rounded-md border p-3">
+    <section aria-label={t("announcements.new.previewLabel")} role="status" className="rounded-card border bg-card p-4">
       {state.status === "loading" && <p>{t("announcements.new.previewLoading")}</p>}
-      {state.status === "error" && <p className="text-destructive">{t("announcements.new.previewError")}</p>}
+      {state.status === "error" && <p className="text-danger-foreground">{t("announcements.new.previewError")}</p>}
       {p && (
         <>
           <p className="font-medium">{p.recipients === 1 ? t("announcements.new.previewOne") : t("announcements.new.preview", { count: p.recipients })}</p>

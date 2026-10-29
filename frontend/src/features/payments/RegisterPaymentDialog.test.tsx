@@ -2,9 +2,26 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/mocks/server";
+import { axeViolations } from "@/test/axe";
+import { setDevicePrefersDark } from "@/test/device";
+import { ThemeProvider } from "@/theme/ThemeProvider";
 import { RegisterPaymentDialog } from "./RegisterPaymentDialog";
 
 describe("RegisterPaymentDialog (RF-COB-04)", () => {
+  it("CA9 (#422): a janela não tem violações no axe nos dois temas", async () => {
+    for (const dark of [false, true]) {
+      setDevicePrefersDark(dark);
+      const { unmount } = render(
+        <ThemeProvider>
+          <RegisterPaymentDialog chargeId="c1" label="Mensalidade" amountCents={5000} onClose={() => {}} onPaid={() => {}} />
+        </ThemeProvider>,
+      );
+      await screen.findByRole("dialog", { name: "Registrar pagamento" });
+      expect(await axeViolations(document.body)).toEqual([]);
+      unmount();
+    }
+  });
+
   it("data passada vai como paidAt, sem e-mail não pede envio, e o aviso do e-mail aparece no sucesso", async () => {
     let body: Record<string, unknown> = {};
     server.use(

@@ -32,7 +32,7 @@ export function LastReminder({ row }: { row: OverdueCharge }) {
 export function DaysToBlock({ row }: { row: OverdueCharge }) {
   const { t } = useTranslation();
   if (row.daysToBlock === null) return <>{t("format.empty")}</>;
-  return <span className={row.daysToBlock <= 5 ? "font-medium text-destructive" : undefined}>{t("charges.overdue.daysLate", { count: row.daysToBlock })}</span>;
+  return <span className={row.daysToBlock <= 5 ? "font-medium text-danger-foreground" : undefined}>{t("charges.overdue.daysLate", { count: row.daysToBlock })}</span>;
 }
 
 // RN-COM-03: a mensagem é montada aqui e a pessoa envia; o botão some sem telefone válido ou com o WhatsApp desligado.
@@ -61,7 +61,7 @@ export function OverdueCard({ row, checked, onToggle }: { row: OverdueCharge; ch
         <dt className="text-muted-foreground">{t("charges.overdue.columns.dueOn")}</dt>
         <dd>{formatDate(row.dueOn)}</dd>
         <dt className="text-muted-foreground">{t("charges.overdue.columns.daysLate")}</dt>
-        <dd className="font-medium text-destructive">{t("charges.overdue.daysLate", { count: row.daysLate })}</dd>
+        <dd className="font-medium text-danger-foreground">{t("charges.overdue.daysLate", { count: row.daysLate })}</dd>
         <dt className="text-muted-foreground">{t("charges.overdue.columns.lastReminder")}</dt>
         <dd>
           <LastReminder row={row} />

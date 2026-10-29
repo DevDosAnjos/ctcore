@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { Input, Select as Control } from "@/components/ui/field";
 import { useStudentFilterOptions } from "@/features/students/useStudents";
 import { QUICK, SITUATIONS, TYPES, type ChargeQuick } from "./types";
 
@@ -11,14 +12,14 @@ function Select({ label, value, onChange, all, options }: { label: string; value
   return (
     <label className="flex min-w-0 flex-col gap-1 text-sm">
       {label}
-      <select className="min-h-11 rounded-md border bg-background px-2" value={value} onChange={(e) => onChange(e.target.value)}>
+      <Control value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">{all}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
           </option>
         ))}
-      </select>
+      </Control>
     </label>
   );
 }
@@ -27,7 +28,7 @@ function DateField({ label, value, onChange }: { label: string; value: string; o
   return (
     <label className="flex min-w-0 flex-col gap-1 text-sm">
       {label}
-      <input type="date" className="min-h-11 rounded-md border bg-background px-2" value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} />
     </label>
   );
 }

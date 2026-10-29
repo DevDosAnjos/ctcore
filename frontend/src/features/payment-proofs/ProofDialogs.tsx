@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Textarea } from "@/components/ui/field";
 import { ModalityDialog } from "@/features/students/ModalityPickers";
 import { formatCurrency } from "@/lib/format";
 import type { PaymentProof } from "./types";
@@ -61,9 +62,8 @@ export function RefuseProofDialog({ proof, onClose, onDone }: Props) {
             <label htmlFor={id} className="block text-sm font-medium">
               {t("paymentProofs.refuse.reason")}
             </label>
-            <textarea
+            <Textarea
               id={id}
-              className="w-full rounded-md border bg-background p-2"
               rows={3}
               maxLength={200}
               value={reason}
@@ -72,7 +72,7 @@ export function RefuseProofDialog({ proof, onClose, onDone }: Props) {
               aria-describedby={errors.reason ? `${id}-erro` : undefined}
             />
             {errors.reason && (
-              <p id={`${id}-erro`} className="text-sm text-destructive">
+              <p id={`${id}-erro`} className="text-sm text-danger-foreground">
                 {errors.reason}
               </p>
             )}

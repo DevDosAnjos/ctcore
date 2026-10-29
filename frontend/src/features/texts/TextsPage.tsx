@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
+import { Input, Textarea } from "@/components/ui/field";
 import { ApiError } from "@/lib/api";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { useTexts, type TextGroup, type TextModel } from "./useTexts";
@@ -85,7 +87,6 @@ function Editor({ model, canManage, api }: { model: TextModel; canManage: boolea
     setMessage(t("texts.resetDone"));
   }
 
-  const cls = "w-full rounded-md border bg-background px-2 py-1";
   return (
     <Card heading="h2" title={t("texts.editor.title", { name })}>
       <div className="flex flex-col gap-3">
@@ -95,7 +96,7 @@ function Editor({ model, canManage, api }: { model: TextModel; canManage: boolea
         {model.key === "WELCOME" && <p className="text-sm text-muted-foreground">{t("texts.welcomeNote")}</p>}
         {!canManage && <p className="text-sm text-muted-foreground">{t("texts.editor.readOnly")}</p>}
         {message && <p role="status" className="text-sm">{message}</p>}
-        {errors.top && <p role="alert" className="text-sm text-destructive">{errors.top}</p>}
+        {errors.top && <Banner tone="danger">{errors.top}</Banner>}
         <form
           className="flex flex-col gap-3"
           onSubmit={(e) => {
@@ -107,10 +108,9 @@ function Editor({ model, canManage, api }: { model: TextModel; canManage: boolea
             <label htmlFor="texts-subject" className="text-sm font-medium">
               {t("texts.editor.subject")}
             </label>
-            <input
+            <Input
               id="texts-subject"
               ref={subjectRef}
-              className={`${cls} min-h-11`}
               value={subject}
               disabled={!canManage}
               aria-invalid={!!errors.subject}
@@ -119,7 +119,7 @@ function Editor({ model, canManage, api }: { model: TextModel; canManage: boolea
               onChange={(e) => setSubject(e.target.value)}
             />
             {errors.subject && (
-              <p id="texts-subject-erro" className="text-sm text-destructive">
+              <p id="texts-subject-erro" className="text-sm text-danger-foreground">
                 {errors.subject}
               </p>
             )}
@@ -128,10 +128,10 @@ function Editor({ model, canManage, api }: { model: TextModel; canManage: boolea
             <label htmlFor="texts-body" className="text-sm font-medium">
               {t("texts.editor.body")}
             </label>
-            <textarea
+            <Textarea
               id="texts-body"
               ref={bodyRef}
-              className={`${cls} min-h-40`}
+              className="min-h-40"
               value={body}
               disabled={!canManage}
               aria-invalid={!!errors.body}
@@ -140,7 +140,7 @@ function Editor({ model, canManage, api }: { model: TextModel; canManage: boolea
               onChange={(e) => setBody(e.target.value)}
             />
             {errors.body && (
-              <p id="texts-body-erro" className="text-sm text-destructive">
+              <p id="texts-body-erro" className="text-sm text-danger-foreground">
                 {errors.body}
               </p>
             )}
@@ -173,7 +173,7 @@ function Editor({ model, canManage, api }: { model: TextModel; canManage: boolea
         <section aria-label={t("texts.preview.title")} className="flex flex-col gap-2">
           <h3 className="text-sm font-medium">{t("texts.preview.title")}</h3>
           <p className="break-words text-sm text-muted-foreground">{t("texts.preview.subject", { subject: fill(subject) })}</p>
-          <div className="mx-auto w-full max-w-xl rounded-md border bg-background p-4">
+          <div className="mx-auto w-full max-w-xl rounded-card border bg-card p-4">
             <p className="whitespace-pre-wrap break-words text-lg">{fill(body)}</p>
             <p className="mt-4 text-sm text-muted-foreground">{t("texts.preview.footer")}</p>
           </div>

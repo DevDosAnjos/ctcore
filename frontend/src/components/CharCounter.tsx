@@ -29,3 +29,7 @@ export function CharCounter({ value, max, onChange, className, ...rest }: Props)
     </div>
   );
 }
+
+/** Campo com os tokens do sistema (borda, fundo e foco), para as telas no visual do canvas. */
+export const CHAR_COUNTER_FIELD =
+  "w-full rounded-md border border-input bg-card p-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-[invalid=true]:border-danger-foreground";

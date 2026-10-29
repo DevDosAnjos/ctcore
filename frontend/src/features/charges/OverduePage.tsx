@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
+import { Select as Control } from "@/components/ui/field";
 import { QueryPage, type Page, type Query } from "@/components/query/QueryPage";
 import type { Column } from "@/components/query/DataTable";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
@@ -56,7 +58,7 @@ function Content() {
     { key: "reference", label: t("charges.overdue.columns.reference"), render: (r) => reference(r) },
     { key: "dueOn", label: t("charges.overdue.columns.dueOn"), render: (r) => formatDate(r.dueOn) },
     { key: "amount", label: t("charges.overdue.columns.amount"), sortable: true, render: (r) => formatCurrency(r.amountCents) },
-    { key: "daysLate", label: t("charges.overdue.columns.daysLate"), sortable: true, render: (r) => <span className="font-medium text-destructive">{t("charges.overdue.daysLate", { count: r.daysLate })}</span> },
+    { key: "daysLate", label: t("charges.overdue.columns.daysLate"), sortable: true, render: (r) => <span className="font-medium text-danger-foreground">{t("charges.overdue.daysLate", { count: r.daysLate })}</span> },
     { key: "lastReminder", label: t("charges.overdue.columns.lastReminder"), render: (r) => <LastReminder row={r} /> },
     { key: "daysToBlock", label: t("charges.overdue.columns.daysToBlock"), render: (r) => <DaysToBlock row={r} /> },
     { key: "whatsapp", label: t("charges.overdue.columns.whatsapp"), render: (r) => <Whatsapp row={r} /> },
@@ -81,9 +83,7 @@ function Content() {
           {t("charges.overdue.send")}
         </Button>
         {tooMany && (
-          <p role="alert" className="text-sm text-destructive">
-            {t("charges.overdue.tooMany")}
-          </p>
+          <Banner tone="danger">{t("charges.overdue.tooMany")}</Banner>
         )}
       </div>
       <QueryPage
@@ -95,14 +95,14 @@ function Content() {
         filters={({ get, set }) => (
           <label className="flex min-w-0 flex-col gap-1 text-sm">
             {t("charges.overdue.unit")}
-            <select className="min-h-11 rounded-md border bg-background px-2" value={get("unitId")} onChange={(e) => set("unitId", e.target.value)}>
+            <Control value={get("unitId")} onChange={(e) => set("unitId", e.target.value)}>
               <option value="">{t("charges.overdue.allUnits")}</option>
               {units.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>
               ))}
-            </select>
+            </Control>
           </label>
         )}
         cards={(r) => <OverdueCard row={r} checked={selected.has(r.id)} onToggle={toggle} />}

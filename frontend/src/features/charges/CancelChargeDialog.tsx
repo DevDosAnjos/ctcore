@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { CharCounter } from "@/components/CharCounter";
+import { CHAR_COUNTER_FIELD, CharCounter } from "@/components/CharCounter";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/format";
@@ -9,7 +10,7 @@ import type { ChargeRow } from "./types";
 import { cancelCharge } from "./useChargeActions";
 
 export type Failure = { fields: Record<string, string>; form: string };
-export const FieldError = ({ message }: { message?: string }) => (message ? <p className="text-sm text-destructive">{message}</p> : null);
+export const FieldError = ({ message }: { message?: string }) => (message ? <p className="text-sm text-danger-foreground">{message}</p> : null);
 export const NO_FAILURE: Failure = { fields: {}, form: "" };
 
 // Erro do servidor de uma janela de ação: o 400 vai junto do campo; 409, 404 e o resto viram a mensagem do alto.
@@ -48,13 +49,11 @@ export function CancelChargeDialog({ charge, onClose, onDone }: { charge: Charge
         <p>{t("charges.cancel.summary", { student: charge.student.name, amount: formatCurrency(charge.amountCents), due: formatDate(charge.dueOn) })}</p>
         <p className="text-sm text-muted-foreground">{t("charges.cancel.effect")}</p>
         {err.form && (
-          <p role="alert" className="text-sm text-destructive">
-            {err.form}
-          </p>
+          <Banner tone="danger">{err.form}</Banner>
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.actions.reason")}
-          <CharCounter value={reason} max={200} onChange={setReason} aria-required="true" aria-invalid={err.fields.reason ? true : undefined} className="w-full rounded-md border bg-background p-2 font-normal" />
+          <CharCounter value={reason} max={200} onChange={setReason} aria-required="true" aria-invalid={err.fields.reason ? true : undefined} className={CHAR_COUNTER_FIELD} />
         </label>
         <FieldError message={err.fields.reason} />
         <div className="flex flex-wrap justify-end gap-2">

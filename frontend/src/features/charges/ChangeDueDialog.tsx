@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
+import { Banner } from "@/components/ui/banner";
+import { Input } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_TZ, formatDate } from "@/lib/format";
 import { FieldError, NO_FAILURE, failureOf, type Failure } from "./CancelChargeDialog";
@@ -40,13 +42,11 @@ export function ChangeDueDialog({ line, dueOn: current, onClose, onDone }: { lin
         <p>{t("charges.preview.changeDue.summary", { student: line.student, modality: line.modality })}</p>
         <p className="text-sm text-muted-foreground">{t("charges.preview.changeDue.effect", { max: formatDate(max) })}</p>
         {err.form && (
-          <p role="alert" className="text-sm text-destructive">
-            {err.form}
-          </p>
+          <Banner tone="danger">{err.form}</Banner>
         )}
         <label className="flex flex-col gap-1 text-sm font-medium">
           {t("charges.preview.changeDue.field")}
-          <input type="date" min={todayIso()} max={max} className="min-h-11 rounded-md border bg-background px-2 font-normal" value={dueOn} onChange={(e) => setDueOn(e.target.value)} aria-invalid={err.fields.dueOn ? true : undefined} />
+          <Input type="date" min={todayIso()} max={max} value={dueOn} onChange={(e) => setDueOn(e.target.value)} aria-invalid={err.fields.dueOn ? true : undefined} />
         </label>
         <FieldError message={err.fields.dueOn} />
         <div className="flex flex-wrap justify-end gap-2">
