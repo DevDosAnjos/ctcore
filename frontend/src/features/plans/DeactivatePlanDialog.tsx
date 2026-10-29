@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
 import { ApiError } from "@/lib/api";
 import { deactivatePlan, type PlanRow } from "./usePlans";
 
@@ -36,9 +37,9 @@ function Body({ plan, onClose, onDone }: { plan: PlanRow; onClose: () => void; o
       <div className="flex flex-col gap-3" aria-busy={busy}>
         <p className="text-sm">{t("plans.deactivateDialog.explain")}</p>
         {error && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {error}
-          </p>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button type="button" variant="outline" className="min-h-11" onClick={onClose} disabled={busy}>

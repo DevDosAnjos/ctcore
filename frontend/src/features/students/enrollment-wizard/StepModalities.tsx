@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { MoneyField } from "@/components/fields/fields";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
 import { Text } from "@/features/units/Text";
 import { ApiError } from "@/lib/api";
 import { OtherClasses, PickSelect, useClassChoices, usePlanChoices, type Choice } from "../ModalityPickers";
@@ -77,9 +78,9 @@ function OriginBlock({ studentId, draft, graduation, onChange }: { studentId: st
             {o.proofName && <p className="text-sm">{t(`${k}proofSent`, { name: o.proofName })}</p>}
             {graduation.requireOriginProof && !o.proofKey && <p className="text-sm text-muted-foreground">{t(`${k}proofNeeded`)}</p>}
             {error && (
-              <p role="alert" className="text-sm text-destructive">
+              <Banner tone="danger">
                 {error}
-              </p>
+              </Banner>
             )}
           </div>
         </>
@@ -229,9 +230,9 @@ export function StepModalities({
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">{t(`${k}intro`, { remaining: MAX_ACTIVE - activeCount })}</p>
       {errors.modalities && (
-        <p role="alert" className="text-sm text-destructive">
+        <Banner tone="danger">
           {errors.modalities}
-        </p>
+        </Banner>
       )}
       <ul className="flex flex-col gap-3">
         {modalities.map((m, i) => (

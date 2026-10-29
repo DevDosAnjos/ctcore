@@ -6,6 +6,8 @@ import { formatCep, isValidCpf, isValidPhone, onlyDigits } from "@/components/fi
 import { Modal } from "@/components/Modal";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Banner } from "@/components/ui/banner";
+import { Select } from "@/components/ui/field";
 import { LogoCropDialog } from "@/features/organization/LogoCropDialog";
 import { checkLogoFile, LOGO_TYPES } from "@/features/organization/logoFile";
 import { Text } from "@/features/units/Text";
@@ -239,9 +241,9 @@ function Form({ student, onClose, onSaved }: { student: StudentDetail; onClose: 
                 )}
               </div>
               {photoNotice && (
-                <p role="alert" className="text-sm text-destructive">
+                <Banner tone="danger">
                   {photoNotice}
-                </p>
+                </Banner>
               )}
             </div>
           </div>
@@ -249,12 +251,12 @@ function Form({ student, onClose, onSaved }: { student: StudentDetail; onClose: 
           <Text label={t(`${k}birthDate`)} type="date" value={birthDate} onChange={setBirthDate} error={errors.birthDate} />
           <div>
             <CpfField label={t(`${k}cpf`)} initial={cpf} onChange={setCpf} autoComplete="off" />
-            {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
+            {errors.cpf && <p className="text-sm text-danger-foreground">{errors.cpf}</p>}
           </div>
           <Text label={t(`${k}email`)} type="email" value={email} onChange={setEmail} error={errors.email} autoComplete="off" />
           <div>
             <PhoneField label={t(`${k}phone`)} initial={phone} onChange={setPhone} autoComplete="off" />
-            {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
+            {errors.phone && <p className="text-sm text-danger-foreground">{errors.phone}</p>}
           </div>
           <fieldset className="flex flex-col gap-3">
             <legend className="text-sm font-medium">{t(`${k}address`)}</legend>
@@ -266,8 +268,8 @@ function Form({ student, onClose, onSaved }: { student: StudentDetail; onClose: 
             <Text label={t(`${k}city`)} value={city} onChange={setCity} error={errors.city} autoComplete="off" />
             <label className="block text-sm font-medium">
               {t(`${k}state`)}
-              <select
-                className="mt-1 min-h-11 w-full rounded-md border bg-background px-2 font-normal"
+              <Select
+                className="mt-1 font-normal"
                 value={state}
                 aria-invalid={errors.state ? true : undefined}
                 onChange={(e) => setState(e.target.value)}
@@ -278,31 +280,31 @@ function Form({ student, onClose, onSaved }: { student: StudentDetail; onClose: 
                     {uf}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
-            {errors.state && <p className="text-sm text-destructive">{errors.state}</p>}
+            {errors.state && <p className="text-sm text-danger-foreground">{errors.state}</p>}
           </fieldset>
           <label className="block text-sm font-medium">
             {t(`${k}gender`)}
-            <select className="mt-1 min-h-11 w-full rounded-md border bg-background px-2 font-normal" value={gender} onChange={(e) => setGender(e.target.value)}>
+            <Select className="mt-1 font-normal" value={gender} onChange={(e) => setGender(e.target.value)}>
               <option value="">{t(`${k}none`)}</option>
               {GENDERS.map((g) => (
                 <option key={g} value={g}>
                   {t(`${k}genders.${g}`)}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="block text-sm font-medium">
             {t(`${k}referral`)}
-            <select className="mt-1 min-h-11 w-full rounded-md border bg-background px-2 font-normal" value={referral} onChange={(e) => setReferral(e.target.value)}>
+            <Select className="mt-1 font-normal" value={referral} onChange={(e) => setReferral(e.target.value)}>
               <option value="">{t(`${k}none`)}</option>
               {REFERRALS.map((r) => (
                 <option key={r} value={r}>
                   {t(`${k}referrals.${r}`)}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <fieldset className="flex flex-col gap-3">
             <legend className="text-sm font-medium">{t(`${k}emergency`)}</legend>
@@ -310,7 +312,7 @@ function Form({ student, onClose, onSaved }: { student: StudentDetail; onClose: 
             <Text label={t(`${k}emergencyRelationship`)} value={emergencyRelationship} onChange={setEmergencyRelationship} error={errors.emergencyRelationship} autoComplete="off" />
             <div>
               <PhoneField label={t(`${k}emergencyPhone`)} initial={emergencyPhone} onChange={setEmergencyPhone} autoComplete="off" />
-              {errors.emergencyPhone && <p className="text-sm text-destructive">{errors.emergencyPhone}</p>}
+              {errors.emergencyPhone && <p className="text-sm text-danger-foreground">{errors.emergencyPhone}</p>}
             </div>
           </fieldset>
         </fieldset>
@@ -347,14 +349,14 @@ function Form({ student, onClose, onSaved }: { student: StudentDetail; onClose: 
           </div>
         )}
         {errors.form && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {errors.form}
-          </p>
+          </Banner>
         )}
         {photoFailed && (
-          <p role="alert" className="text-sm text-destructive">
+          <Banner tone="danger">
             {t(`${k}photoUploadError`)}
-          </p>
+          </Banner>
         )}
         <div className="flex flex-wrap justify-end gap-2">
           {saved && photoFailed ? (

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Select } from "@/components/ui/field";
 import { useGraduation } from "@/features/modalities/useGraduation";
 import { useStudentFilterOptions } from "./useStudents";
 
@@ -11,14 +12,14 @@ function Filter({ label, value, onChange, all, options, disabled }: { label: str
   return (
     <label className="flex min-w-0 flex-col gap-1 text-sm">
       {label}
-      <select className="min-h-11 rounded-md border bg-background px-2" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+      <Select value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
         <option value="">{all}</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }
