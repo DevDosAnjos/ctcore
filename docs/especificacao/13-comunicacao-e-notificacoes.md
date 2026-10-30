@@ -48,13 +48,14 @@ Avisar alunos e equipe do que importa, pelos canais certos, sem o aluno responde
 - **RN-NOT-02.** E-mail na hora só para o urgente: pedido de encerramento, Mercado Pago desconectado e assinatura em atraso.
 - **RN-NOT-03.** Quem recebe depende do tipo: o que é de unidade vai ao Administrador com acesso à unidade; o que é da organização, ao Coordenador. "Receber tudo" é uma preferência por vínculo, desligada por padrão, que só o Coordenador muda. O Professor recebe só o que é das suas turmas, conforme as suas permissões, e nada financeiro.
 - **RN-NOT-04.** Só os tipos cujo fato já existe estão em vigor; os demais entram com o item que cria o fato. Geram notificação: pagamento recebido, pagamento recusado, comprovante para conferir, pedido do portal, pedido de aula experimental, autocadastro, benefício alto (Coordenador), aluno fez 18 anos, convite não aceito em 7 dias, turma sem professor ativo, e-mail com problema, pedido de exclusão de dados.
+- **RN-NOT-05.** Retenção: a notificação da equipe é apagada 30 dias depois de criada, lida ou não, por uma limpeza diária; depois disso ela não aparece mais no sino nem no contador de não lidas. O painel do sino mostra no rodapé "As notificações somem depois de 30 dias". A limpeza vale só para a notificação do sino; comunicados, e-mails e a auditoria têm retenção própria. Decisão do dono em 30/10/2026 (implementação na Sprint 10.5, ver `docs/auditoria/plano-de-issues.md`).
 
 ## Requisitos
 
 - **RF-COM-01.** Comunicação › Comunicados: lista com data, destino, título, tipo, autor, situação (Agendado, Enviado), destinatários e lidos; filtros por período, turma e tipo.
 - **RF-COM-02.** Novo comunicado: destino, tipo, título, texto, imagem, canais, fixar até, enviar agora ou agendar, prévia de destinatários. Abre já preenchido a partir de Turmas, Agenda e Dias sem aula.
 - **RF-COM-03.** Configurações › Textos: modelos editáveis com prévia e "Voltar ao texto da plataforma".
-- **RF-NOT-01.** Painel do sino: grupos Hoje e Esta semana, filtros Todas e Não lidas, cada notificação com a ação que resolve, "Marcar todas como lidas", estado "Tudo lido".
+- **RF-NOT-01.** Painel do sino: grupos Hoje e Esta semana, filtros Todas e Não lidas, cada notificação com a ação que resolve, "Marcar todas como lidas", estado "Tudo lido", rodapé com o prazo de retenção (RN-NOT-05).
 
 ## Pronto quando
 
