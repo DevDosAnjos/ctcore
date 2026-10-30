@@ -143,6 +143,8 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 438 | "Avisar turma" abre o comunicado vazio em vez do aviso pronto | issue #438 | Sprint 10.5 | — | agente | feito |
 | 439 | Prévia da geração fica em branco com um motivo sem chave de tradução | issue #439 | Sprint 10.5 | — | agente | feito |
 | 440 | Botão de tema invisível na barra escura do portal, no tema claro | issue #440 | Sprint 10.5 | — | agente | feito |
+| 448 | Técnica · Captura do teste visual com o navegador em pt-BR (antes da Fase 2) | issue #448 | Sprint 10.5 | — | agente | a fazer |
+| 435 | Comparação automática com o canvas e cobertura do teste visual | issue #435 | Sprint 10.5 | #448 | agente | a fazer |
 | 441 | Revogar uso de imagem no portal sem confirmação | issue #441 | Sprint 10.5 | — | agente | a fazer |
 | 442 | MSW: agenda do Professor devolve todas as aulas da unidade | issue #442 | Sprint 10.5 | — | agente | a fazer |
 | 443 | Professor chega à ficha do aluno pela aula (com a permissão "ver ficha do aluno") | issue #443 | Sprint 10.5 | — | agente | a fazer |
@@ -150,8 +152,6 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 445 | Login travado devolve o horário de liberação (429) | issue #445 | Sprint 10.5 | — | agente | a fazer |
 | 446 | Botão "Ver alunos" do painel da turma está sempre desabilitado | issue #446 | Sprint 10.5 | — | agente | a fazer |
 | 447 | Retenção de 30 dias das notificações da equipe (RN-NOT-05) | issue #447 | Sprint 10.5 | — | agente | a fazer |
-| 448 | Técnica · Captura do teste visual com o navegador em pt-BR (antes da Fase 2) | issue #448 | Sprint 10.5 | — | agente | a fazer |
-| 435 | Comparação automática com o canvas e cobertura do teste visual | issue #435 | Sprint 10.5 | #448 | agente | a fazer |
 | 449 | Técnica · Dados do MSW para as telas que ficaram "sem comparar" | issue #449 | Sprint 10.5 | — | agente | a fazer |
 | 450 | Componente base: Padrão "Em breve" (R3): item visível e desabilitado, sem backend | issue #450 | Sprint 10.5 | #448 | agente | a fazer |
 | 452 | Componente base: Selos, avatar e graduação (faixa visual) | issue #452 | Sprint 10.5 | #448 | agente | a fazer |

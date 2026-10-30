@@ -31,3 +31,6 @@ docs/design/prints/
 
 # Prints da auditoria do canvas (Sprint 10.5); ficam só na máquina do dono
 docs/auditoria/imagens/
+
+# Capturas da comparação com o canvas (por item); ficam só na máquina
+.capturas/
