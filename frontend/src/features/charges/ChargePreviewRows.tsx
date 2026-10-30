@@ -42,7 +42,9 @@ function Line({ line, canAdjust, onAct }: { line: PreviewLine; canAdjust: boolea
 
 // Grupos por dia de vencimento e a seção "Não serão cobrados"; depois de cada ação `onChanged` recarrega a prévia.
 export function ChargePreviewRows({ data, canAdjust, onChanged }: { data: GenerationPreview; canAdjust: boolean; onChanged: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Motivo sem texto cai em "Não será cobrado" sem pedir a chave que não existe (o modo estrito do i18n lança).
+  const reasonKey = (r: string) => (i18n.exists(`charges.preview.reasons.${r}`) ? `charges.preview.reasons.${r}` : "charges.preview.reasons.OTHER");
   const [action, setAction] = useState<Action | null>(null);
   const close = () => setAction(null);
   return (
@@ -67,7 +69,7 @@ export function ChargePreviewRows({ data, canAdjust, onChanged }: { data: Genera
           <ul className="flex flex-col gap-2">
             {data.skipped.map((s) => (
               <li key={s.studentId + s.modality + s.referenceMonth} className="rounded-md border border-dashed p-3">
-                <span className="font-medium">{s.student}</span> · {s.modality} · {t(`charges.preview.reasons.${s.reason}`, { defaultValue: t("charges.preview.reasons.OTHER") })}
+                <span className="font-medium">{s.student}</span> · {s.modality} · {t(reasonKey(s.reason))}
               </li>
             ))}
           </ul>

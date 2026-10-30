@@ -102,6 +102,22 @@ describe("ChargePreviewPage (RF-COB-03)", () => {
     expect(calls.at(-1)!.get("days")).toBe("10");
   });
 
+  it("motivo desconhecido mostra Não será cobrado e os motivos do canvas têm o texto do canvas", async () => {
+    const reasons = ["X", "OVERDUE_BLOCK", "END_REQUESTED", "MODALITY_ENDED"];
+    const texts = ["Não será cobrado", "Modalidade bloqueada por atraso", "Encerramento solicitado", "Modalidade encerrada"];
+    setup({
+      preview: () =>
+        HttpResponse.json(
+          data({ skipped: reasons.map((reason, i) => ({ studentId: `k${i}`, student: `Fulano ${i}`, modality: "Judô", referenceMonth: "2099-12-01", reason })) }),
+        ),
+    });
+    await ready();
+    for (const [i, text] of texts.entries()) {
+      const row = (await screen.findByText(`Fulano ${i}`)).closest("li")!;
+      expect(row).toHaveTextContent(text);
+    }
+  });
+
   it("diferença negativa sai com o sinal de menos", async () => {
     setup({ preview: () => HttpResponse.json(data({ previousMonthTotalCents: 56000 })) });
     await ready();

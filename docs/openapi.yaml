@@ -1170,7 +1170,7 @@ paths:
       description: |
         Devolve, sem gravar nada, o que a tarefa diária criaria até hoje mais `days` (1 a 60, padrão 10, no fuso da unidade): por dia de vencimento, a
         quantidade e o total, cada linha com aluno, modalidade, plano, desconto e valor final; o total previsto; o total das mensalidades do mês anterior
-        ao primeiro vencimento previsto; e quem não será cobrado (`FULL_BENEFIT`). Unidade fora do alcance: prévia vazia. `days` fora de 1 a 60: 400.
+        ao primeiro vencimento previsto; e quem não será cobrado, com o motivo (`reason`). Unidade fora do alcance: prévia vazia. `days` fora de 1 a 60: 400.
       security: [{ sessionCookie: [] }]
       parameters:
         - { name: unitId, in: query, required: true, schema: { type: string, format: uuid } }
@@ -4336,7 +4336,7 @@ components:
               student: { type: string }
               modality: { type: string }
               referenceMonth: { type: string, format: date }
-              reason: { type: string, enum: [FULL_BENEFIT] }
+              reason: { type: string, description: "Motivo de não ser cobrado. Conhecidos: FULL_BENEFIT, OVERDUE_BLOCK, END_REQUESTED, MODALITY_ENDED. Valor novo deve ser tratado como \"Não será cobrado\"." }
     DailyReceiptsPerson:
       type: object
       required: [id, name]

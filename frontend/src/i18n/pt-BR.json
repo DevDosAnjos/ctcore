@@ -2266,7 +2266,10 @@
       "skipped": "Não serão cobrados",
       "reasons": {
         "FULL_BENEFIT": "Bolsa de 100%",
-        "OTHER": "Outro motivo"
+        "OVERDUE_BLOCK": "Modalidade bloqueada por atraso",
+        "END_REQUESTED": "Encerramento solicitado",
+        "MODALITY_ENDED": "Modalidade encerrada",
+        "OTHER": "Não será cobrado"
       },
       "changeDue": {
         "title": "Trocar vencimento",
