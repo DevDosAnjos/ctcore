@@ -91,12 +91,12 @@ Fase 3 por área: Pessoas 7 · Operação 4 · Financeiro 6 · Configurações 7
 ### C1 · #454 · Moldura da gestão: menu lateral, barra de cima, cabeçalho, seletor de unidade e menu do celular
 
 - **IDs (causa comum):** A1, M1, M51, M52, M58, M114, B6, B8 · **Fase:** 2 · **Depende de:** F1-12 · **Tamanho:** G
-- **Piloto (aplica o componente em):** Alunos (P1) e Agenda (O1). Menu com ícones de grupo e itens certos por perfil, avatar e nome do usuário, seletor de unidade com "Só consulta" para o Coordenador, trilha, barra do celular com voltar, título e unidade. Inclui o botão de sair (#434).
+- **Piloto (aplica o componente em):** Alunos (P1) e Agenda (O1). Menu com ícones de grupo e itens certos por perfil, avatar e nome do usuário, seletor de unidade com "Só consulta" para o Coordenador, trilha, barra do celular com voltar, título e unidade. O botão de sair e a ação de sair são da #434 (entra antes); esta issue o mantém, no visual do canvas.
 
 ### C2 · #455 · Moldura do portal e shell das telas de acesso
 
 - **IDs (causa comum):** M1, M2, M135↑, B23, B27 · **Fase:** 2 · **Depende de:** F1-12 · **Tamanho:** G
-- **Piloto (aplica o componente em):** Início do portal (R1) e Login (H1). Coluna do portal na largura do canvas, rótulo acima do título, barra com avatar e nome, tema, sino, rodapé; marca com ícone, slogan e coluna escura das telas de acesso.
+- **Piloto (aplica o componente em):** Início do portal (R1) e Login (H1). Coluna do portal na largura do canvas, rótulo acima do título, barra com avatar e nome, tema, sino, rodapé; marca com ícone, slogan e coluna escura das telas de acesso. O botão de sair do portal é da #434; esta issue o mantém na barra.
 
 ### C3a · #456 · Busca e filtro em pílula
 
@@ -370,7 +370,7 @@ Fase 3 por área: Pessoas 7 · Operação 4 · Financeiro 6 · Configurações 7
 ## Sequência sugerida dentro da Sprint 10.5
 
 1. **Fase 1** primeiro: são pequenas e independentes. F1-12 (captura em pt-BR) vem antes de qualquer issue da Fase 2; F1-13 (dados do MSW) vem antes das telas que ficaram "sem comparar" e **não depende** da F1-12.
-2. **Fase 2**, cada issue com um ou dois pilotos, nesta ordem: C11 (Em breve), C10, C4 → C1 e C2 (molduras) → C3a, C3b, C5a, C5b → C6a, **C9** (a confirmação de ação sensível é uma janela e usa a janela base), C6b, C6c → C7, C8.
+2. **Fase 2**, cada issue com um ou dois pilotos, nesta ordem: C11 (Em breve), C10, C4 → **#434 (botão de sair)** → C1 e C2 (molduras) → C3a, C3b, C5a, C5b → C6a, **C9** (a confirmação de ação sensível é uma janela e usa a janela base), C6b, C6c → C7, C8.
 3. **Fase 3** por área, cada issue só depois dos componentes de que depende. Uma issue por PR. Cada PR de tela **regera só os prints de referência da própria tela, depois da comparação com o canvas** (`npm run test:visual:docker -- --update-snapshots` limitado aos casos da tela); referência de outra tela não é tocada. A descrição do PR traz a comparação com o canvas (regra proposta abaixo).
 4. A #435 (comparação automática com o canvas) fecha o ciclo e pode andar em paralelo à Fase 2, porque detecta regressão nas telas já ajustadas.
 
@@ -383,6 +383,11 @@ Fase 3 por área: Pessoas 7 · Operação 4 · Financeiro 6 · Configurações 7
 Em "Regras que valem para todo item", trocar a linha "Visual igual à tela do canvas citada na issue…" por:
 
 > - **Canvas e decisões do dono.** Toda tela nova ou alterada que tem tela no canvas é comparada com ela antes da entrega (1440 e 390 px, e nos temas em que o canvas existe) e segue `docs/auditoria/decisoes-canvas.md`: o canvas vence em layout, textos, rótulos, botões, janelas e confirmações; se a API precisa mudar para igualar, ela muda, desde que não contrarie a especificação, e a especificação, o contrato e o MSW mudam junto; quando o canvas contradiz uma regra de negócio, a especificação vence na regra e o canvas no visual. **A captura para comparar com o canvas é feita com o navegador em pt-BR** (os textos nativos de data e arquivo dependem do idioma do navegador). Tela sem canvas segue a especificação e os componentes base padronizados na 10.5 (`docs/design/README.md`). Item de sprint futura que o canvas já mostra aparece na tela **visível e desabilitado com "Em breve"**, sem backend. A descrição do PR lista as divergências achadas na comparação e como foram resolvidas, e o PR regera só os prints de referência da própria tela; sem comparação, o PR não é mesclado.
+
+## #434 e #435 (fora das 65, no mesmo marco)
+
+- **#435 · Comparação automática com o canvas e cobertura do teste visual** (técnica): entra no backlog logo depois da #448 e depende dela (a comparação precisa da captura em pt-BR). Etiqueta trocada de "entrega 1 · produto" para `técnica`.
+- **#434 · Botão de sair da conta na gestão e no portal**: **não é duplicada** da C1 (#454), então fica aberta e entra no backlog **antes da #454**. A C1 cobre só o visual da moldura da gestão. A #434 tem a mais: (1) o botão também na barra do **portal** (a C2, #455, não o inclui); (2) a **ação** de sair: `POST /auth/logout`, limpar o estado da sessão no front e ir para `/entrar`; (3) os testes: unidade nas duas barras e um e2e (entrar, sair, abrir rota protegida e ser mandado ao login, entrar com outro usuário). A C1 e a C2 só mantêm o botão no visual do canvas; os textos delas foram ajustados para não recriar a ação.
 
 ## Issues abertas (30/10/2026)
 

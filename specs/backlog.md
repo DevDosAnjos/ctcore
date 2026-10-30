@@ -4,7 +4,7 @@ Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 17
 
 Sprint liberada: Sprint 10.5 (Identidade visual). O dono confirmou em 29/10/2026 que a Sprint 10 foi revisada e fechada e liberou a Sprint 10.5 (#414 a #423). Em 30/10/2026 o dono aprovou o plano de issues da auditoria do canvas e as #437 a #501 entraram nessa mesma sprint liberada (plano em `docs/auditoria/plano-de-issues.md`). A 10.5 entra antes da Sprint 11. A Sprint 11 fica para depois da 10.5 e começa retomando a #96 do branch `item/96-porta-de-pagamento-simulador` (trabalho em andamento, já enviado, sem PR). Só o dono libera a seguinte.
 
-Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193. Na Sprint 10.5, as issues #437 a #501 trazem na coluna as dependências entre itens do plano (as mesmas marcadas como "bloqueada por" no GitHub) e as linhas seguem a ordem de execução do plano `docs/auditoria/plano-de-issues.md`: Fase 1 (bugs, regras e itens técnicos, #437 a #449), Fase 2 (componentes, na sequência #450, #452, #453, #454, #455, #456, #457, #458, #459, #460, #451, #461, #462, #463, #464) e Fase 3 (telas por área, #465 a #501).
+Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193. Na Sprint 10.5, as issues #437 a #501 trazem na coluna as dependências entre itens do plano (as mesmas marcadas como "bloqueada por" no GitHub) e as linhas seguem a ordem de execução do plano `docs/auditoria/plano-de-issues.md`: Fase 1 (bugs, regras e itens técnicos, #437 a #449, com a #435 logo depois da #448), Fase 2 (componentes, na sequência #450, #452, #453, #434, #454, #455, #456, #457, #458, #459, #460, #451, #461, #462, #463, #464) e Fase 3 (telas por área, #465 a #501).
 
 | ID | Item | Origem | Sprint | Depende de | Quem executa | Situação |
 |---|---|---|---|---|---|---|
@@ -151,10 +151,12 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 446 | Botão "Ver alunos" do painel da turma está sempre desabilitado | issue #446 | Sprint 10.5 | — | agente | a fazer |
 | 447 | Retenção de 30 dias das notificações da equipe (RN-NOT-05) | issue #447 | Sprint 10.5 | — | agente | a fazer |
 | 448 | Técnica · Captura do teste visual com o navegador em pt-BR (antes da Fase 2) | issue #448 | Sprint 10.5 | — | agente | a fazer |
+| 435 | Comparação automática com o canvas e cobertura do teste visual | issue #435 | Sprint 10.5 | #448 | agente | a fazer |
 | 449 | Técnica · Dados do MSW para as telas que ficaram "sem comparar" | issue #449 | Sprint 10.5 | — | agente | a fazer |
 | 450 | Componente base: Padrão "Em breve" (R3): item visível e desabilitado, sem backend | issue #450 | Sprint 10.5 | #448 | agente | a fazer |
 | 452 | Componente base: Selos, avatar e graduação (faixa visual) | issue #452 | Sprint 10.5 | #448 | agente | a fazer |
 | 453 | Componente base: Campos: data, arquivo, interruptor, caixa, cartão de escolha e código em 6 caixas | issue #453 | Sprint 10.5 | #448 | agente | a fazer |
+| 434 | Botão de sair da conta na gestão e no portal | issue #434 | Sprint 10.5 | — | agente | a fazer |
 | 454 | Componente base: Moldura da gestão: menu lateral, barra de cima, cabeçalho, seletor de unidade e menu do celular | issue #454 | Sprint 10.5 | #448 | agente | a fazer |
 | 455 | Componente base: Moldura do portal e shell das telas de acesso | issue #455 | Sprint 10.5 | #448 | agente | a fazer |
 | 456 | Componente base: Busca e filtro em pílula | issue #456 | Sprint 10.5 | #448 | agente | a fazer |
