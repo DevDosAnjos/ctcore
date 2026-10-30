@@ -25,6 +25,8 @@ test("@critical Cancelamento de aula com aviso à turma", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Novo comunicado", level: 1 })).toBeVisible();
   await expect(page.getByLabel("Destino")).toHaveValue(/^CLASS:/);
   await expect(page.getByLabel("Tipo")).toHaveValue("CANCELED_CLASS");
+  await expect(page.getByLabel("Título")).toHaveValue("Aula cancelada");
+  await expect(page.getByLabel("Texto")).toHaveValue(/Jiu-Jitsu Adulto do dia \d{2}\/\d{2}\/\d{4}, às \d{2}:\d{2}, foi cancelada/);
   await expect(page.getByText(/^Este aviso vai para \d+ pessoas$/)).toBeVisible();
   await page.getByRole("button", { name: "Enviar comunicado" }).click();
 
