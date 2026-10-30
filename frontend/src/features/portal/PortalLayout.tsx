@@ -62,7 +62,7 @@ export function PortalLayout({ children }: { children: ReactNode }) {
           {name && role && <span className="hidden text-sm md:inline">{t("portalShell.person", { name, role: t(`chooseLink.roles.${role}`) })}</span>}
           <AccountLink />
           <ChooseLinkTrigger />
-          <span className="text-sidebar-foreground [&_button:hover]:bg-sidebar-accent [&_button:hover]:text-sidebar-foreground">
+          <span className="text-sidebar-foreground [&_button]:text-sidebar-foreground [&_button:hover]:bg-sidebar-accent [&_button:hover]:text-sidebar-foreground">
             <ThemeToggle />
           </span>
         </div>
