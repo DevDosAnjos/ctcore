@@ -3216,6 +3216,13 @@
       "imageNotGranted": "Não concedido",
       "revoke": "Revogar uso de imagem",
       "grant": "Conceder uso de imagem",
+      "revokeTitle": "Revogar uso de imagem",
+      "revokeSummary": "A academia deixa de usar fotos e vídeos em que você aparece a partir de hoje. O que já foi publicado antes não é apagado automaticamente: se quiser, peça à unidade.",
+      "revokeSummaryLabel": "Resumo",
+      "revokeItem1": "O uso de imagem fica \"Revogado em {{date}}\".",
+      "revokeItem2": "Nada mais muda na sua matrícula nem no portal.",
+      "revokeItem3": "Você pode autorizar de novo quando quiser.",
+      "revokeConfirm": "Revogar",
       "failed": "Não foi possível salvar. Tente de novo."
     },
     "requests": {

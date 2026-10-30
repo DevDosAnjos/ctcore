@@ -55,6 +55,9 @@ for (const [width, height] of [
         await page.getByRole("button", { name: "Conceder uso de imagem" }).click();
         await expect(page.getByText(/^Concedido \(versão/)).toBeVisible();
         await page.getByRole("button", { name: "Revogar uso de imagem" }).click();
+        const revoke = page.getByRole("dialog", { name: "Revogar uso de imagem" });
+        await revoke.getByRole("button", { name: "Revogar", exact: true }).click();
+        await expect(revoke).toBeHidden();
         await expect(page.getByText("Não concedido")).toBeVisible();
 
         await expect(page.getByRole("link", { name: "Fazer um pedido" })).toHaveAttribute("href", "/portal/pedidos");
