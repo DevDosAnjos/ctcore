@@ -194,6 +194,17 @@ describe("PortalLayout: barra e navegação do portal (RF-POR-01)", () => {
     }
   });
 
+  it("CA1: o botão de tema usa a cor de texto da barra, que vence a do Button, nos dois temas", async () => {
+    for (const dark of [false, true]) {
+      setDevicePrefersDark(dark);
+      const { container, unmount } = setup("/");
+      await ready();
+      const wrapper = within(container.querySelector("header")!).getByRole("button", { name: /tema/i }).parentElement!;
+      expect(wrapper).toHaveClass("text-sidebar-foreground", "[&_button]:text-sidebar-foreground");
+      unmount();
+    }
+  });
+
   it.each(["/", "/conta", "/portal/pedidos"])("CA13: %s usa a moldura nova, com um só cabeçalho", async (path) => {
     setup(path);
     await ready();
