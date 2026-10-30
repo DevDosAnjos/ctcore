@@ -145,7 +145,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 440 | Botão de tema invisível na barra escura do portal, no tema claro | issue #440 | Sprint 10.5 | — | agente | feito |
 | 448 | Técnica · Captura do teste visual com o navegador em pt-BR (antes da Fase 2) | issue #448 | Sprint 10.5 | — | agente | a fazer |
 | 435 | Comparação automática com o canvas e cobertura do teste visual | issue #435 | Sprint 10.5 | #448 | agente | a fazer |
-| 441 | Revogar uso de imagem no portal sem confirmação | issue #441 | Sprint 10.5 | — | agente | a fazer |
+| 441 | Revogar uso de imagem no portal sem confirmação | issue #441 | Sprint 10.5 | — | agente | feito |
 | 442 | MSW: agenda do Professor devolve todas as aulas da unidade | issue #442 | Sprint 10.5 | — | agente | a fazer |
 | 443 | Professor chega à ficha do aluno pela aula (com a permissão "ver ficha do aluno") | issue #443 | Sprint 10.5 | — | agente | a fazer |
 | 444 | Gerar códigos de reserva sem a confirmação de senha e código | issue #444 | Sprint 10.5 | — | agente | a fazer |

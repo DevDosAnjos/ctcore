@@ -102,3 +102,44 @@ Achados:
 
 ### Decisão do dono — CA7 aceito — 2026-10-30
 O dono aceitou a comparação feita na T4 (capturas do app e do canvas em 1440 e 390 px, pt-BR, com as divergências listadas na Construção) como prova do CA7. O verificador não refaz capturas de navegador; o CA7 fica conferido por essa decisão. Resultado efetivo da verificação: OK, sem achado obrigatório; a entrega segue com a lista de divergências na descrição do PR.
+
+### Rodada 3 — CORRIGIR_CODIGO — 2026-10-30, estado cfa06dd58fcb66f6920e944271037fce8e7f4ac6
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA6 | PASSOU | mantido da rodada 2; `npm run test:cov` 191 arquivos/1890 testes ok |
+| CA7 (axe, claro e escuro) | PASSOU | mantido da rodada 2; dentro do `test:cov` |
+| CA7 (visual 1440/390 vs canvas) | PASSOU | aceito pelo dono em 30/10/2026 ("Decisão do dono — CA7 aceito"); o verificador não refez capturas |
+
+Comandos: `npm run lint` ok; `npm run typecheck` ok; `npm run test:cov` ok (1890 testes, limites de cobertura atendidos, sem erro de limiar); `npm run e2e`: 74 passaram, 7 falharam (logs em `%TEMP%/v441/`). Regressão do back-end (`verify`) não rodada: o item só toca o front.
+Instáveis: `agenda.spec.ts` "Coordenador abre a Agenda", `comprovantes.spec.ts` "gestão recusa e confirma comprovantes (light)", `configuracao-unidade.spec.ts` "Coordenador edita e Professor vê a área indisponível": estouraram 30 s na rodada completa e passaram nas 4 execuções isoladas (`--workers=2`); arquivos que o item não toca. Uma reexecução isolada de cada, não três; tratar como instáveis sob carga.
+Achados:
+- obrigatório, código, `frontend/e2e/portal-minhas-informacoes.spec.ts` linhas 57-58 — esperado: e2e `@critical` verde; o teste revoga pelo fluxo novo (clicar em "Revogar uso de imagem", depois confirmar em "Revogar" na janela); observado: o teste clica em "Revogar uso de imagem" e espera "Não concedido" sem confirmar; falha nas 4 variantes (360 e 1024 px, claro e escuro) com `getByText('Não concedido')` não encontrado; evidência: `npm run e2e`, 4 falhas nesse arquivo; corrigir: após o clique, confirmar no diálogo (botão "Revogar" dentro do `dialog`) antes de esperar "Não concedido". Regressão causada pelo item (D1); item não é mesclado com e2e vermelho.
+- sugestão, processo — as 3 instáveis acima merecem item próprio no backlog se repetirem.
+
+## Construção (correção)
+
+### Correção da rodada 3
+- e2e `@critical` revoga pelo fluxo novo (abre a janela "Revogar uso de imagem", confirma em "Revogar", espera a janela sumir e "Não concedido") — arquivos: `frontend/e2e/portal-minhas-informacoes.spec.ts` — prova: `npx playwright test e2e/portal-minhas-informacoes.spec.ts` → 6 passaram (360 e 1024 px, claro e escuro).
+Regressão: o e2e completo não foi refeito nesta sessão; só o arquivo corrigido (as 7 falhas da rodada 3 eram 4 deste arquivo e 3 instáveis de outros arquivos, que o item não toca). Teste de unidade/lint/tipos não mudaram (só o spec e2e foi alterado).
+
+### Rodada 4 — OK — 2026-10-30, estado 6d8e73dcf5501a8ce80f69c76b71453e0bf8c788
+
+| Critério | Status | Evidência |
+|---|---|---|
+| CA1 a CA6 | PASSOU | mantido da rodada 3; o diff desde então só toca o e2e |
+| CA7 (axe) | PASSOU | mantido da rodada 3 |
+| CA7 (visual) | PASSOU | aceito pelo dono em 30/10/2026; mantido |
+
+Comandos: `npx playwright test e2e/portal-minhas-informacoes.spec.ts` 6 passaram; `npm run lint` ok; `npm run typecheck` ok; `npm run e2e` 81 passaram, 0 falharam (inclui as 3 instáveis da rodada 3, que passaram desta vez). Testes de unidade e `test:cov` não rodados de novo: nada de código de produto mudou desde a rodada 3 (`git diff` só mostra o spec e2e e este arquivo).
+Achado da rodada 3 (e2e `portal-minhas-informacoes.spec.ts`): corrigido; o teste abre a janela, confirma em "Revogar" e espera "Não concedido".
+Achados:
+- sugestão, processo — descrição do PR deve listar as divergências do canvas da Construção T4.
+
+## Entrega
+
+- O que muda: em "Minhas informações" (cartão Termos), "Revogar uso de imagem" abre a janela "Revogar uso de imagem" com o texto do efeito, o bloco "Resumo" (3 itens, o primeiro com a data de hoje) e os botões "Cancelar" e "Revogar". A API só é chamada ao confirmar. "Conceder uso de imagem" segue direto.
+- Verificação: rodada 4, OK, estado 6d8e73dcf5501a8ce80f69c76b71453e0bf8c788. Testes de unidade do portal, axe nos dois temas, `npm run lint`, `npm run typecheck` e `npm run e2e` (81 passaram) e comparação visual com o canvas em 1440 e 390 px, aceita pelo dono.
+- Decisões: D2 (botão "Revogar" com estilo padrão; o vermelho destrutivo vem da #451), D3 (erro da API fecha a janela e mostra a mensagem do cartão), D4 (sem regerar prints de referência).
+- Limitações: a regressão completa (`verify`, `test:cov`) não foi rerodada nesta entrega; a base não avançou desde a verificação.
+- Divergências do canvas (listadas na Construção, T4): título em caixa mista e "Cancelar" com borda (#460); "Revogar" sem contorno vermelho (#451); marcador do resumo e largura da janela (#460, componente compartilhado); fundo da página (#493).
