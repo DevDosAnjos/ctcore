@@ -252,8 +252,77 @@ describe("PortalInfoPage (RF-POR-07)", () => {
     const terms = card("Termos aceitos");
     expect(within(terms).getByText(/Aceito \(versão 1\) em 10\/01\/2026/)).toBeInTheDocument();
     await user.click(within(terms).getByRole("button", { name: "Revogar uso de imagem" }));
+    expect(image).toBeUndefined();
+    const dialog = await screen.findByRole("dialog", { name: "Revogar uso de imagem" });
+    expect(within(dialog).getByText("Resumo")).toBeInTheDocument();
+    expect(within(dialog).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(dialog).getByText(/Revogado em \d{2}\/\d{2}\/\d{4}/)).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Revogar" }));
     await waitFor(() => expect(image).toEqual({ granted: false }));
     expect(await within(card("Termos aceitos")).findByText("Não concedido")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Revogar uso de imagem" })).not.toBeInTheDocument();
+  });
+
+  describe("revogar uso de imagem pede confirmação (CA1, CA4, CA5, CA6)", () => {
+    const putImage = (calls: unknown[], status = 200) =>
+      http.put("/api/v1/portal/students/s1/image-use", async ({ request }) => {
+        calls.push(await request.json());
+        return status === 200 ? HttpResponse.json({ granted: false }) : new HttpResponse(null, { status });
+      });
+
+    it("Cancelar e Esc fecham sem chamada; o foco volta ao botão", async () => {
+      const calls: unknown[] = [];
+      serve(info());
+      server.use(putImage(calls));
+      setup();
+      const user = userEvent.setup();
+      const open = await within(await screen.findByRole("heading", { name: "Termos aceitos" }).then(() => card("Termos aceitos"))).findByRole("button", { name: "Revogar uso de imagem" });
+      await user.click(open);
+      await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Cancelar" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      await user.click(open);
+      await screen.findByRole("dialog");
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      await waitFor(() => expect(open).toHaveFocus());
+      expect(calls).toEqual([]);
+    });
+
+    it("Conceder uso de imagem chama direto, sem janela", async () => {
+      const calls: unknown[] = [];
+      serve(info({ terms: { ...info().terms, imageUse: { granted: false, version: null, at: null } } }));
+      server.use(http.get("/api/v1/portal/students/s1/image-use", () => HttpResponse.json({ version: 1 })), putImage(calls));
+      setup();
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole("button", { name: "Conceder uso de imagem" }));
+      await waitFor(() => expect(calls).toEqual([{ granted: true, version: 1 }]));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("API com erro: mostra a mensagem do cartão e fecha a janela", async () => {
+      const calls: unknown[] = [];
+      serve(info());
+      server.use(putImage(calls, 500));
+      setup();
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole("button", { name: "Revogar uso de imagem" }));
+      await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Revogar" }));
+      expect(await within(card("Termos aceitos")).findByText("Não foi possível salvar. Tente de novo.")).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(calls).toHaveLength(1);
+    });
+
+    for (const dark of [false, true]) {
+      it(`axe: janela aberta sem violações no tema ${dark ? "escuro" : "claro"}`, async () => {
+        setDevicePrefersDark(dark);
+        serve(info());
+        setup();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: "Revogar uso de imagem" }));
+        await screen.findByRole("dialog");
+        expect(await axeViolations(document.body)).toEqual([]);
+      });
+    }
   });
 
   it("pedidos, conta e ações de dados: lista os pedidos, leva a /portal/pedidos, mostra Minha conta e deixa as duas ações desabilitadas sem chamada", async () => {

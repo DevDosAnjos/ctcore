@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { Card } from "@/components/Card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { ChangeEmailForm } from "@/features/account/ChangeEmailForm";
@@ -51,6 +52,7 @@ export function PortalTermsAccepted({ studentId, terms, onChanged }: { studentId
   const k = "portalInfo.terms.";
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const { enrollment, imageUse } = terms;
   async function toggle() {
     setBusy(true);
@@ -75,7 +77,7 @@ export function PortalTermsAccepted({ studentId, terms, onChanged }: { studentId
           <dt className="font-medium">{t(`${k}imageUse`)}</dt>
           <dd className="flex flex-col items-start gap-2">
             <span>{imageUse.granted ? t(`${k}imageGranted`, { version: imageUse.version ?? "", date: imageUse.at ? formatDate(imageUse.at) : "" }) : t(`${k}imageNotGranted`)}</span>
-            <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => void toggle()}>
+            <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => (imageUse.granted ? setConfirming(true) : void toggle())}>
               {imageUse.granted ? t(`${k}revoke`) : t(`${k}grant`)}
             </Button>
           </dd>
@@ -86,6 +88,16 @@ export function PortalTermsAccepted({ studentId, terms, onChanged }: { studentId
           {t(`${k}failed`)}
         </p>
       )}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={t(`${k}revokeTitle`)}
+        summary={t(`${k}revokeSummary`)}
+        summaryItems={[t(`${k}revokeItem1`, { date: formatDate(new Date()) }), t(`${k}revokeItem2`), t(`${k}revokeItem3`)]}
+        summaryLabel={t(`${k}revokeSummaryLabel`)}
+        confirmLabel={t(`${k}revokeConfirm`)}
+        onConfirm={toggle}
+      />
     </Card>
   );
 }

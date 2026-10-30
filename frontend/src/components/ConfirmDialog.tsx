@@ -13,6 +13,7 @@ export function ConfirmDialog({
   title,
   summary,
   summaryItems,
+  summaryLabel,
   reason = "none",
   typedText,
   confirmLabel,
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   title: string;
   summary: string;
   summaryItems?: string[];
+  summaryLabel?: string;
   reason?: "none" | "optional" | "required";
   typedText?: string;
   confirmLabel?: string;
@@ -83,7 +85,7 @@ export function ConfirmDialog({
     >
       <div className="flex flex-col gap-3">
         <p>{summary}</p>
-        {summaryItems && <SummaryBox items={summaryItems} />}
+        {summaryItems && <SummaryBox items={summaryItems} label={summaryLabel} />}
         {reason !== "none" && (
           <Field label={t("confirm.reasonLabel")}>
             {(c) => <Textarea {...c} aria-required={reason === "required" || undefined} value={motivo} onChange={(e) => setMotivo(e.target.value)} />}
