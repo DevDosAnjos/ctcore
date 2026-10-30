@@ -28,3 +28,6 @@ backend/logs/
 
 # Prints gerados a partir do canvas de referência
 docs/design/prints/
+
+# Prints da auditoria do canvas (Sprint 10.5); ficam só na máquina do dono
+docs/auditoria/imagens/

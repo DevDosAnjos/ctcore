@@ -1,10 +1,10 @@
 # Backlog — ctcore
 
-Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue. As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
+Origem dos itens: issues do repositório no GitHub (194 issues: 17 fechadas e 177 abertas, nenhuma com responsável; metadados conferidos em 17/10/2026). A ordem das linhas é a ordem de trabalho: marco (sprint) crescente e, dentro dele, número da issue (na Sprint 10.5, as issues #437 a #501 seguem a ordem de execução do plano, ver "Dependências"). As issues prevalecem sobre este arquivo; ele só espelha e aponta, não copia o conteúdo. Regras e fluxo: `AGENTS.md` e `docs/plano-de-sprints.md`.
 
-Sprint liberada: Sprint 10.5 (Identidade visual). O dono confirmou em 29/10/2026 que a Sprint 10 foi revisada e fechada e liberou a Sprint 10.5 (#414 a #423), que entra antes da Sprint 11. A Sprint 11 fica para depois da 10.5 e começa retomando a #96 do branch `item/96-porta-de-pagamento-simulador` (trabalho em andamento, já enviado, sem PR). Só o dono libera a seguinte.
+Sprint liberada: Sprint 10.5 (Identidade visual). O dono confirmou em 29/10/2026 que a Sprint 10 foi revisada e fechada e liberou a Sprint 10.5 (#414 a #423). Em 30/10/2026 o dono aprovou o plano de issues da auditoria do canvas e as #437 a #501 entraram nessa mesma sprint liberada (plano em `docs/auditoria/plano-de-issues.md`). A 10.5 entra antes da Sprint 11. A Sprint 11 fica para depois da 10.5 e começa retomando a #96 do branch `item/96-porta-de-pagamento-simulador` (trabalho em andamento, já enviado, sem PR). Só o dono libera a seguinte.
 
-Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193.
+Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sprint anterior"), que a ordem já cobre; por isso a coluna fica "—". Exceção declarada no plano: #5 e #11 ficaram só com a parte que o agente faz sozinho; hospedagem e publicação são #192 e #193. Na Sprint 10.5, as issues #437 a #501 trazem na coluna as dependências entre itens do plano (as mesmas marcadas como "bloqueada por" no GitHub) e as linhas seguem a ordem de execução do plano `docs/auditoria/plano-de-issues.md`: Fase 1 (bugs, regras e itens técnicos, #437 a #449, com a #435 logo depois da #448), Fase 2 (componentes, na sequência #450, #452, #453, #434, #454, #455, #456, #457, #458, #459, #460, #451, #461, #462, #463, #464) e Fase 3 (telas por área, #465 a #501).
 
 | ID | Item | Origem | Sprint | Depende de | Quem executa | Situação |
 |---|---|---|---|---|---|---|
@@ -139,6 +139,73 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 421 | Planos, alunos, ficha, responsáveis, matrícula e benefícios no visual do canvas (Sprints 06 e 07) | issue #421 | Sprint 10.5 | — | agente | feito |
 | 422 | Cobranças, comunicação, notificações, pedidos e conferência no visual do canvas (Sprints 08 a 10, gestão) | issue #422 | Sprint 10.5 | — | agente | feito |
 | 423 | Páginas do portal do aluno e do responsável no visual do canvas (Sprint 10) | issue #423 | Sprint 10.5 | — | agente | feito |
+| 437 | Cobranças e Comunicados somem do menu da gestão | issue #437 | Sprint 10.5 | — | agente | a fazer |
+| 438 | "Avisar turma" abre o comunicado vazio em vez do aviso pronto | issue #438 | Sprint 10.5 | — | agente | a fazer |
+| 439 | Prévia da geração fica em branco com um motivo sem chave de tradução | issue #439 | Sprint 10.5 | — | agente | a fazer |
+| 440 | Botão de tema invisível na barra escura do portal, no tema claro | issue #440 | Sprint 10.5 | — | agente | a fazer |
+| 441 | Revogar uso de imagem no portal sem confirmação | issue #441 | Sprint 10.5 | — | agente | a fazer |
+| 442 | MSW: agenda do Professor devolve todas as aulas da unidade | issue #442 | Sprint 10.5 | — | agente | a fazer |
+| 443 | Professor chega à ficha do aluno pela aula (com a permissão "ver ficha do aluno") | issue #443 | Sprint 10.5 | — | agente | a fazer |
+| 444 | Gerar códigos de reserva sem a confirmação de senha e código | issue #444 | Sprint 10.5 | — | agente | a fazer |
+| 445 | Login travado devolve o horário de liberação (429) | issue #445 | Sprint 10.5 | — | agente | a fazer |
+| 446 | Botão "Ver alunos" do painel da turma está sempre desabilitado | issue #446 | Sprint 10.5 | — | agente | a fazer |
+| 447 | Retenção de 30 dias das notificações da equipe (RN-NOT-05) | issue #447 | Sprint 10.5 | — | agente | a fazer |
+| 448 | Técnica · Captura do teste visual com o navegador em pt-BR (antes da Fase 2) | issue #448 | Sprint 10.5 | — | agente | a fazer |
+| 435 | Comparação automática com o canvas e cobertura do teste visual | issue #435 | Sprint 10.5 | #448 | agente | a fazer |
+| 449 | Técnica · Dados do MSW para as telas que ficaram "sem comparar" | issue #449 | Sprint 10.5 | — | agente | a fazer |
+| 450 | Componente base: Padrão "Em breve" (R3): item visível e desabilitado, sem backend | issue #450 | Sprint 10.5 | #448 | agente | a fazer |
+| 452 | Componente base: Selos, avatar e graduação (faixa visual) | issue #452 | Sprint 10.5 | #448 | agente | a fazer |
+| 453 | Componente base: Campos: data, arquivo, interruptor, caixa, cartão de escolha e código em 6 caixas | issue #453 | Sprint 10.5 | #448 | agente | a fazer |
+| 434 | Botão de sair da conta na gestão e no portal | issue #434 | Sprint 10.5 | — | agente | a fazer |
+| 454 | Componente base: Moldura da gestão: menu lateral, barra de cima, cabeçalho, seletor de unidade e menu do celular | issue #454 | Sprint 10.5 | #448 | agente | a fazer |
+| 455 | Componente base: Moldura do portal e shell das telas de acesso | issue #455 | Sprint 10.5 | #448 | agente | a fazer |
+| 456 | Componente base: Busca e filtro em pílula | issue #456 | Sprint 10.5 | #448 | agente | a fazer |
+| 457 | Componente base: Abas com contagem, paginação e folha de filtros no celular | issue #457 | Sprint 10.5 | #448, #456 | agente | a fazer |
+| 458 | Componente base: Tabela em cartões no celular | issue #458 | Sprint 10.5 | #448 | agente | a fazer |
+| 459 | Componente base: Linha de lista com avatar (usa os blocos da C10) | issue #459 | Sprint 10.5 | #448, #458, #452 | agente | a fazer |
+| 460 | Componente base: Janela base: tamanhos, título em caixa alta e rodapé fixo | issue #460 | Sprint 10.5 | #448 | agente | a fazer |
+| 451 | Componente base: Botão destrutivo e confirmação de ação sensível | issue #451 | Sprint 10.5 | #448, #460 | agente | a fazer |
+| 461 | Componente base: Janela: blocos de resumo, motivo e cartões de escolha | issue #461 | Sprint 10.5 | #448, #460 | agente | a fazer |
+| 462 | Componente base: Janela: passos e bloqueio com checklist | issue #462 | Sprint 10.5 | #448, #460 | agente | a fazer |
+| 463 | Componente base: Gaveta lateral e popover | issue #463 | Sprint 10.5 | #448 | agente | a fazer |
+| 464 | Componente base: Estados: carregando, vazio, erro, sem permissão, bloqueio e link vencido | issue #464 | Sprint 10.5 | #448 | agente | a fazer |
+| 465 | Alunos: lista, filtros, estados e celular no visual do canvas | issue #465 | Sprint 10.5 | #454, #456, #457, #458, #459, #464, #452, #450 | agente | a fazer |
+| 466 | Ficha do aluno: cabeçalho, Resumo e celular no visual do canvas | issue #466 | Sprint 10.5 | #460, #461, #463, #452, #450, #449 | agente | a fazer |
+| 467 | Ficha do aluno: abas Matrícula, Financeiro, Graduações, Responsáveis e Histórico no visual do canvas | issue #467 | Sprint 10.5 | #466, #458, #459, #452, #450, #449 | agente | a fazer |
+| 468 | Janelas de ação do aluno: encerrar modalidade, trocar turma e plano, transferir, desligar responsável no visual do canvas | issue #468 | Sprint 10.5 | #460, #461, #451 | agente | a fazer |
+| 469 | Assistente de matrícula (etapas 1 a 5) no visual do canvas | issue #469 | Sprint 10.5 | #453, #460, #461, #462, #450 | agente | a fazer |
+| 470 | Professores: lista, novo, painel, inativar e recusa de modalidade no visual do canvas | issue #470 | Sprint 10.5 | #456, #457, #458, #459, #460, #461, #463, #452 | agente | a fazer |
+| 471 | Pedidos do portal na gestão: lista e janelas de recusar e aprovar no visual do canvas | issue #471 | Sprint 10.5 | #456, #457, #460, #461, #450 | agente | a fazer |
+| 472 | Agenda: grade semanal, celular e visão do Professor no visual do canvas | issue #472 | Sprint 10.5 | #454, #456, #457, #458, #459, #464 | agente | a fazer |
+| 473 | Aula: painel, editar, cancelar, corrigir, avisar turma e aula avulsa no visual do canvas | issue #473 | Sprint 10.5 | #460, #461, #463, #451, #450 | agente | a fazer |
+| 474 | Dias sem aula: lista, feriados sugeridos, novo dia no visual do canvas | issue #474 | Sprint 10.5 | #458, #459, #460, #461 | agente | a fazer |
+| 475 | Turmas: lista, painel, editar, desativar e titular inativo no visual do canvas | issue #475 | Sprint 10.5 | #456, #457, #458, #459, #460, #461, #462, #463, #452 | agente | a fazer |
+| 476 | Cobranças: lista, filtros, celular e estados no visual do canvas | issue #476 | Sprint 10.5 | #456, #457, #458, #459, #464, #450, #449 | agente | a fazer |
+| 477 | Painel da cobrança e janelas: registrar, renegociar, cancelar, nova avulsa e gerar próximas no visual do canvas | issue #477 | Sprint 10.5 | #460, #461, #463, #451, #450, #449 | agente | a fazer |
+| 478 | Em atraso, conferência de comprovantes e comprovante de várias cobranças no visual do canvas | issue #478 | Sprint 10.5 | #458, #459, #460, #461, #450, #449 | agente | a fazer |
+| 479 | Recebimentos do dia e Prévia da geração no visual do canvas | issue #479 | Sprint 10.5 | #458, #459, #464, #449 | agente | a fazer |
+| 480 | Planos e benefícios: resumo, tabela de planos, editar, desativar e reativar no visual do canvas | issue #480 | Sprint 10.5 | #458, #459, #460, #461, #451 | agente | a fazer |
+| 481 | Benefícios: lista, conceder, encerrar e substituir no visual do canvas | issue #481 | Sprint 10.5 | #456, #457, #460, #461, #452 | agente | a fazer |
+| 482 | Organização: marca, regras da organização, contraste e transferir coordenação no visual do canvas | issue #482 | Sprint 10.5 | #453, #460, #461, #450 | agente | a fazer |
+| 483 | Unidade: abas Dados, Pagamentos, Lembretes, Links e Permissões do Professor no visual do canvas | issue #483 | Sprint 10.5 | #453, #458, #459, #450 | agente | a fazer |
+| 484 | Unidades: lista, nova unidade, desativar e unidade única no visual do canvas | issue #484 | Sprint 10.5 | #460, #461, #462, #451, #450 | agente | a fazer |
+| 485 | Modalidades: lista, graduação, recusa e desativar no visual do canvas | issue #485 | Sprint 10.5 | #458, #459, #460, #461, #462, #452 | agente | a fazer |
+| 486 | Faixas etárias no visual do canvas | issue #486 | Sprint 10.5 | #458, #459 | agente | a fazer |
+| 487 | Usuários: lista, convidar e tabela de permissões no visual do canvas | issue #487 | Sprint 10.5 | #456, #457, #458, #459, #460, #461, #452 | agente | a fazer |
+| 488 | Termos e Textos no visual do canvas | issue #488 | Sprint 10.5 | #453, #460, #461 | agente | a fazer |
+| 489 | Telas de acesso: login, duas etapas, travado, recuperar e nova senha, convite, escolha de organização e sem acesso no visual do canvas | issue #489 | Sprint 10.5 | #455, #453, #464 | agente | a fazer |
+| 490 | Minha conta: abas, duas etapas, códigos de reserva, notificações e sessões no visual do canvas | issue #490 | Sprint 10.5 | #453, #460, #461, #450 | agente | a fazer |
+| 491 | Comunicados: lista, novo, cancelar agendado, limite diário e organização inteira no visual do canvas | issue #491 | Sprint 10.5 | #456, #457, #453, #458, #459, #460, #461, #450 | agente | a fazer |
+| 492 | Notificações: popover, grupos e "Marcar todas como lidas" no visual do canvas | issue #492 | Sprint 10.5 | #463, #450 | agente | a fazer |
+| 493 | Início do portal: tudo em dia, estados, responsável e Toda a família no visual do canvas | issue #493 | Sprint 10.5 | #455, #464, #450 | agente | a fazer |
+| 494 | Termo de matrícula no visual do canvas | issue #494 | Sprint 10.5 | #455, #453, #450, #449 | agente | a fazer |
+| 495 | Agenda do portal no visual do canvas | issue #495 | Sprint 10.5 | #455, #456, #457, #458, #459 | agente | a fazer |
+| 496 | Avisos e aviso aberto no visual do canvas | issue #496 | Sprint 10.5 | #456, #457, #460, #461, #450 | agente | a fazer |
+| 497 | Financeiro do portal e Pix na chave no visual do canvas | issue #497 | Sprint 10.5 | #458, #459, #460, #461, #450, #449 | agente | a fazer |
+| 498 | Minhas informações, editar contato e Minha conta do portal no visual do canvas | issue #498 | Sprint 10.5 | #455, #453, #460, #461, #450, #449 | agente | a fazer |
+| 499 | Carteirinha no visual do canvas | issue #499 | Sprint 10.5 | #455, #452, #450 | agente | a fazer |
+| 500 | Pedidos do portal e pedido indisponível no visual do canvas | issue #500 | Sprint 10.5 | #458, #459, #460, #461, #450 | agente | a fazer |
+| 501 | Portal reduzido (aluno sem modalidade ativa) no visual do canvas | issue #501 | Sprint 10.5 | #455, #497, #498, #499 | agente | a fazer |
 | 96 | Porta de pagamento com o simulador: baixa, webhook e conciliação | issue #96 | Sprint 11 | — | agente | a fazer |
 | 97 | RF-PAG-01 · Configurações › Unidade › Pagamentos | issue #97 | Sprint 11 | — | agente | a fazer |
 | 98 | RF-PAG-02 · Janela de pagamento no portal | issue #98 | Sprint 11 | — | agente | a fazer |
