@@ -139,6 +139,25 @@ describe("NewAnnouncementPage (RF-COM-02)", () => {
     expect(await screen.findByText("Este aviso vai para 8 pessoas")).toBeInTheDocument();
   });
 
+  it("CA26: type=GENERAL com a turma abre Aviso geral com a turma escolhida", async () => {
+    setup({ path: "/comunicados/novo?classId=k1&type=GENERAL&date=2026-11-03&time=19:00" });
+    await ready();
+    await screen.findByLabelText("Destino");
+    expect(screen.getByLabelText("Destino")).toHaveValue("CLASS:k1");
+    expect(screen.getByLabelText("Tipo")).toHaveValue("GENERAL");
+    expect(screen.getByLabelText("Título")).toHaveValue("Aviso geral");
+    expect(screen.getByLabelText("Texto")).toHaveValue("");
+  });
+
+  it("CA26: type desconhecido cai em Aviso geral com texto vazio", async () => {
+    setup({ path: "/comunicados/novo?classId=k1&type=INVENTADO" });
+    await ready();
+    await screen.findByLabelText("Destino");
+    expect(screen.getByLabelText("Tipo")).toHaveValue("GENERAL");
+    expect(screen.getByLabelText("Título")).toHaveValue("");
+    expect(screen.getByLabelText("Texto")).toHaveValue("");
+  });
+
   it("CA18: o texto próprio do servidor é o inicial do tipo, com {turma}, {data} e {horario} preenchidos e [marcador] no que a tela não sabe", async () => {
     const own = { ...platform, CANCELED_CLASS: { title: "Hoje não tem {turma}", body: "Sem {turma} em {data} às {horario} ({unidade}). {inventado}" } };
     setup({ templates: own, path: "/comunicados/novo?classId=k1&type=CANCELED_CLASS&date=2026-11-03" });
