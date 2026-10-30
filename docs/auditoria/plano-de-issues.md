@@ -83,7 +83,7 @@ Fase 3 por área: Pessoas 7 · Operação 4 · Financeiro 6 · Configurações 7
 
 ### F1-13 · #449 · Técnica · Dados do MSW para as telas que ficaram "sem comparar"
 
-- **IDs:** — · **Fase:** 1 · **Depende de:** F1-12 · **Tamanho:** G · **Etiquetas:** técnica (front-end), sem "entrega 1 · produto"
+- **IDs:** — · **Fase:** 1 · **Depende de:** — · **Tamanho:** G · **Etiquetas:** técnica (front-end), sem "entrega 1 · produto"
 - Dados fictícios no MSW (e casos do teste visual) para: lista de cobranças com situações variadas e painel da cobrança, recebimentos do dia, comprovante em conferência (um e vários), cobrança em aberto do aluno e da família (portal), termo de matrícula pendente do aluno e de dois filhos, aluno com responsáveis, uso de imagem concedido, graduações por modalidade, aulas e alunos na turma, pedidos do portal por tipo e experimentais de exemplo. A lista final vem das seções "Sem comparar" do relatório. Só dados fictícios; fixtures temporárias da auditoria servem de ponto de partida.
 
 ## Fase 2 · Componentes base
@@ -120,7 +120,7 @@ Fase 3 por área: Pessoas 7 · Operação 4 · Financeiro 6 · Configurações 7
 
 ### C5b · #459 · Linha de lista com avatar (usa os blocos da C10)
 
-- **IDs (causa comum):** M2, M5, M12, M14, M16, M21, M42, M52, M76, M92, M105, M112, B1 · **Fase:** 2 · **Depende de:** F1-12, C5a, C10 · **Tamanho:** P
+- **IDs (causa comum):** M5, M12, M16, M42, M76, M105, M112 · **Fase:** 2 · **Depende de:** F1-12, C5a, C10 · **Tamanho:** P
 - **Piloto (aplica o componente em):** Professores (P6) e Alunos (P1). Só a composição da linha: avatar, nome, texto secundário e ação (ex.: WhatsApp). O avatar, os selos e a faixa vêm da C10; esta issue não os recria.
 
 ### C6a · #460 · Janela base: tamanhos, título em caixa alta e rodapé fixo
@@ -150,7 +150,7 @@ Fase 3 por área: Pessoas 7 · Operação 4 · Financeiro 6 · Configurações 7
 
 ### C9 · #451 · Botão destrutivo e confirmação de ação sensível
 
-- **IDs (causa comum):** M47, M70, M74, M80, M101, M110, M125, M127, M130, M153↑, B3, B11 · **Fase:** 2 · **Depende de:** F1-12 · **Tamanho:** P
+- **IDs (causa comum):** M47, M70, M74, M80, M101, M110, M125, M127, M130, M153↑, B3, B11 · **Fase:** 2 · **Depende de:** F1-12, C6a · **Tamanho:** P
 - **Piloto (aplica o componente em):** Inativar professor (P6) e Revogar uso de imagem (F1-05). Botão em vermelho para inativar, desativar, cancelar e revogar; confirmação digitada ("DESATIVAR") quando o canvas pede.
 
 ### C10 · #452 · Selos, avatar e graduação (faixa visual)
@@ -369,8 +369,8 @@ Fase 3 por área: Pessoas 7 · Operação 4 · Financeiro 6 · Configurações 7
 
 ## Sequência sugerida dentro da Sprint 10.5
 
-1. **Fase 1** primeiro: são pequenas e independentes. F1-12 (captura em pt-BR) vem antes de qualquer issue da Fase 2; F1-13 (dados do MSW) vem antes das telas que ficaram "sem comparar".
-2. **Fase 2**, cada issue com um ou dois pilotos, nesta ordem: C11 (Em breve), C9, C10, C4 → C1 e C2 (molduras) → C3a, C3b, C5a, C5b → C6a, C6b, C6c → C7, C8.
+1. **Fase 1** primeiro: são pequenas e independentes. F1-12 (captura em pt-BR) vem antes de qualquer issue da Fase 2; F1-13 (dados do MSW) vem antes das telas que ficaram "sem comparar" e **não depende** da F1-12.
+2. **Fase 2**, cada issue com um ou dois pilotos, nesta ordem: C11 (Em breve), C10, C4 → C1 e C2 (molduras) → C3a, C3b, C5a, C5b → C6a, **C9** (a confirmação de ação sensível é uma janela e usa a janela base), C6b, C6c → C7, C8.
 3. **Fase 3** por área, cada issue só depois dos componentes de que depende. Uma issue por PR. Cada PR de tela **regera só os prints de referência da própria tela, depois da comparação com o canvas** (`npm run test:visual:docker -- --update-snapshots` limitado aos casos da tela); referência de outra tela não é tocada. A descrição do PR traz a comparação com o canvas (regra proposta abaixo).
 4. A #435 (comparação automática com o canvas) fecha o ciclo e pode andar em paralelo à Fase 2, porque detecta regressão nas telas já ajustadas.
 
@@ -386,7 +386,7 @@ Em "Regras que valem para todo item", trocar a linha "Visual igual à tela do ca
 
 ## Issues abertas (30/10/2026)
 
-Todas no marco **Sprint 10.5 · Identidade visual**. A F1-01 (#437) foi aprovada antes das demais. "Bloqueada por" está marcada no GitHub (Relationships) e escrita na descrição de cada issue. A Fase 2 foi aberta na ordem da sequência sugerida (não na ordem alfabética dos códigos) para que cada dependência já existisse.
+Todas no marco **Sprint 10.5 · Identidade visual**. A F1-01 (#437) foi aprovada antes das demais. "Bloqueada por" está marcada no GitHub (Relationships) e escrita na descrição de cada issue. A Fase 2 foi aberta na ordem da sequência original. Em 30/10/2026 a C9 (#451) passou a ser bloqueada também pela C6a (#460, a confirmação é uma janela) e a F1-13 (#449) deixou de depender da F1-12 (#448); a sequência acima já reflete isso.
 
 ### Fase 1 · Bugs, regras quebradas e itens técnicos
 
@@ -402,12 +402,12 @@ Todas no marco **Sprint 10.5 · Identidade visual**. A F1-01 (#437) foi aprovada
 - F1-10 · [#446](https://github.com/DevDosAnjos/ctcore/issues/446) · Botão "Ver alunos" do painel da turma está sempre desabilitado (P)
 - F1-11 · [#447](https://github.com/DevDosAnjos/ctcore/issues/447) · Retenção de 30 dias das notificações da equipe (RN-NOT-05) (M)
 - F1-12 · [#448](https://github.com/DevDosAnjos/ctcore/issues/448) · Técnica · Captura do teste visual com o navegador em pt-BR (antes da Fase 2) (M, técnica)
-- F1-13 · [#449](https://github.com/DevDosAnjos/ctcore/issues/449) · Técnica · Dados do MSW para as telas que ficaram "sem comparar" (G, técnica; depende de #448)
+- F1-13 · [#449](https://github.com/DevDosAnjos/ctcore/issues/449) · Técnica · Dados do MSW para as telas que ficaram "sem comparar" (G, técnica)
 
 ### Fase 2 · Componentes base
 
 - C11 · [#450](https://github.com/DevDosAnjos/ctcore/issues/450) · Componente base: Padrão "Em breve" (R3): item visível e desabilitado, sem backend (P; depende de #448)
-- C9 · [#451](https://github.com/DevDosAnjos/ctcore/issues/451) · Componente base: Botão destrutivo e confirmação de ação sensível (P; depende de #448)
+- C9 · [#451](https://github.com/DevDosAnjos/ctcore/issues/451) · Componente base: Botão destrutivo e confirmação de ação sensível (P; depende de #448, #460)
 - C10 · [#452](https://github.com/DevDosAnjos/ctcore/issues/452) · Componente base: Selos, avatar e graduação (faixa visual) (M; depende de #448)
 - C4 · [#453](https://github.com/DevDosAnjos/ctcore/issues/453) · Componente base: Campos: data, arquivo, interruptor, caixa, cartão de escolha e código em 6 caixas (M; depende de #448)
 - C1 · [#454](https://github.com/DevDosAnjos/ctcore/issues/454) · Componente base: Moldura da gestão: menu lateral, barra de cima, cabeçalho, seletor de unidade e menu do celular (G; depende de #448)
