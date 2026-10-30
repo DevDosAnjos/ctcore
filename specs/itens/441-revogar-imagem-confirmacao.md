@@ -99,3 +99,6 @@ Achados:
 Comandos: `npm run lint` ok; `npm run typecheck` ok; vitest acima ok. Regressão completa (verify, test:cov, e2e) não rodada.
 Achados:
 - sugestão, processo — rodar `test:cov` antes do PR; o `SummaryBox` ganhou `div` + `ul` (mudança compartilhada), os testes dos usos existentes passaram.
+
+### Decisão do dono — CA7 aceito — 2026-10-30
+O dono aceitou a comparação feita na T4 (capturas do app e do canvas em 1440 e 390 px, pt-BR, com as divergências listadas na Construção) como prova do CA7. O verificador não refaz capturas de navegador; o CA7 fica conferido por essa decisão. Resultado efetivo da verificação: OK, sem achado obrigatório; a entrega segue com a lista de divergências na descrição do PR.
