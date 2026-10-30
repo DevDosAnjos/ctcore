@@ -30,7 +30,8 @@ describe("buildMenu", () => {
   it("CA12 / CA19 / CA16 (#29), CA21 (#31) e #37, #46, #49 e #53: com o catálogo real, o Coordenador vê Unidade, Organização, Usuários e Unidades, o Administrador Unidade, Organização e Usuários e o Professor Início e Agenda", () => {
     const home = { id: "home", label: "menu.groups.home", items: [{ id: "home", label: "menu.items.home", href: "/" }] };
     const agenda = { id: "agenda", label: "menu.items.agenda", href: "/agenda" };
-    expect(bare(buildMenu(mockPermissions("TEACHER"), t))).toEqual([home, { id: "operation", label: "menu.groups.operation", items: [agenda] }]);
+    const announcements = { id: "announcements", label: "menu.items.announcements", href: "/comunicados" };
+    expect(bare(buildMenu(mockPermissions("TEACHER"), t))).toEqual([home, { id: "operation", label: "menu.groups.operation", items: [agenda, announcements] }]);
     const unit = { id: "unitSettings", label: "menu.items.unitSettings", href: "/configuracoes/unidade" };
     const organization = { id: "organizationSettings", label: "menu.items.organizationSettings", href: "/configuracoes/organizacao" };
     const users = { id: "staffUsers", label: "menu.items.staffUsers", href: "/configuracoes/usuarios" };
@@ -39,12 +40,19 @@ describe("buildMenu", () => {
     const terms = { id: "terms", label: "menu.items.terms", href: "/configuracoes/termos" };
     const texts = { id: "texts", label: "menu.items.texts", href: "/configuracoes/textos" };
     const units = { id: "units", label: "menu.items.units", href: "/configuracoes/unidades" };
-    const operation = { id: "operation", label: "menu.groups.operation", items: [agenda, { id: "classes", label: "menu.items.classes", href: "/turmas" }, { id: "noClassDays", label: "menu.items.noClassDays", href: "/dias-sem-aula" }] };
+    const operation = { id: "operation", label: "menu.groups.operation", items: [agenda, { id: "classes", label: "menu.items.classes", href: "/turmas" }, { id: "noClassDays", label: "menu.items.noClassDays", href: "/dias-sem-aula" }, announcements] };
     const people = { id: "people", label: "menu.groups.people", items: [{ id: "students", label: "menu.items.students", href: "/alunos" }, { id: "requests", label: "menu.items.requests", href: "/pedidos" }, { id: "teachers", label: "menu.items.teachers", href: "/professores" }] };
-    const finance = { id: "finance", label: "menu.groups.finance", items: [{ id: "plans", label: "menu.items.plans", href: "/planos" }, { id: "benefits", label: "menu.items.benefits", href: "/beneficios" }] };
+    const finance = { id: "finance", label: "menu.groups.finance", items: [{ id: "collections", label: "menu.items.collections", href: "/cobrancas" }, { id: "plans", label: "menu.items.plans", href: "/planos" }, { id: "benefits", label: "menu.items.benefits", href: "/beneficios" }] };
     const settings = (items: object[]) => ({ id: "settings", label: "menu.groups.settings", items });
     expect(bare(buildMenu(mockPermissions("COORDINATOR"), t))).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, terms, texts, users, units])]);
     expect(bare(buildMenu(mockPermissions("ADMINISTRATOR"), t))).toEqual([home, operation, people, finance, settings([unit, organization, modalities, ageRanges, terms, texts, users])]);
+  });
+
+  it("#437: sem COLLECTIONS ou ANNOUNCEMENTS o item correspondente não aparece", () => {
+    const p = { ...mockPermissions("COORDINATOR"), COLLECTIONS: "NONE" as const, ANNOUNCEMENTS: "NONE" as const };
+    const ids = buildMenu(p, t).flatMap((g) => g.items.map((i) => i.id));
+    expect(ids).not.toContain("collections");
+    expect(ids).not.toContain("announcements");
   });
 });
 

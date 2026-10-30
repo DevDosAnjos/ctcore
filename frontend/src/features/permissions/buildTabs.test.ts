@@ -10,9 +10,10 @@ describe("buildTabs", () => {
     expect(ids("TEACHER")).toEqual(["home", "agenda", "announcements"]);
   });
 
-  it("CA11: sem permissão a aba não aparece; tela ainda inexistente fica desabilitada", () => {
+  it("CA11: sem permissão a aba não aparece; Cobranças e Comunicados levam à rota", () => {
     const p = { ...mockPermissions("COORDINATOR"), STUDENT_MANAGE: "NONE" as const };
     expect(ids("COORDINATOR", p)).not.toContain("students");
-    expect(buildTabs(mockPermissions("COORDINATOR"), "COORDINATOR", t).find((x) => x.id === "collections")?.disabled).toBe(true);
+    expect(buildTabs(mockPermissions("COORDINATOR"), "COORDINATOR", t).find((x) => x.id === "collections")?.disabled).toBe(false);
+    expect(buildTabs(mockPermissions("TEACHER"), "TEACHER", t).find((x) => x.id === "announcements")?.disabled).toBe(false);
   });
 });

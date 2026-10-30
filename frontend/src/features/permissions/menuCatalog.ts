@@ -27,7 +27,7 @@ export const menuCatalog: CatalogGroup[] = [
       item("noClassDays", "NO_CLASS_DAYS", "/dias-sem-aula", "CalendarOff", true),
       item("graduation", "GRADUATION", "/graduacao", "Award"),
       item("trialClasses", "TRIAL_CLASSES", "/aulas-experimentais", "Ticket"),
-      item("announcements", "ANNOUNCEMENTS", "/comunicados", "Megaphone"),
+      item("announcements", "ANNOUNCEMENTS", "/comunicados", "Megaphone", true),
     ],
   },
   {
@@ -41,7 +41,7 @@ export const menuCatalog: CatalogGroup[] = [
   {
     id: "finance",
     items: [
-      item("collections", "COLLECTIONS", "/cobrancas", "Wallet"),
+      item("collections", "COLLECTIONS", "/cobrancas", "Wallet", true),
       item("plans", "PLANS", "/planos", "Layers", true),
       item("benefits", "BENEFITS", "/beneficios", "Gift", true),
     ],
