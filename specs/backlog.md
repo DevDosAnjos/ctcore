@@ -141,7 +141,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 423 | Páginas do portal do aluno e do responsável no visual do canvas (Sprint 10) | issue #423 | Sprint 10.5 | — | agente | feito |
 | 437 | Cobranças e Comunicados somem do menu da gestão | issue #437 | Sprint 10.5 | — | agente | feito |
 | 438 | "Avisar turma" abre o comunicado vazio em vez do aviso pronto | issue #438 | Sprint 10.5 | — | agente | feito |
-| 439 | Prévia da geração fica em branco com um motivo sem chave de tradução | issue #439 | Sprint 10.5 | — | agente | a fazer |
+| 439 | Prévia da geração fica em branco com um motivo sem chave de tradução | issue #439 | Sprint 10.5 | — | agente | feito |
 | 440 | Botão de tema invisível na barra escura do portal, no tema claro | issue #440 | Sprint 10.5 | — | agente | a fazer |
 | 441 | Revogar uso de imagem no portal sem confirmação | issue #441 | Sprint 10.5 | — | agente | a fazer |
 | 442 | MSW: agenda do Professor devolve todas as aulas da unidade | issue #442 | Sprint 10.5 | — | agente | a fazer |
