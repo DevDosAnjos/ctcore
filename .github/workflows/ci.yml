@@ -117,6 +117,9 @@ jobs:
     timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
+    env:
+      LANG: pt_BR.UTF-8
+      LANGUAGE: pt_BR
     defaults:
       run:
         working-directory: frontend
