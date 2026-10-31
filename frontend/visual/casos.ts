@@ -75,7 +75,7 @@ export const casos: Caso[] = [
   { nome: "conta", rota: "/conta", perfil: ana, canvas: "MinhaConta" },
   // Acesso, conta, organização, unidades e usuários (#419). Estados e janelas abrem pelos passos.
   // Fora: EscolhaOrganizacao/EscolhaOrgM (o login simulado já entra com o vínculo ativo) e UnidadeUnica (o MSW tem mais de uma unidade).
-  { nome: "login-travado", rota: "/entrar", canvas: "LoginTravado", passos: [{ preencher: ["E-mail", ana] }, { preencher: ["Senha", "limite"] }, { clicar: "Entrar" }] },
+  { nome: "login-travado", rota: "/entrar", canvas: "LoginTravado", canvasCelular: "LoginTravadoM", passos: [{ preencher: ["E-mail", "limite@exemplo.com"] }, { preencher: ["Senha", "segredo123"] }, { clicar: "Entrar" }] },
   { nome: "login-duas-etapas", rota: "/entrar", canvas: "LoginDuasEtapas", passos: [{ preencher: ["E-mail", "duas@exemplo.com"] }, { preencher: ["Senha", "segredo123"] }, { clicar: "Entrar" }] },
   {
     nome: "login-codigo-reserva",

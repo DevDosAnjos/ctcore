@@ -13,11 +13,13 @@
     "submit": "Entrar",
     "sending": "Entrando...",
     "forgot": "Esqueci minha senha",
+    "createPassword": "Criar nova senha",
     "errors": {
       "emailRequired": "Informe o seu e-mail.",
       "passwordRequired": "Informe a sua senha.",
       "invalid": "E-mail ou senha incorretos.",
       "tooMany": "Muitas tentativas. Espere alguns minutos e tente de novo.",
+      "locked": "Muitas tentativas. Por segurança, este e-mail fica travado por 15 minutos. Tente de novo às {{time}} ou crie uma nova senha.",
       "challenge": "Não conseguimos confirmar que é você. Tente de novo."
     },
     "support": {

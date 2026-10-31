@@ -119,6 +119,9 @@ public class ApiExceptionHandler {
         };
         // Motivo (usado, vencido, cancelado) só para quem tem o código certo; convite desconhecido não diz nada.
         boolean reason = code == ErrorCode.INVITE_INVALID && List.of("USED", "EXPIRED", "CANCELED").contains(e.detail());
+        if (code == ErrorCode.TOO_MANY_REQUESTS && e.detail() != null) {
+            return build(code, req, List.of(new ApiError.Field("retryAt", e.detail())));
+        }
         return build(code, req, reason ? List.of(new ApiError.Field("reason", e.detail())) : List.of());
     }
 
