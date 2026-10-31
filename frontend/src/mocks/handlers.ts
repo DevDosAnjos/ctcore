@@ -618,6 +618,9 @@ const mockLesson = (c: MockClass, unit: { id: string; name: string }, date: stri
     canCancel: !cancelled && future,
   };
 };
+// RN-AGE-07: o Professor só alcança a aula em que é o professor, ou da turma da qual é titular ou auxiliar (o do mock é sempre o TEACHER_ANA).
+const teachesLesson = (klass: MockClass | null, teacherId: string) =>
+  teacherId === TEACHER_ANA || (!!klass && (klass.head === TEACHER_ANA || klass.assistants.includes(TEACHER_ANA)));
 const classFor = (id: string) => {
   if (!loggedIn) return unauthenticated();
   const role = activeRole();
@@ -633,6 +636,7 @@ const lessonView = (id: string) => {
   if (adhoc) {
     const today = todayLocal();
     const { canEdit, canCancel, ...lesson } = applyEdit(adhocLesson(adhoc, today));
+    if (role === "TEACHER" && !teachesLesson(null, lesson.teacher.id)) return error(404, "NOT_FOUND", "Não encontrado.");
     const visible = adhoc.visibilityClassId ? mockClasses.find((k) => k.id === adhoc.visibilityClassId) : undefined;
     const detail = {
       ...lesson,
@@ -641,8 +645,8 @@ const lessonView = (id: string) => {
       activeStudents: 0,
       trialClasses: 0,
       groupLink: null,
-      canEdit: role === "TEACHER" ? false : canEdit,
-      canCancel: role === "TEACHER" ? false : canCancel,
+      canEdit,
+      canCancel,
       canViewClass: false,
       followingEdited: 0,
     };
@@ -656,6 +660,7 @@ const lessonView = (id: string) => {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const { canEdit, canCancel, ...lesson } = applyEdit(mockLesson(c, unit, m[2], slot[0], slot[1], slot[2], today));
+  if (role === "TEACHER" && !teachesLesson(c, lesson.teacher.id)) return error(404, "NOT_FOUND", "Não encontrado.");
   const detail = {
     ...lesson,
     visibilityClass: null,
@@ -663,8 +668,8 @@ const lessonView = (id: string) => {
     activeStudents: 0,
     trialClasses: 0,
     groupLink: c.groupLink ?? null,
-    canEdit: role === "TEACHER" ? false : canEdit,
-    canCancel: role === "TEACHER" ? false : canCancel,
+    canEdit,
+    canCancel,
     canViewClass: role !== "TEACHER",
     // RN-AGE-04: edições à mão (ainda agendadas) das aulas seguintes da turma, que "esta e as seguintes" substituiria.
     followingEdited: [...lessonEdits.entries()].filter(([key, e]) => key.startsWith(`${c.id}-`) && !e.cancelCode && key.slice(c.id.length + 1, c.id.length + 11) > m[2]).length,
@@ -3001,6 +3006,7 @@ export const routes: Route[] = [
           for (const [wd, startsAt, endsAt] of c.schedule.filter(([d]) => d === weekday)) {
             const lesson = applyEdit(mockLesson(c, unit, date, wd, startsAt, endsAt, today));
             if ((teacherId && lesson.teacher.id !== teacherId) || (modalityId && lesson.modality.id !== modalityId)) continue;
+            if (role === "TEACHER" && !teachesLesson(c, lesson.teacher.id)) continue;
             lessons.push(lesson);
           }
         }
@@ -3008,6 +3014,7 @@ export const routes: Route[] = [
       for (const a of mockAdhoc.filter((x) => x.unitId === unit.id && x.date >= from && x.date <= to)) {
         const lesson = applyEdit(adhocLesson(a, today));
         if ((teacherId && lesson.teacher.id !== teacherId) || (modalityId && lesson.modality.id !== modalityId)) continue;
+        if (role === "TEACHER" && !teachesLesson(null, lesson.teacher.id)) continue;
         lessons.push(lesson);
       }
       const noClassDays = [
