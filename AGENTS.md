@@ -42,6 +42,19 @@ Plataforma SaaS de gestão para academias de artes marciais. Monorepo:
 
 Antes de começar um item, comparar o marco dele com o marco do último item mergeado em `dev`. Se for de outra sprint, **PARAR**: a sprint acabou e o dono vai revisá-la. Só seguir quando o dono disser que a sprint foi revisada.
 
+## Autonomia
+
+Respostas pré-aprovadas pelo dono, para o agente rodar sem ninguém responder paradas:
+
+1. Quando houver opção recomendada numa decisão técnica ou de processo, escolher a recomendada, registrar a escolha e o motivo no arquivo do item e na descrição do PR, e seguir.
+2. `NAO_CONFERIDO` por falta de ferramenta local ou de ambiente: aceitar o resultado do CI do PR como prova, registrar no arquivo do item e seguir.
+3. Comparação com o canvas feita pelo teste visual com MSW e pela comparação da #435, com capturas em `.capturas/<ID>/`, é prova válida para o verificador.
+4. Divergência com o canvas que outra issue da Sprint 10.5 vai resolver: usar `limiteCanvas` com motivo, citar a issue e acrescentar a remoção no "Pronto quando" dela.
+5. Teste instável: rodar de novo até 2 vezes. Se passar, seguir e anotar no PR. Se falhar de novo, abrir uma issue com a etiqueta `técnica` e seguir.
+6. Com o CI verde, o agente faz o merge sozinho.
+
+Continuam sendo parada obrigatória: mudança de regra de negócio, escopo ou critério de aceite; limite de 3 rodadas de verificação; conflito com a base que não se resolve com merge simples; CI vermelho depois das correções; segurança ou segredos; ação que não dá para desfazer; qualquer decisão que contrarie a especificação ou o `docs/auditoria/decisoes-canvas.md`.
+
 ## Repositório público: segredos e dados reais
 
 O repositório fica público durante o desenvolvimento, para o CI rodar sem limite de minutos, e volta a ser privado antes da Sprint 22 (decisão do dono, 23/10/2026). Tudo o que entra aqui é público e permanente: arquivo, commit (mesmo apagado depois), issue, PR e comentário.
