@@ -27,6 +27,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 class NotificationsIT extends OrganizationBase {
     @Autowired ObjectMapper json;
     @Autowired Notifications notifications;
+    @Autowired org.springframework.jdbc.core.simple.JdbcClient jdbc;
+    @Autowired br.com.ctcore.isolation.OrganizationTransactions transactions;
 
     @AfterEach
     void clean() {
@@ -144,6 +146,29 @@ class NotificationsIT extends OrganizationBase {
         assertThat(body(send(MockMvcRequestBuilders.post("/api/v1/notifications/read-all"), admin)).get("changed").asInt()).isZero();
         assertThat(body(send(MockMvcRequestBuilders.get("/api/v1/notifications/unread-count"), mate)).get("count").asInt()).isEqualTo(1);
         assertThat(adminJdbc().queryForObject("select count(*) from audit_log where organization_id = ? and action = 'notification.read_all'", Integer.class, t.orgId())).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("CA4: a não lida de 31 dias ainda gravada não entra no contador nem no unreadCount; a de 29 entra; só do próprio vínculo")
+    void expiredNotCounted() throws Exception {
+        var t = tenant();
+        var other = tenant();
+        var admin = person(t, Role.ADMINISTRATOR, t.unitId());
+        var mate = person(t, Role.ADMINISTRATOR, t.unitId());
+        var outsider = person(other, Role.ADMINISTRATOR, other.unitId());
+        insert(admin, t, "PAYMENT_RECEIVED", "31 days", false);
+        insert(admin, t, "EMAIL_PROBLEM", "30 days", false);
+        insert(admin, t, "STUDENT_MAJORITY", "29 days", false);
+        insert(mate, t, "PAYMENT_RECEIVED", "1 hour", false);
+        insert(outsider, other, "PAYMENT_RECEIVED", "1 hour", false);
+
+        assertThat(body(send(MockMvcRequestBuilders.get("/api/v1/notifications/unread-count"), admin)).get("count").asInt()).isEqualTo(1);
+        assertThat(body(send(MockMvcRequestBuilders.get("/api/v1/notifications?filter=unread"), admin)).get("unreadCount").asInt()).isEqualTo(1);
+        assertThat(body(send(MockMvcRequestBuilders.get("/api/v1/notifications"), admin)).get("items")).isEmpty();
+        assertThat(body(send(MockMvcRequestBuilders.get("/api/v1/notifications/unread-count"), mate)).get("count").asInt()).isEqualTo(1);
+        assertThat(body(send(MockMvcRequestBuilders.get("/api/v1/notifications/unread-count"), outsider)).get("count").asInt()).isEqualTo(1);
+        new NotificationRetentionJob(transactions, jdbc, java.time.Clock.systemUTC()).runOnce();
+        assertThat(body(send(MockMvcRequestBuilders.get("/api/v1/notifications/unread-count"), admin)).get("count").asInt()).isEqualTo(1);
     }
 
     @Test

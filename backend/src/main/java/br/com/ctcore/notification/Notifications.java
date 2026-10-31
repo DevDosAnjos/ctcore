@@ -164,8 +164,9 @@ public class Notifications {
     }
 
     private long unread(AccountPrincipal who) {
-        return jdbc.sql("select count(*) from notification where organization_id = :org and link_id = :link and read_at is null")
-                .param("org", who.organizationId()).param("link", who.activeLinkId()).query(Long.class).single();
+        return jdbc.sql("select count(*) from notification where organization_id = :org and link_id = :link and read_at is null "
+                + "and created_at > :expiry").param("org", who.organizationId()).param("link", who.activeLinkId())
+                .param("expiry", OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC).minusDays(NotificationRetentionJob.RETENTION_DAYS)).query(Long.class).single();
     }
 
     /** R8: marca todas as do vínculo da sessão; devolve quantas mudaram. */
