@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { StrictMode } from "react";
 import { vi } from "vitest";
 import { server } from "@/mocks/server";
 import { axeViolations } from "@/test/axe";
@@ -13,6 +14,7 @@ import { TwoFactorSetupDialog } from "./TwoFactorSetupDialog";
 
 const err = (status: number, code: string) =>
   HttpResponse.json({ code, message: "m", changed: false, fields: [], traceId: "t" }, { status });
+const tenCodes = Array.from({ length: 10 }, (_, i) => `CODIGO000${i}`);
 const session = (enabled: boolean) =>
   http.get("/api/v1/auth/session", () =>
     HttpResponse.json({ account: { id: "1", email: "a@x.com" }, links: [], twoFactor: { enabled, required: false } }),
@@ -134,48 +136,43 @@ describe("BackupCodesDialog (CA22)", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("pede senha e código antes de gerar códigos novos", async () => {
-    const user = userEvent.setup();
-    wrap(<BackupCodesDialog open onClose={() => {}} />);
-    await user.click(await screen.findByRole("button", { name: "Gerar códigos novos" }));
-    expect(screen.getByText("Preencha a senha e o código.")).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText("Senha"), "errada");
-    await user.type(screen.getByLabelText("Código do app ou de reserva"), "123456");
-    await user.click(screen.getByRole("button", { name: "Gerar códigos novos" }));
-    expect(await screen.findByText("Senha incorreta.")).toBeInTheDocument();
-
-    await user.clear(screen.getByLabelText("Senha"));
-    await user.type(screen.getByLabelText("Senha"), "certa");
-    await user.clear(screen.getByLabelText("Código do app ou de reserva"));
-    await user.type(screen.getByLabelText("Código do app ou de reserva"), "999999");
-    await user.click(screen.getByRole("button", { name: "Gerar códigos novos" }));
-    expect(await screen.findByText("Código incorreto.")).toBeInTheDocument();
-
-    await user.clear(screen.getByLabelText("Código do app ou de reserva"));
-    await user.type(screen.getByLabelText("Código do app ou de reserva"), "123456");
-    await user.click(screen.getByRole("button", { name: "Gerar códigos novos" }));
+  it("gera 10 códigos ao abrir, sem pedir senha nem código, com uma só chamada (StrictMode)", async () => {
+    const calls = vi.fn();
+    server.use(http.post("/api/v1/auth/two-factor/backup-codes", async ({ request }) => {
+      calls(await request.text());
+      return HttpResponse.json({ backupCodes: tenCodes });
+    }));
+    render(
+      <StrictMode>
+        <ThemeProvider>
+          <SessionProvider>
+            <BackupCodesDialog open onClose={() => {}} />
+          </SessionProvider>
+        </ThemeProvider>
+      </StrictMode>,
+    );
     expect(await screen.findAllByRole("listitem")).toHaveLength(10);
+    expect(screen.queryByLabelText("Senha")).toBeNull();
+    expect(screen.queryByLabelText("Código do app ou de reserva")).toBeNull();
+    expect(calls).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveBeenCalledWith("");
   });
 
-  it("429, 403 e erro do servidor", async () => {
+  it("429 e erro do servidor mostram erro com Tentar de novo; 403 mostra sem acesso", async () => {
     const user = userEvent.setup();
     server.use(http.post("/api/v1/auth/two-factor/backup-codes", () => err(429, "TOO_MANY_REQUESTS")));
     const first = wrap(<BackupCodesDialog open onClose={() => {}} />);
-    await user.type(await screen.findByLabelText("Senha"), "x");
-    await user.type(screen.getByLabelText("Código do app ou de reserva"), "123456");
-    await user.click(screen.getByRole("button", { name: "Gerar códigos novos" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Muitas tentativas");
-    server.use(http.post("/api/v1/auth/two-factor/backup-codes", () => err(500, "INTERNAL_ERROR")));
-    await user.click(screen.getByRole("button", { name: "Gerar códigos novos" }));
     expect(await screen.findByRole("button", { name: "Tentar de novo" })).toBeInTheDocument();
+    server.use(http.post("/api/v1/auth/two-factor/backup-codes", () => err(500, "INTERNAL_ERROR")));
+    await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    expect(await screen.findByRole("button", { name: "Tentar de novo" })).toBeInTheDocument();
+    server.use(http.post("/api/v1/auth/two-factor/backup-codes", () => HttpResponse.json({ backupCodes: ["AAAAAAAAAA"] })));
+    await user.click(screen.getByRole("button", { name: "Tentar de novo" }));
+    expect(await screen.findByText("AAAAAAAAAA")).toBeInTheDocument();
     first.unmount();
 
     server.use(http.post("/api/v1/auth/two-factor/backup-codes", () => err(403, "FORBIDDEN")));
     wrap(<BackupCodesDialog open onClose={() => {}} />);
-    await user.type(await screen.findByLabelText("Senha"), "x");
-    await user.type(screen.getByLabelText("Código do app ou de reserva"), "123456");
-    await user.click(screen.getByRole("button", { name: "Gerar códigos novos" }));
     expect(await screen.findByText("Você não tem acesso")).toBeInTheDocument();
   });
 
@@ -183,8 +180,9 @@ describe("BackupCodesDialog (CA22)", () => {
     for (const dark of [false, true]) {
       setDevicePrefersDark(dark);
       window.innerWidth = 360;
+      server.use(http.post("/api/v1/auth/two-factor/backup-codes", () => HttpResponse.json({ backupCodes: tenCodes })));
       const { unmount } = wrap(<BackupCodesDialog open onClose={() => {}} />);
-      await screen.findByLabelText("Senha");
+      await screen.findAllByRole("listitem");
       expect(await axeViolations(document.body)).toEqual([]);
       unmount();
     }

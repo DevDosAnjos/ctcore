@@ -184,11 +184,9 @@ describe("AccountPage: duas etapas (CA9)", () => {
     await ready();
     expect(screen.getByText("As duas etapas estão ligadas.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Desligar duas etapas" })).not.toBeInTheDocument();
+    server.use(http.post("/api/v1/auth/two-factor/backup-codes", () => HttpResponse.json({ backupCodes: Array.from({ length: 10 }, (_, i) => `CODIGO000${i}`) })));
     await user.click(screen.getByRole("button", { name: "Gerar códigos de reserva novos" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Senha"), "Atual12345");
-    await user.type(within(dialog).getByLabelText("Código do app ou de reserva"), "123456");
-    await user.click(within(dialog).getByRole("button", { name: "Gerar códigos novos" }));
     expect(await within(dialog).findAllByRole("listitem")).toHaveLength(10);
   });
 

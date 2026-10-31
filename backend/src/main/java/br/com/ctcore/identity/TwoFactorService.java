@@ -130,10 +130,9 @@ public class TwoFactorService {
         audit.record(accountId, actor(accountId), ip, "account.two_factor_disabled");
     }
 
-    /** Password and code; the previous codes stop working and 10 new ones come back (RN-ACE-18). */
-    public List<String> regenerate(UUID accountId, String password, String code, String ip) {
+    /** Session only, no password or code (not a critical action); the previous codes stop working and 10 new ones come back (RN-ACE-18). */
+    public List<String> regenerate(UUID accountId, String ip) {
         requireEnabled(accountId);
-        confirm(accountId, password, code, ip);
         List<String> codes = accountTx.forAccount(accountId, () -> newBackupCodes(accountId));
         audit.record(accountId, actor(accountId), ip, "account.backup_codes_regenerated");
         return codes;

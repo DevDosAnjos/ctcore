@@ -63,7 +63,7 @@ class TwoFactorLoginIT extends AuthBase {
     void backupCodeLogin() throws Exception {
         setUpAccount();
         Cookie s = step2(ticket(), nextCode(secret)).getResponse().getCookie("SESSION");
-        var codes = body(post("/api/v1/auth/two-factor/backup-codes", Map.of("password", PASSWORD, "code", nextCode(secret)), s).andReturn()).path("backupCodes");
+        var codes = body(post("/api/v1/auth/two-factor/backup-codes", null, s).andReturn()).path("backupCodes");
         String used = codes.get(0).asText();
         assertThat(step2(ticket(), used).getResponse().getStatus()).isEqualTo(200);
         assertThat(shape(step2(ticket(), used))).startsWith("401|INVALID_TWO_FACTOR_CODE");

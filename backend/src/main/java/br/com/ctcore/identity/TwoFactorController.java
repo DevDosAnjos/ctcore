@@ -56,9 +56,8 @@ class TwoFactorController {
     }
 
     @PostMapping("/two-factor/backup-codes")
-    Map<String, List<String>> backupCodes(@AuthenticationPrincipal AccountPrincipal principal,
-            @Valid @RequestBody PasswordCodeRequest r, HttpServletRequest request) {
-        return Map.of("backupCodes", twoFactor.regenerate(require(principal).accountId(), r.password(), r.code(), request.getRemoteAddr()));
+    Map<String, List<String>> backupCodes(@AuthenticationPrincipal AccountPrincipal principal, HttpServletRequest request) {
+        return Map.of("backupCodes", twoFactor.regenerate(require(principal).accountId(), request.getRemoteAddr()));
     }
 
     @PostMapping("/reauth")

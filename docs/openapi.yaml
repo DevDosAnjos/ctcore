@@ -195,20 +195,15 @@ paths:
         '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /auth/two-factor/backup-codes:
     post:
-      summary: Pede 10 códigos de reserva novos, com senha e código (RN-ACE-18).
-      description: Os anteriores deixam de valer. Sem as duas etapas ligadas responde 409.
+      summary: Gera 10 códigos de reserva novos, só com a sessão (RN-ACE-18).
+      description: Sem corpo; não pede senha nem código (não é ação crítica). Os anteriores deixam de valer. Sem as duas etapas ligadas responde 409.
       security: [{ sessionCookie: [], csrfHeader: [] }]
-      requestBody:
-        required: true
-        content: { application/json: { schema: { $ref: '#/components/schemas/PasswordAndCode' } } }
       responses:
         '200':
           description: Códigos novos, mostrados só nesta resposta.
           content: { application/json: { schema: { $ref: '#/components/schemas/BackupCodes' } } }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { description: "Senha ou código incorretos (INVALID_CREDENTIALS, INVALID_TWO_FACTOR_CODE) ou sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: "Sem sessão.", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409': { $ref: '#/components/responses/Conflict' }
-        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /auth/reauth:
     post:
       summary: Confirma uma ação crítica com a senha (e o código, se as duas etapas estão ligadas) (RN-ACE-21).

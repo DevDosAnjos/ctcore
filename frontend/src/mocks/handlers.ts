@@ -1906,12 +1906,9 @@ export const routes: Route[] = [
   {
     method: "post",
     path: "/auth/two-factor/backup-codes",
-    resolver: async ({ request }) => {
+    resolver: async () => {
       if (!loggedIn) return unauthenticated();
-      const { password, code } = (await request.json()) as { password?: string; code?: string };
-      if (password === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
-      if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
-      if (!code || !VALID_CODES.includes(code)) return error(401, "INVALID_TWO_FACTOR_CODE", "Código inválido.");
+      if (!current.twoFactor.enabled) return error(409, "CONFLICT", "Duas etapas desligadas.");
       return HttpResponse.json(backupCodes());
     },
   },

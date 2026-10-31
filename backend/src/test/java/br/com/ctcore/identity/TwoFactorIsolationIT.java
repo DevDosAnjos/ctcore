@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,8 @@ class TwoFactorIsolationIT extends AuthBase {
                 .path("reauthToken").asText();
         String secretB = admin.queryForObject("select secret_encrypted from account_two_factor where account_id = ?", String.class, b);
 
+        Set<String> codesOfB = hashes(b);
+        Map<UUID, Set<String>> untouched = new java.util.HashMap<>(Map.of(b, codesOfB));
         int n = 0;
         for (String role : List.of("COORDINATOR", "ADMINISTRATOR", "TEACHER", "STUDENT", "GUARDIAN")) {
             String email = "p" + n++ + "@x.com";
@@ -68,15 +71,32 @@ class TwoFactorIsolationIT extends AuthBase {
             assertThat(body(setup).path("secret").asText()).isNotEqualTo(Base32.encode(onB.secret()));
             assertThat(post("/api/v1/auth/two-factor/enable", Map.of("code", Totp.code(onB.secret(), Totp.step(clock.now))), s).andReturn()
                     .getResponse().getStatus()).isEqualTo(401);
-            assertThat(post("/api/v1/auth/two-factor/backup-codes", Map.of("password", PASSWORD, "code", onB.codes().get(0)), s).andReturn()
+            assertThat(post("/api/v1/auth/two-factor/backup-codes", null, s).andReturn()
                     .getResponse().getStatus()).isEqualTo(409);
             assertThat(post("/api/v1/auth/reauth", Map.of("action", "FULL_EXPORT", "password", PASSWORD), s).andReturn()
                     .getResponse().getStatus()).isEqualTo(role.equals("COORDINATOR") ? 403 : 200);
             assertThat(body(get("/api/v1/auth/session", s).andReturn()).toString()).doesNotContain("b@x.com", secretB, reauthB, onB.codes().get(0));
+
+            // two-step on for this profile: generating answers 200 and swaps only its own codes
+            activate(s, email);
+            Set<String> before = hashes(p);
+            assertThat(before).hasSize(10);
+            MvcResult regen = post("/api/v1/auth/two-factor/backup-codes", null, s).andReturn();
+            assertThat(regen.getResponse().getStatus()).isEqualTo(200);
+            assertThat(body(regen).path("backupCodes")).hasSize(10);
+            Set<String> after = hashes(p);
+            assertThat(after).hasSize(10).doesNotContainAnyElementsOf(before);
+            for (var other : untouched.entrySet()) assertThat(hashes(other.getKey())).as("conta " + other.getKey()).isEqualTo(other.getValue());
+            untouched.put(p, after);
         }
         assertThat(admin.queryForObject("select secret_encrypted from account_two_factor where account_id = ?", String.class, b)).isEqualTo(secretB);
+        assertThat(hashes(b)).isEqualTo(codesOfB);
         assertThat(count("select count(*) from account_backup_code where account_id = ? and used_at is null", b)).isEqualTo(10);
         assertThat(count("select count(*) from reauth_token where account_id = ? and used_at is null", b)).isEqualTo(1);
+    }
+
+    private Set<String> hashes(UUID account) {
+        return new java.util.HashSet<>(admin.queryForList("select code_hash from account_backup_code where account_id = ?", String.class, account));
     }
 
     @Test
