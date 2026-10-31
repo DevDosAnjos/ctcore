@@ -31,9 +31,9 @@ const wanted = process.argv.slice(2).map((n) => (n.endsWith(".dc.html") ? n : `$
 const list = wanted.length ? index.filter((t) => wanted.includes(t.arquivo)) : index;
 await mkdir(out, { recursive: true });
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ channel: "chromium", args: ["--lang=pt-BR"] });
 for (const t of list) {
-  const page = await browser.newPage({ viewport: { width: t.largura, height: t.altura } });
+  const page = await browser.newPage({ locale: "pt-BR", viewport: { width: t.largura, height: t.altura } });
   await page.goto(`http://127.0.0.1:${port}/ver.html?f=${encodeURIComponent(t.arquivo)}`);
   await page.waitForSelector("body[data-done]", { timeout: 20000 });
   await page.waitForTimeout(200);

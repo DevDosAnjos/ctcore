@@ -14,7 +14,7 @@ MSYS_NO_PATHCONV=1 docker run --rm --ipc=host \
   -v "$host":/repo:ro \
   -v "$host/visual/referencias":/out/referencias \
   -v "$host/test-results":/out/test-results \
-  -e CI= "$image" bash -c '
+  -e CI= -e LANG=pt_BR.UTF-8 -e LANGUAGE=pt_BR "$image" bash -c '
     set -e
     mkdir /work && cd /repo && tar --exclude=node_modules --exclude=test-results --exclude=playwright-report --exclude=dist --exclude=coverage -cf - . | tar -xf - -C /work
     cd /work && npm ci --no-audit --no-fund >/dev/null

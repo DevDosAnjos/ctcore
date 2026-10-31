@@ -10,7 +10,7 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   expect: { toHaveScreenshot: { animations: "disabled", caret: "hide", maxDiffPixelRatio: 0.001 } },
-  use: { baseURL: "http://localhost:5174", locale: "pt-BR", timezoneId: "America/Sao_Paulo", ...devices["Desktop Chrome"] },
+  use: { baseURL: "http://localhost:5174", locale: "pt-BR", timezoneId: "America/Sao_Paulo", ...devices["Desktop Chrome"], channel: "chromium", launchOptions: { args: ["--lang=pt-BR"] } },
   projects: [{ name: "visual" }],
   webServer: {
     command: "npm run dev -- --port 5174 --strictPort",
