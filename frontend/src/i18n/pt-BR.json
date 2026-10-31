@@ -92,13 +92,6 @@
       "fileName": "codigos-de-reserva-ctcore.txt",
       "saved": "Já guardei os códigos",
       "done": "Concluir",
-      "regenIntro": "Para gerar códigos novos, confirme a sua senha e um código. Os códigos anteriores deixam de valer.",
-      "password": "Senha",
-      "code": "Código do app ou de reserva",
-      "submit": "Gerar códigos novos",
-      "sending": "Gerando...",
-      "invalidPassword": "Senha incorreta.",
-      "invalidCode": "Código incorreto.",
       "required": "Preencha a senha e o código."
     },
     "required": {

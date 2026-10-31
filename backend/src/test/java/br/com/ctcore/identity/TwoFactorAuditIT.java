@@ -26,7 +26,7 @@ class TwoFactorAuditIT extends AuthBase {
         var on = activate(s, "a@x.com");
         assertThat(audited(org, "account.two_factor_enabled")).isEqualTo(1);
 
-        var fresh = body(post("/api/v1/auth/two-factor/backup-codes", Map.of("password", PASSWORD, "code", nextCode(on.secret())), s).andReturn());
+        var fresh = body(post("/api/v1/auth/two-factor/backup-codes", null, s).andReturn());
         assertThat(audited(org, "account.backup_codes_regenerated")).isEqualTo(1);
 
         String backup = fresh.path("backupCodes").get(0).asText();

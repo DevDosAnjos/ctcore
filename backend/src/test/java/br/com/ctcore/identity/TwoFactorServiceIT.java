@@ -87,16 +87,14 @@ class TwoFactorServiceIT extends AuthBase {
     }
 
     @Test
-    @DisplayName("RN-ACE-18: CA8: códigos novos (senha e código) invalidam os 10 anteriores; sem senha ou com código errado os antigos valem")
+    @DisplayName("RN-ACE-18: CA8: códigos novos só com a sessão invalidam os 10 anteriores; sem sessão os antigos valem")
     void regenerate() throws Exception {
         Cookie s = admin1("a@x.com");
         var on = activate(s, "a@x.com");
-        assertThat(post(CODES, Map.of("password", "errada", "code", nextCode(on.secret())), s).andReturn().getResponse().getStatus()).isEqualTo(401);
-        assertThat(post(CODES, Map.of("password", PASSWORD, "code", "000000"), s).andReturn().getResponse().getStatus()).isEqualTo(401);
-        assertThat(post(CODES, Map.of("code", nextCode(on.secret())), s).andReturn().getResponse().getStatus()).isEqualTo(400);
+        assertThat(post(CODES, null, null).andReturn().getResponse().getStatus()).isEqualTo(401);
         assertThat(count("select count(*) from account_backup_code where code_hash = ?", Codes.hash(on.codes().get(0)))).isEqualTo(1);
 
-        MvcResult r = post(CODES, Map.of("password", PASSWORD, "code", nextCode(on.secret())), s).andReturn();
+        MvcResult r = post(CODES, null, s).andReturn();
         assertThat(r.getResponse().getStatus()).isEqualTo(200);
         var fresh = new HashSet<String>();
         body(r).path("backupCodes").forEach(c -> fresh.add(c.asText()));

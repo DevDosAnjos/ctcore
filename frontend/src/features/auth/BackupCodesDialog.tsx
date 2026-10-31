@@ -1,12 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/Modal";
-import { ErrorState, ForbiddenState } from "@/components/states";
+import { ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
 import { ApiError, api } from "@/lib/api";
-import { CodeField } from "./CodeField";
 
 /** Os 10 códigos, com copiar, baixar e a confirmação de que foram guardados (RN-ACE-18). */
 export function BackupCodesPanel({ codes, onDone }: { codes: string[]; onDone: () => void }) {
@@ -64,47 +62,34 @@ export function BackupCodesPanel({ codes, onDone }: { codes: string[]; onDone: (
   );
 }
 
-type Phase = "form" | "failed" | "forbidden" | "codes";
+type Phase = "loading" | "failed" | "forbidden" | "codes";
 
 /**
- * Janela dos códigos de reserva (canvas CodigosReserva). Com `codes`, mostra-os; sem eles, pede senha
- * e código e gera 10 novos (os anteriores deixam de valer).
+ * Janela dos códigos de reserva (canvas CodigosReserva). Com `codes`, mostra-os; sem eles, gera 10 novos ao abrir,
+ * só com a sessão (os anteriores deixam de valer).
  */
 export function BackupCodesDialog({ open, codes: initial, onClose }: { open: boolean; codes?: string[]; onClose: () => void }) {
   const { t } = useTranslation();
   const [codes, setCodes] = useState<string[] | null>(initial ?? null);
-  const [phase, setPhase] = useState<Phase>(initial ? "codes" : "form");
-  const [password, setPassword] = useState("");
-  const [code, setCode] = useState("");
-  const [errors, setErrors] = useState<{ password?: string; code?: string; form?: string }>({});
-  const [sending, setSending] = useState(false);
+  const [phase, setPhase] = useState<Phase>(initial ? "codes" : "loading");
+  const started = useRef(false);
 
-  async function submit(e?: FormEvent) {
-    e?.preventDefault();
-    if (sending) return;
-    if (!password || !code) {
-      setErrors({ form: t("twoFactor.codes.required") });
-      return;
-    }
-    setErrors({});
-    setPhase("form");
-    setSending(true);
+  const generate = useCallback(async () => {
+    setPhase("loading");
     try {
-      const res = await api<{ backupCodes: string[] }>("/auth/two-factor/backup-codes", { method: "POST", body: { password, code } });
+      const res = await api<{ backupCodes: string[] }>("/auth/two-factor/backup-codes", { method: "POST" });
       setCodes(res.backupCodes);
       setPhase("codes");
     } catch (err) {
-      const status = err instanceof ApiError ? err.status : 0;
-      const apiCode = err instanceof ApiError ? err.code : "";
-      if (apiCode === "INVALID_CREDENTIALS") setErrors({ password: t("twoFactor.codes.invalidPassword") });
-      else if (apiCode === "INVALID_TWO_FACTOR_CODE") setErrors({ code: t("twoFactor.codes.invalidCode") });
-      else if (status === 429) setErrors({ form: t("twoFactor.errors.tooMany") });
-      else if (status === 403) setPhase("forbidden");
-      else setPhase("failed");
-    } finally {
-      setSending(false);
+      setPhase(err instanceof ApiError && err.status === 403 ? "forbidden" : "failed");
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!open || initial || started.current) return;
+    started.current = true;
+    void generate();
+  }, [open, initial, generate]);
 
   return (
     <Modal open={open} onOpenChange={(o) => !o && phase !== "codes" && onClose()} title={t("twoFactor.codes.title")} dismissible={phase !== "codes"}>
@@ -113,26 +98,9 @@ export function BackupCodesDialog({ open, codes: initial, onClose }: { open: boo
       ) : phase === "forbidden" ? (
         <ForbiddenState />
       ) : phase === "failed" ? (
-        <ErrorState onRetry={() => void submit()} />
+        <ErrorState onRetry={() => void generate()} />
       ) : (
-        <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
-          <p className="text-sm">{t("twoFactor.codes.regenIntro")}</p>
-          {errors.form && (
-            <Banner tone="danger">{errors.form}</Banner>
-          )}
-          <Field label={t("twoFactor.codes.password")} error={errors.password} alertError>
-            {(c) => <Input {...c} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />}
-          </Field>
-          <CodeField id="codes-code" kind="any" label={t("twoFactor.codes.code")} value={code} onChange={setCode} error={errors.code} />
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={sending}>
-              {sending ? t("twoFactor.codes.sending") : t("twoFactor.codes.submit")}
-            </Button>
-            <Button type="button" variant="ghost" onClick={onClose}>
-              {t("common.cancel")}
-            </Button>
-          </div>
-        </form>
+        <LoadingState />
       )}
     </Modal>
   );

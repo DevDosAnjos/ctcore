@@ -33,10 +33,9 @@ describe("duas etapas x OpenAPI (CA25)", () => {
     expect((await send("POST", "/auth/two-factor/setup")).status).toBe(409);
     expect(declared("/auth/two-factor/setup", "post")).toContain("409");
 
-    const codes = await (await send("POST", "/auth/two-factor/backup-codes", { password: "x", code: "123456" })).json();
+    const codes = await (await send("POST", "/auth/two-factor/backup-codes")).json();
     expect(codes.backupCodes).toHaveLength(10);
-    expect((await send("POST", "/auth/two-factor/backup-codes", { password: "errada", code: "123456" })).status).toBe(401);
-    expect((await send("POST", "/auth/two-factor/backup-codes", { password: "limite", code: "123456" })).status).toBe(429);
+    expect(declared("/auth/two-factor/backup-codes", "post")).toEqual(["200", "401", "409"]);
 
     const reauth = await (await send("POST", "/auth/reauth", { action: "FULL_EXPORT", password: "x", code: "123456" })).json();
     for (const k of openapi.components.schemas.ReauthToken.required) expect(reauth).toHaveProperty(k);
