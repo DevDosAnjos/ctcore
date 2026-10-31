@@ -113,6 +113,7 @@ describe("NotificationPanel (RF-NOT-01)", () => {
     expect(within(panel).getByRole("link", { name: "Ver cobranças" })).toHaveAttribute("href", "/cobrancas");
     expect(within(panel).getByRole("link", { name: "Ver usuários" })).toHaveAttribute("href", "/configuracoes/usuarios");
     expect(within(panel).queryByRole("switch")).not.toBeInTheDocument();
+    expect(within(panel).getByText("As notificações somem depois de 30 dias")).toBeInTheDocument();
 
     await user.click(within(panel).getByRole("button", { name: "Não lidas (2)" }));
     expect(within(panel).getAllByRole("listitem")).toHaveLength(2);
@@ -120,6 +121,7 @@ describe("NotificationPanel (RF-NOT-01)", () => {
 
     await user.click(within(panel).getByRole("button", { name: "Marcar todas como lidas" }));
     expect(await within(panel).findByText("Tudo lido")).toBeInTheDocument();
+    expect(within(panel).getByText("As notificações somem depois de 30 dias")).toBeInTheDocument();
     expect(readAlls).toBe(1);
     await waitFor(() => expect(screen.getByRole("button", { name: "Notificações", hidden: true })).toBeInTheDocument());
   });
@@ -152,7 +154,9 @@ describe("NotificationPanel (RF-NOT-01)", () => {
     loading.unmount();
 
     const empty = setup("ADMINISTRATOR", { list: () => HttpResponse.json({ items: [], unreadCount: 0 }) });
-    expect(await within(await openPanel(user)).findByRole("heading", { name: "Nenhuma notificação" })).toBeInTheDocument();
+    const emptyPanel = await openPanel(user);
+    expect(await within(emptyPanel).findByRole("heading", { name: "Nenhuma notificação" })).toBeInTheDocument();
+    expect(within(emptyPanel).getByText("As notificações somem depois de 30 dias")).toBeInTheDocument();
     empty.unmount();
 
     let fail = true;

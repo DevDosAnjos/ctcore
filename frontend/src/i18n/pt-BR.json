@@ -2666,6 +2666,7 @@
       "withCount": "Notificações, {{count}} não lidas"
     },
     "unreadMark": "Não lida:",
+    "retention": "As notificações somem depois de 30 dias",
     "filters": {
       "label": "Filtrar notificações",
       "all": "Todas ({{count}})",

@@ -135,6 +135,7 @@ export function NotificationPanel({
           </p>
         )}
         {body}
+        {panel.status === "ready" && <p className="text-xs text-muted-foreground">{t("notifications.retention")}</p>}
       </div>
     </SidePanel>
   );
