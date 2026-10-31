@@ -446,6 +446,7 @@
     },
     "record": {
       "title": "Ficha do aluno",
+      "teacherView": "Visão do Professor: dados e modalidades, sem valores, plano, benefício, CPF, endereço nem situação financeira.",
       "open": "Abrir a ficha de {{name}}",
       "close": "Fechar a ficha",
       "tabsLabel": "Seções da ficha",
@@ -620,7 +621,8 @@
       "title": "Alunos da aula",
       "emptyTitle": "Nenhum aluno ativo",
       "emptyText": "Esta turma ainda não tem alunos com modalidade ativa.",
-      "blocked": "Bloqueado"
+      "blocked": "Bloqueado",
+      "noRecord": "A ficha do aluno não abre sem a permissão."
     },
     "modalityLine": "{{modality}} · {{unit}} · {{class}}",
     "statuses": {

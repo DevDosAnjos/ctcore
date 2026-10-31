@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter, useLocation } from "react-router";
@@ -260,6 +260,33 @@ describe("ficha do aluno (RF-ALU-03)", () => {
     expect(within(dialog).queryByText("Em dia")).toBeNull();
   });
 
+  it("443 CA3, CA5: a ficha do Professor abre pela aula, mostra a Visão do Professor e fecha de volta à aula; a gestão e o Professor em /alunos/:id não a abrem", async () => {
+    const user = userEvent.setup();
+    setup("/agenda/aulas/les1/alunos/s1", { role: "TEACHER" });
+    const dialog = await panel();
+    expect(await within(dialog).findByText(/Visão do Professor/)).toBeInTheDocument();
+    expect(within(dialog).queryByText("Em dia")).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Fechar" }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("/agenda/aulas/les1"));
+    cleanup();
+    setup("/agenda/aulas/les1/alunos/s1", { role: "COORDINATOR" });
+    expect(await screen.findByText("Esta área não está disponível para o seu perfil")).toBeInTheDocument();
+    cleanup();
+    setup("/alunos/s1", { role: "TEACHER" });
+    expect(await screen.findByText("Esta área não está disponível para o seu perfil")).toBeInTheDocument();
+  });
+
+  it("443 CA4: a ficha do Professor mostra sem permissão, não encontrado e erro com nova tentativa", async () => {
+    setup("/agenda/aulas/les1/alunos/s1", { role: "TEACHER", record: () => HttpResponse.json({ code: "FORBIDDEN" }, { status: 403 }) });
+    expect(await within(await panel()).findByText("Você não tem acesso")).toBeInTheDocument();
+    cleanup();
+    setup("/agenda/aulas/les1/alunos/s1", { role: "TEACHER", record: () => HttpResponse.json({ code: "NOT_FOUND" }, { status: 404 }) });
+    expect(await within(await panel()).findByText("Aluno não encontrado.")).toBeInTheDocument();
+    cleanup();
+    setup("/agenda/aulas/les1/alunos/s1", { role: "TEACHER", record: () => HttpResponse.json({ code: "X" }, { status: 500 }) });
+    expect(await within(await panel()).findByRole("button", { name: "Tentar de novo" })).toBeInTheDocument();
+  });
+
   it("CA35: a ficha da gestão mantém os botões de escrita", async () => {
     const user = userEvent.setup();
     setup("/alunos/s1");
@@ -370,6 +397,17 @@ describe("ficha do aluno (RF-ALU-03)", () => {
     window.innerWidth = 360;
     setup("/alunos/s1");
     await within(await panel()).findByText("Marta Souza");
+    expect(await axeViolations(document.body)).toEqual([]);
+  });
+
+  it.each([
+    ["claro", false],
+    ["escuro", true],
+  ])("443 CA8: a ficha do Professor a 360 px não tem violações no axe no tema %s", async (_n, dark) => {
+    setDevicePrefersDark(dark);
+    window.innerWidth = 360;
+    setup("/agenda/aulas/les1/alunos/s1", { role: "TEACHER" });
+    await within(await panel()).findByText(/Visão do Professor/);
     expect(await axeViolations(document.body)).toEqual([]);
   });
 });

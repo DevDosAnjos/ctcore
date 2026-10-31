@@ -26,6 +26,9 @@ class StudentRecordIT extends OrganizationBase {
 
     @AfterEach
     void clean() {
+        adminJdbc().update("delete from enrollment_modality_class");
+        adminJdbc().update("delete from enrollment_modality");
+        adminJdbc().update("delete from enrollment");
         adminJdbc().update("delete from student_guardian");
         adminJdbc().update("delete from guardian");
         adminJdbc().update("delete from student");
@@ -144,6 +147,45 @@ class StudentRecordIT extends OrganizationBase {
         var other = tenant();
         UUID foreign = student(other, other.unitId(), "De Fora", 30);
         assertThat(get("/" + foreign + "/record", teacher).getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    @DisplayName("443 CA6: o Professor com a chave ligada abre o aluno ativo de turma dele (200, sem os campos omitidos) e não o de turma alheia; Coordenador e Administrador abrem")
+    void teacherClass() throws Exception {
+        Tenant t = tenant();
+        var teacher = who(t, Role.TEACHER);
+        adminJdbc().update("insert into account (id, email, status) values (?, ?, 'ACTIVE')", teacher.accountId(), teacher.accountId() + "@prof.example");
+        UUID teacherId = UUID.randomUUID(), mine = UUID.randomUUID(), theirs = UUID.randomUUID(), plan = UUID.randomUUID();
+        UUID modality = adminJdbc().queryForList("select id from modality order by name", UUID.class).get(0);
+        adminJdbc().update("insert into teacher (id, organization_id, name, name_key, account_id) values (?, ?, 'Professor', 'professor', ?)", teacherId, t.orgId(), teacher.accountId());
+        adminJdbc().update("insert into teacher (id, organization_id, name, name_key) values (?, ?, 'Outro', 'outro')", theirs, t.orgId());
+        adminJdbc().update("insert into plan (id, organization_id, unit_id, modality_id, name, name_key, value_cents) values (?, ?, ?, ?, 'Plano', 'plano', 15000)", plan, t.orgId(), t.unitId(), modality);
+        UUID myClass = UUID.randomUUID(), otherClass = UUID.randomUUID();
+        for (Object[] c : new Object[][] {{myClass, "Minha", teacherId}, {otherClass, "Alheia", theirs}}) {
+            adminJdbc().update("insert into training_class (id, organization_id, unit_id, name, name_key, modality_id, head_teacher_id, status) values (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')",
+                    c[0], t.orgId(), t.unitId(), c[1], Modalities.normalize((String) c[1]), modality, c[2]);
+        }
+        UUID inClass = student(t, t.unitId(), "Na Turma", 30), outClass = student(t, t.unitId(), "Fora Turma", 30);
+        enroll(t, inClass, myClass, modality, plan);
+        enroll(t, outClass, otherClass, modality, plan);
+        adminJdbc().update("update unit_settings set teacher_permissions = '{true,true,true,true,true}' where unit_id = ?", t.unitId());
+        JsonNode view = ok(get("/" + inClass + "/record", teacher));
+        for (String omitted : new String[] {"cpf", "address", "seals", "birthDate"}) assertThat(view.has(omitted)).as(omitted).isFalse();
+        assertThat(view.get("name").asText()).isEqualTo("Na Turma");
+        assertThat(get("/" + outClass + "/record", teacher).getStatus()).isEqualTo(404);
+        adminJdbc().update("update unit_settings set teacher_permissions = '{false,false,false,false,false}' where unit_id = ?", t.unitId());
+        assertThat(get("/" + inClass + "/record", teacher).getStatus()).isEqualTo(403);
+        assertThat(get("/" + inClass + "/record", who(t, Role.COORDINATOR)).getStatus()).isEqualTo(200);
+        assertThat(get("/" + inClass + "/record", who(t, Role.ADMINISTRATOR)).getStatus()).isEqualTo(200);
+        var other = tenant();
+        assertThat(get("/" + inClass + "/record", who(other, Role.COORDINATOR)).getStatus()).isEqualTo(404);
+    }
+
+    private void enroll(Tenant t, UUID student, UUID klass, UUID modality, UUID plan) {
+        UUID enrollment = UUID.randomUUID();
+        adminJdbc().update("insert into enrollment (id, organization_id, student_id, enrolled_at) values (?, ?, ?, now())", enrollment, t.orgId(), student);
+        adminJdbc().update("insert into enrollment_modality (id, organization_id, enrollment_id, student_id, unit_id, modality_id, primary_class_id, plan_id, due_day, status, started_at) "
+                + "values (?, ?, ?, ?, ?, ?, ?, ?, 5, 'ACTIVE', now())", UUID.randomUUID(), t.orgId(), enrollment, student, t.unitId(), modality, klass, plan);
     }
 
     @Test
