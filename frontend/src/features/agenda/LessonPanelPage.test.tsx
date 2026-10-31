@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { MemoryRouter } from "react-router";
@@ -151,6 +151,26 @@ describe("LessonPanelPage", () => {
     expect(await screen.findByText("Bia Lima")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Alunos da aula" })).toBeInTheDocument();
     expect(new Set(asked)).toEqual(new Set(["les1"]));
+  });
+
+  it("443 CA1, CA2: o Professor com a permissão vê o nome como link da ficha; sem ela, o aviso; a gestão fica sem link nem aviso", async () => {
+    setup({ role: "TEACHER" });
+    await ready();
+    expect(await screen.findByRole("link", { name: "Bia Lima" })).toHaveAttribute("href", "/agenda/aulas/les1/alunos/s9");
+    expect(screen.queryByText("A ficha do aluno não abre sem a permissão.")).toBeNull();
+    cleanup();
+    setup({ role: "TEACHER" });
+    server.use(http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: { ...mockPermissions("TEACHER"), STUDENT_RECORD: "NONE" } })));
+    await ready();
+    expect(await screen.findByText("A ficha do aluno não abre sem a permissão.")).toBeInTheDocument();
+    expect(screen.getByText("Bia Lima")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Bia Lima" })).toBeNull();
+    cleanup();
+    setup();
+    await ready();
+    await screen.findByText("Bia Lima");
+    expect(screen.queryByRole("link", { name: "Bia Lima" })).toBeNull();
+    expect(screen.queryByText("A ficha do aluno não abre sem a permissão.")).toBeNull();
   });
 
   it("CA9: substituição mostra o selo e o titular; cancelada mostra a situação e o motivo, sem Cancelar aula nem Editar aula", async () => {

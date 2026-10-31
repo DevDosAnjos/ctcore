@@ -69,3 +69,26 @@ describe("lista simples da turma e da aula (R22, CA31, CA32)", () => {
     expect(await axeViolations(container)).toEqual([]);
   });
 });
+
+describe("443: link da ficha e aviso (RF-ALU-03)", () => {
+  it("com recordHref o nome é link; com noRecordNotice mostra o aviso sem link", async () => {
+    const { MemoryRouter } = await import("react-router");
+    server.use(http.get("/api/v1/students/simple", () => HttpResponse.json([ana])));
+    const view = render(
+      <ThemeProvider>
+        <MemoryRouter>
+          <StudentSimpleList lessonId="l1" recordHref={(id) => `/f/${id}`} />
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+    expect(await screen.findByRole("link", { name: "Ana Souza" })).toHaveAttribute("href", "/f/s1");
+    view.unmount();
+    render(
+      <ThemeProvider>
+        <StudentSimpleList lessonId="l1" noRecordNotice />
+      </ThemeProvider>,
+    );
+    expect(await screen.findByText("A ficha do aluno não abre sem a permissão.")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+});

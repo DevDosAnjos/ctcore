@@ -10,6 +10,7 @@ import {
   LoadingState,
 } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/features/auth/SessionProvider";
 import { ManagementLayout } from "@/features/permissions/ManagementLayout";
 import { usePermissions } from "@/features/permissions/usePermissions";
 import { StudentSimpleList } from "@/features/students/StudentSimpleList";
@@ -65,6 +66,9 @@ function Panel({
   const group = safeLink(lesson.groupLink);
   const cancelled = lesson.status === "CANCELLED";
   const { permissions } = usePermissions();
+  const { state } = useSession();
+  const role = state.status === "ready" ? state.session.links.find((l) => l.id === state.session.activeLinkId)?.role : undefined;
+  const teacherRecord = role === "TEACHER" && !!permissions ? permissions.STUDENT_RECORD !== "NONE" : undefined;
   const canNotify = !!permissions && permissions.ANNOUNCEMENTS !== "NONE" && !!lesson.class;
   // RF-COM-02: abre o comunicado já preenchido (aula cancelada ou aviso geral), com a turma, a data e o horário.
   const noticeLink = `/comunicados/novo?${new URLSearchParams({ classId: lesson.class?.id ?? "", type: cancelled ? "CANCELED_CLASS" : "GENERAL", date: lesson.date, time: lesson.startsAt })}`;
@@ -187,7 +191,11 @@ function Panel({
             </dl>
           </Card>
           <Card heading="h2" title={t("students.simple.title")}>
-            <StudentSimpleList lessonId={lesson.id} />
+            <StudentSimpleList
+              lessonId={lesson.id}
+              recordHref={teacherRecord ? (sid) => `/agenda/aulas/${lesson.id}/alunos/${sid}` : undefined}
+              noRecordNotice={teacherRecord === false}
+            />
           </Card>
           <Card heading="h2" title={t("agenda.panel.group")}>
             {group ? (

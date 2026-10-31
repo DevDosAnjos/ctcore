@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router";
 import { SidePanel } from "@/components/SidePanel";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { WhatsAppButton } from "@/components/whatsapp";
+import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { usePermissions } from "@/features/permissions/usePermissions";
 import { StudentFinancialTab, isOverdue } from "./StudentFinancialTab";
@@ -130,6 +131,7 @@ function Body({ id, onChanged }: { id: string; onChanged?: () => void }) {
           onChanged?.();
         }}
       />
+      {!canEdit && <Banner tone="info">{t("students.record.teacherView")}</Banner>}
       <Tabs tab={tab} tabs={canEdit ? (canCollect ? TABS : TABS.filter((x) => x !== "financial")) : TEACHER_TABS} onChange={setTab} />
       <div role="tabpanel" id={`record-panel-${tab}`} aria-labelledby={`record-tab-${tab}`}>
         {tab === "summary" && <RecordSummary record={data} modalities={enrollment.data?.modalities} />}

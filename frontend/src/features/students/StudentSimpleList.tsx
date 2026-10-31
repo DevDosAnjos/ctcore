@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { EmptyState, ErrorState, ForbiddenState, LoadingState } from "@/components/states";
 import { api, ApiError } from "@/lib/api";
 import type { StudentSimple } from "./types";
@@ -16,7 +17,17 @@ const initials = (name: string) =>
 
 // R22 (02): lista simples da turma ou da aula, a mesma para o Professor e para a gestão. Só nome, foto, faixa e bloqueio;
 // quem recusa e quem recorta é o servidor, sem depender das chaves do Professor.
-export function StudentSimpleList({ lessonId, classId }: { lessonId?: string; classId?: string }) {
+export function StudentSimpleList({
+  lessonId,
+  classId,
+  recordHref,
+  noRecordNotice,
+}: {
+  lessonId?: string;
+  classId?: string;
+  recordHref?: (id: string) => string;
+  noRecordNotice?: boolean;
+}) {
   const { t } = useTranslation();
   const [tick, setTick] = useState(0);
   const [done, setDone] = useState<Done>();
@@ -38,6 +49,7 @@ export function StudentSimpleList({ lessonId, classId }: { lessonId?: string; cl
   if (!state.items) return <ErrorState onRetry={() => setTick((n) => n + 1)} />;
   if (state.items.length === 0) return <EmptyState title={t("students.simple.emptyTitle")} text={t("students.simple.emptyText")} />;
   return (
+    <>
     <ul className="flex flex-col gap-2">
       {state.items.map((s) => (
         <li key={s.id} className="flex min-h-11 flex-wrap items-center gap-2">
@@ -48,11 +60,19 @@ export function StudentSimpleList({ lessonId, classId }: { lessonId?: string; cl
               {initials(s.name)}
             </span>
           )}
-          <span className="min-w-0 break-words font-medium">{s.name}</span>
+          {recordHref ? (
+            <Link to={recordHref(s.id)} className="inline-flex min-h-11 min-w-0 items-center break-words font-medium underline">
+              {s.name}
+            </Link>
+          ) : (
+            <span className="min-w-0 break-words font-medium">{s.name}</span>
+          )}
           {s.belt && <span className="rounded-md border px-2 py-0.5 text-sm">{s.belt}</span>}
           {s.blocked && <span className="rounded-md border px-2 py-0.5 text-sm">{t("students.simple.blocked")}</span>}
         </li>
       ))}
     </ul>
+    {noRecordNotice && <p className="mt-2 text-sm text-muted-foreground">{t("students.simple.noRecord")}</p>}
+    </>
   );
 }

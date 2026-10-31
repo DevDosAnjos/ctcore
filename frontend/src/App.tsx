@@ -56,6 +56,7 @@ import { PortalInfoPage } from "@/features/portal/PortalInfoPage";
 import { RequireFullPortal } from "@/features/portal/RequireFullPortal";
 import { PortalTermPage } from "@/features/portal/PortalTermPage";
 import { RequirePortalTerm } from "@/features/portal/RequirePortalTerm";
+import { TeacherRecordPage } from "@/features/students/TeacherRecordPage";
 import { RequireArea } from "@/features/auth/RequireArea";
 import { useSession } from "@/features/auth/SessionProvider";
 import { PageHeader } from "@/components/ui/page-header";
@@ -134,6 +135,9 @@ export function App() {
             <Route path="/agenda/aulas/:id" element={<LessonPanelPage />} />
             <Route path="/comunicados" element={<AnnouncementsPage />} />
             <Route path="/comunicados/novo" element={<NewAnnouncementPage />} />
+          </Route>
+          <Route element={<RequireArea roles={["TEACHER"]} />}>
+            <Route path="/agenda/aulas/:id/alunos/:studentId" element={<TeacherRecordPage />} />
           </Route>
           <Route element={<RequireArea roles={["COORDINATOR", "ADMINISTRATOR"]} />}>
             <Route path="/dias-sem-aula" element={<NoClassDaysPage />} />
