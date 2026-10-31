@@ -30,7 +30,7 @@ Uma conta por pessoa, um login único para gestão e portal, convites, seguranç
 
 - **RN-ACE-08.** Senha com 8 ou mais caracteres, pelo menos 1 número e 1 letra maiúscula, sem símbolo obrigatório. Senhas presentes em vazamentos conhecidos são recusadas ("Essa senha é muito conhecida. Escolha outra.").
 - **RN-ACE-09.** A senha é guardada com hash Argon2. Ninguém, nem a plataforma, lê a senha. A academia não define nem redefine a senha de ninguém.
-- **RN-ACE-10.** 5 senhas erradas seguidas travam aquele e-mail por 15 minutos. Há também limite por IP: 20 falhas em 15 minutos. O mesmo vale para o pedido de link de nova senha (RN-ACE-11). O login e os formulários públicos usam desafio invisível (Turnstile), que só aparece se o acesso parecer de robô.
+- **RN-ACE-10.** 5 senhas erradas seguidas travam aquele e-mail por 15 minutos. Há também limite por IP: 20 falhas em 15 minutos. O 429 do login informa o horário em que a trava acaba (`retryAt`), igual para e-mail existente ou não. O mesmo vale para o pedido de link de nova senha (RN-ACE-11), sem o horário. O login e os formulários públicos usam desafio invisível (Turnstile), que só aparece se o acesso parecer de robô.
 - **RN-ACE-11.** Login e recuperação de senha mostram sempre a mesma mensagem, sem revelar se o e-mail existe: "E-mail ou senha incorretos." e "Se esse e-mail tiver uma conta, você vai receber um link em instantes."
 - **RN-ACE-12.** Conta com convite não aceito ou desativada não entra; a mensagem é a mesma do erro de senha.
 - **RN-ACE-13.** Convite vale 7 dias e é de uso único. Reenviar cancela o anterior. Máximo de 3 reenvios por dia por pessoa.

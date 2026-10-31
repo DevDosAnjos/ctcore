@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, useSearchParams } from "react-router";
 import { ErrorState } from "@/components/states";
@@ -7,6 +7,7 @@ import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { ApiError, api } from "@/lib/api";
+import { formatTime } from "@/lib/format";
 import { safeNext } from "./safeNext";
 import { useSession, type SessionView } from "./SessionProvider";
 import { Turnstile } from "./Turnstile";
@@ -26,7 +27,15 @@ export function LoginPage() {
   const [token, setToken] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [ticket, setTicket] = useState<string | null>(null);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  // RN-ACE-10: o aviso sai e "Entrar" volta quando a trava acaba.
+  useEffect(() => {
+    if (lockedUntil === null) return;
+    const id = setTimeout(() => setLockedUntil(null), Math.max(0, lockedUntil - Date.now()));
+    return () => clearTimeout(id);
+  }, [lockedUntil]);
 
   if (state.status === "ready") return <Navigate to={safeNext(params.get("next"))} replace />;
 
@@ -39,6 +48,7 @@ export function LoginPage() {
     };
     setErrors(next);
     setNotice(null);
+    setLockedUntil(null);
     if (next.email || next.password) return;
     setFailed(false);
     setSending(true);
@@ -57,7 +67,9 @@ export function LoginPage() {
         setPassword("");
         passwordRef.current?.focus();
       } else if (status === 429) {
-        setNotice(t("auth.errors.tooMany"));
+        const retryAt = err instanceof ApiError ? Date.parse(err.fields.find((f) => f.field === "retryAt")?.message ?? "") : NaN;
+        if (retryAt > Date.now()) setLockedUntil(retryAt);
+        else setNotice(t("auth.errors.tooMany"));
       } else if (code === "CHALLENGE_FAILED") {
         setNotice(t("auth.errors.challenge"));
         setResetKey((k) => k + 1);
@@ -85,6 +97,16 @@ export function LoginPage() {
         <ErrorState onRetry={() => void submit()} />
       ) : (
         <form noValidate onSubmit={submit} className="space-y-4" aria-busy={sending}>
+          {lockedUntil !== null && (
+            <Banner tone="warn">
+              <div className="space-y-2">
+                <p>{t("auth.errors.locked", { time: formatTime(lockedUntil) })}</p>
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/esqueci-senha">{t("auth.createPassword")}</Link>
+                </Button>
+              </div>
+            </Banner>
+          )}
           {notice && <Banner tone="danger">{notice}</Banner>}
           <Field label={t("auth.email")} error={errors.email}>
             {(c) => <Input {...c} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />}
@@ -107,7 +129,7 @@ export function LoginPage() {
             )}
           </Field>
           <Turnstile onToken={setToken} resetKey={resetKey} />
-          <Button type="submit" size="lg" className="w-full" disabled={sending}>
+          <Button type="submit" size="lg" className="w-full" disabled={sending || lockedUntil !== null}>
             {sending ? t("auth.sending") : t("auth.submit")}
           </Button>
           <p className="text-sm">

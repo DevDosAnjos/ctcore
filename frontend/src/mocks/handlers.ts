@@ -1834,6 +1834,10 @@ export const routes: Route[] = [
     path: "/auth/login",
     resolver: async ({ request }) => {
       const { email, password } = (await request.json()) as { email?: string; password?: string };
+      // "limite@exemplo.com": trava com horário de liberação (#445); senha "limite" em outro e-mail: 429 sem horário.
+      if (email === "limite@exemplo.com") {
+        return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.", [{ field: "retryAt", message: new Date(Date.now() + 15 * 60_000).toISOString() }]);
+      }
       if (password === "limite") return error(429, "TOO_MANY_REQUESTS", "Muitas tentativas.");
       if (password === "errada") return error(401, "INVALID_CREDENTIALS", "E-mail ou senha incorretos.");
       const account = accounts[email ?? ""];

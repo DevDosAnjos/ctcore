@@ -75,6 +75,20 @@ public class LoginAttempts {
         return Status.OPEN;
     }
 
+    /** When the lock reported by {@link #check} ends; depends only on recorded attempts, never on the account (RN-ACE-11). */
+    public Instant releaseAt(Status status, String email, String ip) {
+        if (status == Status.EMAIL_LOCKED) {
+            // the lock holds the last max verdicts, all failures: it ends one window after the newest
+            return jdbc.sql("select max(occurred_at) from login_attempt where email = :email and result in ('SUCCESS', 'WRONG_PASSWORD', 'WRONG_CODE')")
+                    .param("email", normalize(email)).query(OffsetDateTime.class).optional().map(t -> t.toInstant().plus(window)).orElse(clock.instant().plus(window));
+        }
+        // IP: back below the limit when the ipMaxFailures-th most recent failure leaves the window
+        return jdbc.sql("select occurred_at from login_attempt where ip = :ip and result in ('WRONG_PASSWORD', 'WRONG_CODE') "
+                + "and occurred_at > :since order by occurred_at desc offset :skip limit 1")
+                .param("ip", ip).param("since", OffsetDateTime.ofInstant(clock.instant().minus(window), ZoneOffset.UTC))
+                .param("skip", ipMaxFailures - 1).query(OffsetDateTime.class).optional().map(t -> t.toInstant().plus(window)).orElse(clock.instant().plus(window));
+    }
+
     /** Password-reset requests (RN-ACE-10): too many per e-mail or per IP in one window. Same answer for any e-mail. */
     public boolean resetLimited(String email, String ip) {
         OffsetDateTime since = OffsetDateTime.ofInstant(clock.instant().minus(window), ZoneOffset.UTC);

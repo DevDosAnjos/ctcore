@@ -232,4 +232,58 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: "Entrar" }));
     expect(await axeViolations(container)).toEqual([]);
   });
+
+  describe("trava com horário (#445)", () => {
+    const locked = (retryAt?: string) =>
+      server.use(
+        http.post(URL_LOGIN, () =>
+          HttpResponse.json(
+            { code: "TOO_MANY_REQUESTS", message: "m", changed: false, fields: retryAt ? [{ field: "retryAt", message: retryAt }] : [], traceId: "t" },
+            { status: 429 },
+          ),
+        ),
+      );
+
+    it("CA4 e CA5: mostra o aviso com o horário e Criar nova senha; Entrar desabilitado até o horário, depois volta", async () => {
+      const user = userEvent.setup();
+      locked(new Date(Date.now() + 1500).toISOString());
+      open("/entrar");
+      await fill(user);
+      await submit(user);
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent(/Muitas tentativas\. Por segurança, este e-mail fica travado por 15 minutos\. Tente de novo às \d{2}h\d{2} ou crie uma nova senha\./);
+      expect(screen.getByRole("link", { name: "Criar nova senha" })).toHaveAttribute("href", "/esqueci-senha");
+      expect(screen.getByRole("button", { name: "Entrar" })).toBeDisabled();
+      await waitFor(() => expect(screen.getByRole("button", { name: "Entrar" })).toBeEnabled(), { timeout: 3000 });
+      expect(screen.queryByRole("link", { name: "Criar nova senha" })).not.toBeInTheDocument();
+    });
+
+    it("CA6: 429 sem retryAt (ou inválido) mostra o texto genérico, Entrar ativo e sem Criar nova senha", async () => {
+      const user = userEvent.setup();
+      locked();
+      open("/entrar");
+      await fill(user);
+      await submit(user);
+      expect(await screen.findByRole("alert")).toHaveTextContent("Muitas tentativas. Espere alguns minutos e tente de novo.");
+      expect(screen.getByRole("button", { name: "Entrar" })).toBeEnabled();
+      expect(screen.queryByRole("link", { name: "Criar nova senha" })).not.toBeInTheDocument();
+      locked("lixo");
+      await submit(user);
+      await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Espere alguns minutos"));
+    });
+
+    it("CA8: sem violação de acessibilidade com o aviso, nos dois temas", async () => {
+      const user = userEvent.setup();
+      locked(new Date(Date.now() + 60_000).toISOString());
+      const { container } = open("/entrar");
+      await fill(user);
+      await submit(user);
+      await screen.findByRole("link", { name: "Criar nova senha" });
+      expect(screen.getByRole("alert")).toHaveAttribute("data-tone", "warn");
+      expect(await axeViolations(container)).toEqual([]);
+      document.documentElement.classList.add("dark");
+      expect(await axeViolations(container)).toEqual([]);
+      document.documentElement.classList.remove("dark");
+    });
+  });
 });

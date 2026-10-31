@@ -37,7 +37,7 @@ paths:
                   - $ref: '#/components/schemas/TwoFactorRequired'
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { description: "E-mail ou senha incorretos (INVALID_CREDENTIALS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
-        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: "Muitas tentativas (TOO_MANY_REQUESTS). Trava de e-mail ou de IP: `fields` traz `{field: retryAt, message: <instante ISO-8601 UTC em que a trava acaba>}`, igual para e-mail existente ou não (RN-ACE-10).", content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /auth/logout:
     post:
       summary: Encerra a sessão atual.

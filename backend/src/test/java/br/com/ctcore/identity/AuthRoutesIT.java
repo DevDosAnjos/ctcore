@@ -165,6 +165,35 @@ class AuthRoutesIT extends AuthBase {
     }
 
     @Test
+    @DisplayName("RN-ACE-10, #445: CA1-CA3: o 429 do login traz retryAt (fim da trava), igual para e-mail existente ou não, e também na trava de IP")
+    void lockoutReleaseTime() throws Exception {
+        link(account("ana@x.com"), org(), "ADMINISTRATOR", "ACTIVE");
+        for (String email : new String[]{"ana@x.com", "ghost@x.com"}) {
+            for (int i = 0; i < 5; i++) {
+                login(email, "Errada123");
+            }
+        }
+        clock.now = clock.now.plusSeconds(60);
+        String expected = clock.now.minusSeconds(60).plus(Duration.ofMinutes(15)).toString();
+        String known = shape(login("ana@x.com", PASSWORD));
+        assertThat(known).startsWith("429|TOO_MANY_REQUESTS");
+        assertThat(body(login("ana@x.com", PASSWORD)).path("fields").get(0).toString())
+                .isEqualTo("{\"field\":\"retryAt\",\"message\":\"" + expected + "\"}");
+        assertThat(shape(login("ghost@x.com", PASSWORD))).isEqualTo(known);
+
+        clock.now = clock.now.plus(Duration.ofHours(1));
+        java.time.Instant firstFailure = clock.now;
+        for (int i = 0; i < 20; i++) {
+            login("ip" + i + "@x.com", "Errada123");
+            clock.now = clock.now.plusSeconds(10);
+        }
+        java.time.Instant retry = java.time.Instant.parse(
+                body(login("another@x.com", "Errada123")).path("fields").get(0).path("message").asText());
+        assertThat(retry).isAfter(clock.now).isBeforeOrEqualTo(clock.now.plus(Duration.ofMinutes(15)))
+                .isEqualTo(firstFailure.plus(Duration.ofMinutes(15)));
+    }
+
+    @Test
     @DisplayName("RN-ACE-10: CA9: 5 erros travam por 15 minutos (também e-mail inexistente), IP limita, desafio recusado não conta, tudo registrado")
     void lockout() throws Exception {
         UUID org = org();

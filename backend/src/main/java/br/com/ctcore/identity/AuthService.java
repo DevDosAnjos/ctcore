@@ -90,16 +90,11 @@ public class AuthService {
     /** One answer for every failure: wrong password, unknown e-mail, pending invite, deactivated account. */
     public LoginOutcome login(String email, String password, String challengeToken, String ip, String device) {
         requireChallenge(email, ip, challengeToken);
-        switch (attempts.check(email, ip)) {
-            case EMAIL_LOCKED -> {
-                attempts.record(email, ip, Result.LOCKED);
-                throw new IdentityException(Code.TOO_MANY_REQUESTS, null);
-            }
-            case IP_LIMITED -> {
-                attempts.record(email, ip, Result.IP_LIMITED);
-                throw new IdentityException(Code.TOO_MANY_REQUESTS, null);
-            }
-            default -> { }
+        var status = attempts.check(email, ip);
+        if (status != LoginAttempts.Status.OPEN) {
+            String retryAt = attempts.releaseAt(status, email, ip).toString();
+            attempts.record(email, ip, status == LoginAttempts.Status.EMAIL_LOCKED ? Result.LOCKED : Result.IP_LIMITED);
+            throw new IdentityException(Code.TOO_MANY_REQUESTS, retryAt);
         }
         Found account = find(email);
         boolean usable = account != null && account.hash() != null && account.status().equals("ACTIVE");
