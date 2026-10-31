@@ -60,6 +60,38 @@ describe("agenda x OpenAPI (RF-AGE-01, CA17)", () => {
   });
 });
 
+describe("agenda do Professor (RN-AGE-07)", () => {
+  const ana = "00000000-0000-0000-0000-000000000501";
+  type L = { id: string; class: { name: string } | null; teacher: { id: string }; canEdit: boolean; canCancel: boolean };
+  const next = () => `from=${addDays(todayIso(), 1)}&to=${addDays(todayIso(), 14)}`;
+  const lessons = async (q = week()): Promise<L[]> => (await (await get(q)).json()).lessons;
+
+  it("Professor lista só as dele; Coordenação e Administrador listam todas", async () => {
+    await login("prof@exemplo.com");
+    const mine = await lessons();
+    expect(mine.length).toBeGreaterThan(0);
+    expect(mine.some((l) => l.class?.name === "Judô Infantil")).toBe(false);
+    expect(mine.every((l) => l.class?.name === "Jiu-Jitsu Adulto" || l.teacher.id === ana)).toBe(true);
+    for (const email of ["ana@exemplo.com", "admin@exemplo.com"]) {
+      await login(email);
+      expect((await lessons()).some((l) => l.class?.name === "Judô Infantil")).toBe(true);
+    }
+  });
+
+  it("detalhe alheio 404, o dele 200 com canEdit e canCancel; filtro por outro professor vem vazio", async () => {
+    await login("ana@exemplo.com");
+    const other = (await lessons(next())).find((l) => l.class?.name === "Judô Infantil")!;
+    await login("prof@exemplo.com");
+    const own = (await lessons(next())).find((l) => l.canEdit)!;
+    expect(own.canCancel).toBe(true);
+    expect((await fetch(`/api/v1/agenda/lessons/${other.id}`)).status).toBe(404);
+    const res = await fetch(`/api/v1/agenda/lessons/${own.id}`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ canEdit: true, canCancel: true });
+    expect(await lessons(`${next()}&teacherId=00000000-0000-0000-0000-0000000009ff`)).toEqual([]);
+  });
+});
+
 describe("painel da aula x OpenAPI (RF-AGE-02)", () => {
   const lessonOf = async (
     pick: (l: { substitute: boolean }) => boolean = () => true,
@@ -83,7 +115,7 @@ describe("painel da aula x OpenAPI (RF-AGE-02)", () => {
 
   it("Coordenador: corpo no formato do contrato; titular só na substituição; Professor sem canViewClass", async () => {
     await login("ana@exemplo.com");
-    const plain = await lessonOf((l) => !l.substitute);
+    const plain = await lessonOf((l) => !l.substitute && (l as unknown as { class: { name: string } }).class?.name === "Jiu-Jitsu Adulto");
     const res = await fetch(`/api/v1/agenda/lessons/${plain.id}`);
     expect(res.status).toBe(200);
     const detail = await res.json();
