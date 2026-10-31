@@ -150,7 +150,7 @@ Dependências: cada issue declara apenas dependência de sprint ("Depende de: Sp
 | 443 | Professor chega à ficha do aluno pela aula (com a permissão "ver ficha do aluno") | issue #443 | Sprint 10.5 | — | agente | feito |
 | 444 | Gerar códigos de reserva sem a confirmação de senha e código | issue #444 | Sprint 10.5 | — | agente | feito |
 | 445 | Login travado devolve o horário de liberação (429) | issue #445 | Sprint 10.5 | — | agente | feito |
-| 446 | Botão "Ver alunos" do painel da turma está sempre desabilitado | issue #446 | Sprint 10.5 | — | agente | a fazer |
+| 446 | Botão "Ver alunos" do painel da turma está sempre desabilitado | issue #446 | Sprint 10.5 | — | agente | feito |
 | 447 | Retenção de 30 dias das notificações da equipe (RN-NOT-05) | issue #447 | Sprint 10.5 | — | agente | a fazer |
 | 449 | Técnica · Dados do MSW para as telas que ficaram "sem comparar" | issue #449 | Sprint 10.5 | — | agente | a fazer |
 | 450 | Componente base: Padrão "Em breve" (R3): item visível e desabilitado, sem backend | issue #450 | Sprint 10.5 | #448 | agente | a fazer |

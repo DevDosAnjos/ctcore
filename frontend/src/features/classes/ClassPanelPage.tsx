@@ -58,8 +58,8 @@ function Panel({ klass, onRefresh }: { klass: ClassDetail; onRefresh: () => Prom
         <Button variant="outline" className="min-h-11" disabled={!canManage || klass.status !== "ACTIVE"} onClick={() => setEditing(true)}>
           {t("classes.panel.edit")}
         </Button>
-        <Button variant="outline" className="min-h-11" disabled>
-          {t("classes.panel.viewStudents")}
+        <Button variant="outline" className="min-h-11" asChild>
+          <Link to={`/alunos?classId=${klass.id}`}>{t("classes.panel.viewStudents")}</Link>
         </Button>
         {canNotify ? (
           <Button variant="outline" className="min-h-11" asChild>

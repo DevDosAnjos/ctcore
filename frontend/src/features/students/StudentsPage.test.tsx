@@ -39,9 +39,9 @@ const all = [student({ seals: ["INCOMPLETE_REGISTRATION", "BIRTHDAY_TODAY"], sta
 
 let calls: URLSearchParams[];
 
-function setup(role = "COORDINATOR", list?: () => Response | Promise<Response>, accountId = "a") {
+function setup(role = "COORDINATOR", list?: () => Response | Promise<Response>, accountId = "a", url = "/alunos") {
   calls = [];
-  window.history.replaceState(null, "", "/alunos");
+  window.history.replaceState(null, "", url);
   server.use(
     http.get("/api/v1/auth/session", () => HttpResponse.json(session(role, accountId))),
     http.get("/api/v1/permissions", () => HttpResponse.json({ permissions: mockPermissions(role) })),
@@ -61,7 +61,7 @@ function setup(role = "COORDINATOR", list?: () => Response | Promise<Response>, 
   );
   return render(
     <ThemeProvider>
-      <MemoryRouter initialEntries={["/alunos"]}>
+      <MemoryRouter initialEntries={[url]}>
         <SessionProvider>
           <App />
         </SessionProvider>
@@ -132,6 +132,13 @@ describe("StudentsPage", () => {
     await waitFor(() => expect(calls.at(-1)!.get("seal")).toBe("EMAIL_PROBLEM"));
     await user.click(await screen.findByRole("button", { name: "Limpar filtros" }));
     await waitFor(() => expect(calls.at(-1)!.get("seal")).toBeNull());
+  });
+
+  it("CA3 (#446): /alunos?classId=k1 consulta com classId e mostra a turma selecionada", async () => {
+    setup("COORDINATOR", undefined, "a", "/alunos?classId=k1");
+    await screen.findByText("Ana Souza");
+    await waitFor(() => expect(calls.at(-1)!.get("classId")).toBe("k1"));
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Turma" })).toHaveValue("k1"));
   });
 
   it("CA27: a linha mostra todas as modalidades ativas com unidade e turma principal e a situação; sem matrícula, traço e Sem matrícula", async () => {
