@@ -87,11 +87,15 @@ describe("ClassPanelPage (RF-TUR-02)", () => {
     expect(screen.getByRole("link", { name: "Abrir grupo" })).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("CA8: Ver alunos fica desativado; Editar e Desativar estão ativos (CA13)", async () => {
+  it("CA8: Ver alunos é link para a lista filtrada, também em turma desativada; Editar e Desativar estão ativos (CA13)", async () => {
     setup();
     await ready();
-    expect(screen.getByRole("button", { name: "Ver alunos" })).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Ver alunos" })).toHaveAttribute("href", "/alunos?classId=c1");
     await enabled();
+    cleanup();
+    setup(() => HttpResponse.json(detail({ status: "INACTIVE" })));
+    await ready();
+    expect(screen.getByRole("link", { name: "Ver alunos" })).toHaveAttribute("href", "/alunos?classId=c1");
   });
 
   it("CA26 (#82): Avisar turma abre o comunicado já com a turma; sem a permissão ou com a turma desativada fica desativado", async () => {
